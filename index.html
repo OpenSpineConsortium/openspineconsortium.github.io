@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<!--
+  OpenSpineConsortium — static website for GitHub Pages.
+
+  BEFORE PUBLISHING, please review / replace the placeholders marked [VERIFY]:
+   - People names, titles, and affiliations
+   - Dataset volume counts and licensing details
+   - GitHub org URL, contact email, and publication links
+  Everything else is ready to deploy. See README.md for hosting instructions.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenSpineConsortium — Open data &amp; reproducible benchmarks for spine imaging AI</title>
+  <meta name="description" content="OpenSpineConsortium builds openly licensed datasets and reproducible benchmarks for spine and pelvis medical imaging, with a focus on anatomical variants and clinically grounded AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+  <!-- ===================== NAV ===================== -->
+  <header class="nav" id="nav">
+    <a href="#home" class="nav__brand" aria-label="OpenSpineConsortium home">
+      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#project">Project</a>
+      <a href="#datasets">Datasets</a>
+      <a href="#people">People</a>
+      <a href="#organization">Organization</a>
+      <a href="#goals">Goals</a>
+      <a href="#join" class="nav__cta">Get Involved</a>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero" id="home">
+    <div class="hero__grid"></div>
+
+    <div class="hero__content">
+      <p class="eyebrow reveal">An open research initiative · est. 2026</p>
+      <h1 class="hero__title">
+        <span class="reveal" style="--d:1">Open data and</span>
+        <span class="reveal" style="--d:2">reproducible <em>benchmarks</em></span>
+        <span class="reveal" style="--d:3">for spine imaging AI.</span>
+      </h1>
+      <p class="hero__lede reveal" style="--d:4">
+        The OpenSpineConsortium unifies fragmented public imaging collections into
+        carefully documented, openly licensed datasets &mdash; so that anatomy-aware
+        machine learning for the spine and pelvis can be built, audited, and trusted.
+      </p>
+      <div class="hero__actions reveal" style="--d:5">
+        <a href="#datasets" class="btn btn--solid">Explore the datasets</a>
+        <a href="#join" class="btn btn--ghost">Join the consortium</a>
+      </div>
+
+      <dl class="hero__stats reveal" style="--d:6">
+        <div><dt>1,000+</dt><dd>annotated CT volumes <span>[VERIFY]</span></dd></div>
+        <div><dt>3</dt><dd>source collections unified</dd></div>
+        <div><dt>5-fold</dt><dd>public benchmark splits</dd></div>
+        <div><dt>4+</dt><dd>collaborating institutions</dd></div>
+      </dl>
+    </div>
+
+    <!-- Decorative anatomical column -->
+    <div class="hero__spine" aria-hidden="true">
+      <svg viewBox="0 0 240 760" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <g id="vertebra">
+            <rect x="46" y="14" width="148" height="40" rx="19" />
+            <path d="M46 34 q -22 -4 -30 -16 M46 34 q -22 4 -30 16" />
+            <circle cx="120" cy="34" r="4.5" class="v-core" />
+          </g>
+        </defs>
+        <g class="spine-col">
+          <use href="#vertebra" transform="translate(2 0)" />
+          <use href="#vertebra" transform="translate(12 76) rotate(-3 120 34)" />
+          <use href="#vertebra" transform="translate(18 152) rotate(-5 120 34)" />
+          <use href="#vertebra" transform="translate(16 228) rotate(-3 120 34)" />
+          <use href="#vertebra" transform="translate(6 304) rotate(2 120 34)" />
+          <use href="#vertebra" transform="translate(-6 380) rotate(5 120 34)" />
+          <use href="#vertebra" transform="translate(-12 456) rotate(4 120 34)" />
+          <use href="#vertebra" transform="translate(-8 532) rotate(1 120 34)" />
+          <use href="#vertebra" transform="translate(4 608) rotate(-3 120 34)" />
+          <path class="sacrum" d="M30 690 q 60 -16 120 0 q 6 44 -34 60 q -52 14 -78 -16 q -14 -22 -8 -44 Z" />
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ===================== PROJECT ===================== -->
+  <section class="section" id="project">
+    <div class="section__head reveal">
+      <span class="section__num">01</span>
+      <h2 class="section__title">The Project</h2>
+    </div>
+
+    <div class="project__layout">
+      <div class="project__lead reveal">
+        <p class="lead-para">
+          Spine imaging AI has a quiet reliability problem. Most published models are
+          trained and validated on collections that are small, inconsistently
+          annotated, or closed &mdash; and they routinely stumble on the anatomy that
+          matters most clinically: <em>transitional vertebrae, segmentation
+          ambiguity, and rare structural variants</em>.
+        </p>
+        <p>
+          The OpenSpineConsortium exists to fix the foundation. We take existing
+          public CT collections, harmonize their labels under a single coherent
+          scheme, audit them against widely used segmentation tools, and re-release
+          them as documented, openly licensed datasets with fixed cross-validation
+          splits. The goal is simple: make spine and pelvis imaging research
+          <strong>reproducible by default</strong>.
+        </p>
+      </div>
+
+      <ul class="project__pillars">
+        <li class="reveal">
+          <span class="pillar__tag">Harmonize</span>
+          <h3>One label scheme, many sources</h3>
+          <p>Fuse spine and pelvis collections under a unified, collision-free
+             labelmap that resolves L5/L6 and lumbarization edge cases.</p>
+        </li>
+        <li class="reveal">
+          <span class="pillar__tag">Audit</span>
+          <h3>Trust, but verify</h3>
+          <p>Systematically benchmark off-the-shelf tools to surface where they
+             silently disagree with ground truth.</p>
+        </li>
+        <li class="reveal">
+          <span class="pillar__tag">Release</span>
+          <h3>Open and citable</h3>
+          <p>Permissive licensing, machine-readable metadata, and frozen splits so
+             results can actually be compared.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== DATASETS ===================== -->
+  <section class="section section--alt" id="datasets">
+    <div class="section__head reveal">
+      <span class="section__num">02</span>
+      <h2 class="section__title">Datasets &amp; Benchmarks</h2>
+    </div>
+
+    <p class="section__intro reveal">
+      Our datasets are released as benchmark resources &mdash; each ships with a
+      data card, machine-readable metadata, and a fixed evaluation protocol so that
+      every reported number is reproducible.
+    </p>
+
+    <!-- Flagship -->
+    <article class="dataset dataset--flagship reveal">
+      <div class="dataset__meta">
+        <span class="badge badge--flag">Flagship dataset</span>
+        <span class="badge">In submission · 2026 [VERIFY]</span>
+      </div>
+      <h3 class="dataset__name">CTSpinoPelvic1K</h3>
+      <p class="dataset__desc">
+        A fused spine-and-pelvis CT segmentation dataset and benchmark that unifies
+        three public collections into a single, anatomy-consistent resource. It is
+        explicitly designed around lumbosacral transitional vertebrae (LSTV), the
+        anatomy where conventional pipelines most often fail.
+      </p>
+      <ul class="dataset__specs">
+        <li><span class="spec-k">Source collections</span><span class="spec-v">CTSpine1K · CTPelvic1K · TCIA CT&nbsp;COLONOG</span></li>
+        <li><span class="spec-k">Label scheme</span><span class="spec-v">Unified merged-label map, LSTV-aware</span></li>
+        <li><span class="spec-k">Evaluation</span><span class="spec-v">5-fold cross-validation, frozen splits</span></li>
+        <li><span class="spec-k">Metadata</span><span class="spec-v">Croissant + Responsible-AI fields</span></li>
+        <li><span class="spec-k">Distribution</span><span class="spec-v">HuggingFace dataset export [VERIFY]</span></li>
+      </ul>
+    </article>
+
+    <!-- Supporting resources -->
+    <div class="dataset__row">
+      <article class="dataset reveal">
+        <span class="badge">Benchmark</span>
+        <h3 class="dataset__name dataset__name--sm">TotalSegmentator Spine Audit</h3>
+        <p class="dataset__desc">
+          A structured evaluation of a widely used segmentation tool on transitional
+          and variant anatomy &mdash; quantifying where automated labels diverge from
+          expert ground truth.
+        </p>
+      </article>
+      <article class="dataset reveal">
+        <span class="badge">Pipeline</span>
+        <h3 class="dataset__name dataset__name--sm">LSTV Detection Ensemble</h3>
+        <p class="dataset__desc">
+          A multi-model reference pipeline for detecting lumbosacral transitional
+          vertebrae and Castellvi morphology, released to support variant-aware
+          research and replication.
+        </p>
+      </article>
+      <article class="dataset reveal">
+        <span class="badge">Methodology</span>
+        <h3 class="dataset__name dataset__name--sm">LSTV-Aware Training Recipe</h3>
+        <p class="dataset__desc">
+          An open training methodology &mdash; variant-aware oversampling and
+          per-subgroup evaluation &mdash; that makes models accountable for rare
+          anatomy rather than averaging it away.
+        </p>
+      </article>
+    </div>
+
+    <div class="dataset__note reveal">
+      <p>
+        <strong>Built on the shoulders of open science.</strong>
+        OpenSpineConsortium resources derive from publicly available collections and
+        are redistributed under the terms of their original licenses. Each dataset
+        card documents provenance, consent basis, and intended use.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== PEOPLE ===================== -->
+  <section class="section" id="people">
+    <div class="section__head reveal">
+      <span class="section__num">03</span>
+      <h2 class="section__title">People</h2>
+    </div>
+
+    <p class="section__intro reveal">
+      The consortium is a small, collaborative effort connecting clinicians,
+      computer scientists, and imaging researchers across institutions.
+    </p>
+
+    <div class="people__grid">
+      <article class="person person--lead reveal">
+        <div class="person__portrait" aria-hidden="true">GS</div>
+        <div class="person__body">
+          <h3>Greg Schwing, MD-PhD</h3>
+          <p class="person__role">Founder &amp; Project Lead</p>
+          <p class="person__bio">
+            Neurosurgery resident and computer scientist building anatomy-aware
+            machine learning for the spine. Leads dataset curation, benchmark design,
+            and the LSTV research program. NIH F30 fellow.
+          </p>
+          <p class="person__affil">Wayne State University · Detroit Medical Center</p>
+        </div>
+      </article>
+
+      <!-- [VERIFY] Confirm names, titles & affiliations with each collaborator
+           before publishing. Edit or remove the placeholder cards below. -->
+      <article class="person reveal">
+        <div class="person__portrait person__portrait--ghost" aria-hidden="true">+</div>
+        <div class="person__body">
+          <h3>Clinical Collaborator</h3>
+          <p class="person__role">Pediatric Neurosurgery</p>
+          <p class="person__bio">
+            Clinical guidance on imaging variants and translational relevance.
+            <em>Add name &amp; bio.</em>
+          </p>
+          <p class="person__affil">Emory University · Children's Healthcare of Atlanta</p>
+        </div>
+      </article>
+
+      <article class="person reveal">
+        <div class="person__portrait person__portrait--ghost" aria-hidden="true">+</div>
+        <div class="person__body">
+          <h3>Imaging Methods Collaborator</h3>
+          <p class="person__role">Segmentation &amp; Tooling</p>
+          <p class="person__bio">
+            Contributes to spine segmentation methodology and tool integration.
+            <em>Add name &amp; bio.</em>
+          </p>
+          <p class="person__affil">Collaborating imaging-AI group</p>
+        </div>
+      </article>
+
+      <article class="person reveal">
+        <div class="person__portrait person__portrait--ghost" aria-hidden="true">+</div>
+        <div class="person__body">
+          <h3>Open Position</h3>
+          <p class="person__role">Contributors welcome</p>
+          <p class="person__bio">
+            We are looking for collaborators in radiology, data engineering, and
+            ML research. <a href="#join">Get in touch &rarr;</a>
+          </p>
+          <p class="person__affil">&mdash;</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="institutions reveal">
+      <p class="institutions__label">Collaborating institutions</p>
+      <ul class="institutions__list">
+        <li>Wayne State University</li>
+        <li>Detroit Medical Center</li>
+        <li>Emory University</li>
+        <li>Children's Healthcare of Atlanta</li>
+        <li>Henry Ford Health</li>
+        <li class="institutions__more">+ partner imaging groups</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== ORGANIZATION ===================== -->
+  <section class="section section--alt" id="organization">
+    <div class="section__head reveal">
+      <span class="section__num">04</span>
+      <h2 class="section__title">How We Work</h2>
+    </div>
+
+    <div class="org__layout">
+      <div class="org__intro reveal">
+        <p class="lead-para">
+          OpenSpineConsortium is an open, GitHub-native research collaboration &mdash;
+          not a company and not a closed lab. Everything we publish is meant to be
+          inspected, forked, and improved.
+        </p>
+        <p>
+          Governance is intentionally lightweight: a project lead coordinates
+          direction, contributors propose changes through public pull requests, and
+          dataset releases are versioned and tagged. Disagreement is resolved in the
+          open, in writing.
+        </p>
+      </div>
+
+      <ol class="org__principles">
+        <li class="reveal">
+          <span class="org__index">01</span>
+          <div>
+            <h3>Open by default</h3>
+            <p>Code, data cards, splits, and evaluation protocols are public.
+               Closed exceptions are documented and justified.</p>
+          </div>
+        </li>
+        <li class="reveal">
+          <span class="org__index">02</span>
+          <div>
+            <h3>Reproducible or it doesn't count</h3>
+            <p>Every benchmark ships with frozen splits and a runnable protocol.
+               A result you cannot reproduce is not a result.</p>
+          </div>
+        </li>
+        <li class="reveal">
+          <span class="org__index">03</span>
+          <div>
+            <h3>Clinically grounded</h3>
+            <p>Priorities are set by what matters at the point of care, with
+               practising clinicians in the loop.</p>
+          </div>
+        </li>
+        <li class="reveal">
+          <span class="org__index">04</span>
+          <div>
+            <h3>Responsible data stewardship</h3>
+            <p>We respect source licenses, document consent basis, and publish
+               Responsible-AI metadata with every release.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===================== GOALS ===================== -->
+  <section class="section" id="goals">
+    <div class="section__head reveal">
+      <span class="section__num">05</span>
+      <h2 class="section__title">Goals</h2>
+    </div>
+
+    <p class="section__intro reveal">
+      What success looks like for the consortium &mdash; near-term deliverables and
+      the longer arc.
+    </p>
+
+    <div class="goals__grid">
+      <article class="goal reveal">
+        <h3>Release flagship benchmarks</h3>
+        <p>Publish CTSpinoPelvic1K and its evaluation suite as a citable, openly
+           licensed resource for the imaging-AI community.</p>
+      </article>
+      <article class="goal reveal">
+        <h3>Audit the tools people trust</h3>
+        <p>Quantify how widely used segmentation tools behave on variant anatomy,
+           and publish the failure modes honestly.</p>
+      </article>
+      <article class="goal reveal">
+        <h3>Make rare anatomy first-class</h3>
+        <p>Establish variant-aware training and evaluation as a default expectation,
+           not an afterthought.</p>
+      </article>
+      <article class="goal reveal">
+        <h3>Lower the barrier to entry</h3>
+        <p>Give new researchers a clean, well-documented starting point so they can
+           build instead of re-curating data.</p>
+      </article>
+      <article class="goal reveal">
+        <h3>Connect institutions</h3>
+        <p>Grow a durable, cross-institutional network around shared open spine
+           imaging infrastructure.</p>
+      </article>
+      <article class="goal reveal">
+        <h3>Bridge bench and bedside</h3>
+        <p>Keep every dataset and metric tied to a real clinical question worth
+           answering.</p>
+      </article>
+    </div>
+
+    <div class="outputs reveal">
+      <p class="outputs__label">Research outputs &amp; venues <span>[VERIFY status]</span></p>
+      <ul class="outputs__list">
+        <li><span class="outputs__year">2026</span> CTSpinoPelvic1K &mdash; datasets &amp; benchmarks track submission <em>(under review)</em></li>
+        <li><span class="outputs__year">2026</span> Machine learning for healthcare venue submission <em>(under review)</em></li>
+        <li><span class="outputs__year">2026</span> Algorithmic disagreement as an LSTV biomarker &mdash; conference abstract</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== JOIN ===================== -->
+  <section class="section section--join" id="join">
+    <div class="join__inner reveal">
+      <span class="section__num section__num--light">06</span>
+      <h2 class="join__title">Get involved.</h2>
+      <p class="join__lede">
+        Whether you are a radiologist, an ML researcher, a data engineer, or a
+        clinician with imaging to contribute &mdash; there is a place for you here.
+        The consortium grows through public pull requests and open conversation.
+      </p>
+
+      <div class="join__cards">
+        <div class="join__card">
+          <h3>Contribute code or data</h3>
+          <p>Open an issue or a pull request on GitHub. Dataset contributions are
+             reviewed against our provenance and licensing checklist.</p>
+          <a href="https://github.com/OpenSpineConsortium" class="link-arrow" target="_blank" rel="noopener">GitHub organization &rarr;</a>
+        </div>
+        <div class="join__card">
+          <h3>Collaborate on research</h3>
+          <p>Interested in co-developing a benchmark or a study? Reach out to the
+             project lead to start a conversation.</p>
+          <a href="mailto:contact@openspineconsortium.org" class="link-arrow">contact@openspineconsortium.org <span>[VERIFY]</span></a>
+        </div>
+        <div class="join__card">
+          <h3>Use the datasets</h3>
+          <p>The resources are free to use under their stated licenses. We only ask
+             that you cite the dataset and report on the standard splits.</p>
+          <a href="#datasets" class="link-arrow">Browse datasets &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="footer__top">
+      <a href="#home" class="footer__brand">
+        <svg viewBox="0 0 28 28" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+            <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+            <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+            <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+          </g>
+        </svg>
+        Open<strong>Spine</strong>Consortium
+      </a>
+      <nav class="footer__nav" aria-label="Footer">
+        <a href="#project">Project</a>
+        <a href="#datasets">Datasets</a>
+        <a href="#people">People</a>
+        <a href="#organization">Organization</a>
+        <a href="#goals">Goals</a>
+        <a href="#join">Get Involved</a>
+      </nav>
+    </div>
+    <div class="footer__bottom">
+      <p>&copy; <span id="year">2026</span> OpenSpineConsortium. Open research, openly licensed.</p>
+      <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
