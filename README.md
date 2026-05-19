@@ -97,6 +97,19 @@ replaced with real values before going live:
 
 Search `index.html` for `[VERIFY]` and review `contributions/manifest.json`.
 
+## Updating the site (important — caching)
+
+Browsers and the GitHub Pages CDN cache `style.css` and `main.js`. After you
+push a change to either file, **bump the `?v=` number** on both references near
+the top and bottom of `index.html` (e.g. `?v=20260519` → `?v=20260520`).
+Changing the number forces every visitor to fetch the new file instead of a
+stale cached copy. If you ever see an old version of the site, this is why —
+bump `?v=` and hard-refresh (`Ctrl/Cmd+Shift+R`).
+
+Data files (`contributions/manifest.json`, `meded/survey-summary.json`) are
+fetched with revalidation, so they refresh on their own — only the CSS/JS need
+the `?v=` bump.
+
 ## Editing
 
 Everything lives in `index.html`. To add a section, copy an existing
