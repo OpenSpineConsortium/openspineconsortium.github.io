@@ -664,6 +664,188 @@ em { font-style: italic; }
 }
 
 /* ============================================================
+   EDUCATION OUTCOMES
+   ============================================================ */
+.meded__status {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+  padding: 10px 0;
+}
+.meded__status--error { color: var(--ochre); }
+
+/* --- before/after dumbbell chart --- */
+.meded__chart {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 36px;
+  margin-bottom: 20px;
+}
+.meded__chart-head { margin-bottom: 30px; }
+.meded__chart-head h3 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.meded__chart-sub {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 5px;
+}
+.dumbbell-list { display: flex; flex-direction: column; gap: 20px; }
+.dumbbell {
+  display: grid;
+  grid-template-columns: 230px 1fr 52px;
+  align-items: center;
+  gap: 22px;
+}
+.dumbbell__label { font-size: 0.92rem; line-height: 1.3; }
+.dumbbell__track { position: relative; height: 26px; }
+.dumbbell__track::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 2px;
+  background: var(--line);
+  transform: translateY(-50%);
+}
+.dumbbell__bar {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  width: 0;
+  background: linear-gradient(90deg, var(--ink-faint), var(--teal));
+  border-radius: 2px;
+  transform: translateY(-50%);
+  transition: left 0.9s var(--ease), width 0.9s var(--ease);
+}
+.dumbbell__dot {
+  position: absolute;
+  top: 50%;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  border: 2px solid var(--paper-card);
+  transform: translate(-50%, -50%);
+  transition: left 0.9s var(--ease);
+}
+.dumbbell__dot--before { background: var(--ink-faint); z-index: 1; }
+.dumbbell__dot--now { background: var(--teal); z-index: 2; }
+.dumbbell__delta {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--teal);
+  text-align: right;
+}
+.meded__legend {
+  display: flex;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.meded__legend .dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.dot--before { background: var(--ink-faint); }
+.dot--now { background: var(--teal); }
+.meded__baseline {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+/* --- headline stat callouts --- */
+.meded__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.medstat { background: var(--paper-card); padding: 30px 26px; }
+.medstat__value {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 600;
+  color: var(--teal);
+  line-height: 1;
+}
+.medstat__label {
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  margin-top: 11px;
+}
+
+/* --- participant quotes --- */
+.meded__quotes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.medquote {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 28px;
+}
+.medquote__mark {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 0.1;
+  color: var(--teal);
+  display: block;
+  height: 22px;
+}
+.medquote__text {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.medquote__by {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* --- program-director pitch callout --- */
+.meded__pitch {
+  border-left: 3px solid var(--teal);
+  background: rgba(14, 95, 88, 0.06);
+  border-radius: 0 10px 10px 0;
+  padding: 26px 30px;
+}
+.meded__pitch-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 9px;
+}
+.meded__pitch p:not(.meded__pitch-label) {
+  font-size: 1.02rem;
+  color: var(--ink-soft);
+}
+
+/* ============================================================
    JOIN
    ============================================================ */
 .section--join {
@@ -790,6 +972,9 @@ em { font-style: italic; }
   .dataset__row, .goals__grid, .join__cards { grid-template-columns: 1fr; }
   .people__grid { grid-template-columns: 1fr; }
   .goals__grid { gap: 1px; }
+  .meded__stats { grid-template-columns: 1fr 1fr; }
+  .meded__quotes { grid-template-columns: 1fr; }
+  .dumbbell { grid-template-columns: 180px 1fr 48px; gap: 14px; }
 }
 
 @media (max-width: 680px) {
@@ -818,4 +1003,14 @@ em { font-style: italic; }
   .dataset__specs li { flex-direction: column; gap: 2px; }
   .spec-v { text-align: left; }
   .footer__top { flex-direction: column; align-items: flex-start; }
+  .meded__chart { padding: 24px; }
+  .meded__stats { grid-template-columns: 1fr; }
+  .dumbbell {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "label label" "track delta";
+    gap: 6px 14px;
+  }
+  .dumbbell__label { grid-area: label; }
+  .dumbbell__track { grid-area: track; }
+  .dumbbell__delta { grid-area: delta; align-self: center; }
 }

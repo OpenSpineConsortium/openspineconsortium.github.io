@@ -1,0 +1,85 @@
+{
+  "$note": "De-identified aggregate summary of the OSC participation survey. Do not commit the raw CSV (names, sex, race/ethnicity). Regenerate with summarize_survey.py.",
+  "meta": {
+    "respondents": 16,
+    "cohort": "Medical students (predominantly M2)",
+    "instrument": "Pre/post self-assessment on a 1-5 comfort scale"
+  },
+  "scale": {
+    "min": 1,
+    "max": 5,
+    "min_label": "Not at all comfortable",
+    "max_label": "Very comfortable"
+  },
+  "competencies": [
+    {
+      "label": "Reading & interpreting CT spine imaging",
+      "before": 1.8,
+      "now": 3.3,
+      "delta": 1.5
+    },
+    {
+      "label": "Identifying spine landmarks & pathology",
+      "before": 2.0,
+      "now": 3.2,
+      "delta": 1.2
+    },
+    {
+      "label": "Writing Python code",
+      "before": 1.3,
+      "now": 2.6,
+      "delta": 1.3
+    },
+    {
+      "label": "Writing a scientific abstract",
+      "before": 2.9,
+      "now": 3.7,
+      "delta": 0.8
+    },
+    {
+      "label": "Submitting work to a conference",
+      "before": 2.6,
+      "now": 3.6,
+      "delta": 1.0
+    },
+    {
+      "label": "Reading a paper critically",
+      "before": 3.2,
+      "now": 3.9,
+      "delta": 0.7
+    }
+  ],
+  "headline_stats": [
+    {
+      "value": "16 / 16",
+      "label": "earned co-authorship on a CNS 2026 abstract"
+    },
+    {
+      "value": "6 / 6",
+      "label": "self-assessed competencies improved group-wide"
+    },
+    {
+      "value": "11 / 16",
+      "label": "reported increased interest in research-oriented careers"
+    },
+    {
+      "value": "16 / 16",
+      "label": "would recommend OSC to another medical student"
+    }
+  ],
+  "baseline": "Most participants began from a near-zero baseline: 7 of 16 had no prior coding experience, and 15 of 16 had no prior hands-on medical-imaging analysis experience.",
+  "quotes": [
+    {
+      "text": "Learning how to apply coding and imaging analysis to real clinical research projects.",
+      "by": "OSC participant"
+    },
+    {
+      "text": "Troubleshooting and thinking critically is a valuable skill that isn't used often during the preclinical years — and I have thoroughly enjoyed that process.",
+      "by": "OSC participant"
+    },
+    {
+      "text": "It's amazing that we can run programs like this with little to no prior coding experience.",
+      "by": "OSC participant"
+    }
+  ]
+}

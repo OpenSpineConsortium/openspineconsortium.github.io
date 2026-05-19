@@ -57,6 +57,13 @@
       "project": "Sacral slope / pelvic incidence",
       "cns_id": "69093"
     },
+    "68733": {
+      "title": "Automated Vertebral Wedging Index from CT: A Geometry-Based Biomarker for Lumbar Compression Deformity",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Vertebral wedging index",
+      "cns_id": "68733"
+    },
     "68460": {
       "title": "Automated Computational Analysis of Lordosis Distribution Index Measurement Using Sagittal CT Segmentation Masks",
       "venue": "CNS 2026 Annual Meeting",
@@ -102,12 +109,6 @@
       "venue": "OpenSpineConsortium",
       "status": "In preparation",
       "project": "T1 pelvic angle (TPA)"
-    },
-    "osc-vbwi": {
-      "title": "Automated Vertebral Body Wedging Index from CT Segmentation Masks",
-      "venue": "OpenSpineConsortium",
-      "status": "In preparation",
-      "project": "Vertebral body wedging index"
     }
   },
   "people": [
@@ -148,7 +149,7 @@
       "affiliation": "",
       "headshot": "Christian,Ryan",
       "contributions": [
-        "osc-vbwi"
+        "68733"
       ]
     },
     {

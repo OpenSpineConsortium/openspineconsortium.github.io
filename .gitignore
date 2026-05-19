@@ -4,3 +4,9 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Raw survey exports — contain names, sex, race/ethnicity. NEVER commit these.
+# Only meded/survey-summary.json (de-identified aggregate) is safe to publish.
+*Participation_Survey*.csv
+meded/*.csv
+*_raw.csv

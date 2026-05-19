@@ -12,13 +12,24 @@ hosted on **GitHub Pages**.
 ├── index.html              # single-page site
 ├── assets/
 │   ├── css/style.css       # all styling
-│   └── js/main.js          # nav, scroll-reveal, manifest rendering
+│   └── js/main.js          # nav, scroll-reveal, manifest + survey rendering
 ├── contributions/
 │   └── manifest.json       # contributors + their scholarly contributions
 ├── headshots/              # contributor photos (see headshots/README.md)
+├── meded/
+│   ├── survey-summary.json # de-identified Education Outcomes data
+│   └── summarize_survey.py # regenerates the summary from a raw export
 ├── .nojekyll               # tells GitHub Pages to skip Jekyll processing
 └── README.md
 ```
+
+## Education Outcomes section
+
+The **Education Outcomes** section renders from `meded/survey-summary.json` — a
+de-identified aggregate of the OSC participation survey (before/after competence
+means, headline stats, hand-picked quotes). See `meded/README.md` to regenerate
+it. **Never commit the raw survey CSV** — it contains names and demographics and
+is excluded by `.gitignore`.
 
 ## Contributors & contributions
 

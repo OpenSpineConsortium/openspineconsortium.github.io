@@ -86,7 +86,7 @@
      /headshots by the convention lastname,firstname[,mi].ext
      ============================================================ */
 
-  var HEADSHOT_EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG"];
+  var HEADSHOT_EXTS = ["jpg", "jpeg", "png", "webp"];
 
   function el(tag, cls, text) {
     var node = document.createElement(tag);
@@ -222,5 +222,140 @@
         "Could not load contributions/manifest.json (" + err.message +
         "). The site must be served over http \u2014 see README.md."
       );
+    });
+
+  /* ============================================================
+     EDUCATION OUTCOMES
+     Renders the before/after competence chart, headline stats,
+     and participant quotes from meded/survey-summary.json
+     ============================================================ */
+
+  var reducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function pctOnScale(value, scale) {
+    var span = (scale.max - scale.min) || 1;
+    return ((value - scale.min) / span) * 100;
+  }
+
+  function renderComfortChart(competencies, scale) {
+    var chart = document.getElementById("comfortChart");
+    if (!chart) return;
+    chart.innerHTML = "";
+
+    competencies.forEach(function (c) {
+      var before = pctOnScale(c.before, scale);
+      var now = pctOnScale(c.now, scale);
+
+      var row = el("div", "dumbbell");
+      row.appendChild(el("div", "dumbbell__label", c.label));
+
+      var track = el("div", "dumbbell__track");
+
+      var bar = el("span", "dumbbell__bar");
+      bar.style.left = before + "%";          /* starts collapsed */
+      bar.style.width = "0%";
+
+      var dotBefore = el("span", "dumbbell__dot dumbbell__dot--before");
+      dotBefore.style.left = before + "%";
+
+      var dotNow = el("span", "dumbbell__dot dumbbell__dot--now");
+      dotNow.style.left = before + "%";       /* animates out to `now` */
+
+      track.appendChild(bar);
+      track.appendChild(dotBefore);
+      track.appendChild(dotNow);
+      row.appendChild(track);
+
+      var delta = (c.delta >= 0 ? "+" : "") + c.delta.toFixed(1);
+      row.appendChild(el("div", "dumbbell__delta", delta));
+
+      row.dataset.before = before;
+      row.dataset.now = now;
+      chart.appendChild(row);
+    });
+
+    function animate() {
+      chart.querySelectorAll(".dumbbell").forEach(function (row) {
+        var b = parseFloat(row.dataset.before);
+        var n = parseFloat(row.dataset.now);
+        row.querySelector(".dumbbell__dot--now").style.left = n + "%";
+        var bar = row.querySelector(".dumbbell__bar");
+        bar.style.left = Math.min(b, n) + "%";
+        bar.style.width = Math.abs(n - b) + "%";
+      });
+    }
+
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      animate();
+    } else {
+      var co = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { animate(); co.disconnect(); }
+          });
+        },
+        { threshold: 0.25 }
+      );
+      co.observe(chart);
+    }
+  }
+
+  function renderMedStats(stats) {
+    var wrap = document.getElementById("medEdStats");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    stats.forEach(function (s) {
+      var card = el("div", "medstat reveal");
+      card.appendChild(el("div", "medstat__value", s.value));
+      card.appendChild(el("div", "medstat__label", s.label));
+      wrap.appendChild(card);
+      observe(card);
+    });
+  }
+
+  function renderMedQuotes(quotes) {
+    var wrap = document.getElementById("medEdQuotes");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    quotes.forEach(function (q) {
+      var card = el("div", "medquote reveal");
+      card.appendChild(el("span", "medquote__mark", "\u201C"));
+      card.appendChild(el("p", "medquote__text", q.text));
+      card.appendChild(el("p", "medquote__by", "\u2014 " + (q.by || "OSC participant")));
+      wrap.appendChild(card);
+      observe(card);
+    });
+  }
+
+  fetch("meded/survey-summary.json", { cache: "no-cache" })
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then(function (d) {
+      var scale = d.scale || { min: 1, max: 5 };
+      renderComfortChart(d.competencies || [], scale);
+      renderMedStats(d.headline_stats || []);
+      renderMedQuotes(d.quotes || []);
+
+      var nEl = document.getElementById("medEdN");
+      if (nEl && d.meta && d.meta.respondents) {
+        nEl.textContent = "(n = " + d.meta.respondents + ")";
+      }
+      var baseEl = document.getElementById("medEdBaseline");
+      if (baseEl && d.baseline) baseEl.textContent = d.baseline;
+    })
+    .catch(function (err) {
+      var chart = document.getElementById("comfortChart");
+      if (chart) {
+        chart.innerHTML = "";
+        chart.appendChild(
+          el("p", "meded__status meded__status--error",
+             "Could not load meded/survey-summary.json (" + err.message +
+             "). The site must be served over http \u2014 see README.md.")
+        );
+      }
     });
 })();
