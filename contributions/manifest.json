@@ -1,0 +1,353 @@
+{
+  "$schema_note": "OpenSpineConsortium contributions manifest. 'people[].contributions' and 'people[].headshot' are the fields you will edit most. Each contribution id resolves against the 'abstracts' table.",
+  "meta": {
+    "generated": "2026-05-19",
+    "primary_venue": "CNS 2026 Annual Meeting — Washington, DC, Oct 31 – Nov 4, 2026",
+    "headshot_dir": "headshots",
+    "headshot_naming": "lastname,firstname[,mi].ext  (extension auto-detected: jpg/jpeg/png/webp). Edit a person's 'headshot' field if your file includes a middle initial.",
+    "verify": "Student roles and affiliations are placeholders — confirm before publishing. Abstract titles are verbatim from the CNS submission list."
+  },
+  "abstracts": {
+    "66639": {
+      "title": "Beyond the Cadaver Lab: The OpenSpineConsortium as an Asynchronous, Open-Source Framework for Medical Student Engagement in Computational Spine Imaging Research",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Consortium framework",
+      "cns_id": "66639"
+    },
+    "66629": {
+      "title": "Not All Spines Are Created Equal: A Single-Shot CT Segmentation Model for Preoperative Detection of Lumbar and Thoracic End Anomalies",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Core segmentation model",
+      "cns_id": "66629"
+    },
+    "68300": {
+      "title": "Enhancing Clinical Workflow in Scoliosis Evaluation: Automated CT-Derived Cobb Angle Measurement Using Computational Analysis",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Scoliosis / Cobb angle",
+      "cns_id": "68300"
+    },
+    "67525": {
+      "title": "Opportunistic Screening for Vertebral Degeneration Using Automated Analysis of Vertebral Hounsfield Units",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Osteoporosis / HU calculation",
+      "cns_id": "67525"
+    },
+    "68579": {
+      "title": "Sagittal Lumbar Lordosis Quantification via Automated CT Segmentation Analysis: A TRALL Angle Computational Pipeline",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Lordosis / TRALL angle",
+      "cns_id": "68579"
+    },
+    "69734": {
+      "title": "Automated Measurement of Lumbar Intervertebral Disc Heights from CT Segmentation Masks: A Preliminary Validation Study",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Disc spacing",
+      "cns_id": "69734"
+    },
+    "69093": {
+      "title": "Automated CT-Based Extraction of Pelvic Incidence and Sacral Slope for Spinopelvic Risk Stratification",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Sacral slope / pelvic incidence",
+      "cns_id": "69093"
+    },
+    "68460": {
+      "title": "Automated Computational Analysis of Lordosis Distribution Index Measurement Using Sagittal CT Segmentation Masks",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Lordosis Distribution Index (LDI)",
+      "cns_id": "68460"
+    },
+    "68858": {
+      "title": "Automated Lumbar Spinal Stenosis Screening via CT Morphometry: Normative Torg Ratio Values Across L1-L5 in a Multi-Configuration Dataset",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Spinal stenosis",
+      "cns_id": "68858"
+    },
+    "68779": {
+      "title": "Clinical Evaluation of Lumbar Spondylolisthesis via Automated CT Segmentation-Derived Vertebral Landmark Detection and Meyerding Classification",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Spondylolisthesis",
+      "cns_id": "68779"
+    },
+    "67829": {
+      "title": "Automated 3D Vertebral Centroid Trajectory Analysis from CT Segmentation Masks",
+      "venue": "CNS 2026 Annual Meeting",
+      "status": "Submitted",
+      "project": "Centroid trajectory / tortuosity",
+      "cns_id": "67829"
+    },
+    "osc-lvs": {
+      "title": "Automated Lumbar Vertebral Body Spacing Analysis from CT Segmentation Masks",
+      "venue": "OpenSpineConsortium",
+      "status": "In preparation",
+      "project": "Lumbar vertebral spacing"
+    },
+    "osc-sva": {
+      "title": "Automated Sagittal Vertical Axis (SVA) Quantification from CT Segmentation Masks",
+      "venue": "OpenSpineConsortium",
+      "status": "In preparation",
+      "project": "Sagittal Vertical Axis (SVA)"
+    },
+    "osc-tpa": {
+      "title": "Automated CT-Derived T1 Pelvic Angle (TPA) Measurement",
+      "venue": "OpenSpineConsortium",
+      "status": "In preparation",
+      "project": "T1 pelvic angle (TPA)"
+    },
+    "osc-vbwi": {
+      "title": "Automated Vertebral Body Wedging Index from CT Segmentation Masks",
+      "venue": "OpenSpineConsortium",
+      "status": "In preparation",
+      "project": "Vertebral body wedging index"
+    }
+  },
+  "people": [
+    {
+      "id": "schwing-greg",
+      "first": "Greg",
+      "last": "Schwing",
+      "mi": "",
+      "suffix": "MD-PhD",
+      "role": "Founder & Project Lead",
+      "affiliation": "Wayne State University · Detroit Medical Center",
+      "headshot": "Schwing,Greg",
+      "lead": true,
+      "bio": "Neurosurgery resident and computer scientist building anatomy-aware machine learning for the spine. Leads dataset curation, benchmark design, and the LSTV research program. NIH F30 fellow.",
+      "contributions": [
+        "66639",
+        "66629"
+      ]
+    },
+    {
+      "id": "akhtar-muaaz",
+      "first": "Muaaz",
+      "last": "Akhtar",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Akhtar,Muaaz",
+      "contributions": [
+        "osc-tpa"
+      ]
+    },
+    {
+      "id": "christian-ryan",
+      "first": "Ryan",
+      "last": "Christian",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Christian,Ryan",
+      "contributions": [
+        "osc-vbwi"
+      ]
+    },
+    {
+      "id": "dafinescu-sephora",
+      "first": "Sephora",
+      "last": "Dafinescu",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Dafinescu,Sephora",
+      "contributions": [
+        "67829"
+      ]
+    },
+    {
+      "id": "deschamps-blaise",
+      "first": "Blaise",
+      "last": "DesChamps",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "DesChamps,Blaise",
+      "contributions": [
+        "68579"
+      ]
+    },
+    {
+      "id": "fahmy-jason",
+      "first": "Jason",
+      "last": "Fahmy",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Fahmy,Jason",
+      "contributions": [
+        "68579",
+        "68779"
+      ]
+    },
+    {
+      "id": "hubers-dane",
+      "first": "Dane",
+      "last": "Hubers",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Hubers,Dane",
+      "contributions": [
+        "68858"
+      ]
+    },
+    {
+      "id": "jani-aayushi",
+      "first": "Aayushi",
+      "last": "Jani",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Jani,Aayushi",
+      "contributions": [
+        "osc-lvs"
+      ]
+    },
+    {
+      "id": "kim-jerick",
+      "first": "Jerick",
+      "last": "Kim",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Kim,Jerick",
+      "contributions": [
+        "68300",
+        "68460",
+        "osc-sva"
+      ]
+    },
+    {
+      "id": "saad-hassan",
+      "first": "Hassan",
+      "last": "Saad",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Saad,Hassan",
+      "contributions": [
+        "68579",
+        "68779"
+      ]
+    },
+    {
+      "id": "schehr-ashley",
+      "first": "Ashley",
+      "last": "Schehr",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Schehr,Ashley",
+      "contributions": [
+        "68300",
+        "68460",
+        "68779"
+      ]
+    },
+    {
+      "id": "sooch-mia",
+      "first": "Mia",
+      "last": "Sooch",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Sooch,Mia",
+      "contributions": [
+        "67525"
+      ]
+    },
+    {
+      "id": "thomas-lexi",
+      "first": "Lexi",
+      "last": "Thomas",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Thomas,Lexi",
+      "contributions": [
+        "67525"
+      ]
+    },
+    {
+      "id": "vedagarbha-namrata",
+      "first": "Namrata",
+      "last": "Vedagarbha",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Vedagarbha,Namrata",
+      "contributions": [
+        "67525"
+      ]
+    },
+    {
+      "id": "weiss-joshua",
+      "first": "Joshua",
+      "last": "Weiss",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Weiss,Joshua",
+      "contributions": [
+        "69093"
+      ]
+    },
+    {
+      "id": "yazhbin-andre",
+      "first": "Andre",
+      "last": "Yazhbin",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Yazhbin,Andre",
+      "contributions": [
+        "69093"
+      ]
+    },
+    {
+      "id": "zaghloul-razanne",
+      "first": "Razanne",
+      "last": "Zaghloul",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Zaghloul,Razanne",
+      "contributions": [
+        "69734"
+      ]
+    },
+    {
+      "id": "zeidan-dania",
+      "first": "Dania",
+      "last": "Zeidan",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Zeidan,Dania",
+      "contributions": [
+        "69734"
+      ]
+    },
+    {
+      "id": "zvinys-laura",
+      "first": "Laura",
+      "last": "Zvinys",
+      "mi": "",
+      "role": "Student Researcher",
+      "affiliation": "",
+      "headshot": "Zvinys,Laura",
+      "contributions": [
+        "69734"
+      ]
+    }
+  ]
+}

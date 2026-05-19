@@ -12,10 +12,37 @@ hosted on **GitHub Pages**.
 ├── index.html              # single-page site
 ├── assets/
 │   ├── css/style.css       # all styling
-│   └── js/main.js          # nav + scroll-reveal interactions
+│   └── js/main.js          # nav, scroll-reveal, manifest rendering
+├── contributions/
+│   └── manifest.json       # contributors + their scholarly contributions
+├── headshots/              # contributor photos (see headshots/README.md)
 ├── .nojekyll               # tells GitHub Pages to skip Jekyll processing
 └── README.md
 ```
+
+## Contributors & contributions
+
+The **People** section and the **CNS 2026** outputs list are generated at load
+time from `contributions/manifest.json` — you never edit the People markup in
+`index.html` directly.
+
+The manifest has two parts:
+
+- **`abstracts`** — every project, keyed by id. CNS submissions use their real
+  CNS abstract number; in-preparation projects use an `osc-…` id.
+- **`people`** — one entry per contributor. The `contributions` array lists the
+  abstract ids that person worked on; the renderer resolves each id against the
+  `abstracts` table and prints the title, venue, and status under their name.
+
+To **add or correct a contribution**, edit a person's `contributions` array. To
+**add a person**, append an object to `people` (copy an existing one). To **add
+a headshot**, drop an image in `headshots/` — see `headshots/README.md` for the
+`lastname,firstname[,mi].ext` naming. People without a photo automatically get
+an initials avatar.
+
+> Student **roles** and **affiliations** in the manifest are placeholders
+> (`"Student Researcher"`, empty affiliation). Fill these in before publishing.
+> Abstract titles are verbatim from the CNS submission list.
 
 ## Deploy on GitHub Pages
 
@@ -50,16 +77,14 @@ Add a file named `CNAME` at the repo root containing only your domain
 A few items are marked `[VERIFY]` in `index.html` and should be confirmed or
 replaced with real values before going live:
 
-- **People** — names, titles, and affiliations of collaborators. The placeholder
-  cards in the *People* section are intentionally generic; confirm with each
-  person before listing them publicly.
+- **Contributors** — student **roles** and **affiliations** in
+  `contributions/manifest.json` are placeholders; fill them in. Names and
+  contribution mappings come from the CNS list and the projects spreadsheet.
 - **Dataset details** — volume counts, licensing terms, and the HuggingFace link.
 - **Contact** — the email address (`contact@openspineconsortium.org`) and the
   GitHub organization URL (`https://github.com/OpenSpineConsortium`).
-- **Research outputs** — submission venues and review status in the *Goals*
-  section.
 
-Search the project for `[VERIFY]` to find every spot quickly.
+Search `index.html` for `[VERIFY]` and review `contributions/manifest.json`.
 
 ## Editing
 

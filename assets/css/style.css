@@ -509,6 +509,69 @@ em { font-style: italic; }
 }
 .institutions__more { color: var(--ink-faint); font-style: italic; }
 
+/* --- contributors rendered from contributions/manifest.json --- */
+.people__status {
+  grid-column: 1 / -1;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+  padding: 18px 0;
+}
+.people__status--error { color: var(--ochre); }
+
+.person__portrait { position: relative; overflow: hidden; }
+.person__portrait img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.person__suffix { color: var(--ink-faint); font-weight: 400; }
+
+.person__contribs {
+  list-style: none;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.person__contribs-label {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.contrib { position: relative; padding-left: 16px; }
+.contrib::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 6px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+.contrib--prep::before { background: var(--ochre); }
+.contrib__title {
+  display: block;
+  font-size: 0.88rem;
+  line-height: 1.42;
+  color: var(--ink);
+}
+.contrib__meta {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+}
+.contrib__status { color: var(--teal); }
+.contrib--prep .contrib__status { color: var(--ochre); }
+
 /* ============================================================
    ORGANIZATION
    ============================================================ */

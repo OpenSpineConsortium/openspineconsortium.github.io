@@ -73,8 +73,8 @@
       <dl class="hero__stats reveal" style="--d:6">
         <div><dt>1,000+</dt><dd>annotated CT volumes <span>[VERIFY]</span></dd></div>
         <div><dt>3</dt><dd>source collections unified</dd></div>
-        <div><dt>5-fold</dt><dd>public benchmark splits</dd></div>
-        <div><dt>4+</dt><dd>collaborating institutions</dd></div>
+        <div><dt>11</dt><dd>abstracts &middot; CNS&nbsp;2026</dd></div>
+        <div><dt>19</dt><dd>research contributors</dd></div>
       </dl>
     </div>
 
@@ -237,65 +237,16 @@
     </div>
 
     <p class="section__intro reveal">
-      The consortium is a small, collaborative effort connecting clinicians,
-      computer scientists, and imaging researchers across institutions.
+      The consortium is a collaborative, student-driven research effort &mdash;
+      clinicians, computer scientists, and medical students building computational
+      spine imaging together. Each contributor's scholarly contributions to OSC
+      are listed on their card.
     </p>
 
-    <div class="people__grid">
-      <article class="person person--lead reveal">
-        <div class="person__portrait" aria-hidden="true">GS</div>
-        <div class="person__body">
-          <h3>Greg Schwing, MD-PhD</h3>
-          <p class="person__role">Founder &amp; Project Lead</p>
-          <p class="person__bio">
-            Neurosurgery resident and computer scientist building anatomy-aware
-            machine learning for the spine. Leads dataset curation, benchmark design,
-            and the LSTV research program. NIH F30 fellow.
-          </p>
-          <p class="person__affil">Wayne State University · Detroit Medical Center</p>
-        </div>
-      </article>
-
-      <!-- [VERIFY] Confirm names, titles & affiliations with each collaborator
-           before publishing. Edit or remove the placeholder cards below. -->
-      <article class="person reveal">
-        <div class="person__portrait person__portrait--ghost" aria-hidden="true">+</div>
-        <div class="person__body">
-          <h3>Clinical Collaborator</h3>
-          <p class="person__role">Pediatric Neurosurgery</p>
-          <p class="person__bio">
-            Clinical guidance on imaging variants and translational relevance.
-            <em>Add name &amp; bio.</em>
-          </p>
-          <p class="person__affil">Emory University · Children's Healthcare of Atlanta</p>
-        </div>
-      </article>
-
-      <article class="person reveal">
-        <div class="person__portrait person__portrait--ghost" aria-hidden="true">+</div>
-        <div class="person__body">
-          <h3>Imaging Methods Collaborator</h3>
-          <p class="person__role">Segmentation &amp; Tooling</p>
-          <p class="person__bio">
-            Contributes to spine segmentation methodology and tool integration.
-            <em>Add name &amp; bio.</em>
-          </p>
-          <p class="person__affil">Collaborating imaging-AI group</p>
-        </div>
-      </article>
-
-      <article class="person reveal">
-        <div class="person__portrait person__portrait--ghost" aria-hidden="true">+</div>
-        <div class="person__body">
-          <h3>Open Position</h3>
-          <p class="person__role">Contributors welcome</p>
-          <p class="person__bio">
-            We are looking for collaborators in radiology, data engineering, and
-            ML research. <a href="#join">Get in touch &rarr;</a>
-          </p>
-          <p class="person__affil">&mdash;</p>
-        </div>
-      </article>
+    <!-- Contributors render from contributions/manifest.json — edit that file,
+         not this markup. Drop headshots in /headshots (see headshots/README.md). -->
+    <div class="people__grid" id="peopleGrid" aria-live="polite">
+      <p class="people__status">Loading contributors&hellip;</p>
     </div>
 
     <div class="institutions reveal">
@@ -416,12 +367,8 @@
     </div>
 
     <div class="outputs reveal">
-      <p class="outputs__label">Research outputs &amp; venues <span>[VERIFY status]</span></p>
-      <ul class="outputs__list">
-        <li><span class="outputs__year">2026</span> CTSpinoPelvic1K &mdash; datasets &amp; benchmarks track submission <em>(under review)</em></li>
-        <li><span class="outputs__year">2026</span> Machine learning for healthcare venue submission <em>(under review)</em></li>
-        <li><span class="outputs__year">2026</span> Algorithmic disagreement as an LSTV biomarker &mdash; conference abstract</li>
-      </ul>
+      <p class="outputs__label">CNS 2026 Annual Meeting &mdash; Washington, DC</p>
+      <ul class="outputs__list" id="outputsList"></ul>
     </div>
   </section>
 
