@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=20260519" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260524" />
 </head>
 <body>
 
@@ -41,6 +41,7 @@
       <a href="#people">People</a>
       <a href="#organization">Organization</a>
       <a href="#education">Education</a>
+      <a href="#workshop">Workshop</a>
       <a href="#goals">Goals</a>
       <a href="#join" class="nav__cta">Get Involved</a>
     </nav>
@@ -370,10 +371,51 @@
     </div>
   </section>
 
+  <!-- ===================== WORKSHOP ===================== -->
+  <section class="section" id="workshop">
+    <div class="section__head reveal">
+      <span class="section__num">06</span>
+      <h2 class="section__title">AI Imaging Workshop</h2>
+    </div>
+
+    <p class="section__intro reveal">
+      A free, hands-on morning on building spine-imaging AI &mdash; from reproducible
+      Python and SLURM workflows to running, annotating, and training your own neural
+      networks on the WSU grid. Bring a laptop and follow along.
+    </p>
+
+    <div class="workshop__layout">
+      <aside class="workshop__card reveal">
+        <dl class="workshop__meta">
+          <div><dt>Date</dt><dd>June 20th &middot; 9:00&nbsp;AM&ndash;12:00&nbsp;PM</dd></div>
+          <div><dt>Location</dt><dd>WSUSOM Mazurek <span>(Room TBD)</span></dd></div>
+          <div><dt>Instructor</dt><dd>Gregory Schwing, MD, PhD</dd></div>
+        </dl>
+        <div class="workshop__actions">
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSeoSOAhUiRR6O9A2ouBJQRN52mC4AcgMSXIR64NStZCdMAaLQ/viewform?usp=sharing&amp;ouid=106231200632094442277"
+             class="btn btn--solid" target="_blank" rel="noopener">RSVP for the workshop</a>
+          <a href="AI_Imaging_Workshop.pdf" class="workshop__link" target="_blank" rel="noopener">&darr;&nbsp; Download the agenda (PDF)</a>
+          <a href="https://www.youtube.com/@OpenSpineConsortium" class="workshop__link" target="_blank" rel="noopener">&#9654;&nbsp; Setup tutorials on YouTube</a>
+        </div>
+      </aside>
+
+      <ol class="agenda reveal">
+        <li><span class="agenda__time">9:00 AM</span><span class="agenda__item">Breakfast &amp; social</span></li>
+        <li><span class="agenda__time">9:30 AM</span><span class="agenda__item">Python / SLURM / good programming practices (parallel, reproducible)</span></li>
+        <li><span class="agenda__time">10:00 AM</span><span class="agenda__item">DICOM / NIfTI file overview</span></li>
+        <li><span class="agenda__time">10:15 AM</span><span class="agenda__item">Convolutional neural networks, nnU-Net, and inference using a pre-trained model</span></li>
+        <li><span class="agenda__time">10:45 AM</span><span class="agenda__item">Annotating using AI-powered ITK-SNAP</span></li>
+        <li><span class="agenda__time">11:00 AM</span><span class="agenda__item">Training your own neural network using the WSU grid</span></li>
+        <li><span class="agenda__time">11:30 AM</span><span class="agenda__item">Writing an AI paper (datasets, evaluations, clinical paper, scoping review)</span></li>
+        <li><span class="agenda__time">12:00 PM</span><span class="agenda__item">Lunch</span></li>
+      </ol>
+    </div>
+  </section>
+
   <!-- ===================== GOALS ===================== -->
   <section class="section section--alt" id="goals">
     <div class="section__head reveal">
-      <span class="section__num">06</span>
+      <span class="section__num">07</span>
       <h2 class="section__title">Goals</h2>
     </div>
 
@@ -424,7 +466,7 @@
   <!-- ===================== JOIN ===================== -->
   <section class="section section--join" id="join">
     <div class="join__inner reveal">
-      <span class="section__num section__num--light">07</span>
+      <span class="section__num section__num--light">08</span>
       <h2 class="join__title">Get involved.</h2>
       <p class="join__lede">
         Whether you are a radiologist, an ML researcher, a data engineer, or a
@@ -475,6 +517,7 @@
         <a href="#people">People</a>
         <a href="#organization">Organization</a>
         <a href="#education">Education</a>
+        <a href="#workshop">Workshop</a>
         <a href="#goals">Goals</a>
         <a href="#join">Get Involved</a>
       </nav>
@@ -487,6 +530,6 @@
 
   <!-- Bump ?v= whenever you change style.css or main.js, so browsers and the
        GitHub Pages CDN fetch the new file instead of a cached copy. -->
-  <script src="assets/js/main.js?v=20260519"></script>
+  <script src="assets/js/main.js?v=20260524"></script>
 </body>
 </html>

@@ -664,6 +664,79 @@ em { font-style: italic; }
 }
 
 /* ============================================================
+   WORKSHOP
+   ============================================================ */
+.workshop__layout {
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr;
+  gap: 48px;
+  align-items: start;
+}
+.workshop__card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 32px;
+}
+.workshop__meta { display: flex; flex-direction: column; }
+.workshop__meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.workshop__meta div:first-child { padding-top: 0; }
+.workshop__meta div:last-child { border-bottom: none; padding-bottom: 0; }
+.workshop__meta dt {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.workshop__meta dd { font-size: 1.02rem; color: var(--ink); }
+.workshop__meta dd span { color: var(--ink-faint); }
+
+.workshop__actions {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.workshop__actions .btn { width: 100%; text-align: center; }
+.workshop__link {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  color: var(--teal);
+  border-bottom: 1px solid rgba(14, 95, 88, 0.32);
+  padding-bottom: 2px;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.workshop__link:hover { color: var(--teal-bright); border-color: var(--teal-bright); }
+
+/* agenda timeline */
+.agenda { list-style: none; }
+.agenda li {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 24px;
+  padding: 15px 0;
+  border-top: 1px solid var(--line);
+}
+.agenda li:last-child { border-bottom: 1px solid var(--line); }
+.agenda__time {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--teal);
+  padding-top: 2px;
+}
+.agenda__item { font-size: 1.0rem; color: var(--ink); line-height: 1.45; }
+
+/* ============================================================
    EDUCATION OUTCOMES
    ============================================================ */
 .meded__status {
@@ -968,7 +1041,7 @@ em { font-style: italic; }
    ============================================================ */
 @media (max-width: 920px) {
   .hero__spine { opacity: 0.16; right: -60px; width: 360px; }
-  .project__layout, .org__layout { grid-template-columns: 1fr; gap: 40px; }
+  .project__layout, .org__layout, .workshop__layout { grid-template-columns: 1fr; gap: 40px; }
   .dataset__row, .goals__grid, .join__cards { grid-template-columns: 1fr; }
   .people__grid { grid-template-columns: 1fr; }
   .goals__grid { gap: 1px; }
