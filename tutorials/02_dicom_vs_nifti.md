@@ -1,7 +1,7 @@
 # Tutorial 2 — DICOM vs. NIfTI: What's Inside a Medical Image
 
 *AI Imaging Workshop · the 10:00 AM "DICOM / NIFTI File Overview" block.*
-*Prerequisite: Tutorial 1 (you have the `imaging` conda environment).*
+*Prerequisite: Tutorial 1 (you have the `imaging` mamba environment).*
 
 A medical image is not a picture — it is a **3-D grid of numbers** plus the
 information needed to place that grid in the patient's body. In this tutorial you
@@ -9,7 +9,7 @@ open both file formats we use, see exactly what they contain, and load a real CT
 scan with its segmentation.
 
 ```bash
-conda activate imaging          # from Tutorial 1
+mamba activate imaging          # from Tutorial 1
 mkdir -p ~/workshop && cd ~/workshop
 ```
 

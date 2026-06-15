@@ -6,8 +6,8 @@ Practices" block.*
 By the end of this tutorial you will have, on the WSU grid (and/or your own
 laptop):
 
-1. **Miniconda** — Python plus a package manager that keeps each project's
-   software isolated and reproducible.
+1. **Miniforge** — Python plus **`mamba`**, a fast package manager that keeps
+   each project's software isolated and reproducible.
 2. An **imaging environment** with the libraries we use to read and manipulate
    CT scans and segmentation labels (`nibabel`, `SimpleITK`, `pydicom`, …).
 3. **Nextflow** — the tool we use to run reproducible, parallel pipelines on
@@ -16,75 +16,81 @@ laptop):
 You only do this once. Everything is copy-paste; read the one-line explanation
 above each block so you know *what* you are running, not just *that* it runs.
 
+> **No grid account? Use your laptop — it all works the same.** Every step below
+> runs identically on your own machine; you just install Miniforge locally
+> instead of on the grid. The *only* thing that changes per-platform is the
+> **installer file** in Step 1 (Linux / macOS / Windows-WSL), which we call out
+> there. If you *do* have a grid account, install on the grid so your
+> environment sits right next to the GPUs you'll use in Tutorial 5.
+
 ---
 
 ## 0. Open a terminal
 
 Everything below is typed into a **terminal** (a text window where you run
-commands). The compute for this workshop lives on the **WSU grid**, so that is
-where we will install things.
+commands).
 
-**Log in to the grid** (replace `youraccessid` with your WSU AccessID):
+**On the WSU grid** (replace `youraccessid` with your WSU AccessID):
 
 ```bash
 ssh youraccessid@grid.wayne.edu
 ```
 
-> **Laptop instead of the grid?** The same commands work on **macOS** (open the
-> *Terminal* app) and on **Linux**. On **Windows**, first install **WSL**
-> (Windows Subsystem for Linux) by running `wsl --install` in PowerShell, then
-> open the "Ubuntu" app — that gives you a Linux terminal. The only thing that
-> changes per-platform is the Miniconda *installer file* in Step 1; we note the
-> Mac variants there.
-
 You know you are in the right place when each line starts with a prompt like
 `[youraccessid@warrior ~]$`.
 
+**On your own laptop** (no grid account needed):
+
+- **macOS** — open the **Terminal** app (Applications → Utilities → Terminal).
+- **Linux** — open your terminal app.
+- **Windows** — install **WSL** (Windows Subsystem for Linux) once: open
+  **PowerShell** and run `wsl --install`, reboot if asked, then open the
+  **Ubuntu** app. That gives you a Linux terminal where every command below
+  works unchanged.
+
 ---
 
-## 1. Install Miniconda
+## 1. Install Miniforge (Python + mamba)
 
-**What it is:** Miniconda bundles Python and `conda`, a program that downloads
-software libraries and keeps them in self-contained "environments" so two
-projects can never break each other's dependencies.
+**What it is:** Miniforge bundles Python and **`mamba`** — a fast, drop-in
+replacement for `conda` that downloads software libraries and keeps them in
+self-contained "environments" so two projects can never break each other's
+dependencies. It defaults to the open `conda-forge` channel, so there's nothing
+extra to configure. (`mamba` and `conda` are interchangeable and share the same
+environments; we use `mamba` because it resolves dependencies much faster.)
 
 **Download the installer** (Linux x86-64 — this is the grid and most laptops):
 
 ```bash
 cd ~
-curl -L -o miniconda.sh \
-  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+curl -L -o miniforge.sh \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 ```
 
-> **On a Mac**, swap the URL for your chip:
-> - Apple Silicon (M1/M2/M3): `Miniconda3-latest-MacOSX-arm64.sh`
-> - Intel Mac: `Miniconda3-latest-MacOSX-x86_64.sh`
+> **On a Mac**, swap the installer for your chip:
+> - Apple Silicon (M1/M2/M3/M4): `Miniforge3-MacOSX-arm64.sh`
+> - Intel Mac: `Miniforge3-MacOSX-x86_64.sh`
+>
+> (Same URL prefix, just change the filename at the end. On **Windows**, you're
+> inside WSL/Ubuntu, so use the **Linux** installer above.)
 
 **Run the installer** (`-b` = accept defaults, `-p` = where to put it):
 
 ```bash
-bash miniconda.sh -b -p ~/miniconda3
-rm miniconda.sh                     # tidy up the installer
+bash miniforge.sh -b -p ~/miniforge3
+rm miniforge.sh                     # tidy up the installer
 ```
 
-**Turn conda on** so your shell knows where to find it, now and in every future
-session:
+**Turn it on** so your shell knows where to find `mamba`, now and in every
+future session:
 
 ```bash
-~/miniconda3/bin/conda init bash
-source ~/.bashrc                    # reload the shell so 'conda' works now
+~/miniforge3/bin/conda init bash
+source ~/.bashrc                    # reload the shell so 'mamba' works now
 ```
 
-You should now see `(base)` at the start of your prompt — that is conda's
-default environment, telling you it is active.
-
-**Use the open, community package channel** (`conda-forge`) by default — it has
-the most up-to-date scientific and medical-imaging packages:
-
-```bash
-conda config --add channels conda-forge
-conda config --set channel_priority strict
-```
+You should now see `(base)` at the start of your prompt — that is the default
+environment, telling you it is active.
 
 ---
 
@@ -97,18 +103,18 @@ disturbs anything else. Activating it is how you "enter" that space.
 **Create it with Python 3.11:**
 
 ```bash
-conda create -n imaging python=3.11 -y
-conda activate imaging
+mamba create -n imaging python=3.11 -y
+mamba activate imaging
 ```
 
 Your prompt now shows `(imaging)` instead of `(base)` — you are inside the new
-environment. (Run `conda activate imaging` at the start of any future session.)
+environment. (Run `mamba activate imaging` at the start of any future session.)
 
 **Install the imaging libraries** — these are the tools for reading and editing
 CT scans and label maps:
 
 ```bash
-conda install -y \
+mamba install -y \
   numpy scipy pandas matplotlib \
   nibabel pydicom simpleitk scikit-image
 ```
@@ -133,10 +139,10 @@ What each one is for:
 **What it is:** Nextflow runs multi-step analysis pipelines and submits the work
 to the SLURM scheduler for you — in parallel, and reproducibly (the same command
 gives the same result, on your laptop or the cluster). Nextflow needs **Java**,
-which conda installs alongside it:
+which mamba installs alongside it:
 
 ```bash
-conda install -y -c bioconda nextflow
+mamba install -y -c bioconda nextflow
 ```
 
 That single command pulls in both Nextflow and a compatible Java runtime into
@@ -193,40 +199,38 @@ rm -f test.nii.gz
 Each time you log in and want to work, just activate the environment:
 
 ```bash
-conda activate imaging
+mamba activate imaging
 ```
 
 To leave it:
 
 ```bash
-conda deactivate
+mamba deactivate
 ```
 
 To see your environments, or remove one and start over:
 
 ```bash
-conda env list                      # list all environments
-conda env remove -n imaging         # delete 'imaging' if you want a clean redo
+mamba env list                      # list all environments
+mamba env remove -n imaging         # delete 'imaging' if you want a clean redo
 ```
 
 ---
 
 ## Troubleshooting
 
-- **`conda: command not found`** after Step 1 → you missed `source ~/.bashrc`,
-  or open a fresh terminal. As a fallback: `source ~/miniconda3/bin/activate`.
-- **`CondaToSNonInteractiveError` / channel/terms-of-service errors** → you are
-  hitting Anaconda's default channels. The `conda config` commands in Step 1
-  (switch to `conda-forge`) fix this; re-run them, then retry.
-- **A package install hangs on "Solving environment"** → it's just slow. You can
-  install the much faster drop-in solver `mamba` once
-  (`conda install -y -n base -c conda-forge mamba`) and then use `mamba install`
-  in place of `conda install` everywhere.
+- **`mamba: command not found`** after Step 1 → you missed `source ~/.bashrc`,
+  or open a fresh terminal. As a fallback: `source ~/miniforge3/bin/activate`.
+- **`mamba activate` says "run mamba init first"** → run
+  `~/miniforge3/bin/conda init bash` then `source ~/.bashrc`. (`conda init` sets
+  up the shell hook that both `mamba` and `conda` use.)
+- **A package can't be found** → it may live on another channel; add it for that
+  one install, e.g. `mamba install -y -c bioconda <pkg>` (as we do for Nextflow).
 - **`nextflow: command not found`** → make sure `imaging` is active
-  (`conda activate imaging`); Nextflow was installed *into* that environment.
-- **Out of disk space in your home directory on the grid** → conda environments
-  are large. Ask whether to place `~/miniconda3` on a project/scratch filesystem
-  instead of home.
+  (`mamba activate imaging`); Nextflow was installed *into* that environment.
+- **Out of disk space in your home directory on the grid** → environments are
+  large. Ask whether to place `~/miniforge3` on a project/scratch filesystem
+  instead of home. (On a laptop this is rarely an issue.)
 
 ---
 

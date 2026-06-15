@@ -79,8 +79,9 @@ directives at the top that request resources. Create
 set -euo pipefail                # stop on the first error (good practice)
 
 # --- make the environment reproducible ---
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate imaging
+source ~/miniforge3/etc/profile.d/conda.sh
+source ~/miniforge3/etc/profile.d/mamba.sh
+mamba activate imaging
 
 export nnUNet_raw=~/workshop/nnunet/raw
 export nnUNet_preprocessed=~/workshop/nnunet/preprocessed
@@ -129,7 +130,7 @@ command and gets the same result.</em> Five habits:</p>
 <ol type="1">
 <li><strong>Pin the environment.</strong> Record exact versions so the
 software can't drift:
-<pre class="bash"><code>conda env export &gt; environment.yml      # commit this file</code></pre></li>
+<pre class="bash"><code>mamba env export &gt; environment.yml      # commit this file</code></pre></li>
 <li><strong>Fix the random seed.</strong> nnU-Net seeds its splits; for
 your own code, <code>np.random.seed(42)</code> /
 <code>torch.manual_seed(42)</code>. Same seed → same split → same

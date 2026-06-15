@@ -44,8 +44,9 @@ request resources. Create `train.sh`:
 set -euo pipefail                # stop on the first error (good practice)
 
 # --- make the environment reproducible ---
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate imaging
+source ~/miniforge3/etc/profile.d/conda.sh
+source ~/miniforge3/etc/profile.d/mamba.sh
+mamba activate imaging
 
 export nnUNet_raw=~/workshop/nnunet/raw
 export nnUNet_preprocessed=~/workshop/nnunet/preprocessed
@@ -109,7 +110,7 @@ the same result.* Five habits:
 
 1. **Pin the environment.** Record exact versions so the software can't drift:
    ```bash
-   conda env export > environment.yml      # commit this file
+   mamba env export > environment.yml      # commit this file
    ```
 2. **Fix the random seed.** nnU-Net seeds its splits; for your own code,
    `np.random.seed(42)` / `torch.manual_seed(42)`. Same seed → same split → same

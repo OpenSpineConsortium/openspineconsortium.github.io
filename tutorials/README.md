@@ -6,7 +6,7 @@ research audience — read the explanation above each command.
 
 | # | Tutorial | Agenda block |
 |---|----------|--------------|
-| 1 | [Environment setup](01_environment_setup.md) — Miniconda, imaging packages, Nextflow | 9:30 Python / SLURM |
+| 1 | [Environment setup](01_environment_setup.md) — Miniforge / mamba, imaging packages, Nextflow | 9:30 Python / SLURM |
 | 2 | [DICOM vs. NIfTI](02_dicom_vs_nifti.md) — what's inside a medical image | 10:00 DICOM/NIfTI |
 | 3 | [Inference with a pretrained nnU-Net](03_inference_pretrained_nnunet.md) | 10:15 CNNs / nnU-Net |
 | 4 | [AI-powered annotation in ITK-SNAP](04_itksnap_ai_annotation.md) | 10:45 ITK-SNAP |

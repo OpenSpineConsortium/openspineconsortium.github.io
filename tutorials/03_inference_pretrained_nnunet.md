@@ -33,7 +33,7 @@ Two phases, never mix them up:
 nnU-Net runs on **PyTorch**. Install into the `imaging` env:
 
 ```bash
-conda activate imaging
+mamba activate imaging
 
 # PyTorch — GPU build if you have an NVIDIA GPU, else CPU build:
 pip install torch --index-url https://download.pytorch.org/whl/cu121   # NVIDIA GPU
