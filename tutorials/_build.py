@@ -51,7 +51,7 @@ TEMPLATE = """<!DOCTYPE html>
 def md_to_html(md_path: Path) -> str:
     out = subprocess.run(
         ["pandoc", str(md_path), "-f", "gfm", "-t", "html", "--no-highlight"],
-        capture_output=True, text=True, check=True)
+        capture_output=True, text=True, encoding="utf-8", check=True)
     body = out.stdout
     body = re.sub(r'href="([0-9A-Za-z_]+)\.md"', r'href="\1.html"', body)  # md -> html
     body = body.replace('href="README.html"', 'href="index.html"')

@@ -15,13 +15,13 @@
   <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
 <ol><li><a href="01_environment_setup.html">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html" class="is-current">6.&nbsp; Writing an AI paper</a></li></ol></nav>
   <main class="tut__content">
-<h1 id="tutorial-6--writing-an-ai-imaging-paper">Tutorial 6 â€” Writing an
+<h1 id="tutorial-6--writing-an-ai-imaging-paper">Tutorial 6 — Writing an
 AI Imaging Paper</h1>
-<p><em>AI Imaging Workshop Â· the 11:30 AM "Writing an AI paper
+<p><em>AI Imaging Workshop · the 11:30 AM "Writing an AI paper
 (datasets, evaluations, clinical paper, scoping review)" block.</em></p>
 <p>You've installed the tools, looked inside the data, run a model,
 annotated, and trained. This tutorial is about turning that into a
-<strong>publishable contribution</strong> â€” the four paper types you'll
+<strong>publishable contribution</strong> — the four paper types you'll
 write, how each is structured, and the evaluation and reproducibility
 standards reviewers actually enforce. Examples are drawn from the
 workshop's own <code>CTSpinoPelvic1K</code> benchmark and its real peer
@@ -60,7 +60,7 @@ paper</h2>
 </tr>
 </tbody>
 </table>
-<p>Pick the type <strong>before</strong> you write â€” each has a
+<p>Pick the type <strong>before</strong> you write — each has a
 different reviewer, structure, and bar.</p>
 <hr />
 <h2 id="2-the-datasetbenchmark-paper-what-youre-building">2. The
@@ -69,24 +69,24 @@ dataset/benchmark paper (what you're building)</h2>
 <strong>clarity of evaluation</strong>, and <strong>usability</strong>.
 Structure:</p>
 <ol type="1">
-<li><strong>Motivation / gap</strong> â€” what clinical or ML problem is
+<li><strong>Motivation / gap</strong> — what clinical or ML problem is
 unmet. (Ours: no CT benchmark for transitional anatomy at the
 lumbosacral junction.)</li>
-<li><strong>Construction</strong> â€” exactly how the data was assembled,
+<li><strong>Construction</strong> — exactly how the data was assembled,
 including the hard parts and the failure modes. Reproducible = a reader
 could rebuild it.</li>
-<li><strong>The labels</strong> â€” the schema (our 10 classes), who
+<li><strong>The labels</strong> — the schema (our 10 classes), who
 annotated, inter-rater agreement, and how uncertainty is handled.</li>
-<li><strong>Splits</strong> â€” train/val/test,
+<li><strong>Splits</strong> — train/val/test,
 <strong>stratified</strong> by the rare subgroup so it appears in every
 split, and <strong>patient-grouped</strong> so a patient never spans
 splits.</li>
-<li><strong>A baseline + evaluation</strong> â€” at minimum one model's
+<li><strong>A baseline + evaluation</strong> — at minimum one model's
 numbers so the benchmark's difficulty is concrete.</li>
-<li><strong>Accounting</strong> â€” one authoritative table of counts
+<li><strong>Accounting</strong> — one authoritative table of counts
 (patients, scans, masks, volumes, per-class), because counts reported at
 different granularities are the #1 source of reviewer confusion.</li>
-<li><strong>Release</strong> â€” data + code + (ideally) trained
+<li><strong>Release</strong> — data + code + (ideally) trained
 checkpoints, under a clear licence.</li>
 </ol>
 <p><strong>Documentation matters as much as the data.</strong> A
@@ -98,7 +98,7 @@ uses, distribution) is increasingly expected.</p>
 <ul>
 <li><strong>Right metrics.</strong> Segmentation: <strong>Dice</strong>
 (overlap) and <strong>HD95</strong> (boundary error). Report <strong>per
-class</strong>, not just an average â€” averages hide failure on the class
+class</strong>, not just an average — averages hide failure on the class
 that matters.</li>
 <li><strong>Stratified reporting.</strong> Break results out by the
 clinically important subgroup (e.g. normal vs. each LSTV phenotype). A
@@ -108,7 +108,7 @@ trained on. With cross-validation, score <strong>out-of-fold</strong>.
 State explicitly that train/test are disjoint at the
 <strong>patient</strong> level.</li>
 <li><strong>Score only against what exists.</strong> With partial
-labels, compute a metric only where ground truth is present â€” never
+labels, compute a metric only where ground truth is present — never
 against an unobserved region.</li>
 <li><strong>Honest baselines.</strong> A zero-shot off-the-shelf model
 is a fair, informative baseline <em>if</em> you don't overclaim it ("a
@@ -144,20 +144,20 @@ dates) and inclusion/exclusion criteria; report counts in a
 <li><strong>Charting</strong>: extract a consistent set of fields from
 each paper into a table.</li>
 <li>Output: a synthesis of what's covered and an explicit <strong>gap
-statement</strong> â€” which often motivates the dataset or method paper
+statement</strong> — which often motivates the dataset or method paper
 you write next.</li>
 </ul>
 <hr />
 <h2 id="6-what-reviewers-will-push-on-learned-the-hard-way">6. What
 reviewers will push on (learned the hard way)</h2>
-<p>From this benchmark's actual review, the recurring asks â€” write to
+<p>From this benchmark's actual review, the recurring asks — write to
 pre-empt them:</p>
 <ul>
 <li><strong>"Provide a trained baseline."</strong> A benchmark without
 at least one model run is hard to assess. Include it, even a single
 fold.</li>
-<li><strong>"Your counts don't reconcile."</strong> Patients â‰  scans â‰ 
-masks â‰  volumes. Put one source-of-truth accounting table in the paper
+<li><strong>"Your counts don't reconcile."</strong> Patients ≠ scans ≠
+masks ≠ volumes. Put one source-of-truth accounting table in the paper
 and make every number match it.</li>
 <li><strong>"Motivate the problem for non-experts."</strong> Don't
 assume the reader knows your data's quirks (e.g. why a file can't be
@@ -166,7 +166,7 @@ problem.</li>
 <li><strong>"Don't overclaim scope."</strong> If you have N=53 of the
 rare class, position the data as enabling <strong>stratified
 benchmarking</strong>, not robust <strong>training</strong> of that
-class â€” and say so explicitly.</li>
+class — and say so explicitly.</li>
 <li><strong>"Cut irrelevant related work."</strong> Only cite what's
 actually adjacent to your contribution.</li>
 <li><strong>Fix the small errors.</strong> A wrong caption or stale
@@ -198,7 +198,7 @@ IRB/de-identification noted.</label></li>
 <li><strong>Choose the paper type first</strong>; each has its own
 structure and reviewer.</li>
 <li>For a dataset paper, <strong>construction + evaluation + accounting
-+ release</strong> are the contribution â€” the model is secondary but a
++ release</strong> are the contribution — the model is secondary but a
 baseline is expected.</li>
 <li><strong>Evaluation rigor</strong> (per-class, stratified,
 out-of-fold, no leakage) is where papers are won or lost.</li>

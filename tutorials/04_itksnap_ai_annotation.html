@@ -15,12 +15,12 @@
   <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
 <ol><li><a href="01_environment_setup.html">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html" class="is-current">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html">6.&nbsp; Writing an AI paper</a></li></ol></nav>
   <main class="tut__content">
-<h1 id="tutorial-4--ai-powered-annotation-in-itk-snap">Tutorial 4 â€”
+<h1 id="tutorial-4--ai-powered-annotation-in-itk-snap">Tutorial 4 —
 AI-Powered Annotation in ITK-SNAP</h1>
-<p><em>AI Imaging Workshop Â· the 10:45 AM "Annotating using AI-powered
+<p><em>AI Imaging Workshop · the 10:45 AM "Annotating using AI-powered
 ITK-SNAP" block.</em></p>
 <p>When <strong>no trained model exists</strong> for the structure you
-care about, you still need labels â€” to evaluate, to fine-tune, or to
+care about, you still need labels — to evaluate, to fine-tune, or to
 build a new dataset. <strong>ITK-SNAP</strong> is the standard free tool
 for viewing and hand-segmenting medical images, and its
 <strong>Distributed Segmentation Service (DLS)</strong> lets an
@@ -28,7 +28,7 @@ for viewing and hand-segmenting medical images, and its
 place a few clicks/scribbles, the AI fills in the 3-D structure, you
 correct, repeat.</p>
 <blockquote>
-<p>This is a <strong>desktop GUI</strong> tutorial â€” do these steps on
+<p>This is a <strong>desktop GUI</strong> tutorial — do these steps on
 your <strong>laptop</strong>, not the grid. The AI backend runs
 separately (a notebook/server you connect to).</p>
 </blockquote>
@@ -38,12 +38,12 @@ separately (a notebook/server you connect to).</p>
 href="http://www.itksnap.org">http://www.itksnap.org</a></strong>
 (version 4.x).</p>
 <ul>
-<li><strong>Windows / macOS</strong> â€” run the installer, open
+<li><strong>Windows / macOS</strong> — run the installer, open
 ITK-SNAP.</li>
-<li><strong>macOS note</strong> â€” first launch: right-click the app â†’
+<li><strong>macOS note</strong> — first launch: right-click the app →
 <em>Open</em> to bypass the unsigned-app warning.</li>
 </ul>
-<p>Sanity check: <em>File â†’ Open Main Image</em> â†’ pick the
+<p>Sanity check: <em>File → Open Main Image</em> → pick the
 <code>ct.nii.gz</code> from Tutorial 2. You should see three orthogonal
 views (axial, sagittal, coronal) you can scroll.</p>
 <hr />
@@ -53,33 +53,33 @@ views (axial, sagittal, coronal) you can scroll.</p>
 <ul>
 <li><strong>Main image</strong> = the CT (greyscale).
 <strong>Segmentation</strong> = the coloured label layer you draw on.
-<em>Segmentation â†’ â€¦ labels</em> defines your classes.</li>
-<li><strong>Window/level</strong> â€” adjust contrast (Tools â†’ Image
+<em>Segmentation → … labels</em> defines your classes.</li>
+<li><strong>Window/level</strong> — adjust contrast (Tools → Image
 Contrast); use a bone window to see vertebrae clearly.</li>
-<li><strong>Polygon / paintbrush</strong> tools â€” draw on a slice;
+<li><strong>Polygon / paintbrush</strong> tools — draw on a slice;
 scroll and repeat.</li>
-<li><strong>Save</strong> â€” <em>Segmentation â†’ Save Segmentation
+<li><strong>Save</strong> — <em>Segmentation → Save Segmentation
 Image</em> writes a NIfTI label on the CT's grid (exactly the format
-from Tutorials 2â€“3).</li>
+from Tutorials 2–3).</li>
 </ul>
 <p>Hand-segmenting a full vertebra this way takes minutes per structure
-â€” which is why we use AI.</p>
+— which is why we use AI.</p>
 <hr />
 <h2
 id="3-the-ai-assistant-nninteractive-via-the-distributed-segmentation-service">3.
 The AI assistant: nnInteractive via the Distributed Segmentation
 Service</h2>
 <p>ITK-SNAP can offload segmentation to an AI model running elsewhere.
-We use <strong>nnInteractive</strong> â€” an interactive segmentation
+We use <strong>nnInteractive</strong> — an interactive segmentation
 model: you give it <em>prompts</em> (a click inside the structure, a
 scribble, a bounding box) and it returns the full 3-D segmentation in
 seconds, refining as you add prompts.</p>
 <p><strong>Two pieces:</strong></p>
 <ol type="1">
-<li>The <strong>AI server</strong> â€” runs nnInteractive on a GPU
+<li>The <strong>AI server</strong> — runs nnInteractive on a GPU
 (commonly a free <strong>Google Colab</strong> GPU notebook). It exposes
 a URL.</li>
-<li><strong>ITK-SNAP</strong> on your laptop â€” connects to that URL and
+<li><strong>ITK-SNAP</strong> on your laptop — connects to that URL and
 sends your prompts.</li>
 </ol>
 <p><strong>Start the server (Colab).</strong> Open the workshop's
@@ -93,8 +93,8 @@ nnunetv2     == 2.6.2
 numpy        &lt;  2.1</code></pre>
 <p>The notebook prints a public URL (and often a forwarding tunnel) when
 ready.</p>
-<p><strong>Connect ITK-SNAP to it:</strong> <em>Tools â†’ Distributed
-Segmentation Service</em> â†’ add the server URL â†’ it appears as
+<p><strong>Connect ITK-SNAP to it:</strong> <em>Tools → Distributed
+Segmentation Service</em> → add the server URL → it appears as
 available. Load your CT as the main image, choose the nnInteractive
 service, and start a session.</p>
 <hr />
@@ -103,7 +103,7 @@ vertebra with AI (the loop)</h2>
 <ol type="1">
 <li>Scroll to a slice through the target vertebra.</li>
 <li><strong>Drop a foreground prompt</strong> (a click inside the bone)
-â€” the AI segments the whole 3-D vertebra.</li>
+— the AI segments the whole 3-D vertebra.</li>
 <li><strong>Refine</strong>: add a foreground click where it missed, or
 a <strong>background</strong> click where it bled into a neighbour. Each
 prompt updates the result live.</li>
@@ -111,11 +111,11 @@ prompt updates the result live.</li>
 "L5").</li>
 <li>Move to the next structure, repeat.</li>
 </ol>
-<p>This turns minutes-per-structure into seconds, with you supervising â€”
+<p>This turns minutes-per-structure into seconds, with you supervising —
 the model does the voxels, you provide anatomy and judgement.</p>
 <hr />
 <h2 id="5-save-and-reuse">5. Save and reuse</h2>
-<p><em>Segmentation â†’ Save Segmentation Image</em> â†’
+<p><em>Segmentation → Save Segmentation Image</em> →
 <code>mylabel.nii.gz</code>. It is a standard 10-class-style NIfTI: load
 it back with <code>nibabel</code> (Tutorial 2), score it with Dice
 against a model's output (Tutorial 3), or add it to a training set
@@ -146,16 +146,16 @@ against a model's output (Tutorial 3), or add it to a training set
 </table>
 <p><strong>Practical tips</strong></p>
 <ul>
-<li>Colab GPUs disconnect after idle time â€” keep the tab active; re-run
+<li>Colab GPUs disconnect after idle time — keep the tab active; re-run
 the server cell if the connection drops.</li>
 <li>Always confirm your saved label has the <strong>same
 shape/affine</strong> as the CT (Tutorial 2, section 5) before using it
 downstream.</li>
-<li>Review every AI result â€” interactive models are fast but not
+<li>Review every AI result — interactive models are fast but not
 infallible, especially at the L5/S1 junction.</li>
 </ul>
 <p><strong>Next:</strong> <em>Training your own network on the WSU
-grid</em> â€” turn a folder of annotated cases into a trained model with
+grid</em> — turn a folder of annotated cases into a trained model with
 SLURM.</p>
 
 <div class="tut__pager"><a href="03_inference_pretrained_nnunet.html">&larr;&nbsp; Inference (pretrained nnU-Net)</a><a href="05_training_on_the_grid.html">Training on the WSU grid &nbsp;&rarr;</a></div>
