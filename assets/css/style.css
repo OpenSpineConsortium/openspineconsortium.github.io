@@ -735,6 +735,30 @@ em { font-style: italic; }
   padding-top: 2px;
 }
 .agenda__item { font-size: 1.0rem; color: var(--ink); line-height: 1.45; }
+/* Agenda items that link to a tutorial */
+.agenda__link {
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  transition: color .15s ease;
+}
+.agenda__link:hover { color: var(--teal); }
+.agenda__tag {
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--teal);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  transition: border-color .15s ease, background .15s ease;
+}
+.agenda__link:hover .agenda__tag { border-color: var(--teal); background: rgba(0,0,0,.03); }
 
 /* ============================================================
    EDUCATION OUTCOMES
