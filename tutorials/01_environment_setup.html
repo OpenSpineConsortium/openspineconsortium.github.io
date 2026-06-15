@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Environment setup &middot; OpenSpineConsortium Workshop</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="tutorial.css">
+</head>
+<body class="tut">
+<header class="tut__top">
+  <a href="../index.html#workshop">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
+</header>
+<div class="tut__layout">
+  <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
+<ol><li><a href="01_environment_setup.html" class="is-current">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html">6.&nbsp; Writing an AI paper</a></li></ol></nav>
+  <main class="tut__content">
+<h1 id="tutorial-1--setting-up-your-environment">Tutorial 1 â€” Setting Up
+Your Environment</h1>
+<p><em>AI Imaging Workshop Â· WSUSOM Â· the 9:30 AM "Python / SLURM / Good
+Programming Practices" block.</em></p>
+<p>By the end of this tutorial you will have, on the WSU grid (and/or
+your own laptop):</p>
+<ol type="1">
+<li><strong>Miniconda</strong> â€” Python plus a package manager that
+keeps each project's software isolated and reproducible.</li>
+<li>An <strong>imaging environment</strong> with the libraries we use to
+read and manipulate CT scans and segmentation labels
+(<code>nibabel</code>, <code>SimpleITK</code>, <code>pydicom</code>,
+â€¦).</li>
+<li><strong>Nextflow</strong> â€” the tool we use to run reproducible,
+parallel pipelines on the SLURM cluster.</li>
+</ol>
+<p>You only do this once. Everything is copy-paste; read the one-line
+explanation above each block so you know <em>what</em> you are running,
+not just <em>that</em> it runs.</p>
+<hr />
+<h2 id="0-open-a-terminal">0. Open a terminal</h2>
+<p>Everything below is typed into a <strong>terminal</strong> (a text
+window where you run commands). The compute for this workshop lives on
+the <strong>WSU grid</strong>, so that is where we will install
+things.</p>
+<p><strong>Log in to the grid</strong> (replace
+<code>youraccessid</code> with your WSU AccessID):</p>
+<pre class="bash"><code>ssh youraccessid@grid.wayne.edu</code></pre>
+<blockquote>
+<p><strong>Laptop instead of the grid?</strong> The same commands work
+on <strong>macOS</strong> (open the <em>Terminal</em> app) and on
+<strong>Linux</strong>. On <strong>Windows</strong>, first install
+<strong>WSL</strong> (Windows Subsystem for Linux) by running
+<code>wsl --install</code> in PowerShell, then open the "Ubuntu" app â€”
+that gives you a Linux terminal. The only thing that changes
+per-platform is the Miniconda <em>installer file</em> in Step 1; we note
+the Mac variants there.</p>
+</blockquote>
+<p>You know you are in the right place when each line starts with a
+prompt like <code>[youraccessid@warrior ~]$</code>.</p>
+<hr />
+<h2 id="1-install-miniconda">1. Install Miniconda</h2>
+<p><strong>What it is:</strong> Miniconda bundles Python and
+<code>conda</code>, a program that downloads software libraries and
+keeps them in self-contained "environments" so two projects can never
+break each other's dependencies.</p>
+<p><strong>Download the installer</strong> (Linux x86-64 â€” this is the
+grid and most laptops):</p>
+<pre class="bash"><code>cd ~
+curl -L -o miniconda.sh \
+  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh</code></pre>
+<blockquote>
+<p><strong>On a Mac</strong>, swap the URL for your chip:</p>
+<ul>
+<li>Apple Silicon (M1/M2/M3):
+<code>Miniconda3-latest-MacOSX-arm64.sh</code></li>
+<li>Intel Mac: <code>Miniconda3-latest-MacOSX-x86_64.sh</code></li>
+</ul>
+</blockquote>
+<p><strong>Run the installer</strong> (<code>-b</code> = accept
+defaults, <code>-p</code> = where to put it):</p>
+<pre class="bash"><code>bash miniconda.sh -b -p ~/miniconda3
+rm miniconda.sh                     # tidy up the installer</code></pre>
+<p><strong>Turn conda on</strong> so your shell knows where to find it,
+now and in every future session:</p>
+<pre class="bash"><code>~/miniconda3/bin/conda init bash
+source ~/.bashrc                    # reload the shell so &#39;conda&#39; works now</code></pre>
+<p>You should now see <code>(base)</code> at the start of your prompt â€”
+that is conda's default environment, telling you it is active.</p>
+<p><strong>Use the open, community package channel</strong>
+(<code>conda-forge</code>) by default â€” it has the most up-to-date
+scientific and medical-imaging packages:</p>
+<pre class="bash"><code>conda config --add channels conda-forge
+conda config --set channel_priority strict</code></pre>
+<hr />
+<h2 id="2-create-the-imaging-environment">2. Create the imaging
+environment</h2>
+<p><strong>Why a separate environment:</strong> we keep the workshop's
+libraries in their own named space (<code>imaging</code>) so that
+installing or upgrading something later never disturbs anything else.
+Activating it is how you "enter" that space.</p>
+<p><strong>Create it with Python 3.11:</strong></p>
+<pre class="bash"><code>conda create -n imaging python=3.11 -y
+conda activate imaging</code></pre>
+<p>Your prompt now shows <code>(imaging)</code> instead of
+<code>(base)</code> â€” you are inside the new environment. (Run
+<code>conda activate imaging</code> at the start of any future
+session.)</p>
+<p><strong>Install the imaging libraries</strong> â€” these are the tools
+for reading and editing CT scans and label maps:</p>
+<pre class="bash"><code>conda install -y \
+  numpy scipy pandas matplotlib \
+  nibabel pydicom simpleitk scikit-image</code></pre>
+<p>What each one is for:</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>What you use it for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>numpy</code></td>
+<td>the array â€” every CT volume and label map is a 3-D NumPy array</td>
+</tr>
+<tr>
+<td><code>scipy</code></td>
+<td>image operations: connected components, morphology, resampling</td>
+</tr>
+<tr>
+<td><code>nibabel</code></td>
+<td>read/write <strong>NIfTI</strong> (<code>.nii.gz</code>) â€” the
+format our labels ship in</td>
+</tr>
+<tr>
+<td><code>pydicom</code></td>
+<td>read <strong>DICOM</strong> â€” the raw format scanners produce</td>
+</tr>
+<tr>
+<td><code>SimpleITK</code></td>
+<td>resampling, registration, format conversion (DICOM â†”ï¸Ž NIfTI)</td>
+</tr>
+<tr>
+<td><code>scikit-image</code></td>
+<td>extra image analysis (region labelling, measurements)</td>
+</tr>
+<tr>
+<td><code>pandas</code></td>
+<td>tables â€” reading the dataset manifest / writing results to CSV</td>
+</tr>
+<tr>
+<td><code>matplotlib</code></td>
+<td>plotting slices and figures</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-install-nextflow-for-running-pipelines-on-slurm">3. Install
+Nextflow (for running pipelines on SLURM)</h2>
+<p><strong>What it is:</strong> Nextflow runs multi-step analysis
+pipelines and submits the work to the SLURM scheduler for you â€” in
+parallel, and reproducibly (the same command gives the same result, on
+your laptop or the cluster). Nextflow needs <strong>Java</strong>, which
+conda installs alongside it:</p>
+<pre class="bash"><code>conda install -y -c bioconda nextflow</code></pre>
+<p>That single command pulls in both Nextflow and a compatible Java
+runtime into your <code>imaging</code> environment.</p>
+<hr />
+<h2 id="4-check-that-everything-works">4. Check that everything
+works</h2>
+<p><strong>Python libraries</strong> â€” this prints the version of each
+and a final "OK":</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import numpy, scipy, pandas, matplotlib, nibabel, pydicom, SimpleITK, skimage
+print(&quot;numpy     &quot;, numpy.__version__)
+print(&quot;scipy     &quot;, scipy.__version__)
+print(&quot;nibabel   &quot;, nibabel.__version__)
+print(&quot;pydicom   &quot;, pydicom.__version__)
+print(&quot;SimpleITK &quot;, SimpleITK.__version__)
+print(&quot;skimage   &quot;, skimage.__version__)
+print(&quot;ALL IMPORTS OK&quot;)
+PY</code></pre>
+<p><strong>Nextflow and Java:</strong></p>
+<pre class="bash"><code>nextflow -version
+java -version</code></pre>
+<p>If you see version numbers and <code>ALL IMPORTS OK</code>, your
+environment is ready.</p>
+<p><strong>A 30-second real test</strong> â€” make a tiny 3-D volume, save
+it as NIfTI, read it back. This is exactly the read/write loop you'll
+use on real scans:</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import numpy as np, nibabel as nib
+vol = np.random.randint(0, 100, size=(8, 8, 8)).astype(np.int16)   # fake volume
+nib.save(nib.Nifti1Image(vol, affine=np.eye(4)), &quot;test.nii.gz&quot;)    # write
+back = np.asarray(nib.load(&quot;test.nii.gz&quot;).dataobj)                 # read
+print(&quot;round-trip identical:&quot;, np.array_equal(vol, back))
+PY
+rm -f test.nii.gz</code></pre>
+<p><code>round-trip identical: True</code> means you can load, edit, and
+save medical images.</p>
+<hr />
+<h2 id="5-everyday-use-after-today">5. Everyday use (after today)</h2>
+<p>Each time you log in and want to work, just activate the
+environment:</p>
+<pre class="bash"><code>conda activate imaging</code></pre>
+<p>To leave it:</p>
+<pre class="bash"><code>conda deactivate</code></pre>
+<p>To see your environments, or remove one and start over:</p>
+<pre class="bash"><code>conda env list                      # list all environments
+conda env remove -n imaging         # delete &#39;imaging&#39; if you want a clean redo</code></pre>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<ul>
+<li><strong><code>conda: command not found</code></strong> after Step 1
+â†’ you missed <code>source ~/.bashrc</code>, or open a fresh terminal. As
+a fallback: <code>source ~/miniconda3/bin/activate</code>.</li>
+<li><strong><code>CondaToSNonInteractiveError</code> /
+channel/terms-of-service errors</strong> â†’ you are hitting Anaconda's
+default channels. The <code>conda config</code> commands in Step 1
+(switch to <code>conda-forge</code>) fix this; re-run them, then
+retry.</li>
+<li><strong>A package install hangs on "Solving environment"</strong> â†’
+it's just slow. You can install the much faster drop-in solver
+<code>mamba</code> once
+(<code>conda install -y -n base -c conda-forge mamba</code>) and then
+use <code>mamba install</code> in place of <code>conda install</code>
+everywhere.</li>
+<li><strong><code>nextflow: command not found</code></strong> â†’ make
+sure <code>imaging</code> is active
+(<code>conda activate imaging</code>); Nextflow was installed
+<em>into</em> that environment.</li>
+<li><strong>Out of disk space in your home directory on the
+grid</strong> â†’ conda environments are large. Ask whether to place
+<code>~/miniconda3</code> on a project/scratch filesystem instead of
+home.</li>
+</ul>
+<hr />
+<p><strong>Next tutorial:</strong> <em>DICOM vs. NIfTI â€” what's actually
+inside a medical image file</em>, where we open a real CT scan and its
+segmentation with the tools you just installed.</p>
+
+<div class="tut__pager"><span class="is-disabled"></span><a href="02_dicom_vs_nifti.html">DICOM vs. NIfTI &nbsp;&rarr;</a></div>
+  </main>
+</div>
+</body>
+</html>

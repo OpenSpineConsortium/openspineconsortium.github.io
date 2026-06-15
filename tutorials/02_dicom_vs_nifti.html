@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DICOM vs. NIfTI &middot; OpenSpineConsortium Workshop</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="tutorial.css">
+</head>
+<body class="tut">
+<header class="tut__top">
+  <a href="../index.html#workshop">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
+</header>
+<div class="tut__layout">
+  <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
+<ol><li><a href="01_environment_setup.html">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html" class="is-current">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html">6.&nbsp; Writing an AI paper</a></li></ol></nav>
+  <main class="tut__content">
+<h1
+id="tutorial-2--dicom-vs-nifti-whats-inside-a-medical-image">Tutorial 2
+â€” DICOM vs. NIfTI: What's Inside a Medical Image</h1>
+<p><em>AI Imaging Workshop Â· the 10:00 AM "DICOM / NIFTI File Overview"
+block.</em> <em>Prerequisite: Tutorial 1 (you have the
+<code>imaging</code> conda environment).</em></p>
+<p>A medical image is not a picture â€” it is a <strong>3-D grid of
+numbers</strong> plus the information needed to place that grid in the
+patient's body. In this tutorial you open both file formats we use, see
+exactly what they contain, and load a real CT scan with its
+segmentation.</p>
+<pre class="bash"><code>conda activate imaging          # from Tutorial 1
+mkdir -p ~/workshop &amp;&amp; cd ~/workshop</code></pre>
+<hr />
+<h2 id="1-the-two-formats-in-one-sentence-each">1. The two formats, in
+one sentence each</h2>
+<ul>
+<li><strong>DICOM</strong> (<code>.dcm</code>) â€” what the
+<strong>scanner</strong> produces: typically <strong>one file per
+slice</strong>, each carrying a large header of metadata (patient,
+scanner, geometry).</li>
+<li><strong>NIfTI</strong> (<code>.nii</code> / <code>.nii.gz</code>) â€”
+what <strong>research and ML</strong> use: the <strong>whole volume in
+one file</strong>, with a compact header and an <em>affine</em> that
+places it in space. Our dataset ships as NIfTI.</li>
+</ul>
+<p>Think of DICOM as the clinical archive format and NIfTI as the
+analysis format. Converting DICOM â†’ NIfTI is a routine first step (tools
+like <code>dcm2niix</code>).</p>
+<hr />
+<h2 id="2-get-a-real-ct--label-to-look-at">2. Get a real CT + label to
+look at</h2>
+<p>We'll pull one case from the workshop dataset on HuggingFace (a fused
+case with both spine and pelvis labelled):</p>
+<pre class="bash"><code>BASE=&quot;https://huggingface.co/datasets/anonymous-mlhc/CTSpinoPelvic1K/resolve/v2&quot;
+curl -L -o ct.nii.gz    &quot;$BASE/ct/0010_ct.nii.gz&quot;
+curl -L -o label.nii.gz &quot;$BASE/labels/0010_label.nii.gz&quot;</code></pre>
+<hr />
+<h2 id="3-open-a-nifti-and-read-its-anatomy">3. Open a NIfTI and read
+its anatomy</h2>
+<p><strong>The three things every volume has:</strong> the
+<em>array</em> (the numbers), the <em>affine</em> (where it sits in the
+body), and the <em>header</em> (metadata). Run:</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import nibabel as nib, numpy as np
+img = nib.load(&quot;ct.nii.gz&quot;)
+arr = np.asarray(img.dataobj)            # the 3-D array of intensities
+
+print(&quot;shape (voxels):&quot;, arr.shape)      # e.g. (512, 512, 480) = columns, rows, slices
+print(&quot;dtype          :&quot;, arr.dtype)     # how each number is stored (int16 for CT)
+print(&quot;voxel size (mm):&quot;, img.header.get_zooms()[:3])   # physical size of one voxel
+print(&quot;intensity range:&quot;, int(arr.min()), &quot;to&quot;, int(arr.max()))
+print(&quot;\naffine (voxel -&gt; world mm):\n&quot;, np.round(img.affine, 2))
+print(&quot;orientation    :&quot;, nib.aff2axcodes(img.affine))  # e.g. (&#39;L&#39;,&#39;A&#39;,&#39;S&#39;)
+PY</code></pre>
+<p><strong>What you are seeing:</strong></p>
+<ul>
+<li><strong>shape</strong> â€” the volume is
+<code>columns Ã— rows Ã— slices</code> of voxels (3-D pixels).</li>
+<li><strong>voxel size</strong> â€” each voxel is a real physical box
+(e.g. <code>0.8 Ã— 0.8 Ã— 1.0</code> mm).</li>
+<li><strong>affine</strong> â€” a 4Ã—4 matrix that converts a voxel index
+<code>(i, j, k)</code> into a millimetre position in the patient. It
+encodes spacing <strong>and orientation</strong>.</li>
+<li><strong>orientation codes</strong> (e.g. <code>('L','A','S')</code>)
+â€” which anatomical direction each axis points. This is the single most
+important thing to get right when combining datasets: two scans of the
+<em>same</em> patient saved by different tools can have <strong>flipped
+axes</strong>, which silently mirrors left/right if you ignore the
+affine. (This exact bug â€” a Y-axis flip between our two source datasets
+â€” is a finding in the workshop's own paper.)</li>
+</ul>
+<hr />
+<h2 id="4-hounsfield-units-what-the-ct-numbers-mean">4. Hounsfield
+Units: what the CT numbers mean</h2>
+<p>CT intensities are <strong>Hounsfield Units (HU)</strong>, a
+calibrated scale:</p>
+<table>
+<thead>
+<tr>
+<th>Tissue</th>
+<th>Approx. HU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Air</td>
+<td>âˆ’1000</td>
+</tr>
+<tr>
+<td>Fat</td>
+<td>âˆ’100 to âˆ’50</td>
+</tr>
+<tr>
+<td>Water</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Soft tissue</td>
+<td>+30 to +80</td>
+</tr>
+<tr>
+<td><strong>Bone</strong></td>
+<td><strong>+200 and up</strong></td>
+</tr>
+</tbody>
+</table>
+<p>This is why a simple rule like "voxel &gt; 200 HU = bone" works â€” and
+it's exactly how our pipeline finds the right CT for each mask. Check
+it:</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import nibabel as nib, numpy as np
+ct = np.asarray(nib.load(&quot;ct.nii.gz&quot;).dataobj)
+print(&quot;fraction of voxels that are bone (&gt;200 HU): %.3f&quot; % (ct &gt; 200).mean())
+print(&quot;fraction that are air (&lt;-500 HU)          : %.3f&quot; % (ct &lt; -500).mean())
+PY</code></pre>
+<p>Because HU spans âˆ’1000â€¦+2000 but a screen shows ~256 grey levels, you
+<strong>window</strong>: pick a centre and width and map that range to
+blackâ†’white. A typical <em>soft-tissue</em> window is centre 40 / width
+400; a <em>bone</em> window is centre 400 / width 1800.</p>
+<hr />
+<h2 id="5-open-the-label-and-overlay-it">5. Open the label and overlay
+it</h2>
+<p>A <strong>segmentation label</strong> is a NIfTI on the <em>same
+grid</em> as the CT, where each voxel holds a <strong>class
+number</strong> instead of an intensity. Our 10-class scheme:</p>
+<pre><code>0 = background   1..5 = L1..L5   6 = L6 (transitional)   7 = sacrum
+8 = left hip     9 = right hip</code></pre>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import nibabel as nib, numpy as np
+ct  = nib.load(&quot;ct.nii.gz&quot;)
+lab = nib.load(&quot;label.nii.gz&quot;)
+a, l = np.asarray(ct.dataobj), np.asarray(lab.dataobj)
+
+assert a.shape == l.shape, &quot;CT and label must share the same grid!&quot;
+names = {0:&quot;background&quot;,1:&quot;L1&quot;,2:&quot;L2&quot;,3:&quot;L3&quot;,4:&quot;L4&quot;,5:&quot;L5&quot;,
+         6:&quot;L6&quot;,7:&quot;sacrum&quot;,8:&quot;left_hip&quot;,9:&quot;right_hip&quot;}
+for v in np.unique(l):
+    print(f&quot;  class {int(v):&gt;2} {names.get(int(v),&#39;?&#39;):&lt;10} {int((l==v).sum()):&gt;10} voxels&quot;)
+PY</code></pre>
+<p>The CT and its label <strong>must be the same shape and
+affine</strong> â€” that is what lets you overlay them voxel-for-voxel.
+(When two files disagree, you <code>resample</code> one onto the other's
+grid using SimpleITK â€” a Tutorial-5 topic.)</p>
+<hr />
+<h2 id="6-make-a-picture-a-windowed-slice-with-the-label-on-top">6. Make
+a picture: a windowed slice with the label on top</h2>
+<p>This renders one axial slice through the middle of the volume, CT in
+greyscale with the segmentation coloured on top, and saves it as a
+PNG:</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import nibabel as nib, numpy as np
+import matplotlib; matplotlib.use(&quot;Agg&quot;)
+import matplotlib.pyplot as plt
+
+ct  = np.asarray(nib.load(&quot;ct.nii.gz&quot;).dataobj)
+lab = np.asarray(nib.load(&quot;label.nii.gz&quot;).dataobj)
+k = ct.shape[2] // 2                                  # middle slice index
+
+def window(img, center=40, width=400):                # soft-tissue window -&gt; [0,1]
+    lo, hi = center - width/2, center + width/2
+    return np.clip((img - lo) / (hi - lo), 0, 1)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.imshow(window(ct[:, :, k]).T, cmap=&quot;gray&quot;, origin=&quot;lower&quot;)
+masked = np.ma.masked_where(lab[:, :, k] == 0, lab[:, :, k])
+ax.imshow(masked.T, cmap=&quot;tab10&quot;, alpha=0.5, origin=&quot;lower&quot;, vmin=0, vmax=9)
+ax.set_title(f&quot;axial slice {k}&quot;); ax.axis(&quot;off&quot;)
+fig.savefig(&quot;slice.png&quot;, dpi=120, bbox_inches=&quot;tight&quot;)
+print(&quot;wrote slice.png&quot;)
+PY</code></pre>
+<p>Open <code>slice.png</code> (download it to your laptop, or view it
+in VS Code) â€” you should see the lumbar vertebrae, sacrum, and hips
+coloured over the bone.</p>
+<hr />
+<h2 id="7-optional-peek-inside-a-dicom">7. (Optional) Peek inside a
+DICOM</h2>
+<p>If you have a <code>.dcm</code> file, this is how you'd read its
+metadata and pixels and convert to HU (DICOM stores raw values that need
+a rescale slope/intercept):</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import pydicom, numpy as np
+ds = pydicom.dcmread(&quot;yourfile.dcm&quot;)          # one slice
+print(&quot;Patient ID  :&quot;, ds.get(&quot;PatientID&quot;))
+print(&quot;Modality    :&quot;, ds.get(&quot;Modality&quot;))
+print(&quot;Rows x Cols :&quot;, ds.Rows, &quot;x&quot;, ds.Columns)
+hu = ds.pixel_array * float(ds.RescaleSlope) + float(ds.RescaleIntercept)
+print(&quot;HU range    :&quot;, int(hu.min()), &quot;to&quot;, int(hu.max()))
+PY</code></pre>
+<p>Note the <strong>PatientID</strong> tag â€” it survives into filenames
+and is how our pipeline groups masks by patient, while the per-scan
+<strong>SeriesInstanceUID</strong> is what gets lost in conversion (the
+alignment problem in the paper).</p>
+<hr />
+<h2 id="recap">Recap</h2>
+<ul>
+<li>Medical images are <strong>arrays + an affine</strong> (geometry),
+not pictures.</li>
+<li><strong>DICOM</strong> = scanner format (per-slice + rich metadata);
+<strong>NIfTI</strong> = analysis format (one volume + affine). Our data
+is NIfTI.</li>
+<li><strong>HU</strong> make tissue identifiable by number;
+<strong>windowing</strong> makes it viewable.</li>
+<li>A <strong>label</strong> is a same-grid NIfTI of class ids (0â€“9
+here).</li>
+<li>Always respect the <strong>affine/orientation</strong> â€” it's where
+silent left/right and alignment bugs hide.</li>
+</ul>
+<p><strong>Next:</strong> <em>Inference with a pretrained nnU-Net</em> â€”
+run a trained model on <code>ct.nii.gz</code> and produce a label like
+the one you just inspected.</p>
+
+<div class="tut__pager"><a href="01_environment_setup.html">&larr;&nbsp; Environment setup</a><a href="03_inference_pretrained_nnunet.html">Inference (pretrained nnU-Net) &nbsp;&rarr;</a></div>
+  </main>
+</div>
+</body>
+</html>

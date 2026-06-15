@@ -1,0 +1,66 @@
+/* Tutorial pages — reuses the site design tokens from ../assets/css/style.css */
+.tut { background: var(--paper); color: var(--ink);
+       font-family: var(--font-body); margin: 0; line-height: 1.62; }
+
+.tut__top { border-bottom: 1px solid var(--line); background: var(--paper-card);
+            position: sticky; top: 0; z-index: 10; }
+.tut__top a { display: inline-block; padding: 14px 22px; color: var(--teal);
+              text-decoration: none; font-weight: 600; font-size: .92rem; }
+.tut__top a:hover { color: var(--teal-bright); }
+
+.tut__layout { display: grid; grid-template-columns: 248px 1fr; gap: 44px;
+               max-width: var(--maxw); margin: 0 auto; padding: 38px 24px 90px; }
+
+.tut__nav { position: sticky; top: 74px; align-self: start; font-size: .9rem; }
+.tut__navhead { font-family: var(--font-mono); font-size: .70rem; text-transform: uppercase;
+                letter-spacing: .09em; color: var(--ink-faint); margin: 0 0 12px; }
+.tut__nav ol { list-style: none; margin: 0; padding: 0; }
+.tut__nav li { margin: 0 0 3px; }
+.tut__nav a { display: block; padding: 7px 12px; border-radius: 6px; color: var(--ink-soft);
+              text-decoration: none; border-left: 2px solid transparent; transition: all .15s var(--ease); }
+.tut__nav a:hover { background: var(--paper-deep); color: var(--ink); }
+.tut__nav a.is-current { color: var(--teal); border-left-color: var(--teal);
+                         background: var(--paper-card); font-weight: 600; }
+
+.tut__content { max-width: 760px; min-width: 0; }
+.tut__content h1 { font-family: var(--font-display); font-weight: 600; font-size: 2.05rem;
+                   line-height: 1.15; margin: 0 0 .45em; }
+.tut__content h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem;
+                   margin: 2.1em 0 .5em; padding-top: .55em; border-top: 1px solid var(--line); }
+.tut__content h3 { font-size: 1.15rem; margin: 1.7em 0 .4em; color: var(--teal-deep); }
+.tut__content p, .tut__content li { font-size: 1.02rem; }
+.tut__content a { color: var(--teal); }
+.tut__content a:hover { color: var(--teal-bright); }
+.tut__content strong { color: var(--ink); }
+.tut__content em { color: var(--ink-soft); }
+
+.tut__content code { font-family: var(--font-mono); font-size: .86em;
+                     background: var(--paper-deep); padding: .12em .42em; border-radius: 4px; }
+.tut__content pre { background: var(--ink); color: #EDEFE8; border-radius: 9px;
+                    padding: 16px 18px; overflow-x: auto; font-size: .855rem; line-height: 1.55; }
+.tut__content pre code { background: none; padding: 0; color: inherit; font-size: 1em; }
+
+.tut__content table { border-collapse: collapse; width: 100%; margin: 1.3em 0; font-size: .95rem; }
+.tut__content th, .tut__content td { text-align: left; padding: 9px 13px;
+                                     border-bottom: 1px solid var(--line); vertical-align: top; }
+.tut__content thead th { border-bottom: 2px solid var(--ink-soft);
+                         font-family: var(--font-mono); font-size: .78rem;
+                         text-transform: uppercase; letter-spacing: .04em; }
+
+.tut__content blockquote { margin: 1.3em 0; padding: .55em 1.1em; border-left: 3px solid var(--teal);
+                           background: var(--paper-card); color: var(--ink-soft); }
+.tut__content blockquote p { margin: .3em 0; }
+.tut__content hr { border: none; border-top: 1px solid var(--line); margin: 2.6em 0; }
+.tut__content ul, .tut__content ol { padding-left: 1.4em; }
+.tut__content li { margin: .25em 0; }
+
+.tut__pager { display: flex; justify-content: space-between; gap: 16px;
+              margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--line); }
+.tut__pager a { color: var(--teal); text-decoration: none; font-weight: 600; max-width: 48%; }
+.tut__pager a:hover { color: var(--teal-bright); }
+.tut__pager .is-disabled { visibility: hidden; }
+
+@media (max-width: 820px) {
+  .tut__layout { grid-template-columns: 1fr; gap: 10px; padding-top: 24px; }
+  .tut__nav { position: static; margin-bottom: 10px; }
+}

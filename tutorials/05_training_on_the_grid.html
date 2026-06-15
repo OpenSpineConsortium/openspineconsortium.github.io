@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training on the WSU grid &middot; OpenSpineConsortium Workshop</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="tutorial.css">
+</head>
+<body class="tut">
+<header class="tut__top">
+  <a href="../index.html#workshop">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
+</header>
+<div class="tut__layout">
+  <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
+<ol><li><a href="01_environment_setup.html">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html" class="is-current">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html">6.&nbsp; Writing an AI paper</a></li></ol></nav>
+  <main class="tut__content">
+<h1 id="tutorial-5--training-your-own-network-on-the-wsu-grid">Tutorial
+5 â€” Training Your Own Network on the WSU Grid</h1>
+<p><em>AI Imaging Workshop Â· the 11:00 AM "Training your own neural
+network using the WSU grid" block (and the 9:30 SLURM /
+reproducible-computing themes).</em> <em>Prerequisites: Tutorials 1
+&amp; 3 (the <code>imaging</code> env, nnU-Net v2 installed).</em></p>
+<p>Training needs a <strong>GPU for hours</strong>, so it runs on the
+<strong>WSU grid</strong> through the <strong>SLURM</strong> scheduler â€”
+you write a small script describing the job, <em>submit</em> it, and
+SLURM runs it when a GPU is free. This tutorial covers SLURM, a real
+nnU-Net training run, and the practices that make results
+<strong>reproducible</strong>.</p>
+<hr />
+<h2 id="1-slurm-in-five-commands">1. SLURM in five commands</h2>
+<p>SLURM shares the cluster's GPUs/CPUs across many users. You never run
+heavy work directly on the login node â€” you <strong>submit a batch
+job</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sbatch job.sh</code></td>
+<td>submit a job script to the queue</td>
+</tr>
+<tr>
+<td><code>squeue -u $USER</code></td>
+<td>see your jobs (PD = pending, R = running)</td>
+</tr>
+<tr>
+<td><code>scancel &lt;jobid&gt;</code></td>
+<td>cancel a job</td>
+</tr>
+<tr>
+<td><code>sacct -j &lt;jobid&gt;</code></td>
+<td>history/exit status of a finished job</td>
+</tr>
+<tr>
+<td><code>sinfo -s</code></td>
+<td>what partitions/nodes exist</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-anatomy-of-a-job-script">2. Anatomy of a job script</h2>
+<p>A SLURM script is a normal bash script with <code>#SBATCH</code>
+directives at the top that request resources. Create
+<code>train.sh</code>:</p>
+<pre class="bash"><code>#!/usr/bin/env bash
+#SBATCH --job-name=nnunet_train
+#SBATCH --partition=gpu          # the GPU partition (ask your admin for the name)
+#SBATCH --gres=gpu:1             # request 1 GPU
+#SBATCH --cpus-per-task=8        # CPU cores for data loading
+#SBATCH --mem=64G                # RAM
+#SBATCH --time=24:00:00          # max wall-clock (job is killed past this)
+#SBATCH --output=logs/%x_%j.out  # %x=job-name, %j=job-id
+
+set -euo pipefail                # stop on the first error (good practice)
+
+# --- make the environment reproducible ---
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate imaging
+
+export nnUNet_raw=~/workshop/nnunet/raw
+export nnUNet_preprocessed=~/workshop/nnunet/preprocessed
+export nnUNet_results=~/workshop/nnunet/results
+
+# --- the actual work ---
+nnUNetv2_train 1 3d_fullres 0          # dataset 1, config 3d_fullres, fold 0</code></pre>
+<p>Submit and watch it:</p>
+<pre class="bash"><code>mkdir -p logs
+sbatch train.sh
+squeue -u $USER
+tail -f logs/nnunet_train_*.out        # live log</code></pre>
+<p><strong>Key directives to understand:</strong>
+<code>--gres=gpu:1</code> (you get nothing GPU without it),
+<code>--time</code> (too short = killed mid-run; too long = harder to
+schedule), and <code>--output</code> (where stdout/errors go â€” always
+read this when something fails).</p>
+<hr />
+<h2 id="3-a-full-nnu-net-training-run">3. A full nnU-Net training
+run</h2>
+<p>nnU-Net training is three steps. (Preparing the dataset into
+nnU-Net's folder format is its own task â€” for the workshop we reuse the
+prepared <code>CTSpinoPelvic1K</code> dataset; the conversion script
+lives in the <code>spinopelvic-seg</code> repo.)</p>
+<p><strong>Step 1 â€” plan &amp; preprocess</strong> (auto-configures the
+network to the data; run once per dataset):</p>
+<pre class="bash"><code>nnUNetv2_plan_and_preprocess -d 1 --verify_dataset_integrity</code></pre>
+<p><strong>Step 2 â€” train.</strong> With 5-fold cross-validation you
+train five models (folds 0â€“4); each is a separate, hours-long GPU job.
+Submit them as one <strong>array job</strong> so SLURM runs them in
+parallel as GPUs free up:</p>
+<pre class="bash"><code>#SBATCH --array=0-4               # add this line to train.sh
+# ...and change the work line to:
+nnUNetv2_train 1 3d_fullres ${SLURM_ARRAY_TASK_ID}</code></pre>
+<p><code>sbatch train.sh</code> now launches folds 0â€“4 together â€” that's
+<strong>parallelism</strong>: five independent jobs, not one
+five-times-longer job.</p>
+<p><strong>Step 3 â€” inference</strong> with your freshly trained model
+is exactly Tutorial 3 (<code>nnUNetv2_predict</code>), pointing
+<code>-d</code>/<code>-f</code> at what you trained.</p>
+<hr />
+<h2 id="4-reproducibility--the-part-reviewers-check">4. Reproducibility
+â€” the part reviewers check</h2>
+<p>"Reproducible" means <em>someone else (or future-you) runs the same
+command and gets the same result.</em> Five habits:</p>
+<ol type="1">
+<li><strong>Pin the environment.</strong> Record exact versions so the
+software can't drift:
+<pre class="bash"><code>conda env export &gt; environment.yml      # commit this file</code></pre></li>
+<li><strong>Fix the random seed.</strong> nnU-Net seeds its splits; for
+your own code, <code>np.random.seed(42)</code> /
+<code>torch.manual_seed(42)</code>. Same seed â†’ same split â†’ same
+training.</li>
+<li><strong>Freeze the data splits.</strong> Save
+<code>splits_final.json</code> (which cases are train/ val/test) and
+version it, so train/test never silently change between runs.</li>
+<li><strong>No data leakage.</strong> A case used in training must never
+appear in its own test evaluation. With cross-validation, score each
+case with the fold that did <strong>not</strong> train on it
+("out-of-fold") â€” this is how our dataset's model-completed labels are
+made honest.</li>
+<li><strong>Version control everything</strong> â€” scripts, configs, env
+file â€” in git, and log the exact command + job id. The
+<code>set -euo pipefail</code> and <code>#SBATCH --output</code> lines
+above are part of this: fail loudly, keep the log.</li>
+</ol>
+<hr />
+<h2 id="5-from-one-gpu-to-a-pipeline-nextflow">5. From one GPU to a
+pipeline (Nextflow)</h2>
+<p>When a study is many steps Ã— many cases (preprocess â†’ train â†’ infer â†’
+score), hand-submitting <code>sbatch</code> jobs doesn't scale.
+<strong>Nextflow</strong> (installed in Tutorial 1) describes the
+pipeline once and submits all the SLURM jobs for you, re-running only
+what changed (<code>-resume</code>) â€” reproducible and parallel by
+construction. A minimal example:</p>
+<pre class="groovy"><code>process predict {
+  cpus 8 ; memory &#39;64 GB&#39;
+  input:  path ct
+  output: path &quot;pred_${ct.baseName}.nii.gz&quot;
+  script: &quot;nnUNetv2_predict -i . -o . -d 1 -c 3d_fullres -f 0&quot;
+}</code></pre>
+<pre class="bash"><code>nextflow run pipeline.nf -profile slurm -resume</code></pre>
+<p>You don't need to master Nextflow today â€” just know it's how the full
+<code>CTSpinoPelvic1K</code> pipeline (hundreds of cases, multiple
+stages) is orchestrated on the grid.</p>
+<hr />
+<h2 id="recap">Recap</h2>
+<ul>
+<li><strong>Never compute on the login node</strong> â€”
+<code>sbatch</code> a job that requests a GPU
+(<code>--gres=gpu:1</code>) and a sensible <code>--time</code>.</li>
+<li>nnU-Net training = <strong>plan/preprocess â†’ train (5 folds) â†’
+infer</strong>; run the folds as a SLURM <strong>array</strong> for
+parallelism.</li>
+<li><strong>Reproducibility = pinned env + fixed seeds + frozen splits +
+no leakage + version control.</strong> This is what turns "it worked on
+my machine" into a result.</li>
+</ul>
+<p><strong>Next:</strong> <em>Writing an AI paper</em> â€” turning a
+dataset and an evaluation into a publishable contribution.</p>
+
+<div class="tut__pager"><a href="04_itksnap_ai_annotation.html">&larr;&nbsp; AI annotation (ITK-SNAP)</a><a href="06_writing_an_ai_paper.html">Writing an AI paper &nbsp;&rarr;</a></div>
+  </main>
+</div>
+</body>
+</html>

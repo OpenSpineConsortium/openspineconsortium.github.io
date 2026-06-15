@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inference (pretrained nnU-Net) &middot; OpenSpineConsortium Workshop</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="tutorial.css">
+</head>
+<body class="tut">
+<header class="tut__top">
+  <a href="../index.html#workshop">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
+</header>
+<div class="tut__layout">
+  <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
+<ol><li><a href="01_environment_setup.html">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html" class="is-current">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html">6.&nbsp; Writing an AI paper</a></li></ol></nav>
+  <main class="tut__content">
+<h1 id="tutorial-3--inference-with-a-pretrained-nnu-net">Tutorial 3 â€”
+Inference with a Pretrained nnU-Net</h1>
+<p><em>AI Imaging Workshop Â· the 10:15 AM "CNNs, nnU-Net, Inference
+using a pre-trained model" block.</em> <em>Prerequisites: Tutorials 1â€“2
+(you have the <code>imaging</code> env and the <code>ct.nii.gz</code>
+you downloaded).</em></p>
+<p>You will run a <strong>trained</strong> spinopelvic segmentation
+model on a CT scan and get back a 10-class label map â€” no training, just
+prediction ("inference").</p>
+<hr />
+<h2 id="1-the-idea-in-90-seconds">1. The idea in 90 seconds</h2>
+<p>A <strong>convolutional neural network (CNN)</strong> for
+segmentation takes the 3-D CT volume and outputs, for <strong>every
+voxel</strong>, a predicted class (background, L1, â€¦, right hip). It
+learned this by seeing many CT-and-label pairs during
+<em>training</em>.</p>
+<p><strong>nnU-Net</strong> is not a single network â€” it is a framework
+that <strong>auto-configures</strong> a U-Net (the standard segmentation
+architecture) to your data: it picks the patch size, spacing, and
+normalization for you. That is why it's the default baseline in medical
+imaging. We use <strong>nnU-Net v2</strong>.</p>
+<p>Two phases, never mix them up:</p>
+<ul>
+<li><strong>Training</strong> â€” fit the model on labelled data (Tutorial
+5, hours on a GPU).</li>
+<li><strong>Inference</strong> â€” apply the finished model to a new scan
+(this tutorial, seconds to minutes).</li>
+</ul>
+<hr />
+<h2 id="2-install-nnu-net-v2-and-pytorch">2. Install nnU-Net v2 and
+PyTorch</h2>
+<p>nnU-Net runs on <strong>PyTorch</strong>. Install into the
+<code>imaging</code> env:</p>
+<pre class="bash"><code>conda activate imaging
+
+# PyTorch â€” GPU build if you have an NVIDIA GPU, else CPU build:
+pip install torch --index-url https://download.pytorch.org/whl/cu121   # NVIDIA GPU
+# pip install torch                                                    # CPU only
+
+pip install nnunetv2</code></pre>
+<p>Check the GPU is visible (prints <code>True</code> on a GPU
+machine/node; <code>False</code> is fine, it just runs slower on
+CPU):</p>
+<pre class="bash"><code>python -c &quot;import torch; print(&#39;GPU available:&#39;, torch.cuda.is_available())&quot;</code></pre>
+<blockquote>
+<p>On the WSU grid you must be <strong>on a GPU node</strong> for
+<code>True</code> â€” you'll request one with SLURM in Tutorial 5. For
+now, CPU inference on one scan is fine.</p>
+</blockquote>
+<hr />
+<h2 id="3-tell-nnu-net-where-things-live">3. Tell nnU-Net where things
+live</h2>
+<p>nnU-Net finds models through three environment variables. Create the
+folders and point at them:</p>
+<pre class="bash"><code>mkdir -p ~/workshop/nnunet/{raw,preprocessed,results}
+export nnUNet_raw=~/workshop/nnunet/raw
+export nnUNet_preprocessed=~/workshop/nnunet/preprocessed
+export nnUNet_results=~/workshop/nnunet/results</code></pre>
+<p>(Put those four <code>export</code> lines in your
+<code>~/.bashrc</code> so you don't retype them.)</p>
+<hr />
+<h2 id="4-download-the-pretrained-model">4. Download the pretrained
+model</h2>
+<p>The workshop's trained 5-fold checkpoints are public. Pull them with
+the HuggingFace CLI into <code>nnUNet_results</code>:</p>
+<pre class="bash"><code>pip install -U &quot;huggingface_hub[cli]&quot;
+hf download anonymous-mlhc/spinopelvic-seg-checkpoints \
+  --local-dir &quot;$nnUNet_results&quot; --repo-type model</code></pre>
+<p>After this, <code>$nnUNet_results</code> contains a
+<code>Dataset.../nnUNetTrainer...</code> folder â€” that is the trained
+model nnU-Net will load. (If the layout differs, the model repo's README
+gives the exact <code>Dataset</code> id and folder to use below.)</p>
+<hr />
+<h2 id="5-prepare-the-input">5. Prepare the input</h2>
+<p>nnU-Net expects input files named
+<code>&lt;case&gt;_0000.nii.gz</code> (the <code>_0000</code> means
+"channel 0" â€” CT is a single-channel modality). Set up an input and
+output folder:</p>
+<pre class="bash"><code>mkdir -p ~/workshop/infer_in ~/workshop/infer_out
+cp ~/workshop/ct.nii.gz ~/workshop/infer_in/case_0000.nii.gz</code></pre>
+<hr />
+<h2 id="6-run-inference">6. Run inference</h2>
+<p><code>nnUNetv2_predict</code> does everything (resample â†’ predict â†’
+resample back). Fill in the dataset id / configuration from the model
+README (typical values shown):</p>
+<pre class="bash"><code>nnUNetv2_predict \
+  -i ~/workshop/infer_in \
+  -o ~/workshop/infer_out \
+  -d 1 \
+  -c 3d_fullres \
+  -f 0</code></pre>
+<ul>
+<li><code>-i</code> / <code>-o</code> â€” input and output folders</li>
+<li><code>-d</code> â€” dataset id of the trained model</li>
+<li><code>-c 3d_fullres</code> â€” the configuration (full-resolution
+3-D)</li>
+<li><code>-f 0</code> â€” use fold 0 of the cross-validation (use
+<code>-f 0 1 2 3 4</code> to ensemble all five for the best result, at
+5Ã— the time)</li>
+</ul>
+<p>When it finishes, <code>~/workshop/infer_out/case.nii.gz</code> is
+your predicted 10-class label.</p>
+<hr />
+<h2 id="7-look-at-the-prediction">7. Look at the prediction</h2>
+<p>Reuse the inspection from Tutorial 2 â€” print the classes the model
+produced:</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import nibabel as nib, numpy as np
+p = np.asarray(nib.load(&quot;/root/workshop/infer_out/case.nii.gz&quot;.replace(&quot;/root&quot;, __import__(&quot;os&quot;).path.expanduser(&quot;~&quot;))).dataobj)
+names = {0:&quot;background&quot;,1:&quot;L1&quot;,2:&quot;L2&quot;,3:&quot;L3&quot;,4:&quot;L4&quot;,5:&quot;L5&quot;,
+         6:&quot;L6&quot;,7:&quot;sacrum&quot;,8:&quot;left_hip&quot;,9:&quot;right_hip&quot;}
+for v in np.unique(p):
+    print(f&quot;  class {int(v):&gt;2} {names.get(int(v),&#39;?&#39;):&lt;10} {int((p==v).sum()):&gt;10} voxels&quot;)
+PY</code></pre>
+<p>Then render it over the CT with the <strong>same plotting code from
+Tutorial 2, section 6</strong> (point it at
+<code>infer_out/case.nii.gz</code> instead of
+<code>label.nii.gz</code>). You now have a model-made segmentation you
+can compare to the ground-truth label.</p>
+<hr />
+<h2 id="8-did-it-work-well-a-first-metric">8. Did it work well? A first
+metric</h2>
+<p>The standard segmentation score is the <strong>Dice
+coefficient</strong>: overlap between prediction and ground truth, from
+0 (none) to 1 (perfect). Per class:</p>
+<pre class="bash"><code>python - &lt;&lt;&#39;PY&#39;
+import nibabel as nib, numpy as np, os
+gt   = np.asarray(nib.load(os.path.expanduser(&quot;~/workshop/label.nii.gz&quot;)).dataobj)
+pred = np.asarray(nib.load(os.path.expanduser(&quot;~/workshop/infer_out/case.nii.gz&quot;)).dataobj)
+for c in range(1, 10):
+    g, p = gt == c, pred == c
+    denom = g.sum() + p.sum()
+    dice = 2 * (g &amp; p).sum() / denom if denom else float(&quot;nan&quot;)
+    print(f&quot;  class {c}: Dice = {dice:.3f}&quot;)
+PY</code></pre>
+<p>Dice near 0.9 is strong for vertebrae; lower at the L5/S1 junction is
+exactly the hard region the benchmark studies.</p>
+<hr />
+<h2 id="recap--gotchas">Recap &amp; gotchas</h2>
+<ul>
+<li><strong>Inference = applying a finished model</strong>; nnU-Net
+auto-configures a U-Net.</li>
+<li>The three <code>nnUNet_*</code> env vars + the <code>_0000</code>
+filename convention are the two things that trip everyone up.</li>
+<li>CPU works for a single scan; real throughput needs a <strong>GPU
+node</strong> (Tutorial 5).</li>
+<li>Score with <strong>Dice</strong>, per class, and watch the
+<strong>junction</strong>.</li>
+</ul>
+<p><strong>Next:</strong> <em>AI-powered annotation in ITK-SNAP</em> â€”
+when there's no model for your structure yet, segment interactively with
+an AI assistant.</p>
+
+<div class="tut__pager"><a href="02_dicom_vs_nifti.html">&larr;&nbsp; DICOM vs. NIfTI</a><a href="04_itksnap_ai_annotation.html">AI annotation (ITK-SNAP) &nbsp;&rarr;</a></div>
+  </main>
+</div>
+</body>
+</html>

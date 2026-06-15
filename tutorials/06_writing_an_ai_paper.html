@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing an AI paper &middot; OpenSpineConsortium Workshop</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="tutorial.css">
+</head>
+<body class="tut">
+<header class="tut__top">
+  <a href="../index.html#workshop">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
+</header>
+<div class="tut__layout">
+  <nav class="tut__nav"><p class="tut__navhead">Tutorials</p>
+<ol><li><a href="01_environment_setup.html">1.&nbsp; Environment setup</a></li><li><a href="02_dicom_vs_nifti.html">2.&nbsp; DICOM vs. NIfTI</a></li><li><a href="03_inference_pretrained_nnunet.html">3.&nbsp; Inference (pretrained nnU-Net)</a></li><li><a href="04_itksnap_ai_annotation.html">4.&nbsp; AI annotation (ITK-SNAP)</a></li><li><a href="05_training_on_the_grid.html">5.&nbsp; Training on the WSU grid</a></li><li><a href="06_writing_an_ai_paper.html" class="is-current">6.&nbsp; Writing an AI paper</a></li></ol></nav>
+  <main class="tut__content">
+<h1 id="tutorial-6--writing-an-ai-imaging-paper">Tutorial 6 â€” Writing an
+AI Imaging Paper</h1>
+<p><em>AI Imaging Workshop Â· the 11:30 AM "Writing an AI paper
+(datasets, evaluations, clinical paper, scoping review)" block.</em></p>
+<p>You've installed the tools, looked inside the data, run a model,
+annotated, and trained. This tutorial is about turning that into a
+<strong>publishable contribution</strong> â€” the four paper types you'll
+write, how each is structured, and the evaluation and reproducibility
+standards reviewers actually enforce. Examples are drawn from the
+workshop's own <code>CTSpinoPelvic1K</code> benchmark and its real peer
+review.</p>
+<hr />
+<h2 id="1-four-kinds-of-ai-imaging-paper">1. Four kinds of AI imaging
+paper</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Core question it answers</th>
+<th>This workshop's example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dataset / benchmark</strong></td>
+<td>"Here is data + a way to measure progress."</td>
+<td>CTSpinoPelvic1K</td>
+</tr>
+<tr>
+<td><strong>Method</strong></td>
+<td>"Here is a model/algorithm that does X better."</td>
+<td>a new segmentation net</td>
+</tr>
+<tr>
+<td><strong>Clinical</strong></td>
+<td>"Does this AI change a patient-relevant outcome?"</td>
+<td>LSTV detection in practice</td>
+</tr>
+<tr>
+<td><strong>Scoping review</strong></td>
+<td>"What does the literature cover, and where are the gaps?"</td>
+<td>"ML for LSTV: a scoping review"</td>
+</tr>
+</tbody>
+</table>
+<p>Pick the type <strong>before</strong> you write â€” each has a
+different reviewer, structure, and bar.</p>
+<hr />
+<h2 id="2-the-datasetbenchmark-paper-what-youre-building">2. The
+dataset/benchmark paper (what you're building)</h2>
+<p>A dataset paper is judged on <strong>rigor of construction</strong>,
+<strong>clarity of evaluation</strong>, and <strong>usability</strong>.
+Structure:</p>
+<ol type="1">
+<li><strong>Motivation / gap</strong> â€” what clinical or ML problem is
+unmet. (Ours: no CT benchmark for transitional anatomy at the
+lumbosacral junction.)</li>
+<li><strong>Construction</strong> â€” exactly how the data was assembled,
+including the hard parts and the failure modes. Reproducible = a reader
+could rebuild it.</li>
+<li><strong>The labels</strong> â€” the schema (our 10 classes), who
+annotated, inter-rater agreement, and how uncertainty is handled.</li>
+<li><strong>Splits</strong> â€” train/val/test,
+<strong>stratified</strong> by the rare subgroup so it appears in every
+split, and <strong>patient-grouped</strong> so a patient never spans
+splits.</li>
+<li><strong>A baseline + evaluation</strong> â€” at minimum one model's
+numbers so the benchmark's difficulty is concrete.</li>
+<li><strong>Accounting</strong> â€” one authoritative table of counts
+(patients, scans, masks, volumes, per-class), because counts reported at
+different granularities are the #1 source of reviewer confusion.</li>
+<li><strong>Release</strong> â€” data + code + (ideally) trained
+checkpoints, under a clear licence.</li>
+</ol>
+<p><strong>Documentation matters as much as the data.</strong> A
+<em>datasheet</em> (motivation, composition, collection, preprocessing,
+uses, distribution) is increasingly expected.</p>
+<hr />
+<h2 id="3-evaluation-you-can-defend">3. Evaluation you can defend</h2>
+<p>Most rejections are about evaluation, not ideas. The essentials:</p>
+<ul>
+<li><strong>Right metrics.</strong> Segmentation: <strong>Dice</strong>
+(overlap) and <strong>HD95</strong> (boundary error). Report <strong>per
+class</strong>, not just an average â€” averages hide failure on the class
+that matters.</li>
+<li><strong>Stratified reporting.</strong> Break results out by the
+clinically important subgroup (e.g. normal vs. each LSTV phenotype). A
+19-point Dice drop at the junction is invisible in a global mean.</li>
+<li><strong>No leakage.</strong> Never evaluate a model on a case it
+trained on. With cross-validation, score <strong>out-of-fold</strong>.
+State explicitly that train/test are disjoint at the
+<strong>patient</strong> level.</li>
+<li><strong>Score only against what exists.</strong> With partial
+labels, compute a metric only where ground truth is present â€” never
+against an unobserved region.</li>
+<li><strong>Honest baselines.</strong> A zero-shot off-the-shelf model
+is a fair, informative baseline <em>if</em> you don't overclaim it ("a
+widely used open-source model," not "the standard of care").</li>
+<li><strong>Uncertainty / disagreement is signal.</strong> Where expert
+annotators legitimately disagree, report it rather than hiding it behind
+a single adjudicated label.</li>
+</ul>
+<hr />
+<h2 id="4-the-clinical-paper">4. The clinical paper</h2>
+<p>Different audience, different bar:</p>
+<ul>
+<li>Lead with the <strong>clinical question and outcome</strong>, not
+the architecture.</li>
+<li><strong>IRB / ethics</strong> statement, even for public
+de-identified data.</li>
+<li><strong>Patient-level</strong> performance with confidence
+intervals; relate errors to <strong>clinical consequence</strong> (e.g.
+wrong-level surgery), with citations rather than assertions.</li>
+<li>State the <strong>deployment gap</strong>: validation cohort vs.
+intended-use population (scanner, protocol, demographics).</li>
+</ul>
+<hr />
+<h2 id="5-the-scoping-review">5. The scoping review</h2>
+<p>Maps a field's literature and gaps (broader than a systematic
+review):</p>
+<ul>
+<li>Follow <strong>PRISMA-ScR</strong> (the reporting checklist for
+scoping reviews).</li>
+<li>Predefine the <strong>search strategy</strong> (databases, terms,
+dates) and inclusion/exclusion criteria; report counts in a
+<strong>PRISMA flow diagram</strong>.</li>
+<li><strong>Charting</strong>: extract a consistent set of fields from
+each paper into a table.</li>
+<li>Output: a synthesis of what's covered and an explicit <strong>gap
+statement</strong> â€” which often motivates the dataset or method paper
+you write next.</li>
+</ul>
+<hr />
+<h2 id="6-what-reviewers-will-push-on-learned-the-hard-way">6. What
+reviewers will push on (learned the hard way)</h2>
+<p>From this benchmark's actual review, the recurring asks â€” write to
+pre-empt them:</p>
+<ul>
+<li><strong>"Provide a trained baseline."</strong> A benchmark without
+at least one model run is hard to assess. Include it, even a single
+fold.</li>
+<li><strong>"Your counts don't reconcile."</strong> Patients â‰  scans â‰ 
+masks â‰  volumes. Put one source-of-truth accounting table in the paper
+and make every number match it.</li>
+<li><strong>"Motivate the problem for non-experts."</strong> Don't
+assume the reader knows your data's quirks (e.g. why a file can't be
+linked to its scan). One concrete motivating paragraph per non-obvious
+problem.</li>
+<li><strong>"Don't overclaim scope."</strong> If you have N=53 of the
+rare class, position the data as enabling <strong>stratified
+benchmarking</strong>, not robust <strong>training</strong> of that
+class â€” and say so explicitly.</li>
+<li><strong>"Cut irrelevant related work."</strong> Only cite what's
+actually adjacent to your contribution.</li>
+<li><strong>Fix the small errors.</strong> A wrong caption or stale
+number costs credibility out of proportion to its size.</li>
+</ul>
+<hr />
+<h2 id="7-reproducibility-checklist-attach-to-any-submission">7.
+Reproducibility checklist (attach to any submission)</h2>
+<ul class="task-list">
+<li><label><input type="checkbox" />Code public (preprocessing,
+training, <strong>evaluation/scoring</strong>).</label></li>
+<li><label><input type="checkbox" />Data + splits public (or access
+procedure stated); <code>splits_final.json</code>
+versioned.</label></li>
+<li><label><input type="checkbox" />Trained checkpoints
+released.</label></li>
+<li><label><input type="checkbox" />Exact environment pinned
+(<code>environment.yml</code>), seeds fixed.</label></li>
+<li><label><input type="checkbox" />One authoritative counts table;
+every in-text number matches it.</label></li>
+<li><label><input type="checkbox" />Metrics defined precisely (window
+size, what's included/excluded).</label></li>
+<li><label><input type="checkbox" />Licence and data-use terms stated;
+IRB/de-identification noted.</label></li>
+</ul>
+<hr />
+<h2 id="recap">Recap</h2>
+<ul>
+<li><strong>Choose the paper type first</strong>; each has its own
+structure and reviewer.</li>
+<li>For a dataset paper, <strong>construction + evaluation + accounting
++ release</strong> are the contribution â€” the model is secondary but a
+baseline is expected.</li>
+<li><strong>Evaluation rigor</strong> (per-class, stratified,
+out-of-fold, no leakage) is where papers are won or lost.</li>
+<li>Write to <strong>pre-empt the standard reviewer asks</strong>;
+release everything.</li>
+</ul>
+<p><em>This concludes the AI Imaging Workshop tutorial series. You can
+now set up an environment, read medical images, run and train
+segmentation models on the grid, annotate with AI, and frame the result
+as a paper.</em></p>
+
+<div class="tut__pager"><a href="05_training_on_the_grid.html">&larr;&nbsp; Training on the WSU grid</a><span class="is-disabled"></span></div>
+  </main>
+</div>
+</body>
+</html>
