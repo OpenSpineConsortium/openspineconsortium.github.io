@@ -19,6 +19,7 @@ const WL = {
 // If the overlay is mirrored, flip these (anterior left/right, superior up/down).
 const FLIP_H = false;   // horizontal (anterior–posterior) screen direction
 const FLIP_V = false;   // vertical (superior–inferior) screen direction
+const DEBUG = true;     // draw a diagnostic HUD + show all angles without clicking
 let planeMap = null;    // {iH,iV,sH,sV} — which frac axes are in-plane (orientation-agnostic)
 
 const els = {
@@ -143,20 +144,36 @@ function computePlaneMap() {
   const smax = Math.max(...dS.map(Math.abs));
   const iH = dA.findIndex((v) => Math.abs(v) === amax);
   const iV = dS.findIndex((v) => Math.abs(v) === smax);
-  planeMap = { iH, iV, sH: Math.sign(dA[iH]) || 1, sV: Math.sign(dS[iV]) || 1 };
+  // mm spanned by a full frac (0..1) along each in-plane axis -> physical extents,
+  // used to aspect-fit the slice the way NiiVue letterboxes it into the tile.
+  const mmH = Math.abs(dA[iH]) > 1e-6 ? 20 / Math.abs(dA[iH]) : 1;
+  const mmV = Math.abs(dS[iV]) > 1e-6 ? 20 / Math.abs(dS[iV]) : 1;
+  planeMap = { iH, iV, sH: Math.sign(dA[iH]) || 1, sV: Math.sign(dS[iV]) || 1, mmH, mmV };
 }
 
 function mmToPx(mm) {
   const tile = sagittalTile();
-  if (!tile || !planeMap) return null;
+  if (!tile) return null;
+  if (!planeMap) computePlaneMap();                  // lazy: volume may not have been ready
   let f;
   try { f = nv.mm2frac(mm); } catch (e) { return null; }
   const [x, y, w, h] = tile.leftTopWidthHeight;
-  let u = planeMap.sH > 0 ? f[planeMap.iH] : 1 - f[planeMap.iH];  // +anterior -> u up
-  let v = planeMap.sV > 0 ? f[planeMap.iV] : 1 - f[planeMap.iV];  // +superior -> v up
+  let u, v, mmH = 1, mmV = 1;
+  if (planeMap) {
+    u = planeMap.sH > 0 ? f[planeMap.iH] : 1 - f[planeMap.iH];  // +anterior -> u up
+    v = planeMap.sV > 0 ? f[planeMap.iV] : 1 - f[planeMap.iV];  // +superior -> v up
+    mmH = planeMap.mmH; mmV = planeMap.mmV;
+  } else {
+    u = f[1]; v = f[2];                               // RAS fallback (always draws something)
+  }
   if (FLIP_H) u = 1 - u;
   if (FLIP_V) v = 1 - v;
-  return [x + u * w, y + (1 - v) * h];                            // screen y is top-down
+  // aspect-fit (object-fit: contain) the slice into the tile, centred
+  const sliceAR = mmH / mmV, tileAR = w / h;
+  let dw = w, dh = h, ox = 0, oy = 0;
+  if (sliceAR < tileAR) { dw = h * sliceAR; ox = (w - dw) / 2; }
+  else { dh = w / sliceAR; oy = (h - dh) / 2; }
+  return [x + ox + u * dw, y + oy + (1 - v) * dh];    // screen y is top-down
 }
 
 // ---- overlay drawing ------------------------------------------------------
@@ -174,14 +191,41 @@ function drawOverlay() {
   const dpr = els.overlay.width / els.overlay.clientWidth || 1;
   for (const a of current.geometry.angles) {
     const st = active.get(a.id);
+    if (DEBUG && a.value != null) { drawAngle(a, 1, dpr); continue; }  // show all, no click
     if (!st) continue;
     drawAngle(a, st.t, dpr);
   }
+  if (DEBUG) drawDebugHud(dpr);
+}
+
+function drawDebugHud(dpr) {
+  const tile = sagittalTile();
+  const a0 = current.geometry.angles.find((x) => x.value != null);
+  let mapped = "—";
+  if (a0) { const p = mmToPx(a0.segments[0][0]); mapped = p ? `${p[0] | 0},${p[1] | 0}` : "null"; }
+  const lines = [
+    `tile: ${tile ? tile.leftTopWidthHeight.map((n) => n | 0).join(",") : "NONE"}`,
+    `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV} sH=${planeMap.sH} sV=${planeMap.sV}` : "NULL"}`,
+    `angles: ${current.geometry.angles.map((a) => a.id + (a.value ?? "·")).join(" ")}`,
+    `first pt -> px: ${mapped}   canvas: ${els.overlay.width}x${els.overlay.height}`,
+  ];
+  ctx.save();
+  ctx.font = `${12 * dpr}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
+  lines.forEach((t, i) => {
+    const y = (8 + i * 16) * dpr;
+    ctx.fillStyle = "rgba(0,0,0,.7)";
+    ctx.fillRect(6 * dpr, y, ctx.measureText(t).width + 10 * dpr, 15 * dpr);
+    ctx.fillStyle = "#36d399";
+    ctx.fillText(t, 10 * dpr, y);
+  });
+  ctx.restore();
 }
 
 function lerp(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; }
 
 function drawAngle(a, t, dpr) {
+  if (!a || !Array.isArray(a.segments)) return;        // tolerate a stale/old metrics.json
   ctx.save();
   ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = a.color; ctx.fillStyle = a.color;
   ctx.lineCap = "round";
@@ -194,7 +238,7 @@ function drawAngle(a, t, dpr) {
   if (t < 1) { ctx.restore(); return; }
   for (const s of a.segments) { const p = mmToPx(s[0]); if (p) dot(p, 2.2 * dpr); }
   // angle wedge
-  const C = mmToPx(a.arc.center), A = mmToPx(a.arc.a), B = mmToPx(a.arc.b);
+  const C = a.arc && mmToPx(a.arc.center), A = a.arc && mmToPx(a.arc.a), B = a.arc && mmToPx(a.arc.b);
   if (C && A && B) {
     const a1 = Math.atan2(A[1] - C[1], A[0] - C[0]);
     const a2 = Math.atan2(B[1] - C[1], B[0] - C[0]);
