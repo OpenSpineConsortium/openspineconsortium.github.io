@@ -152,28 +152,33 @@ function computePlaneMap() {
 }
 
 function mmToPx(mm) {
-  const tile = sagittalTile();
-  if (!tile) return null;
-  if (!planeMap) computePlaneMap();                  // lazy: volume may not have been ready
   let f;
   try { f = nv.mm2frac(mm); } catch (e) { return null; }
+  // Authoritative: NiiVue's own frac->canvas mapping (handles its layout/zoom/pan).
+  if (typeof nv.frac2canvasPos === "function") {
+    try {
+      const p = nv.frac2canvasPos([f[0], f[1], f[2]]);
+      if (p && isFinite(p[0]) && isFinite(p[1])) return [p[0], p[1]];
+    } catch (e) { /* fall through to manual */ }
+  }
+  // Fallback: manual tile + aspect-fit (orientation-agnostic via planeMap).
+  const tile = sagittalTile();
+  if (!tile) return null;
+  if (!planeMap) computePlaneMap();
   const [x, y, w, h] = tile.leftTopWidthHeight;
   let u, v, mmH = 1, mmV = 1;
   if (planeMap) {
-    u = planeMap.sH > 0 ? f[planeMap.iH] : 1 - f[planeMap.iH];  // +anterior -> u up
-    v = planeMap.sV > 0 ? f[planeMap.iV] : 1 - f[planeMap.iV];  // +superior -> v up
+    u = planeMap.sH > 0 ? f[planeMap.iH] : 1 - f[planeMap.iH];
+    v = planeMap.sV > 0 ? f[planeMap.iV] : 1 - f[planeMap.iV];
     mmH = planeMap.mmH; mmV = planeMap.mmV;
-  } else {
-    u = f[1]; v = f[2];                               // RAS fallback (always draws something)
-  }
+  } else { u = f[1]; v = f[2]; }
   if (FLIP_H) u = 1 - u;
   if (FLIP_V) v = 1 - v;
-  // aspect-fit (object-fit: contain) the slice into the tile, centred
   const sliceAR = mmH / mmV, tileAR = w / h;
   let dw = w, dh = h, ox = 0, oy = 0;
   if (sliceAR < tileAR) { dw = h * sliceAR; ox = (w - dw) / 2; }
   else { dh = w / sliceAR; oy = (h - dh) / 2; }
-  return [x + ox + u * dw, y + oy + (1 - v) * dh];    // screen y is top-down
+  return [x + ox + u * dw, y + oy + (1 - v) * dh];
 }
 
 // ---- overlay drawing ------------------------------------------------------
@@ -204,6 +209,7 @@ function drawDebugHud(dpr) {
   let mapped = "—";
   if (a0) { const p = mmToPx(a0.segments[0][0]); mapped = p ? `${p[0] | 0},${p[1] | 0}` : "null"; }
   const lines = [
+    `map: ${typeof nv.frac2canvasPos === "function" ? "frac2canvasPos (NiiVue)" : "manual fallback"}`,
     `tile: ${tile ? tile.leftTopWidthHeight.map((n) => n | 0).join(",") : "NONE"}`,
     `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV} sH=${planeMap.sH} sV=${planeMap.sV}` : "NULL"}`,
     `angles: ${current.geometry.angles.map((a) => a.id + (a.value ?? "·")).join(" ")}`,
