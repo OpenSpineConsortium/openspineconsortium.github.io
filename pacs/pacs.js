@@ -198,6 +198,19 @@ function drawOverlay() {
   if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
   dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
 
+  if (DEBUG) {                                        // controlled A/B test
+    ctx.lineCap = "round"; ctx.lineWidth = 6;
+    ctx.strokeStyle = "lime";                          // CONTROL: fixed coords
+    ctx.beginPath(); ctx.moveTo(200, 200); ctx.lineTo(1000, 800); ctx.stroke();
+    const a0 = current.geometry.angles.find((x) => x.value != null);
+    if (a0) {
+      const p = mmToPx(a0.segments[0][0]), q = mmToPx(a0.segments[0][1]);
+      window.__dbg = { p, q, pt: Object.prototype.toString.call(p) };
+      ctx.strokeStyle = "magenta";                     // TEST: mmToPx coords
+      if (p && q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
+    }
+  }
+
   // Draw each angle's construction with simple strokes (the call that demonstrably
   // works on this overlay) + stroked label. fillRect/arc-fill are avoided.
   for (const a of current.geometry.angles) {
@@ -213,8 +226,9 @@ function drawDebugHud(dpr) {
   const tile = sagittalTile();
   const a0 = current.geometry.angles.find((x) => x.value != null);
   const px = (mm) => { const p = mmToPx(mm); return p ? `${p[0] | 0},${p[1] | 0}` : "null"; };
+  const d = window.__dbg || {};
   const lines = [
-    `map: ${typeof nv.frac2canvasPos === "function" ? "frac2canvasPos (NiiVue)" : "manual fallback"}`,
+    `map: ${typeof nv.frac2canvasPos === "function" ? "frac2canvasPos" : "manual"}  dbg.p=${d.p ? `[${(+d.p[0]).toFixed(0)},${(+d.p[1]).toFixed(0)}]` : "?"} type=${d.pt || "?"}`,
     `tile: ${tile ? tile.leftTopWidthHeight.map((n) => n | 0).join(",") : "NONE"}  canvas: ${els.overlay.width}x${els.overlay.height}`,
     `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV}` : "NULL"}  frac0: ${a0 ? Array.from(nv.mm2frac(a0.segments[0][0])).map((n) => n.toFixed(2)).join(",") : "-"}`,
   ];
