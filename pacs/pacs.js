@@ -16,6 +16,11 @@ const WL = {
   wide: { min: -600, max: 1600 },
 };
 
+// If the overlay is mirrored, flip these (anterior left/right, superior up/down).
+const FLIP_H = false;   // horizontal (anterior–posterior) screen direction
+const FLIP_V = false;   // vertical (superior–inferior) screen direction
+let planeMap = null;    // {iH,iV,sH,sV} — which frac axes are in-plane (orientation-agnostic)
+
 const els = {
   gl: document.getElementById("gl"),
   overlay: document.getElementById("overlay"),
@@ -76,6 +81,7 @@ async function loadCase(dir) {
   applyWL("bone");
   setSeg(true);
   centreOnConstruction();
+  computePlaneMap();
   buildMetricButtons();
   renderReport();
   els.hudCase.textContent = current.label || current.case_id;
@@ -118,16 +124,39 @@ function sagittalTile() {
   return ss.find((s) => s.axCorSag === 2) || null;
 }
 
+// Discover which fractional-voxel axes are in-plane for the sagittal view by
+// probing world +anterior (+Y) and +superior (+Z). Orientation-agnostic — works
+// for RAS, PIR, or any affine, so the overlay tracks the volume's real axes.
+function computePlaneMap() {
+  planeMap = null;
+  const o = current?.geometry?.plane_origin;
+  if (!o) return;
+  let f0, fa, fs;
+  try {
+    f0 = nv.mm2frac(o);
+    fa = nv.mm2frac([o[0], o[1] + 20, o[2]]);
+    fs = nv.mm2frac([o[0], o[1], o[2] + 20]);
+  } catch (e) { return; }
+  const dA = fa.map((v, i) => v - f0[i]);
+  const dS = fs.map((v, i) => v - f0[i]);
+  const amax = Math.max(...dA.map(Math.abs));
+  const smax = Math.max(...dS.map(Math.abs));
+  const iH = dA.findIndex((v) => Math.abs(v) === amax);
+  const iV = dS.findIndex((v) => Math.abs(v) === smax);
+  planeMap = { iH, iV, sH: Math.sign(dA[iH]) || 1, sV: Math.sign(dS[iV]) || 1 };
+}
+
 function mmToPx(mm) {
   const tile = sagittalTile();
-  if (!tile) return null;
+  if (!tile || !planeMap) return null;
   let f;
   try { f = nv.mm2frac(mm); } catch (e) { return null; }
   const [x, y, w, h] = tile.leftTopWidthHeight;
-  // NiiVue device px -> overlay (canvas sized to device px below)
-  const px = x + f[1] * w;
-  const py = y + (1 - f[2]) * h;
-  return [px, py];
+  let u = planeMap.sH > 0 ? f[planeMap.iH] : 1 - f[planeMap.iH];  // +anterior -> u up
+  let v = planeMap.sV > 0 ? f[planeMap.iV] : 1 - f[planeMap.iV];  // +superior -> v up
+  if (FLIP_H) u = 1 - u;
+  if (FLIP_V) v = 1 - v;
+  return [x + u * w, y + (1 - v) * h];                            // screen y is top-down
 }
 
 // ---- overlay drawing ------------------------------------------------------
@@ -153,32 +182,28 @@ function drawOverlay() {
 function lerp(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; }
 
 function drawAngle(a, t, dpr) {
-  const V = mmToPx(a.vertex), T1 = mmToPx(a.tip1), T2 = mmToPx(a.tip2);
-  if (!V || !T1 || !T2) return;
-  const e1 = lerp(V, T1, t), e2 = lerp(V, T2, t);
   ctx.save();
   ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = a.color; ctx.fillStyle = a.color;
   ctx.lineCap = "round";
-  ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 4 * dpr;
-  // rays
-  line(V, e1); line(V, e2);
-  // landmark dots
-  dot(V, 3.4 * dpr);
-  if (t >= 1) { dot(T1, 2.6 * dpr); dot(T2, 2.6 * dpr); }
-  // arc + label once fully drawn
-  if (t >= 1) {
-    const a1 = Math.atan2(T1[1] - V[1], T1[0] - V[0]);
-    const a2 = Math.atan2(T2[1] - V[1], T2[0] - V[0]);
-    const r = 26 * dpr;
-    ctx.beginPath();
-    ctx.lineWidth = 1.4 * dpr;
-    ctx.arc(V[0], V[1], r, Math.min(a1, a2), Math.max(a1, a2));
-    ctx.stroke();
-    const mid = (a1 + a2) / 2;
-    const lx = V[0] + Math.cos(mid) * (r + 22 * dpr);
-    const ly = V[1] + Math.sin(mid) * (r + 22 * dpr);
-    label(`${a.id} ${a.value}${a.units}`, lx, ly, a.color, dpr);
+  ctx.shadowColor = "rgba(0,0,0,.85)"; ctx.shadowBlur = 4 * dpr;
+  // segments grow from their start point
+  for (const s of a.segments) {
+    const p = mmToPx(s[0]), q = mmToPx(s[1]);
+    if (p && q) line(p, lerp(p, q, t));
   }
+  if (t < 1) { ctx.restore(); return; }
+  for (const s of a.segments) { const p = mmToPx(s[0]); if (p) dot(p, 2.2 * dpr); }
+  // angle wedge
+  const C = mmToPx(a.arc.center), A = mmToPx(a.arc.a), B = mmToPx(a.arc.b);
+  if (C && A && B) {
+    const a1 = Math.atan2(A[1] - C[1], A[0] - C[0]);
+    const a2 = Math.atan2(B[1] - C[1], B[0] - C[0]);
+    let d = a2 - a1; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    ctx.beginPath(); ctx.lineWidth = 1.4 * dpr;
+    ctx.arc(C[0], C[1], 24 * dpr, a1, a1 + d, d < 0); ctx.stroke();
+  }
+  const L = mmToPx(a.label_at) || C;
+  if (L) label(`${a.id} ${a.value}${a.units}`, L[0], L[1], a.color, dpr);
   ctx.restore();
 }
 
