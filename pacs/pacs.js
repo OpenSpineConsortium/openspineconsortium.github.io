@@ -198,23 +198,11 @@ function drawOverlay() {
   if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
   dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
 
-  // TEMP: inline cyan control drawn at mmToPx coords (same proven stroke path as
-  // the lime test) to confirm stroking mmToPx coordinates actually paints.
-  const a0 = current.geometry.angles.find((x) => x.value != null);
-  if (a0) {
-    ctx.strokeStyle = "cyan"; ctx.lineWidth = 8; ctx.lineCap = "round";
-    for (const s of a0.segments) {
-      const p = mmToPx(s[0]), q = mmToPx(s[1]);
-      if (p && q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
-    }
-  }
-
-  // Auto-draw every computable angle (no click needed for now).
   for (const a of current.geometry.angles) {
+    const st = active.get(a.id);
     if (a.value == null) continue;
-    drawAngle(a, 1, dpr);
+    drawAngle(a, st ? st.t : 1, dpr);              // auto-draw; click re-animates
   }
-  if (DEBUG) drawDebugHud(dpr);
 }
 
 function drawDebugHud(dpr) {
@@ -257,46 +245,74 @@ function drawDebugHud(dpr) {
 
 function lerp(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; }
 
+// helpers in screen space (pixels are isotropic on this slice, so screen angles
+// equal true angles)
+function v2(a, b) { return [b[0] - a[0], b[1] - a[1]]; }
+function v2u(v) { const n = Math.hypot(v[0], v[1]) || 1; return [v[0] / n, v[1] / n]; }
+
+function strokeLine(p, q, color, w) {
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.lineWidth = w + 3;
+  ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+  ctx.strokeStyle = color; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+}
+
+function rot(v, s) { return [-v[1] * s, v[0] * s]; }   // rotate 90° (s=+1 CCW screen)
+
+function intersect(p0, d0, p1, d1) {
+  const den = d0[0] * d1[1] - d0[1] * d1[0];
+  if (Math.abs(den) < 1e-6) return null;
+  const s = ((p1[0] - p0[0]) * d1[1] - (p1[1] - p0[1]) * d1[0]) / den;
+  return [p0[0] + s * d0[0], p0[1] + s * d0[1]];
+}
+
+// Greenberg Fig. 73.1 Cobb construction: a line along each endplate, a
+// perpendicular dropped from each (anteriorly), the two perpendiculars meet and
+// the angle between them (= angle between the endplates) is LL.
 function drawAngle(a, t, dpr) {
-  if (!a || !Array.isArray(a.segments)) return;        // tolerate a stale/old metrics.json
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (!a || !Array.isArray(a.segments) || a.segments.length < 2) return;
   const lw = Math.max(3, 3.5 * dpr);
-  // segments grow from their start point; dark halo under, color over (legibility)
-  for (const pass of [["rgba(0,0,0,0.85)", lw + 3], [a.color, lw]]) {
-    ctx.strokeStyle = pass[0]; ctx.lineWidth = pass[1];
-    for (const s of a.segments) {
-      const p = mmToPx(s[0]), q = mmToPx(s[1]);
-      if (!p || !q) continue;
-      const e = lerp(p, q, t);
-      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(e[0], e[1]); ctx.stroke();
-    }
+  let e0 = [mmToPx(a.segments[0][0]), mmToPx(a.segments[0][1])];   // L1 (upper)
+  let e1 = [mmToPx(a.segments[1][0]), mmToPx(a.segments[1][1])];   // S1 (lower)
+  if (!e0[0] || !e0[1] || !e1[0] || !e1[1]) return;
+  // order each line posterior(small x) -> anterior(large x)
+  if (e0[0][0] > e0[1][0]) e0 = [e0[1], e0[0]];
+  if (e1[0][0] > e1[1][0]) e1 = [e1[1], e1[0]];
+  const d0 = v2u(v2(e0[0], e0[1])), d1 = v2u(v2(e1[0], e1[1]));    // along endplates, +x
+  const A0 = e0[1], A1 = e1[1];                                    // anterior ends
+  // perpendiculars: from L1 downward (+y), from S1 upward (−y)
+  let n0 = rot(d0, 1); if (n0[1] < 0) n0 = [-n0[0], -n0[1]];
+  let n1 = rot(d1, 1); if (n1[1] > 0) n1 = [-n1[0], -n1[1]];
+  const X = intersect(A0, n0, A1, n1);
+
+  // 1) endplate lines (grow with t), extended a little past the body
+  for (const [pp, dd] of [[e0, d0], [e1, d1]]) {
+    const Lp = Math.hypot(...v2(pp[0], pp[1])), ext = 0.3 * Lp;
+    const p = [pp[0][0] - dd[0] * ext, pp[0][1] - dd[1] * ext];
+    const q = [pp[1][0] + dd[0] * ext, pp[1][1] + dd[1] * ext];
+    strokeLine(p, lerp(p, q, t), a.color, lw);
   }
-  if (t < 1) return;
-  // landmark markers as stroked rings (fill doesn't render on this overlay)
+  if (t < 1 || !X) return;
+
+  // 2) perpendiculars from each anterior end to the intersection
+  strokeLine(A0, X, a.color, Math.max(2, 2.5 * dpr));
+  strokeLine(A1, X, a.color, Math.max(2, 2.5 * dpr));
+
+  // 3) angle arc at the intersection + label
+  const b0 = Math.atan2(A0[1] - X[1], A0[0] - X[0]);
+  const b1 = Math.atan2(A1[1] - X[1], A1[0] - X[0]);
+  let dd = b1 - b0; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
   ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(2, 2 * dpr);
-  for (const s of a.segments) {
-    const p = mmToPx(s[0]);
-    if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(4, 4 * dpr), 0, 7); ctx.stroke(); }
-  }
-  // angle wedge (stroked arc)
-  const C = a.arc && mmToPx(a.arc.center), A = a.arc && mmToPx(a.arc.a), B = a.arc && mmToPx(a.arc.b);
-  if (C && A && B) {
-    const a1 = Math.atan2(A[1] - C[1], A[0] - C[0]);
-    const a2 = Math.atan2(B[1] - C[1], B[0] - C[0]);
-    let d = a2 - a1; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-    ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
-    ctx.beginPath(); ctx.arc(C[0], C[1], Math.max(18, 22 * dpr), a1, a1 + d, d < 0); ctx.stroke();
-  }
-  // label: stroked outline for legibility + filled text (fillText works)
-  const L = mmToPx(a.label_at) || C;
-  if (L) {
-    const txt = `${a.id} ${a.value}${a.units}`;
-    ctx.font = `${Math.max(13, 14 * dpr)}px "IBM Plex Mono", monospace`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.lineWidth = Math.max(3, 3.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
-    ctx.strokeText(txt, L[0], L[1]);
-    ctx.fillStyle = a.color; ctx.fillText(txt, L[0], L[1]);
-  }
+  ctx.beginPath(); ctx.arc(X[0], X[1], 26 * dpr, b0, b0 + dd, dd < 0); ctx.stroke();
+
+  const txt = `${a.id} ${a.value}${a.units}`;
+  const lx = X[0] + 34 * dpr, ly = X[1];
+  ctx.font = `${Math.max(14, 15 * dpr)}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.lineWidth = Math.max(3, 4 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
+  ctx.strokeText(txt, lx, ly);
+  ctx.fillStyle = a.color; ctx.fillText(txt, lx, ly);
 }
 
 function line(p, q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
