@@ -1,0 +1,60 @@
+{
+  "case_id": "0002",
+  "summary": {
+    "case_id": "0002",
+    "supine_ct": true,
+    "PI": null,
+    "SS": null,
+    "PT": null,
+    "LL": 14.141,
+    "PI-LL": null,
+    "schwab": null,
+    "qc_flags": [
+      "PI:low_voxels:femur_left",
+      "PI:low_voxels:femur_right"
+    ],
+    "method_version": "pi-v1+ll-v1"
+  },
+  "geometry": {
+    "sagittal_normal": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "plane_origin": [
+      5.19,
+      -227.91,
+      -362.09
+    ],
+    "angles": [
+      {
+        "id": "LL",
+        "label": "Lumbar Lordosis",
+        "value": 14.1,
+        "units": "\u00b0",
+        "vertex": [
+          5.19,
+          -227.16,
+          -277.34
+        ],
+        "tip1": [
+          5.19,
+          -290.14,
+          -205.32
+        ],
+        "tip2": [
+          5.19,
+          -292.83,
+          -358.86
+        ],
+        "color": "#f472b6"
+      }
+    ],
+    "points": []
+  },
+  "files": {
+    "ct": "ct.nii.gz",
+    "seg": "seg.nii.gz"
+  },
+  "label": "Case 0002 \u2014 lumbar/pelvis CT"
+}

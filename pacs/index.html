@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!--
+  OpenSpineConsortium — PACS demo.
+  A NiiVue-based viewer that loads CTSpinoPelvic1K cases, toggles the
+  segmentation, and renders spinopelvic angles (PI / SS / PT / LL) computed by
+  OpenSpineToolbox (ostk). Angle values are precomputed (metrics.json) and
+  "calculated" on click to simulate a real-time PACS measurement workflow.
+
+  Serve over HTTP (NiiVue fetches .nii.gz): e.g. `python -m http.server` then
+  open /pacs/.  Data bundles are produced by ostk's tools/export_demo_case.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
+  <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolbox." />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pacs.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar__brand" href="../index.html">Open<strong>Spine</strong>Consortium</a>
+    <span class="topbar__tag">Spinopelvic PACS demo</span>
+    <div class="topbar__right">
+      <label for="caseSel" class="sr-only">Case</label>
+      <select id="caseSel" class="select"></select>
+      <a class="topbar__link" href="https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolbox" target="_blank" rel="noopener">ostk ↗</a>
+    </div>
+  </header>
+
+  <main class="stage">
+    <!-- viewport -->
+    <section class="viewport">
+      <canvas id="gl"></canvas>
+      <canvas id="overlay" class="overlay"></canvas>
+      <div id="loading" class="loading">loading volume…</div>
+      <div class="viewport__hud">
+        <span id="hudCase">—</span>
+        <span class="viewport__hint">scroll = slice · right-drag = window/level · drag = pan</span>
+      </div>
+    </section>
+
+    <!-- control panel -->
+    <aside class="panel">
+      <div class="panel__group">
+        <h2 class="panel__h">Display</h2>
+        <button id="toggleSeg" class="ctl ctl--on" aria-pressed="true">Segmentation: on</button>
+        <div class="row">
+          <span class="row__label">Mask opacity</span>
+          <input id="segOpacity" type="range" min="0" max="100" value="55" />
+        </div>
+        <div class="row">
+          <span class="row__label">Window</span>
+          <button class="chip" data-wl="bone">Bone</button>
+          <button class="chip" data-wl="soft">Soft</button>
+          <button class="chip" data-wl="wide">Wide</button>
+        </div>
+      </div>
+
+      <div class="panel__group">
+        <h2 class="panel__h">Spinopelvic measurements</h2>
+        <p class="panel__note">Click to render the construction on the sagittal view.
+          Values are precomputed by <code>ostk</code>; the draw simulates a live PACS measurement.</p>
+        <div id="metricBtns" class="metrics"></div>
+        <button id="clearMetrics" class="ctl ctl--ghost">Clear overlays</button>
+      </div>
+
+      <div class="panel__group">
+        <h2 class="panel__h">Report</h2>
+        <table id="report" class="report"></table>
+        <div id="schwab" class="schwab"></div>
+      </div>
+
+      <div class="panel__group panel__group--foot">
+        <p class="foot">PI is valid on supine CT (posture-invariant). SS / PT / LL are
+          supine surrogates — flagged, not standing values. SVA / TPA need C7 / T1 and
+          are out of scope on this FOV.</p>
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="pacs.js"></script>
+</body>
+</html>
