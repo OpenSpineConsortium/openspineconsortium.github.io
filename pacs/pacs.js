@@ -206,15 +206,25 @@ function drawOverlay() {
 function drawDebugHud(dpr) {
   const tile = sagittalTile();
   const a0 = current.geometry.angles.find((x) => x.value != null);
-  let mapped = "—";
-  if (a0) { const p = mmToPx(a0.segments[0][0]); mapped = p ? `${p[0] | 0},${p[1] | 0}` : "null"; }
+  const px = (mm) => { const p = mmToPx(mm); return p ? `${p[0] | 0},${p[1] | 0}` : "null"; };
   const lines = [
     `map: ${typeof nv.frac2canvasPos === "function" ? "frac2canvasPos (NiiVue)" : "manual fallback"}`,
-    `tile: ${tile ? tile.leftTopWidthHeight.map((n) => n | 0).join(",") : "NONE"}`,
-    `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV} sH=${planeMap.sH} sV=${planeMap.sV}` : "NULL"}`,
-    `angles: ${current.geometry.angles.map((a) => a.id + (a.value ?? "·")).join(" ")}`,
-    `first pt -> px: ${mapped}   canvas: ${els.overlay.width}x${els.overlay.height}`,
+    `tile: ${tile ? tile.leftTopWidthHeight.map((n) => n | 0).join(",") : "NONE"}  canvas: ${els.overlay.width}x${els.overlay.height}`,
+    `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV}` : "NULL"}  frac0: ${a0 ? Array.from(nv.mm2frac(a0.segments[0][0])).map((n) => n.toFixed(2)).join(",") : "-"}`,
   ];
+  if (a0) {
+    a0.segments.forEach((s, i) => lines.push(`seg${i}: ${px(s[0])}  ->  ${px(s[1])}`));
+    lines.push(`arc.center: ${px(a0.arc.center)}`);
+    // big unmissable markers at every endpoint, so we can SEE where they land
+    ctx.save();
+    ctx.fillStyle = "#ff2d55";
+    const allpts = a0.segments.flat().concat([a0.arc.center]);
+    for (const mm of allpts) {
+      const p = mmToPx(mm);
+      if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], 9 * dpr, 0, 7); ctx.fill(); }
+    }
+    ctx.restore();
+  }
   ctx.save();
   ctx.font = `${12 * dpr}px "IBM Plex Mono", monospace`;
   ctx.textAlign = "left"; ctx.textBaseline = "top";
