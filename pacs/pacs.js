@@ -19,7 +19,7 @@ const WL = {
 // If the overlay is mirrored, flip these (anterior left/right, superior up/down).
 const FLIP_H = false;   // horizontal (anterior–posterior) screen direction
 const FLIP_V = false;   // vertical (superior–inferior) screen direction
-const DEBUG = true;     // draw a diagnostic HUD + show all angles without clicking
+const DEBUG = false;    // draw a diagnostic HUD + show all angles without clicking
 let planeMap = null;    // {iH,iV,sH,sV} — which frac axes are in-plane (orientation-agnostic)
 
 const els = {
@@ -198,21 +198,8 @@ function drawOverlay() {
   if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
   dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
 
-  if (DEBUG) {                                        // controlled A/B test
-    ctx.lineCap = "round"; ctx.lineWidth = 6;
-    ctx.strokeStyle = "lime";                          // CONTROL: fixed coords
-    ctx.beginPath(); ctx.moveTo(200, 200); ctx.lineTo(1000, 800); ctx.stroke();
-    const a0 = current.geometry.angles.find((x) => x.value != null);
-    if (a0) {
-      const p = mmToPx(a0.segments[0][0]), q = mmToPx(a0.segments[0][1]);
-      window.__dbg = { p, q, pt: Object.prototype.toString.call(p) };
-      ctx.strokeStyle = "magenta";                     // TEST: mmToPx coords
-      if (p && q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
-    }
-  }
-
-  // Draw each angle's construction with simple strokes (the call that demonstrably
-  // works on this overlay) + stroked label. fillRect/arc-fill are avoided.
+  // Draw each active angle's construction (stroke-only; this overlay's fills
+  // don't paint, so lines/rings/arc are stroked and the label is stroke+fill text).
   for (const a of current.geometry.angles) {
     const st = active.get(a.id);
     const show = DEBUG ? a.value != null : !!st;
@@ -264,21 +251,24 @@ function lerp(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) 
 
 function drawAngle(a, t, dpr) {
   if (!a || !Array.isArray(a.segments)) return;        // tolerate a stale/old metrics.json
-  ctx.lineCap = "round";
-  ctx.strokeStyle = a.color;
-  ctx.lineWidth = Math.max(2, 2.5 * dpr);
-  // segments grow from their start point (stroke only)
-  for (const s of a.segments) {
-    const p = mmToPx(s[0]), q = mmToPx(s[1]);
-    if (!p || !q) continue;
-    const e = lerp(p, q, t);
-    ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(e[0], e[1]); ctx.stroke();
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const lw = Math.max(3, 3.5 * dpr);
+  // segments grow from their start point; dark halo under, color over (legibility)
+  for (const pass of [["rgba(0,0,0,0.85)", lw + 3], [a.color, lw]]) {
+    ctx.strokeStyle = pass[0]; ctx.lineWidth = pass[1];
+    for (const s of a.segments) {
+      const p = mmToPx(s[0]), q = mmToPx(s[1]);
+      if (!p || !q) continue;
+      const e = lerp(p, q, t);
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(e[0], e[1]); ctx.stroke();
+    }
   }
   if (t < 1) return;
   // landmark markers as stroked rings (fill doesn't render on this overlay)
+  ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(2, 2 * dpr);
   for (const s of a.segments) {
     const p = mmToPx(s[0]);
-    if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(3, 3 * dpr), 0, 7); ctx.stroke(); }
+    if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(4, 4 * dpr), 0, 7); ctx.stroke(); }
   }
   // angle wedge (stroked arc)
   const C = a.arc && mmToPx(a.arc.center), A = a.arc && mmToPx(a.arc.a), B = a.arc && mmToPx(a.arc.b);
