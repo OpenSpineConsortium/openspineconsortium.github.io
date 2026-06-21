@@ -198,13 +198,21 @@ function drawOverlay() {
   if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
   dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
 
-  // Draw each active angle's construction (stroke-only; this overlay's fills
-  // don't paint, so lines/rings/arc are stroked and the label is stroke+fill text).
+  // TEMP: inline cyan control drawn at mmToPx coords (same proven stroke path as
+  // the lime test) to confirm stroking mmToPx coordinates actually paints.
+  const a0 = current.geometry.angles.find((x) => x.value != null);
+  if (a0) {
+    ctx.strokeStyle = "cyan"; ctx.lineWidth = 8; ctx.lineCap = "round";
+    for (const s of a0.segments) {
+      const p = mmToPx(s[0]), q = mmToPx(s[1]);
+      if (p && q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
+    }
+  }
+
+  // Auto-draw every computable angle (no click needed for now).
   for (const a of current.geometry.angles) {
-    const st = active.get(a.id);
-    const show = DEBUG ? a.value != null : !!st;
-    if (!show) continue;
-    drawAngle(a, DEBUG ? 1 : st.t, dpr);
+    if (a.value == null) continue;
+    drawAngle(a, 1, dpr);
   }
   if (DEBUG) drawDebugHud(dpr);
 }
