@@ -193,7 +193,10 @@ function drawOverlay() {
   syncOverlaySize();
   ctx.clearRect(0, 0, els.overlay.width, els.overlay.height);
   if (!current) return;
-  const dpr = els.overlay.width / els.overlay.clientWidth || 1;
+  const cw = els.overlay.clientWidth;
+  let dpr = cw > 0 ? els.overlay.width / cw : (window.devicePixelRatio || 1);
+  if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
+  dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
   for (const a of current.geometry.angles) {
     const st = active.get(a.id);
     if (DEBUG && a.value != null) { drawAngle(a, 1, dpr); continue; }  // show all, no click
