@@ -227,9 +227,12 @@ function drawDebugHud(dpr) {
   const a0 = current.geometry.angles.find((x) => x.value != null);
   const px = (mm) => { const p = mmToPx(mm); return p ? `${p[0] | 0},${p[1] | 0}` : "null"; };
   const d = window.__dbg || {};
+  const sliceKeys = tile ? Object.keys(tile).join(",") : "—";
+  const ltwh = tile && tile.leftTopWidthHeight ? tile.leftTopWidthHeight.map((n) => (+n).toFixed(0)).join(",") : "—";
+  const fov = tile && tile.fovMM ? Array.from(tile.fovMM).map((n) => (+n).toFixed(0)).join(",") : (tile && tile.fovMMSlice ? Array.from(tile.fovMMSlice).map((n)=>(+n).toFixed(0)).join(",") : "—");
   const lines = [
-    `map: ${typeof nv.frac2canvasPos === "function" ? "frac2canvasPos" : "manual"}  dbg.p=${d.p ? `[${(+d.p[0]).toFixed(0)},${(+d.p[1]).toFixed(0)}]` : "?"} type=${d.pt || "?"}`,
-    `tile: ${tile ? tile.leftTopWidthHeight.map((n) => n | 0).join(",") : "NONE"}  canvas: ${els.overlay.width}x${els.overlay.height}`,
+    `keys: ${sliceKeys}`,
+    `ltwh: ${ltwh}  fov: ${fov}  canvas: ${els.overlay.width}x${els.overlay.height}`,
     `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV}` : "NULL"}  frac0: ${a0 ? Array.from(nv.mm2frac(a0.segments[0][0])).map((n) => n.toFixed(2)).join(",") : "-"}`,
   ];
   if (a0) {
