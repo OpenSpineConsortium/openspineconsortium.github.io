@@ -197,6 +197,17 @@ function drawOverlay() {
   let dpr = cw > 0 ? els.overlay.width / cw : (window.devicePixelRatio || 1);
   if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
   dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
+
+  if (DEBUG) {                                        // TEST: can the overlay draw shapes at all?
+    ctx.save();
+    ctx.fillStyle = "rgba(255,0,90,0.95)";
+    ctx.fillRect(els.overlay.width * 0.42, els.overlay.height * 0.42,
+                 els.overlay.width * 0.16, els.overlay.height * 0.16);
+    ctx.strokeStyle = "yellow"; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.lineTo(els.overlay.width, els.overlay.height); ctx.stroke();
+    ctx.restore();
+  }
   for (const a of current.geometry.angles) {
     const st = active.get(a.id);
     if (DEBUG && a.value != null) { drawAngle(a, 1, dpr); continue; }  // show all, no click
