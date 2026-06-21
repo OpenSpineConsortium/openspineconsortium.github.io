@@ -198,21 +198,13 @@ function drawOverlay() {
   if (!isFinite(dpr) || dpr <= 0) dpr = window.devicePixelRatio || 1;
   dpr = Math.min(4, Math.max(1, dpr));               // never Infinity / 0
 
-  if (DEBUG) {                                        // TEST: can the overlay draw shapes at all?
-    ctx.save();
-    ctx.fillStyle = "rgba(255,0,90,0.95)";
-    ctx.fillRect(els.overlay.width * 0.42, els.overlay.height * 0.42,
-                 els.overlay.width * 0.16, els.overlay.height * 0.16);
-    ctx.strokeStyle = "yellow"; ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.moveTo(0, 0);
-    ctx.lineTo(els.overlay.width, els.overlay.height); ctx.stroke();
-    ctx.restore();
-  }
+  // Draw each angle's construction with simple strokes (the call that demonstrably
+  // works on this overlay) + stroked label. fillRect/arc-fill are avoided.
   for (const a of current.geometry.angles) {
     const st = active.get(a.id);
-    if (DEBUG && a.value != null) { drawAngle(a, 1, dpr); continue; }  // show all, no click
-    if (!st) continue;
-    drawAngle(a, st.t, dpr);
+    const show = DEBUG ? a.value != null : !!st;
+    if (!show) continue;
+    drawAngle(a, DEBUG ? 1 : st.t, dpr);
   }
   if (DEBUG) drawDebugHud(dpr);
 }
@@ -229,13 +221,13 @@ function drawDebugHud(dpr) {
   if (a0) {
     a0.segments.forEach((s, i) => lines.push(`seg${i}: ${px(s[0])}  ->  ${px(s[1])}`));
     lines.push(`arc.center: ${px(a0.arc.center)}`);
-    // big unmissable markers at every endpoint, so we can SEE where they land
+    // big unmissable markers at every endpoint (stroked rings; fill doesn't render)
     ctx.save();
-    ctx.fillStyle = "#ff2d55";
+    ctx.strokeStyle = "#ff2d55"; ctx.lineWidth = 3 * dpr;
     const allpts = a0.segments.flat().concat([a0.arc.center]);
     for (const mm of allpts) {
       const p = mmToPx(mm);
-      if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], 9 * dpr, 0, 7); ctx.fill(); }
+      if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], 9 * dpr, 0, 7); ctx.stroke(); }
     }
     ctx.restore();
   }
@@ -256,29 +248,41 @@ function lerp(p, q, t) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) 
 
 function drawAngle(a, t, dpr) {
   if (!a || !Array.isArray(a.segments)) return;        // tolerate a stale/old metrics.json
-  ctx.save();
-  ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = a.color; ctx.fillStyle = a.color;
   ctx.lineCap = "round";
-  ctx.shadowColor = "rgba(0,0,0,.85)"; ctx.shadowBlur = 4 * dpr;
-  // segments grow from their start point
+  ctx.strokeStyle = a.color;
+  ctx.lineWidth = Math.max(2, 2.5 * dpr);
+  // segments grow from their start point (stroke only)
   for (const s of a.segments) {
     const p = mmToPx(s[0]), q = mmToPx(s[1]);
-    if (p && q) line(p, lerp(p, q, t));
+    if (!p || !q) continue;
+    const e = lerp(p, q, t);
+    ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(e[0], e[1]); ctx.stroke();
   }
-  if (t < 1) { ctx.restore(); return; }
-  for (const s of a.segments) { const p = mmToPx(s[0]); if (p) dot(p, 2.2 * dpr); }
-  // angle wedge
+  if (t < 1) return;
+  // landmark markers as stroked rings (fill doesn't render on this overlay)
+  for (const s of a.segments) {
+    const p = mmToPx(s[0]);
+    if (p) { ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(3, 3 * dpr), 0, 7); ctx.stroke(); }
+  }
+  // angle wedge (stroked arc)
   const C = a.arc && mmToPx(a.arc.center), A = a.arc && mmToPx(a.arc.a), B = a.arc && mmToPx(a.arc.b);
   if (C && A && B) {
     const a1 = Math.atan2(A[1] - C[1], A[0] - C[0]);
     const a2 = Math.atan2(B[1] - C[1], B[0] - C[0]);
     let d = a2 - a1; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-    ctx.beginPath(); ctx.lineWidth = 1.4 * dpr;
-    ctx.arc(C[0], C[1], 24 * dpr, a1, a1 + d, d < 0); ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+    ctx.beginPath(); ctx.arc(C[0], C[1], Math.max(18, 22 * dpr), a1, a1 + d, d < 0); ctx.stroke();
   }
+  // label: stroked outline for legibility + filled text (fillText works)
   const L = mmToPx(a.label_at) || C;
-  if (L) label(`${a.id} ${a.value}${a.units}`, L[0], L[1], a.color, dpr);
-  ctx.restore();
+  if (L) {
+    const txt = `${a.id} ${a.value}${a.units}`;
+    ctx.font = `${Math.max(13, 14 * dpr)}px "IBM Plex Mono", monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.lineWidth = Math.max(3, 3.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
+    ctx.strokeText(txt, L[0], L[1]);
+    ctx.fillStyle = a.color; ctx.fillText(txt, L[0], L[1]);
+  }
 }
 
 function line(p, q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
