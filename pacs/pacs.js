@@ -295,21 +295,27 @@ function drawAngle(a, t, dpr) {
   }
   if (t < 1 || !X) return;
 
-  // 2) perpendiculars from each anterior end to the intersection
-  strokeLine(A0, X, a.color, Math.max(2, 2.5 * dpr));
-  strokeLine(A1, X, a.color, Math.max(2, 2.5 * dpr));
+  // 2) perpendiculars drawn as full lines CROSSING through the intersection
+  // (each extends past X, like the Cobb construction in Greenberg Fig. 73.1)
+  const pw = Math.max(2, 2.5 * dpr);
+  const beyond0 = [X[0] + (X[0] - A0[0]) * 0.75, X[1] + (X[1] - A0[1]) * 0.75];
+  const beyond1 = [X[0] + (X[0] - A1[0]) * 0.75, X[1] + (X[1] - A1[1]) * 0.75];
+  strokeLine(A0, beyond0, a.color, pw);                 // L1 perpendicular
+  strokeLine(A1, beyond1, a.color, pw);                 // S1 perpendicular
 
-  // 3) angle arc at the intersection + label
-  const b0 = Math.atan2(A0[1] - X[1], A0[0] - X[0]);
-  const b1 = Math.atan2(A1[1] - X[1], A1[0] - X[0]);
-  let dd = b1 - b0; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+  // 3) LL = angle between L1's PRE-intersection ray (X→A0) and S1's POST ray (X→beyond1)
+  const da = v2u(v2(X, A0)), db = v2u(v2(X, beyond1));
+  const ba = Math.atan2(da[1], da[0]), bb = Math.atan2(db[1], db[0]);
+  let dd = bb - ba; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
   ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(2, 2 * dpr);
-  ctx.beginPath(); ctx.arc(X[0], X[1], 26 * dpr, b0, b0 + dd, dd < 0); ctx.stroke();
+  ctx.beginPath(); ctx.arc(X[0], X[1], 30 * dpr, ba, ba + dd, dd < 0); ctx.stroke();
 
+  // label on the bisector of that wedge
+  const bis = v2u([da[0] + db[0], da[1] + db[1]]);
+  const lx = X[0] + bis[0] * 58 * dpr, ly = X[1] + bis[1] * 58 * dpr;
   const txt = `${a.id} ${a.value}${a.units}`;
-  const lx = X[0] + 34 * dpr, ly = X[1];
   ctx.font = `${Math.max(14, 15 * dpr)}px "IBM Plex Mono", monospace`;
-  ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.lineWidth = Math.max(3, 4 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
   ctx.strokeText(txt, lx, ly);
   ctx.fillStyle = a.color; ctx.fillText(txt, lx, ly);
