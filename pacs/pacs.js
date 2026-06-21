@@ -227,12 +227,11 @@ function drawDebugHud(dpr) {
   const a0 = current.geometry.angles.find((x) => x.value != null);
   const px = (mm) => { const p = mmToPx(mm); return p ? `${p[0] | 0},${p[1] | 0}` : "null"; };
   const d = window.__dbg || {};
-  const sliceKeys = tile ? Object.keys(tile).join(",") : "—";
+  const arr = (x) => x ? Array.from(x).map((n) => (+n).toFixed(1)).join(",") : "—";
   const ltwh = tile && tile.leftTopWidthHeight ? tile.leftTopWidthHeight.map((n) => (+n).toFixed(0)).join(",") : "—";
-  const fov = tile && tile.fovMM ? Array.from(tile.fovMM).map((n) => (+n).toFixed(0)).join(",") : (tile && tile.fovMMSlice ? Array.from(tile.fovMMSlice).map((n)=>(+n).toFixed(0)).join(",") : "—");
   const lines = [
-    `keys: ${sliceKeys}`,
-    `ltwh: ${ltwh}  fov: ${fov}  canvas: ${els.overlay.width}x${els.overlay.height}`,
+    `ltwh:${ltwh} fov:${arr(tile && tile.fovMM)} ltMM:${arr(tile && tile.leftTopMM)}`,
+    `Axyz:${arr(tile && tile.AxyzMxy)}`,
     `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV}` : "NULL"}  frac0: ${a0 ? Array.from(nv.mm2frac(a0.segments[0][0])).map((n) => n.toFixed(2)).join(",") : "-"}`,
   ];
   if (a0) {
