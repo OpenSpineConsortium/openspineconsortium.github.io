@@ -347,6 +347,25 @@ function drawAngle(a, t, dpr) {
     ctx.strokeText(txt, L[0], L[1]);
     ctx.fillStyle = a.color; ctx.fillText(txt, L[0], L[1]);
   }
+  // "1/2 + 1/2" rule: endpoint/midpoint dots + half-length callouts on the endplate
+  if (a.rule) {
+    for (const d of a.rule.dots || []) {
+      const p = mmToPx(d);
+      if (!p) continue;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 4 * dpr, 0, 7);
+      ctx.fillStyle = a.color; ctx.fill();
+      ctx.lineWidth = Math.max(1.5, 1.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.stroke();
+    }
+    ctx.font = `${Math.max(11, 12 * dpr)}px "IBM Plex Mono", monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const m of a.rule.marks || []) {
+      const p = mmToPx(m.pos);
+      if (!p) continue;
+      ctx.lineWidth = Math.max(2, 3 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
+      ctx.strokeText(m.text, p[0], p[1]);
+      ctx.fillStyle = a.color; ctx.fillText(m.text, p[0], p[1]);
+    }
+  }
 }
 
 function line(p, q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
