@@ -19,7 +19,7 @@ const WL = {
 // If the overlay is mirrored, flip these (anterior left/right, superior up/down).
 const FLIP_H = false;   // horizontal (anterior–posterior) screen direction
 const FLIP_V = false;   // vertical (superior–inferior) screen direction
-const DEBUG = false;    // draw a diagnostic HUD + show all angles without clicking
+const DEBUG = true;    // draw a diagnostic HUD + show all angles without clicking
 let planeMap = null;    // {iH,iV,sH,sV} — which frac axes are in-plane (orientation-agnostic)
 
 const els = {
@@ -213,8 +213,12 @@ function drawDebugHud(dpr) {
   const d = window.__dbg || {};
   const arr = (x) => x ? Array.from(x).map((n) => (+n).toFixed(1)).join(",") : "—";
   const ltwh = tile && tile.leftTopWidthHeight ? tile.leftTopWidthHeight.map((n) => (+n).toFixed(0)).join(",") : "—";
+  const fc = a0 && typeof nv.frac2canvasPos === "function"
+    ? (() => { try { const p = nv.frac2canvasPos(Array.from(nv.mm2frac(a0.segments[0][0]))); return `${p[0] | 0},${p[1] | 0}`; } catch (e) { return "err"; } })()
+    : "n/a";
   const lines = [
-    `ltwh:${ltwh} fov:${arr(tile && tile.fovMM)} ltMM:${arr(tile && tile.leftTopMM)}`,
+    `dpr=${window.devicePixelRatio} gl=${els.gl.width}x${els.gl.height} client=${els.gl.clientWidth}x${els.gl.clientHeight} ov=${els.overlay.width}x${els.overlay.height}`,
+    `frac2canvasPos(seg0)=${fc}   ltwh:${ltwh}`,
     `Axyz:${arr(tile && tile.AxyzMxy)}`,
     `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV}` : "NULL"}  frac0: ${a0 ? Array.from(nv.mm2frac(a0.segments[0][0])).map((n) => n.toFixed(2)).join(",") : "-"}`,
   ];
