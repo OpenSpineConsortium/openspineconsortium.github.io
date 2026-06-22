@@ -160,6 +160,20 @@ function computePlaneMap() {
 function mmToPx(mm) {
   let f;
   try { f = nv.mm2frac(mm); } catch (e) { return null; }
+  // Map by IN-PLANE position only: replace the slice-depth frac with the CURRENT
+  // slice's depth, so a world point maps to its (anterior, superior) screen position
+  // regardless of which sagittal slice is scrolled to. The construction lives on one
+  // mid-sagittal plane; this pins it on screen while the bone scrolls underneath, and
+  // it no longer "moves" as you scroll (the earlier off-plane drift). Curved/rotated
+  // spines still need scrolling to view each level centred — which now works.
+  try {
+    if (!planeMap) computePlaneMap();
+    if (planeMap) {
+      const depth = 3 - planeMap.iH - planeMap.iV;
+      f = [f[0], f[1], f[2]];
+      f[depth] = nv.scene.crosshairPos[depth];
+    }
+  } catch (e) { /* keep raw frac */ }
   // Authoritative: NiiVue's own frac->canvas mapping (handles its layout/zoom/pan).
   if (typeof nv.frac2canvasPos === "function") {
     try {
@@ -362,32 +376,9 @@ function animate(id) {
 }
 
 // single render loop: advance any running animations, then redraw the overlay
-// While any angle is shown, PIN the sagittal slice to the construction plane: the
-// precomputed lines live on that one mid-sagittal plane, so the view must stay on it
-// for the overlay to line up. Scrolling off-plane is what made PI/PT/LL look like
-// they "moved"; here a scroll snaps back to the plane so the angles render stable.
-function pinSliceToPlane() {
-  if (!current || active.size === 0) return;
-  const o = current.geometry && current.geometry.plane_origin;
-  if (!o) return;
-  try {
-    if (!planeMap) computePlaneMap();
-    const depth = planeMap ? (3 - planeMap.iH - planeMap.iV) : 0;  // sagittal-depth frac axis
-    const pf = nv.mm2frac(o);
-    const cp = nv.scene.crosshairPos;
-    if (Math.abs(cp[depth] - pf[depth]) > 1e-4) {
-      const nc = [cp[0], cp[1], cp[2]];
-      nc[depth] = pf[depth];
-      nv.scene.crosshairPos = nc;
-      nv.drawScene();
-    }
-  } catch (e) { /* version drift */ }
-}
-
 function tick(now) {
   for (const st of active.values())
     if (st.t < 1) st.t = Math.min(1, (now - st.start) / ANIM_MS);
-  pinSliceToPlane();
   drawOverlay();
   requestAnimationFrame(tick);
 }
