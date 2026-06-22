@@ -380,23 +380,51 @@ function drawAngle(a, t, dpr) {
 // "1/2 + 1/2" rule: endpoint/midpoint dots + half-length callouts on the endplate.
 // Drawn in a SEPARATE pass on top of every construction so another line (e.g. the
 // LL line over the S1 endplate) can't cover the midpoint measurements.
-function drawRule(a, dpr) {
-  if (!a.rule) return;
-  for (const d of a.rule.dots || []) {
-    const p = mmToPx(d);
-    if (!p) continue;
-    ctx.beginPath(); ctx.arc(p[0], p[1], 4 * dpr, 0, 7);
-    ctx.fillStyle = a.color; ctx.fill();
-    ctx.lineWidth = Math.max(1.5, 1.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.stroke();
+function drawDoubleArrow(p, q, color, dpr) {
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.5, 1.8 * dpr); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+  const ah = 6 * dpr;
+  for (const [from, to] of [[q, p], [p, q]]) {       // arrowhead at each end
+    const ang = Math.atan2(to[1] - from[1], to[0] - from[0]);
+    ctx.beginPath();
+    ctx.moveTo(to[0], to[1]); ctx.lineTo(to[0] - ah * Math.cos(ang - 0.45), to[1] - ah * Math.sin(ang - 0.45));
+    ctx.moveTo(to[0], to[1]); ctx.lineTo(to[0] - ah * Math.cos(ang + 0.45), to[1] - ah * Math.sin(ang + 0.45));
+    ctx.stroke();
   }
+}
+
+function drawRule(a, dpr) {
+  const r = a.rule;
+  if (!r) return;
+  // ONE midpoint dot
+  if (r.mid) {
+    const p = mmToPx(r.mid);
+    if (p) {
+      ctx.beginPath(); ctx.arc(p[0], p[1], 4 * dpr, 0, 7);
+      ctx.fillStyle = a.color; ctx.fill();
+      ctx.lineWidth = Math.max(1.5, 1.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.stroke();
+    }
+  }
+  // dotted perpendicular ticks at the half boundaries
+  ctx.setLineDash([3 * dpr, 3 * dpr]);
+  ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(1.4, 1.5 * dpr);
+  for (const t of r.ticks || []) {
+    const p = mmToPx(t[0]), q = mmToPx(t[1]);
+    if (p && q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
+  }
+  ctx.setLineDash([]);
+  // <-> arrow over each half + its length above the line
   ctx.font = `${Math.max(11, 12 * dpr)}px "IBM Plex Mono", monospace`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (const m of a.rule.marks || []) {
-    const p = mmToPx(m.pos);
-    if (!p) continue;
-    ctx.lineWidth = Math.max(2, 3 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
-    ctx.strokeText(m.text, p[0], p[1]);
-    ctx.fillStyle = a.color; ctx.fillText(m.text, p[0], p[1]);
+  for (const s of r.spans || []) {
+    const p = mmToPx(s.a), q = mmToPx(s.b);
+    if (p && q) drawDoubleArrow(p, q, a.color, dpr);
+    const L = s.label && mmToPx(s.label);
+    if (L) {
+      ctx.lineWidth = Math.max(2, 3 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
+      ctx.strokeText(s.text, L[0], L[1]);
+      ctx.fillStyle = a.color; ctx.fillText(s.text, L[0], L[1]);
+    }
   }
 }
 
