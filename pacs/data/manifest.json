@@ -4,6 +4,11 @@
       "id": "0002",
       "label": "Case 0002 \u2014 lumbar/pelvis CT",
       "dir": "0002"
+    },
+    {
+      "id": "0003",
+      "label": "Case 0003 - v3 (PI/SS/PT/LL, femurs+S1)",
+      "dir": "0003"
     }
   ]
 }
