@@ -45,13 +45,36 @@ nv = new Niivue({
   backColor: [0, 0, 0, 1],
   show3Dcrosshair: false,
   crosshairColor: [0.18, 0.55, 0.5, 0.6],
-  dragMode: 1,                     // contrast (window/level) on drag
+  dragMode: 3,                     // LEFT-drag = pan (no window/level box)
   isColorbar: false,
   sagittalNoseLeft: true,          // anterior points left, like a lateral film / Greenberg
 });
 nv.attachToCanvas(els.gl);
 nv.setSliceType(SLICE_TYPE.SAGITTAL);
 requestAnimationFrame(tick);       // continuous overlay sync (independent of NiiVue callbacks)
+
+// Navigation: left-drag pans (dragMode pan, above); RIGHT-drag vertical zooms
+// (up = in, down = out). The 2D zoom lives in nv.scene.pan2Dxyzmm[3].
+function setZoom2D(z) {
+  const p = nv.scene.pan2Dxyzmm;
+  if (p && p.length >= 4) { p[3] = Math.max(0.4, Math.min(10, z)); nv.drawScene(); }
+}
+let rzoom = null;
+els.gl.addEventListener("contextmenu", (e) => e.preventDefault());
+els.gl.addEventListener("pointerdown", (e) => {
+  if (e.button === 2) {
+    const p = nv.scene.pan2Dxyzmm;
+    rzoom = { y: e.clientY, z: (p && p.length >= 4) ? p[3] || 1 : 1 };
+    els.gl.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+});
+els.gl.addEventListener("pointermove", (e) => {
+  if (!rzoom) return;
+  setZoom2D(rzoom.z * Math.exp((rzoom.y - e.clientY) * 0.006));   // up -> zoom in
+  e.preventDefault();
+});
+els.gl.addEventListener("pointerup", (e) => { if (e.button === 2) rzoom = null; });
 
 // ---- data -----------------------------------------------------------------
 async function loadManifest() {
@@ -239,6 +262,11 @@ function drawOverlay() {
     if (!st) continue;                             // only draw active overlays (Clear empties this)
     drawAngle(a, st.t, dpr);
   }
+  // rules on top, so midpoint dots/measurements aren't hidden under another line
+  for (const a of current.geometry.angles) {
+    const st = active.get(a.id);
+    if (st && st.t >= 1) drawRule(a, dpr);
+  }
   if (DEBUG) drawDebugHud(dpr);
 }
 
@@ -333,7 +361,7 @@ function drawAngle(a, t, dpr) {
       let dd = bb - ba; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
       ctx.setLineDash([5 * dpr, 4 * dpr]);
       ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(2, 2 * dpr);
-      ctx.beginPath(); ctx.arc(C[0], C[1], 30 * dpr, ba, ba + dd, dd < 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(C[0], C[1], (a.arc_r_px || 30) * dpr, ba, ba + dd, dd < 0); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
@@ -347,24 +375,28 @@ function drawAngle(a, t, dpr) {
     ctx.strokeText(txt, L[0], L[1]);
     ctx.fillStyle = a.color; ctx.fillText(txt, L[0], L[1]);
   }
-  // "1/2 + 1/2" rule: endpoint/midpoint dots + half-length callouts on the endplate
-  if (a.rule) {
-    for (const d of a.rule.dots || []) {
-      const p = mmToPx(d);
-      if (!p) continue;
-      ctx.beginPath(); ctx.arc(p[0], p[1], 4 * dpr, 0, 7);
-      ctx.fillStyle = a.color; ctx.fill();
-      ctx.lineWidth = Math.max(1.5, 1.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.stroke();
-    }
-    ctx.font = `${Math.max(11, 12 * dpr)}px "IBM Plex Mono", monospace`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    for (const m of a.rule.marks || []) {
-      const p = mmToPx(m.pos);
-      if (!p) continue;
-      ctx.lineWidth = Math.max(2, 3 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
-      ctx.strokeText(m.text, p[0], p[1]);
-      ctx.fillStyle = a.color; ctx.fillText(m.text, p[0], p[1]);
-    }
+}
+
+// "1/2 + 1/2" rule: endpoint/midpoint dots + half-length callouts on the endplate.
+// Drawn in a SEPARATE pass on top of every construction so another line (e.g. the
+// LL line over the S1 endplate) can't cover the midpoint measurements.
+function drawRule(a, dpr) {
+  if (!a.rule) return;
+  for (const d of a.rule.dots || []) {
+    const p = mmToPx(d);
+    if (!p) continue;
+    ctx.beginPath(); ctx.arc(p[0], p[1], 4 * dpr, 0, 7);
+    ctx.fillStyle = a.color; ctx.fill();
+    ctx.lineWidth = Math.max(1.5, 1.5 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.stroke();
+  }
+  ctx.font = `${Math.max(11, 12 * dpr)}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const m of a.rule.marks || []) {
+    const p = mmToPx(m.pos);
+    if (!p) continue;
+    ctx.lineWidth = Math.max(2, 3 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
+    ctx.strokeText(m.text, p[0], p[1]);
+    ctx.fillStyle = a.color; ctx.fillText(m.text, p[0], p[1]);
   }
 }
 
