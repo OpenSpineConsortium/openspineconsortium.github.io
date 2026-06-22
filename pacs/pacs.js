@@ -85,6 +85,11 @@ async function loadCase(dir) {
   centreOnConstruction();
   computePlaneMap();
   buildMetricButtons();
+  // show computable constructions by default (Clear removes them; clicking re-animates)
+  for (const a of current.geometry.angles) {
+    if (a.value != null) active.set(a.id, { t: 1, start: 0 });
+  }
+  for (const b of els.metricBtns.children) b.classList.toggle("is-active", active.has(b.dataset.id));
   renderReport();
   els.hudCase.textContent = current.label || current.case_id;
   els.loading.style.display = "none";
@@ -214,8 +219,8 @@ function drawOverlay() {
 
   for (const a of current.geometry.angles) {
     const st = active.get(a.id);
-    if (a.value == null) continue;
-    drawAngle(a, st ? st.t : 1, dpr);              // auto-draw; click re-animates
+    if (!st) continue;                             // only draw active overlays (Clear empties this)
+    drawAngle(a, st.t, dpr);
   }
   if (DEBUG) drawDebugHud(dpr);
 }
@@ -315,13 +320,13 @@ function drawAngle(a, t, dpr) {
   }
   if (t < 1 || !X) return;
 
-  // 2) perpendiculars drawn as full lines CROSSING through the intersection
-  // (each extends past X, like the Cobb construction in Greenberg Fig. 73.1)
+  // 2) L1 perpendicular STOPS at the intersection; S1's continues past it. So the
+  // marked angle is L1's pre-intersection ray vs S1's post-intersection ray, with
+  // no ugly second crossing.
   const pw = Math.max(2, 2.5 * dpr);
-  const beyond0 = [X[0] + (X[0] - A0[0]) * 0.75, X[1] + (X[1] - A0[1]) * 0.75];
   const beyond1 = [X[0] + (X[0] - A1[0]) * 0.75, X[1] + (X[1] - A1[1]) * 0.75];
-  strokeLine(A0, beyond0, a.color, pw);                 // L1 perpendicular
-  strokeLine(A1, beyond1, a.color, pw);                 // S1 perpendicular
+  strokeLine(A0, X, a.color, pw);                        // L1 perpendicular -> stops at X
+  strokeLine(A1, beyond1, a.color, pw);                  // S1 perpendicular -> through + past X
 
   // 3) LL = angle between L1's PRE-intersection ray (X→A0) and S1's POST ray (X→beyond1)
   const da = v2u(v2(X, A0)), db = v2u(v2(X, beyond1));
