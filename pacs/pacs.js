@@ -45,7 +45,7 @@ nv = new Niivue({
   backColor: [0, 0, 0, 1],
   show3Dcrosshair: false,
   crosshairColor: [0.18, 0.55, 0.5, 0.6],
-  dragMode: 3,                     // LEFT-drag = pan (no window/level box)
+  dragMode: 0,                     // NiiVue drag OFF — we own pan/zoom (below)
   isColorbar: false,
   sagittalNoseLeft: true,          // anterior points left, like a lateral film / Greenberg
 });
@@ -53,28 +53,40 @@ nv.attachToCanvas(els.gl);
 nv.setSliceType(SLICE_TYPE.SAGITTAL);
 requestAnimationFrame(tick);       // continuous overlay sync (independent of NiiVue callbacks)
 
-// Navigation: left-drag pans (dragMode pan, above); RIGHT-drag vertical zooms
-// (up = in, down = out). The 2D zoom lives in nv.scene.pan2Dxyzmm[3].
-function setZoom2D(z) {
-  const p = nv.scene.pan2Dxyzmm;
-  if (p && p.length >= 4) { p[3] = Math.max(0.4, Math.min(10, z)); nv.drawScene(); }
+// Navigation: the CT and the overlay are ONE UNIT — the same CSS transform is applied
+// to both canvases, so they pan/zoom together pixel-for-pixel (NiiVue renders at base;
+// frac2canvasPos stays in base coords; the transform does the visual zoom/pan).
+//   LEFT-drag vertical = zoom (up in / down out, L-R ignored)
+//   RIGHT-drag         = pan in the drag direction
+const view = { zoom: 1, panX: 0, panY: 0 };
+els.gl.style.transformOrigin = "50% 50%";
+els.overlay.style.transformOrigin = "50% 50%";
+function applyView() {
+  const tf = `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`;
+  els.gl.style.transform = tf;
+  els.overlay.style.transform = tf;
 }
-let rzoom = null;
+function resetView() { view.zoom = 1; view.panX = 0; view.panY = 0; applyView(); }
+let drag = null;
 els.gl.addEventListener("contextmenu", (e) => e.preventDefault());
 els.gl.addEventListener("pointerdown", (e) => {
-  if (e.button === 2) {
-    const p = nv.scene.pan2Dxyzmm;
-    rzoom = { y: e.clientY, z: (p && p.length >= 4) ? p[3] || 1 : 1 };
-    els.gl.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  }
-});
+  drag = { pan: e.button === 2, x: e.clientX, y: e.clientY,
+           zoom: view.zoom, panX: view.panX, panY: view.panY };
+  try { els.gl.setPointerCapture(e.pointerId); } catch (_) {}
+  e.stopImmediatePropagation(); e.preventDefault();
+}, true);
 els.gl.addEventListener("pointermove", (e) => {
-  if (!rzoom) return;
-  setZoom2D(rzoom.z * Math.exp((rzoom.y - e.clientY) * 0.006));   // up -> zoom in
-  e.preventDefault();
-});
-els.gl.addEventListener("pointerup", (e) => { if (e.button === 2) rzoom = null; });
+  if (!drag) return;
+  if (drag.pan) {                                  // RIGHT-drag -> pan
+    view.panX = drag.panX + (e.clientX - drag.x);
+    view.panY = drag.panY + (e.clientY - drag.y);
+  } else {                                         // LEFT-drag up/down -> zoom
+    view.zoom = Math.max(0.4, Math.min(12, drag.zoom * Math.exp((drag.y - e.clientY) * 0.005)));
+  }
+  applyView();
+  e.stopImmediatePropagation(); e.preventDefault();
+}, true);
+els.gl.addEventListener("pointerup", (e) => { if (drag) { drag = null; e.stopImmediatePropagation(); } }, true);
 
 // ---- data -----------------------------------------------------------------
 async function loadManifest() {
@@ -105,6 +117,7 @@ async function loadCase(dir) {
   segIdx = current.files.ct ? 1 : 0;
   applyWL("bone");
   setSeg(true);
+  resetView();                       // reset pan/zoom for the new case
   centreOnConstruction();
   computePlaneMap();
   buildMetricButtons();
@@ -233,19 +246,23 @@ function syncOverlaySize() {
   if (els.overlay.width !== c.width || els.overlay.height !== c.height) {
     els.overlay.width = c.width; els.overlay.height = c.height;
   }
-  // Position the overlay EXACTLY over NiiVue's gl canvas. NiiVue may size/letterbox
-  // its canvas element so it doesn't fill the viewport; frac2canvasPos returns
-  // gl-canvas pixels, so the overlay must cover the same on-screen box or the
-  // construction shifts (the off-right HiDPI bug).
+  // Position the overlay over the gl canvas's BASE (untransformed) box — NiiVue
+  // letterboxes the gl canvas, so the box must be measured, not assumed. The SAME
+  // pan/zoom transform is then applied to both (applyView), keeping them ONE UNIT
+  // without double-applying (we measure with the gl transform momentarily removed).
+  const savedT = c.style.transform;
+  c.style.transform = "none";
   const gr = c.getBoundingClientRect();
+  c.style.transform = savedT;
   const pr = els.overlay.offsetParent ? els.overlay.offsetParent.getBoundingClientRect()
                                       : { left: 0, top: 0 };
-  const want = { left: gr.left - pr.left, top: gr.top - pr.top, w: gr.width, h: gr.height };
   const st = els.overlay.style;
-  if (st.left !== want.left + "px") st.left = want.left + "px";
-  if (st.top !== want.top + "px") st.top = want.top + "px";
-  if (st.width !== want.w + "px") { st.width = want.w + "px"; st.right = "auto"; }
-  if (st.height !== want.h + "px") { st.height = want.h + "px"; st.bottom = "auto"; }
+  const L = (gr.left - pr.left) + "px", T = (gr.top - pr.top) + "px";
+  const W = gr.width + "px", H = gr.height + "px";
+  if (st.left !== L) st.left = L;
+  if (st.top !== T) st.top = T;
+  if (st.width !== W) { st.width = W; st.right = "auto"; }
+  if (st.height !== H) { st.height = H; st.bottom = "auto"; }
 }
 
 function drawOverlay() {
@@ -413,17 +430,23 @@ function drawRule(a, dpr) {
     if (p && q) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
   }
   ctx.setLineDash([]);
-  // <-> arrow over each half + its length above the line
+  // <-> arrow over each half + its length printed IN LINE with the arrow (rotated)
   ctx.font = `${Math.max(11, 12 * dpr)}px "IBM Plex Mono", monospace`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const s of r.spans || []) {
     const p = mmToPx(s.a), q = mmToPx(s.b);
     if (p && q) drawDoubleArrow(p, q, a.color, dpr);
     const L = s.label && mmToPx(s.label);
-    if (L) {
+    if (L && p && q) {
+      let ang = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      if (ang > Math.PI / 2) ang -= Math.PI;       // keep text upright
+      else if (ang < -Math.PI / 2) ang += Math.PI;
+      ctx.save();
+      ctx.translate(L[0], L[1]); ctx.rotate(ang);
       ctx.lineWidth = Math.max(2, 3 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
-      ctx.strokeText(s.text, L[0], L[1]);
-      ctx.fillStyle = a.color; ctx.fillText(s.text, L[0], L[1]);
+      ctx.strokeText(s.text, 0, 0);
+      ctx.fillStyle = a.color; ctx.fillText(s.text, 0, 0);
+      ctx.restore();
     }
   }
 }
