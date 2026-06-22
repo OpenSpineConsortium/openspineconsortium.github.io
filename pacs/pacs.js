@@ -47,6 +47,7 @@ nv = new Niivue({
   crosshairColor: [0.18, 0.55, 0.5, 0.6],
   dragMode: 1,                     // contrast (window/level) on drag
   isColorbar: false,
+  sagittalNoseLeft: true,          // anterior points left, like a lateral film / Greenberg
 });
 nv.attachToCanvas(els.gl);
 nv.setSliceType(SLICE_TYPE.SAGITTAL);
@@ -54,7 +55,7 @@ requestAnimationFrame(tick);       // continuous overlay sync (independent of Ni
 
 // ---- data -----------------------------------------------------------------
 async function loadManifest() {
-  const m = await (await fetch("data/manifest.json")).json();
+  const m = await (await fetch("data/manifest.json", { cache: "no-store" })).json();
   els.caseSel.innerHTML = "";
   m.cases.forEach((c) => {
     const o = document.createElement("option");
@@ -67,7 +68,7 @@ async function loadManifest() {
 async function loadCase(dir) {
   els.loading.style.display = "flex";
   active.clear();
-  current = await (await fetch(`data/${dir}/metrics.json`)).json();
+  current = await (await fetch(`data/${dir}/metrics.json`, { cache: "no-store" })).json();
   const base = `data/${dir}/`;
   const vols = [];
   if (current.files.ct) vols.push({ url: base + current.files.ct, colormap: "gray" });
