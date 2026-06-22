@@ -204,6 +204,7 @@ function drawOverlay() {
     if (a.value == null) continue;
     drawAngle(a, st ? st.t : 1, dpr);              // auto-draw; click re-animates
   }
+  if (DEBUG) drawDebugHud(dpr);
 }
 
 function drawDebugHud(dpr) {
