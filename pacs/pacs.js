@@ -114,9 +114,12 @@ function applyWL(key) {
   nv.updateGLVolume();
 }
 
-// put the sagittal slice on the plane of the construction
+// open on the spine's MEDIAL slice (L-R centre of the vertebral column), not the
+// laterally-offset S1-endplate plane. The angle overlay is slice-independent, so it
+// renders correctly here regardless.
 function centreOnConstruction() {
-  const o = current.geometry?.plane_origin;
+  const g = current.geometry || {};
+  const o = g.view_center || g.plane_origin;
   if (!o) return;
   try { nv.scene.crosshairPos = nv.mm2frac(o); } catch (e) { /* version drift */ }
 }
