@@ -19,7 +19,7 @@ const WL = {
 // If the overlay is mirrored, flip these (anterior left/right, superior up/down).
 const FLIP_H = false;   // horizontal (anterior–posterior) screen direction
 const FLIP_V = false;   // vertical (superior–inferior) screen direction
-const DEBUG = true;    // draw a diagnostic HUD + show all angles without clicking
+const DEBUG = false;    // draw a diagnostic HUD + show all angles without clicking
 let planeMap = null;    // {iH,iV,sH,sV} — which frac axes are in-plane (orientation-agnostic)
 
 const els = {
@@ -188,6 +188,19 @@ function syncOverlaySize() {
   if (els.overlay.width !== c.width || els.overlay.height !== c.height) {
     els.overlay.width = c.width; els.overlay.height = c.height;
   }
+  // Position the overlay EXACTLY over NiiVue's gl canvas. NiiVue may size/letterbox
+  // its canvas element so it doesn't fill the viewport; frac2canvasPos returns
+  // gl-canvas pixels, so the overlay must cover the same on-screen box or the
+  // construction shifts (the off-right HiDPI bug).
+  const gr = c.getBoundingClientRect();
+  const pr = els.overlay.offsetParent ? els.overlay.offsetParent.getBoundingClientRect()
+                                      : { left: 0, top: 0 };
+  const want = { left: gr.left - pr.left, top: gr.top - pr.top, w: gr.width, h: gr.height };
+  const st = els.overlay.style;
+  if (st.left !== want.left + "px") st.left = want.left + "px";
+  if (st.top !== want.top + "px") st.top = want.top + "px";
+  if (st.width !== want.w + "px") { st.width = want.w + "px"; st.right = "auto"; }
+  if (st.height !== want.h + "px") { st.height = want.h + "px"; st.bottom = "auto"; }
 }
 
 function drawOverlay() {
@@ -219,8 +232,8 @@ function drawDebugHud(dpr) {
     : "n/a";
   const lines = [
     `dpr=${window.devicePixelRatio} gl=${els.gl.width}x${els.gl.height} client=${els.gl.clientWidth}x${els.gl.clientHeight} ov=${els.overlay.width}x${els.overlay.height}`,
-    `frac2canvasPos(seg0)=${fc}   ltwh:${ltwh}`,
-    `Axyz:${arr(tile && tile.AxyzMxy)}`,
+    `seg0mm=${a0 ? a0.segments[0][0].join(",") : "-"} origin=${current.geometry.plane_origin.join(",")}`,
+    `ltwh:${ltwh} ltMM:${arr(tile && tile.leftTopMM)} fov:${arr(tile && tile.fovMM)} fc(seg0)=${fc}`,
     `planeMap: ${planeMap ? `iH=${planeMap.iH} iV=${planeMap.iV}` : "NULL"}  frac0: ${a0 ? Array.from(nv.mm2frac(a0.segments[0][0])).map((n) => n.toFixed(2)).join(",") : "-"}`,
   ];
   if (a0) {
@@ -236,6 +249,7 @@ function drawDebugHud(dpr) {
     }
     ctx.restore();
   }
+  document.title = "DBG " + lines.join(" || ");
   ctx.save();
   ctx.font = `${12 * dpr}px "IBM Plex Mono", monospace`;
   ctx.textAlign = "left"; ctx.textBaseline = "top";
