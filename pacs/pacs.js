@@ -290,21 +290,34 @@ function strokeLine(p, q, color, w) {
 function drawAngle(a, t, dpr) {
   if (!a || !Array.isArray(a.segments)) return;
   const lw = Math.max(3, 3.5 * dpr);
+  // SOLID segments = the anatomical endplate line(s)
   for (const s of a.segments) {
     const p = mmToPx(s[0]), q = mmToPx(s[1]);
     if (!p || !q) continue;
     strokeLine(p, lerp(p, q, t), a.color, lw);
   }
+  // DOTTED segments = reference/construction lines (HRL, VRL, perpendicular, radius)
+  if (Array.isArray(a.dashed)) {
+    ctx.setLineDash([6 * dpr, 5 * dpr]);
+    for (const s of a.dashed) {
+      const p = mmToPx(s[0]), q = mmToPx(s[1]);
+      if (!p || !q) continue;
+      strokeLine(p, lerp(p, q, t), a.color, Math.max(2, 2.2 * dpr));
+    }
+    ctx.setLineDash([]);
+  }
   if (t < 1) return;
-  // angle wedge: arc at arc.center, from (center->a) to (center->b)
+  // angle wedge: dotted arc at arc.center, from (center->a) to (center->b)
   if (a.arc) {
     const C = mmToPx(a.arc.center), A = mmToPx(a.arc.a), B = mmToPx(a.arc.b);
     if (C && A && B) {
       const ba = Math.atan2(A[1] - C[1], A[0] - C[0]);
       const bb = Math.atan2(B[1] - C[1], B[0] - C[0]);
       let dd = bb - ba; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+      ctx.setLineDash([5 * dpr, 4 * dpr]);
       ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(2, 2 * dpr);
       ctx.beginPath(); ctx.arc(C[0], C[1], 30 * dpr, ba, ba + dd, dd < 0); ctx.stroke();
+      ctx.setLineDash([]);
     }
   }
   // value label
@@ -349,9 +362,32 @@ function animate(id) {
 }
 
 // single render loop: advance any running animations, then redraw the overlay
+// While any angle is shown, PIN the sagittal slice to the construction plane: the
+// precomputed lines live on that one mid-sagittal plane, so the view must stay on it
+// for the overlay to line up. Scrolling off-plane is what made PI/PT/LL look like
+// they "moved"; here a scroll snaps back to the plane so the angles render stable.
+function pinSliceToPlane() {
+  if (!current || active.size === 0) return;
+  const o = current.geometry && current.geometry.plane_origin;
+  if (!o) return;
+  try {
+    if (!planeMap) computePlaneMap();
+    const depth = planeMap ? (3 - planeMap.iH - planeMap.iV) : 0;  // sagittal-depth frac axis
+    const pf = nv.mm2frac(o);
+    const cp = nv.scene.crosshairPos;
+    if (Math.abs(cp[depth] - pf[depth]) > 1e-4) {
+      const nc = [cp[0], cp[1], cp[2]];
+      nc[depth] = pf[depth];
+      nv.scene.crosshairPos = nc;
+      nv.drawScene();
+    }
+  } catch (e) { /* version drift */ }
+}
+
 function tick(now) {
   for (const st of active.values())
     if (st.t < 1) st.t = Math.min(1, (now - st.start) / ANIM_MS);
+  pinSliceToPlane();
   drawOverlay();
   requestAnimationFrame(tick);
 }
