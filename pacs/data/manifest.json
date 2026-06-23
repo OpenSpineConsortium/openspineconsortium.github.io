@@ -2,13 +2,8 @@
   "cases": [
     {
       "id": "0003",
-      "label": "Case 0003 \u2014 v3 (PI/SS/PT/LL, femurs+S1)",
+      "label": "Case 0003 — v3 (PI/SS/PT/LL, femurs+S1)",
       "dir": "0003"
-    },
-    {
-      "id": "0002",
-      "label": "Case 0002 \u2014 lumbar/pelvis CT (LL only)",
-      "dir": "0002"
     }
   ]
 }
