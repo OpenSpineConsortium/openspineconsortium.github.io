@@ -391,35 +391,12 @@
         "schwab_modifier": "0",
         "ll_shortfall_deg": 0.0
       },
-      "schwab": {
-        "PI-LL": "0",
-        "PT": "+",
-        "SVA": "out_of_scope",
-        "objectives": {
-          "LL=PI\u00b19\u00b0": false,
-          "PT<20\u00b0": false,
-          "SVA<5cm": null
-        },
-        "ll_increase_needed_deg": 4.044
-      },
       "qc_flags": [
         "ok"
       ],
       "method_version": "pi-v1+ll-v1",
       "pi_category": "average",
       "roussouly": "1-2",
-      "surgery": {
-        "ll_to_restore_deg": 4.044,
-        "severity": "mild",
-        "primary": "anterior/interbody fusion \u2014 single- or two-level ALIF (\u22486\u00b0, best at L5\u2013S1) \u00b1 LLIF",
-        "osteotomy": null,
-        "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
-        "objectives": {
-          "LL=PI\u00b19\u00b0": false,
-          "PT<20\u00b0": false
-        },
-        "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 4.0\u00b0 (Eq. 73.1); |PI\u2212LL| 9.8\u00b0, PT 23.2\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0\u00b0."
-      },
       "reciprocal_tk_deg": 4.65,
       "age": 50.0,
       "targets": {
@@ -443,9 +420,9 @@
         -384.4
       ],
       "view_center": [
-        -8.21,
-        131.75,
-        -353.82
+        -8.22,
+        130.38,
+        -352.74
       ],
       "angles": [
         {
@@ -488,9 +465,9 @@
                 -380.8
               ],
               [
-                -33.75,
-                81.13,
-                -343.77
+                -33.83,
+                78.34,
+                -344.61
               ]
             ]
           ],
@@ -502,8 +479,8 @@
             ],
             "a": [
               -33.19,
-              120.13,
-              -367.1
+              120.02,
+              -367.02
             ],
             "b": [
               -33.7,
@@ -655,9 +632,9 @@
           "segments": [
             [
               [
-                -32.0,
-                81.15,
-                -227.17
+                -32.05,
+                79.38,
+                -227.34
               ],
               [
                 -30.32,
@@ -699,8 +676,8 @@
               ],
               [
                 -29.78,
-                233.86,
-                -317.98
+                226.08,
+                -305.9
               ]
             ]
           ],
@@ -717,14 +694,14 @@
             ],
             "b": [
               -29.78,
-              233.86,
-              -317.98
+              226.08,
+              -305.9
             ]
           },
           "label_at": [
-            -30.25,
-            211.18,
-            -314.26
+            -30.3,
+            202.34,
+            -303.3
           ],
           "arc_r_mm": 40.0
         }
@@ -803,9 +780,9 @@
     },
     "plan": {
       "level": "L4",
-      "level_span": "L1\u2013S1",
+      "level_span": "L4\u2013S1",
       "technique": "alif",
-      "cage_levels": 5,
+      "cage_levels": 2,
       "body_resected": false,
       "delta_deg": 9.3,
       "reciprocal_tk_deg": 4.65,

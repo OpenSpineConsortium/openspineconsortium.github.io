@@ -40,6 +40,7 @@ const els = {
 };
 
 const ctx = els.overlay.getContext("2d");
+const DATA_BUILD = "20260624d";    // bump when nii.gz volumes change (cache-bust)
 let nv, current = null;            // current = parsed metrics.json
 const active = new Map();          // angle id -> {t:0..1} animation state
 
@@ -219,9 +220,10 @@ async function applyPhase(p) {
   els.loading.style.display = "flex";
   active.clear();
   const base = `data/${currentDir}/`;
+  const cb = `?v=${DATA_BUILD}`;            // cache-bust volumes so data updates actually load
   const vols = [];
-  if (current.files.ct) vols.push({ url: base + current.files.ct, colormap: "gray" });
-  vols.push({ url: base + current.files.seg, colormap: "random",
+  if (current.files.ct) vols.push({ url: base + current.files.ct + cb, colormap: "gray" });
+  vols.push({ url: base + current.files.seg + cb, colormap: "random",
               opacity: els.segOpacity.value / 100 });
   await nv.loadVolumes(vols);
   segIdx = current.files.ct ? 1 : 0;
