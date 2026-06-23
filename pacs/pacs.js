@@ -72,13 +72,14 @@ function resetView() { view.zoom = 1; view.panX = 0; view.panY = 0; applyView();
 let drag = null;
 els.gl.addEventListener("contextmenu", (e) => e.preventDefault());
 els.gl.addEventListener("pointerdown", (e) => {
-  drag = { pan: e.button === 2, x: e.clientX, y: e.clientY,
+  drag = { pan: e.button === 2, x: e.clientX, y: e.clientY, moved: false,
            zoom: view.zoom, panX: view.panX, panY: view.panY };
   try { els.gl.setPointerCapture(e.pointerId); } catch (_) {}
   e.preventDefault();
 });
 els.gl.addEventListener("pointermove", (e) => {
   if (!drag) return;
+  if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 4) drag.moved = true;
   if (drag.pan) {                                  // RIGHT-drag -> pan
     view.panX = drag.panX + (e.clientX - drag.x);
     view.panY = drag.panY + (e.clientY - drag.y);
@@ -88,7 +89,31 @@ els.gl.addEventListener("pointermove", (e) => {
   applyView();
   e.preventDefault();
 });
-els.gl.addEventListener("pointerup", () => { drag = null; });
+els.gl.addEventListener("pointerup", (e) => {
+  if (drag && !drag.moved && !drag.pan) moveCrosshairTo(e.clientX, e.clientY);  // left CLICK
+  drag = null;
+});
+
+// Left CLICK (no drag) localizes: move NiiVue's crosshair to the click point. The gl
+// canvas is CSS-zoomed, so we invert the transform via its on-screen rect (linear)
+// then NiiVue's canvasPos2frac. The slice-depth component is preserved, so a click
+// only moves the crosshair in-plane and never shifts the construction.
+function moveCrosshairTo(clientX, clientY) {
+  if (!nv || typeof nv.canvasPos2frac !== "function" || !nv.scene) return;
+  const r = els.gl.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) return;
+  const bx = (clientX - r.left) / r.width * els.gl.width;
+  const by = (clientY - r.top) / r.height * els.gl.height;
+  let frac;
+  try { frac = nv.canvasPos2frac([bx, by]); } catch (_) { return; }
+  if (!frac || frac[0] < 0 || frac[1] < 0 || frac[2] < 0) return;   // outside the slice
+  if (!planeMap) computePlaneMap();
+  const depth = planeMap ? 3 - planeMap.iH - planeMap.iV : 0;
+  const keep = nv.scene.crosshairPos[depth];
+  nv.scene.crosshairPos = [frac[0], frac[1], frac[2]];
+  nv.scene.crosshairPos[depth] = keep;             // stay on the current slice
+  nv.drawScene();
+}
 // Scroll = slice. We handle the wheel ourselves (capture + stop) because once the gl
 // canvas is CSS-zoomed, NiiVue's own wheel hit-test (getBoundingClientRect-based) is
 // off and it ignores the scroll. This steps the slice directly, so it works at ANY
