@@ -90,8 +90,9 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 /* ---- mobile (iPhone / Safari): single column, pinned viewer, scrollable
    grouped-card controls, comfortable touch targets, notch-safe insets -------- */
 @media (max-width:820px){
-  html, body{height:auto;min-height:100%;overflow:visible}
-  body{overflow-x:hidden;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+  html, body{height:auto;min-height:100%;overflow-x:hidden}
+  html{overflow-y:visible}
+  body{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
 
   .topbar{position:sticky;top:0;z-index:30;height:52px;flex-wrap:nowrap;gap:12px;
     padding-left:max(14px,env(safe-area-inset-left));
@@ -126,5 +127,13 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
   .metric__abbr{min-width:34px}
   .report{font-size:.92rem}
   .report td{padding:8px 0}
-  .schwab{font-size:.86rem}
+
+  /* Schwab tables reflow: value+grade on row 1, threshold reference wraps below */
+  .schwab{font-size:.88rem}
+  .sb tr{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;
+    padding:6px 0;border-top:1px solid var(--line)}
+  .sb tr:first-child{border-top:none}
+  .sb td{padding:0;white-space:normal}
+  .sb td:nth-child(2){margin-left:auto;text-align:right;padding-right:0}
+  .sb td:nth-child(4){flex-basis:100%;padding-left:0;font-size:.86em}
 }
