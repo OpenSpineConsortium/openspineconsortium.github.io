@@ -370,5 +370,434 @@
     "ct": "ct.nii.gz",
     "seg": "seg.nii.gz"
   },
-  "label": "Case 0003 - v3 (PI/SS/PT/LL, femurs+S1)"
+  "label": "Case 0003 - v3 (PI/SS/PT/LL, femurs+S1)",
+  "postop": {
+    "summary": {
+      "case_id": "0003",
+      "supine_ct": true,
+      "PI": 55.531,
+      "SS": 35.531,
+      "PT": 20.0,
+      "LL": 55.7,
+      "PI-LL": {
+        "pi_minus_ll": -0.169,
+        "abs_pi_minus_ll": 0.169,
+        "ll_target_deg": [
+          46.5,
+          64.5
+        ],
+        "within_target_9deg": true,
+        "surgical_target": false,
+        "schwab_modifier": "0",
+        "ll_shortfall_deg": 0.0
+      },
+      "schwab": {
+        "PI-LL": "0",
+        "PT": "+",
+        "SVA": "out_of_scope",
+        "objectives": {
+          "LL=PI\u00b19\u00b0": true,
+          "PT<20\u00b0": false,
+          "SVA<5cm": null
+        },
+        "ll_increase_needed_deg": 0.0
+      },
+      "qc_flags": [
+        "ok"
+      ],
+      "method_version": "pi-v1+ll-v1",
+      "pi_category": "average",
+      "roussouly": "1-2",
+      "surgery": {
+        "ll_to_restore_deg": 0.0,
+        "severity": "mild",
+        "primary": "no major realignment \u2014 treat the symptomatic pathology (decompression \u00b1 single-level interbody for stability)",
+        "osteotomy": null,
+        "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
+        "objectives": {
+          "LL=PI\u00b19\u00b0": true,
+          "PT<20\u00b0": false
+        },
+        "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 0.0\u00b0 (Eq. 73.1); |PI\u2212LL| 0.2\u00b0, PT 20.0\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 0.0\u00b0."
+      },
+      "PT_standing": 20.0,
+      "SS_standing": 35.531,
+      "pelvic_rotation_deg": 3.218
+    },
+    "geometry": {
+      "sagittal_normal": [
+        0.9996,
+        -0.0241,
+        -0.0151
+      ],
+      "plane_origin": [
+        -29.3,
+        148.08,
+        -385.6
+      ],
+      "view_center": [
+        -7.42,
+        128.55,
+        -358.4
+      ],
+      "angles": [
+        {
+          "id": "SS",
+          "label": "Sacral Slope",
+          "value": 35.531,
+          "units": "\u00b0",
+          "color": "#60a5fa",
+          "segments": [
+            [
+              [
+                -28.99,
+                169.81,
+                -399.68
+              ],
+              [
+                -29.43,
+                138.66,
+                -379.53
+              ]
+            ],
+            [
+              [
+                -29.21,
+                154.24,
+                -389.61
+              ],
+              [
+                -31.42,
+                62.26,
+                -389.61
+              ]
+            ]
+          ],
+          "dashed": [
+            [
+              [
+                -29.43,
+                138.66,
+                -379.53
+              ],
+              [
+                -30.27,
+                79.89,
+                -341.52
+              ]
+            ]
+          ],
+          "arc": {
+            "center": [
+              -29.21,
+              154.24,
+              -389.61
+            ],
+            "a": [
+              -29.74,
+              117.29,
+              -365.71
+            ],
+            "b": [
+              -30.27,
+              110.25,
+              -389.61
+            ]
+          },
+          "label_at": [
+            -30.85,
+            76.26,
+            -373.61
+          ],
+          "arc_r_mm": 42
+        },
+        {
+          "id": "PI",
+          "label": "Pelvic Incidence",
+          "value": 55.531,
+          "units": "\u00b0",
+          "color": "#36d399",
+          "segments": [
+            [
+              [
+                -28.99,
+                169.81,
+                -399.68
+              ],
+              [
+                -29.43,
+                138.66,
+                -379.53
+              ]
+            ]
+          ],
+          "dashed": [
+            [
+              [
+                -29.21,
+                154.24,
+                -389.61
+              ],
+              [
+                -31.27,
+                110.83,
+                -456.77
+              ]
+            ],
+            [
+              [
+                -29.21,
+                154.24,
+                -389.61
+              ],
+              [
+                -29.62,
+                198.22,
+                -486.71
+              ]
+            ]
+          ],
+          "arc": {
+            "center": [
+              -29.21,
+              154.24,
+              -389.61
+            ],
+            "a": [
+              -30.39,
+              129.28,
+              -428.23
+            ],
+            "b": [
+              -29.39,
+              173.22,
+              -431.51
+            ]
+          },
+          "label_at": [
+            -30.15,
+            150.09,
+            -445.44
+          ],
+          "arc_r_mm": 30
+        },
+        {
+          "id": "PT",
+          "label": "Pelvic Tilt",
+          "value": 20.0,
+          "units": "\u00b0",
+          "color": "#fbbf24",
+          "segments": [
+            [
+              [
+                -29.62,
+                198.22,
+                -486.71
+              ],
+              [
+                -28.15,
+                198.18,
+                -389.61
+              ]
+            ]
+          ],
+          "dashed": [
+            [
+              [
+                -29.62,
+                198.22,
+                -486.71
+              ],
+              [
+                -29.21,
+                154.24,
+                -389.61
+              ]
+            ]
+          ],
+          "arc": {
+            "center": [
+              -29.62,
+              198.22,
+              -486.71
+            ],
+            "a": [
+              -28.92,
+              198.2,
+              -440.71
+            ],
+            "b": [
+              -29.44,
+              179.24,
+              -444.81
+            ]
+          },
+          "label_at": [
+            -28.04,
+            232.19,
+            -436.71
+          ],
+          "arc_r_mm": 34
+        },
+        {
+          "id": "LL",
+          "label": "Lumbar Lordosis",
+          "value": 55.7,
+          "units": "\u00b0",
+          "color": "#f472b6",
+          "segments": [
+            [
+              [
+                -28.16,
+                98.09,
+                -230.6
+              ],
+              [
+                -26.78,
+                151.53,
+                -224.84
+              ]
+            ],
+            [
+              [
+                -29.43,
+                138.66,
+                -379.53
+              ],
+              [
+                -28.82,
+                181.57,
+                -407.28
+              ]
+            ]
+          ],
+          "dashed": [
+            [
+              [
+                -26.78,
+                151.53,
+                -224.84
+              ],
+              [
+                -29.24,
+                172.73,
+                -420.96
+              ]
+            ],
+            [
+              [
+                -28.82,
+                181.57,
+                -407.28
+              ],
+              [
+                -30.73,
+                141.26,
+                -469.65
+              ]
+            ]
+          ],
+          "arc": {
+            "center": [
+              -29.24,
+              172.73,
+              -420.96
+            ],
+            "a": [
+              -26.78,
+              151.53,
+              -224.84
+            ],
+            "b": [
+              -30.73,
+              141.26,
+              -469.65
+            ]
+          },
+          "label_at": [
+            -30.31,
+            120.21,
+            -408.47
+          ],
+          "arc_r_mm": 40.0
+        }
+      ],
+      "points": [
+        {
+          "id": "bicoxofemoral",
+          "pos": [
+            -29.62,
+            198.22,
+            -486.71
+          ]
+        },
+        {
+          "id": "s1_midpoint",
+          "pos": [
+            -29.21,
+            154.24,
+            -389.61
+          ]
+        }
+      ]
+    },
+    "preop_summary": {
+      "case_id": "0003",
+      "supine_ct": true,
+      "PI": 55.531,
+      "SS": 32.314,
+      "PT": 23.218,
+      "LL": 45.7,
+      "PI-LL": {
+        "pi_minus_ll": 9.826,
+        "abs_pi_minus_ll": 9.826,
+        "ll_target_deg": [
+          46.5,
+          64.5
+        ],
+        "within_target_9deg": false,
+        "surgical_target": true,
+        "schwab_modifier": "0",
+        "ll_shortfall_deg": 0.826
+      },
+      "schwab": {
+        "PI-LL": "0",
+        "PT": "+",
+        "SVA": "out_of_scope",
+        "objectives": {
+          "LL=PI\u00b19\u00b0": false,
+          "PT<20\u00b0": false,
+          "SVA<5cm": null
+        },
+        "ll_increase_needed_deg": 4.044
+      },
+      "qc_flags": [
+        "ok"
+      ],
+      "method_version": "pi-v1+ll-v1",
+      "pi_category": "average",
+      "roussouly": "1-2",
+      "surgery": {
+        "ll_to_restore_deg": 4.044,
+        "severity": "mild",
+        "primary": "anterior/interbody fusion \u2014 single- or two-level ALIF (\u22486\u00b0, best at L5\u2013S1) \u00b1 LLIF",
+        "osteotomy": null,
+        "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
+        "objectives": {
+          "LL=PI\u00b19\u00b0": false,
+          "PT<20\u00b0": false
+        },
+        "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 4.0\u00b0 (Eq. 73.1); |PI\u2212LL| 9.8\u00b0, PT 23.2\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0\u00b0."
+      }
+    },
+    "files": {
+      "ct": "postop_ct.nii.gz",
+      "seg": "postop_seg.nii.gz"
+    },
+    "plan": {
+      "level": "L4",
+      "technique": "alif",
+      "delta_deg": 10.0
+    }
+  }
 }

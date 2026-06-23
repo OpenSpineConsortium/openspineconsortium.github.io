@@ -55,6 +55,9 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .chip{background:var(--bg-2);color:var(--ink-soft);border:1px solid var(--line);
   border-radius:5px;padding:4px 10px;font-family:var(--mono);font-size:.74rem;cursor:pointer}
 .chip:hover{color:var(--ink);border-color:var(--teal)}
+.chip.is-on{color:var(--ink);border-color:var(--teal);box-shadow:inset 0 0 0 1px var(--teal)}
+.report .planrow td{color:var(--teal-br);border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:.76rem;padding-bottom:7px;white-space:normal;text-align:left}
 
 .metrics{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .metric{display:flex;align-items:center;gap:10px;width:100%;background:var(--bg-2);

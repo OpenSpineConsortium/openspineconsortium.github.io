@@ -34,6 +34,9 @@ const els = {
   clearMetrics: document.getElementById("clearMetrics"),
   report: document.getElementById("report"),
   schwab: document.getElementById("schwab"),
+  phaseRow: document.getElementById("phaseRow"),
+  phasePre: document.getElementById("phasePre"),
+  phasePost: document.getElementById("phasePost"),
 };
 
 const ctx = els.overlay.getContext("2d");
@@ -191,34 +194,50 @@ async function loadManifest() {
   if (m.cases.length) await loadCase(m.cases[0].dir);
 }
 
+let caseData = null, currentDir = null, phase = "preop";
+
 async function loadCase(dir) {
   els.loading.style.display = "flex";
+  currentDir = dir;
+  caseData = await (await fetch(`data/${dir}/metrics.json`, { cache: "no-store" })).json();
+  els.phaseRow.hidden = !caseData.postop;                  // toggle only when a post-op state exists
+  const startPost = !!caseData.postop && location.hash === "#post";
+  els.phasePre.classList.toggle("is-on", !startPost);
+  els.phasePost.classList.toggle("is-on", startPost);
+  await applyPhase(startPost ? "postop" : "preop");
+}
+
+// Show the pre-op case or its simulated post-op state (own volumes + construction).
+async function applyPhase(p) {
+  phase = p;
+  const post = (p === "postop" && caseData.postop) ? caseData.postop : null;
+  current = post
+    ? { case_id: caseData.case_id, label: caseData.label, files: post.files,
+        geometry: post.geometry, summary: post.summary,
+        postop_plan: post.plan, preop_summary: post.preop_summary }
+    : caseData;
+  els.loading.style.display = "flex";
   active.clear();
-  current = await (await fetch(`data/${dir}/metrics.json`, { cache: "no-store" })).json();
-  const base = `data/${dir}/`;
+  const base = `data/${currentDir}/`;
   const vols = [];
   if (current.files.ct) vols.push({ url: base + current.files.ct, colormap: "gray" });
-  vols.push({
-    url: base + current.files.seg,
-    colormap: "random",            // distinct color per integer label
-    opacity: els.segOpacity.value / 100,
-  });
+  vols.push({ url: base + current.files.seg, colormap: "random",
+              opacity: els.segOpacity.value / 100 });
   await nv.loadVolumes(vols);
-  // CT is volume 0 if present, seg is last
   segIdx = current.files.ct ? 1 : 0;
   applyWL("bone");
   setSeg(true);
-  resetView();                       // reset pan/zoom for the new case
+  resetView();
   centreOnConstruction();
   computePlaneMap();
   buildMetricButtons();
-  // show computable constructions by default (Clear removes them; clicking re-animates)
   for (const a of current.geometry.angles) {
     if (a.value != null) active.set(a.id, { t: 1, start: 0 });
   }
   for (const b of els.metricBtns.children) b.classList.toggle("is-active", active.has(b.dataset.id));
   renderReport();
-  els.hudCase.textContent = current.label || current.case_id;
+  els.hudCase.textContent = (current.label || current.case_id) +
+    (post ? "  ·  POST-OP (simulated)" : "");
   els.loading.style.display = "none";
   nv.drawScene();
 }
@@ -677,9 +696,13 @@ function tick(now) {
 }
 
 // ---- panel ----------------------------------------------------------------
+const METRIC_ORDER = ["PI", "SS", "PT", "LL"];   // match the Report's order
+
 function buildMetricButtons() {
   els.metricBtns.innerHTML = "";
-  for (const a of current.geometry.angles) {
+  const angles = [...current.geometry.angles].sort(
+    (x, y) => (METRIC_ORDER.indexOf(x.id) + 1 || 99) - (METRIC_ORDER.indexOf(y.id) + 1 || 99));
+  for (const a of angles) {
     const b = document.createElement("button");
     b.className = "metric"; b.dataset.id = a.id; b.style.borderLeftColor = a.color;
     b.style.color = a.color;
@@ -697,8 +720,17 @@ function renderReport() {
   const s = current.summary, rows = [];
   const f = (v, u = "°") => (v == null ? '<span class="muted">n/a</span>' : `${v}${u}`);
   rows.push(["PI", f(s.PI)], ["SS", f(s.SS)], ["PT", f(s.PT)], ["LL", f(s.LL)]);
+  if (s.PT_standing != null) rows.push(["PT (standing)", f(s.PT_standing)]);
   if (s["PI-LL"]) rows.push(["PI − LL", f(s["PI-LL"].pi_minus_ll)]);
-  els.report.innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+  // post-op plan banner with the pre→post change
+  let plan = "";
+  if (current.postop_plan) {
+    const p = current.postop_plan, pre = current.preop_summary || {};
+    plan = `<tr class="planrow"><td colspan="2">Simulated ${String(p.technique).toUpperCase()} `
+      + `${p.level} · ΔLL ${p.delta_deg}° &nbsp;|&nbsp; LL ${pre.LL}→${s.LL}° · `
+      + `PI−LL ${pre["PI-LL"] ? pre["PI-LL"].pi_minus_ll : "?"}→${s["PI-LL"] ? s["PI-LL"].pi_minus_ll : "?"}°</td></tr>`;
+  }
+  els.report.innerHTML = plan + rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
   if (s.schwab) {
     const sw = s.schwab, pll = s["PI-LL"] || {}, obj = sw.objectives || {};
     const g = (x) => `<span class="grade grade--${x === "++" ? 2 : x === "+" ? 1 : 0}">${x}</span>`;
@@ -749,6 +781,16 @@ function renderReport() {
 
 // ---- events ---------------------------------------------------------------
 els.caseSel.onchange = (e) => loadCase(e.target.value);
+els.phasePre.onclick = () => {
+  if (phase === "preop") return;
+  els.phasePre.classList.add("is-on"); els.phasePost.classList.remove("is-on");
+  applyPhase("preop");
+};
+els.phasePost.onclick = () => {
+  if (phase === "postop" || !caseData || !caseData.postop) return;
+  els.phasePost.classList.add("is-on"); els.phasePre.classList.remove("is-on");
+  applyPhase("postop");
+};
 els.toggleSeg.onclick = () => setSeg(!segOn);
 els.segOpacity.oninput = () => { if (segOn) nv.setOpacity(segIdx, els.segOpacity.value / 100); };
 els.clearMetrics.onclick = () => {

@@ -16,7 +16,7 @@
   <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
   <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolkit." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css?v=20260623a" />
+  <link rel="stylesheet" href="pacs.css?v=20260623r" />
 </head>
 <body>
   <header class="topbar">
@@ -46,6 +46,11 @@
     <aside class="panel">
       <div class="panel__group">
         <h2 class="panel__h">Display</h2>
+        <div class="row" id="phaseRow" hidden>
+          <span class="row__label">View</span>
+          <button class="chip is-on" id="phasePre">Pre-op</button>
+          <button class="chip" id="phasePost">Post-op (sim)</button>
+        </div>
         <button id="toggleSeg" class="ctl ctl--on" aria-pressed="true">Segmentation: on</button>
         <div class="row">
           <span class="row__label">Mask opacity</span>
@@ -61,8 +66,7 @@
 
       <div class="panel__group">
         <h2 class="panel__h">Spinopelvic measurements</h2>
-        <p class="panel__note">Click to render the construction on the sagittal view.
-          Values are precomputed by <code>ostk</code>; the draw simulates a live PACS measurement.</p>
+        <p class="panel__note">Click a parameter to draw its construction on the sagittal view.</p>
         <div id="metricBtns" class="metrics"></div>
         <button id="clearMetrics" class="ctl ctl--ghost">Clear overlays</button>
       </div>
@@ -75,6 +79,6 @@
     </aside>
   </main>
 
-  <script type="module" src="pacs.js?v=20260623c"></script>
+  <script type="module" src="pacs.js?v=20260623r"></script>
 </body>
 </html>
