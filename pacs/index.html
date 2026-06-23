@@ -16,7 +16,7 @@
   <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
   <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolkit." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css" />
+  <link rel="stylesheet" href="pacs.css?v=20260622p" />
 </head>
 <body>
   <header class="topbar">
@@ -37,7 +37,8 @@
       <div id="loading" class="loading">loading volume…</div>
       <div class="viewport__hud">
         <span id="hudCase">—</span>
-        <span class="viewport__hint">desktop: scroll=slice · drag=zoom · right-drag=pan · touch: 1-finger=slice · pinch=zoom/pan</span>
+        <span class="viewport__hint viewport__hint--desktop">scroll = slice · drag = zoom · right-drag = pan</span>
+        <span class="viewport__hint viewport__hint--touch">1-finger = slice · pinch = zoom &amp; pan</span>
       </div>
     </section>
 
@@ -71,15 +72,9 @@
         <table id="report" class="report"></table>
         <div id="schwab" class="schwab"></div>
       </div>
-
-      <div class="panel__group panel__group--foot">
-        <p class="foot">PI is valid on supine CT (posture-invariant). SS / PT / LL are
-          supine surrogates — flagged, not standing values. SVA / TPA need C7 / T1 and
-          are out of scope on this FOV.</p>
-      </div>
     </aside>
   </main>
 
-  <script type="module" src="pacs.js?v=20260622o"></script>
+  <script type="module" src="pacs.js?v=20260622p"></script>
 </body>
 </html>

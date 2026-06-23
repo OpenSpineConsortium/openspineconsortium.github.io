@@ -36,7 +36,6 @@ python tools/export_demo_case.py \
   **v3** cases. On pre-v3 cases (no femurs) those buttons are disabled and **LL**
   (which only needs L1 + S1) is shown. Re-export any case once v3 lands to unlock
   the full set.
-- SVA / TPA are out of scope on this FOV (no C7 / T1).
 
 ## Notes for production
 - Pin the NiiVue version in `pacs.js` (`…/@niivue/niivue@X.Y.Z/+esm`) once verified.

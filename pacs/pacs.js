@@ -698,8 +698,6 @@ function renderReport() {
             <td class="muted">0:&lt;10 · +:10–20 · ++:&gt;20</td></tr>
         <tr><td>PT</td><td>${f(s.PT)}</td><td>${g(sw.PT)}</td>
             <td class="muted">0:&lt;20 · +:20–30 · ++:&gt;30</td></tr>
-        <tr><td>SVA</td><td class="muted">n/a</td><td class="muted">—</td>
-            <td class="muted">needs C7 (out of FOV)</td></tr>
       </table>
       <div class="sb-h"><b>Alignment targets</b> <span class="muted">Greenberg §73.6</span></div>
       <table class="sb">
