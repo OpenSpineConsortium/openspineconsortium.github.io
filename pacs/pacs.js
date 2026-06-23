@@ -470,11 +470,26 @@ function drawAngle(a, t, dpr) {
       let dd = bb - ba; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
       ctx.setLineDash([5 * dpr, 4 * dpr]);
       ctx.strokeStyle = a.color; ctx.lineWidth = Math.max(2, 2 * dpr);
-      ctx.beginPath(); ctx.arc(C[0], C[1], (a.arc_r_px || 30) * dpr, ba, ba + dd, dd < 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(C[0], C[1], arcRadiusPx(a, C, dpr), ba, ba + dd, dd < 0); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
   // value label is drawn later, in a global declutter pass (drawLabels)
+}
+
+// Arc radius in screen px. Prefer arc_r_mm (world mm projected through the current
+// view) so the wedge scales with the anatomy/zoom and never balloons on a small
+// (mobile) render; fall back to the legacy fixed-pixel arc_r_px.
+function arcRadiusPx(a, Cpx, dpr) {
+  if (a.arc_r_mm && a.arc && a.arc.center && a.arc.a && Cpx) {
+    const c = a.arc.center, m = a.arc.a;
+    const dx = m[0] - c[0], dy = m[1] - c[1], dz = m[2] - c[2];
+    const L = Math.hypot(dx, dy, dz) || 1;
+    const tip = mmToPx([c[0] + dx / L * a.arc_r_mm, c[1] + dy / L * a.arc_r_mm,
+                        c[2] + dz / L * a.arc_r_mm]);
+    if (tip) return Math.hypot(tip[0] - Cpx[0], tip[1] - Cpx[1]);
+  }
+  return (a.arc_r_px || 30) * dpr;
 }
 
 // closest point on segment AB to point P (screen px)
@@ -537,7 +552,7 @@ function drawLabels(dpr) {
     if (a.arc) {                                       // sample the arc into short segments
       const C = mmToPx(a.arc.center), A = mmToPx(a.arc.a), B = mmToPx(a.arc.b);
       if (C && A && B) {
-        const r = (a.arc_r_px || 30) * dpr;
+        const r = arcRadiusPx(a, C, dpr);
         let ba = Math.atan2(A[1] - C[1], A[0] - C[0]);
         let dd = Math.atan2(B[1] - C[1], B[0] - C[0]) - ba;
         while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
@@ -691,6 +706,19 @@ function renderReport() {
       : `<span class="grade grade--${ok ? 0 : 2}">${ok ? "✓" : "✗"}</span>`;
     const tgt = pll.ll_target_deg ? `${pll.ll_target_deg[0]}–${pll.ll_target_deg[1]}°` : "—";
     const rou = ({ "1-2": "1–2", "3": "3", "4": "4" })[s.roussouly] || s.roussouly || "—";
+    const sg = s.surgery;
+    const sevG = { mild: 0, moderate: 1, severe: 2 };
+    const surgeryHTML = sg ? `
+      <div class="sb-h"><b>Surgical planning</b> <span class="muted">Greenberg §73.7</span></div>
+      <table class="sb">
+        <tr><td>Lordosis to restore</td><td><b>${(+sg.ll_to_restore_deg).toFixed(1)}°</b></td>
+            <td colspan="2" class="muted">ΔLL = (PI−LL−9)+(PT−20)</td></tr>
+        <tr><td>Deformity</td>
+            <td><span class="grade grade--${sevG[sg.severity] ?? 0}">${sg.severity}</span></td>
+            <td colspan="2" class="muted">SRS-Schwab (Table 73.3)</td></tr>
+      </table>
+      <div class="rec"><b>Recommended:</b> ${sg.primary}.<br>
+        <b>Fixation:</b> ${sg.fixation}.${sg.osteotomy ? ` <b>Osteotomy:</b> ${sg.osteotomy}.` : ""}</div>` : "";
     els.schwab.innerHTML = `
       <div class="sb-h"><b>SRS-Schwab</b> <span class="muted">sagittal modifier · grade 0 / + / ++</span></div>
       <table class="sb">
@@ -710,7 +738,8 @@ function renderReport() {
       </table>
       <div class="sb-h"><b>Morphotype</b></div>
       <div class="muted">PI ${f(s.PI)} (${s.pi_category || "—"}) · Roussouly ${rou}
-        <span title="SS alone cannot split type 1 vs 2">(by SS ${f(s.SS)})</span></div>`;
+        <span title="SS alone cannot split type 1 vs 2">(by SS ${f(s.SS)})</span></div>
+      ${surgeryHTML}`;
   } else {
     els.schwab.innerHTML =
       `<div class="muted">PI / SS / PT unlock once the case has femur GT (v3).

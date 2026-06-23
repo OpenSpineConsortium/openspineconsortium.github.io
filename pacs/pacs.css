@@ -81,6 +81,9 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .sb td:nth-child(2){text-align:right;padding-right:8px;color:var(--ink)}
 .sb td:nth-child(4){padding-left:8px;font-size:.92em;white-space:normal}
 .schwab .muted{color:var(--ink-faint)}
+.rec{margin-top:6px;padding:9px 11px;background:var(--bg-2);border:1px solid var(--line);
+  border-left:3px solid var(--teal-br);border-radius:8px;color:var(--ink-soft);line-height:1.55}
+.rec b{color:var(--ink)}
 .grade{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:4px;
   font-weight:600}
 .grade--0{background:rgba(54,211,153,.15);color:var(--teal-br)}
@@ -102,10 +105,9 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
   .topbar__right{gap:10px;flex:1;min-width:0;justify-content:flex-end}
   .select{flex:1;min-width:0;max-width:62%;padding:8px 10px;font-size:.9rem}
 
-  /* one column: the page scrolls, the image stays pinned under the bar */
+  /* one column: a near-full-screen viewer (hero), controls a scroll below */
   .stage{display:block;height:auto}
-  .viewport{position:sticky;top:52px;z-index:20;height:48vh;height:48svh;
-    border-bottom:1px solid var(--line)}
+  .viewport{height:82vh;height:82svh;border-bottom:1px solid var(--line)}
   .viewport__hud{left:12px;bottom:10px}
   .viewport__hint--desktop{display:none}
   .viewport__hint--touch{display:inline}

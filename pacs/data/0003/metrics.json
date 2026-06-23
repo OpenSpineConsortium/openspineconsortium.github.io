@@ -35,7 +35,19 @@
     ],
     "method_version": "pi-v1+ll-v1",
     "pi_category": "average",
-    "roussouly": "1-2"
+    "roussouly": "1-2",
+    "surgery": {
+      "ll_to_restore_deg": 4.044,
+      "severity": "mild",
+      "primary": "anterior/interbody fusion \u2014 single- or two-level ALIF (\u22486\u00b0, best at L5\u2013S1) \u00b1 LLIF",
+      "osteotomy": null,
+      "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
+      "objectives": {
+        "LL=PI\u00b19\u00b0": false,
+        "PT<20\u00b0": false
+      },
+      "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 4.0\u00b0 (Eq. 73.1); |PI\u2212LL| 9.8\u00b0, PT 23.2\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0\u00b0."
+    }
   },
   "geometry": {
     "sagittal_normal": [
@@ -122,90 +134,7 @@
           79.38,
           -374.66
         ],
-        "rule": {
-          "mid": [
-            -32.67,
-            157.37,
-            -390.66
-          ],
-          "ticks": [
-            [
-              [
-                -32.45,
-                172.96,
-                -400.52
-              ],
-              [
-                -31.95,
-                183.64,
-                -383.62
-              ]
-            ],
-            [
-              [
-                -32.67,
-                157.37,
-                -390.66
-              ],
-              [
-                -32.16,
-                168.05,
-                -373.76
-              ]
-            ],
-            [
-              [
-                -32.89,
-                141.78,
-                -380.8
-              ],
-              [
-                -32.38,
-                152.46,
-                -363.9
-              ]
-            ]
-          ],
-          "spans": [
-            {
-              "a": [
-                -32.1,
-                180.43,
-                -388.69
-              ],
-              "b": [
-                -32.32,
-                164.85,
-                -378.83
-              ],
-              "label": [
-                -31.95,
-                179.32,
-                -377.34
-              ],
-              "text": "18.4 mm"
-            },
-            {
-              "a": [
-                -32.32,
-                164.85,
-                -378.83
-              ],
-              "b": [
-                -32.53,
-                149.26,
-                -368.97
-              ],
-              "label": [
-                -32.22,
-                159.99,
-                -365.11
-              ],
-              "text": "18.4 mm"
-            }
-          ]
-        },
-        "arc_r_px": 92
+        "arc_r_mm": 42
       },
       {
         "id": "PI",
@@ -274,7 +203,8 @@
           -33.62,
           152.95,
           -446.48
-        ]
+        ],
+        "arc_r_mm": 30
       },
       {
         "id": "PT",
@@ -331,7 +261,8 @@
           -31.6,
           232.54,
           -436.65
-        ]
+        ],
+        "arc_r_mm": 34
       },
       {
         "id": "LL",
@@ -412,7 +343,8 @@
           -30.24,
           215.38,
           -320.35
-        ]
+        ],
+        "arc_r_mm": 40
       }
     ],
     "points": [
