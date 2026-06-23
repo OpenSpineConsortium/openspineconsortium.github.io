@@ -226,7 +226,7 @@ async function applyPhase(p) {
   await nv.loadVolumes(vols);
   segIdx = current.files.ct ? 1 : 0;
   applyWL("bone");
-  setSeg(true);
+  setSeg(p !== "postop");            // post-op: CT-only by default (cleaner synthetic image)
   resetView();
   centreOnConstruction();
   computePlaneMap();
@@ -726,8 +726,8 @@ function renderReport() {
   let plan = "";
   if (current.postop_plan) {
     const p = current.postop_plan, pre = current.preop_summary || {};
-    plan = `<tr class="planrow"><td colspan="2">Simulated ${String(p.technique).toUpperCase()} `
-      + `${p.level} · ΔLL ${p.delta_deg}° &nbsp;|&nbsp; LL ${pre.LL}→${s.LL}° · `
+    plan = `<tr class="planrow"><td colspan="2">Simulated correction · ΔLL ${p.delta_deg}° `
+      + `(approach: ${String(p.technique).toUpperCase()}) &nbsp;|&nbsp; LL ${pre.LL}→${s.LL}° · `
       + `PI−LL ${pre["PI-LL"] ? pre["PI-LL"].pi_minus_ll : "?"}→${s["PI-LL"] ? s["PI-LL"].pi_minus_ll : "?"}°</td></tr>`;
   }
   els.report.innerHTML = plan + rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
