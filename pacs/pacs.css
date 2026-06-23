@@ -9,6 +9,10 @@
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.disclaimer{margin:14px 2px 4px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:7px;background:var(--bg-2);color:var(--ink-faint);
+  font-size:.68rem;line-height:1.45}
+.disclaimer strong{color:var(--ink-soft);font-weight:600}
 
 .topbar{display:flex;align-items:center;gap:18px;height:52px;padding:0 18px;
   background:var(--bg-2);border-bottom:1px solid var(--line)}
@@ -57,7 +61,13 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .chip:hover{color:var(--ink);border-color:var(--teal)}
 .chip.is-on{color:var(--ink);border-color:var(--teal);box-shadow:inset 0 0 0 1px var(--teal)}
 .report .planrow td{color:var(--teal-br);border-bottom:1px solid var(--line);
-  font-family:var(--mono);font-size:.76rem;padding-bottom:7px;white-space:normal;text-align:left}
+  font-family:var(--mono);font-size:.76rem;padding-bottom:9px;white-space:normal;text-align:left}
+.plan-proc{color:var(--ink);font-weight:600;font-size:.8rem;margin-bottom:5px;line-height:1.3}
+.plan-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:5px}
+.plan-grid span{background:var(--bg-2);border:1px solid var(--line);border-radius:5px;
+  padding:2px 7px;font-size:.72rem;color:var(--muted)}
+.plan-grid b{color:var(--teal-br);font-weight:700}
+.plan-tgt{color:var(--muted);font-size:.71rem;line-height:1.3}
 
 .metrics{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
 .metric{display:flex;align-items:center;gap:10px;width:100%;background:var(--bg-2);

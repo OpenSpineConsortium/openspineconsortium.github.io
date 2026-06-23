@@ -226,7 +226,7 @@ async function applyPhase(p) {
   await nv.loadVolumes(vols);
   segIdx = current.files.ct ? 1 : 0;
   applyWL("bone");
-  setSeg(p !== "postop");            // post-op: CT-only by default (cleaner synthetic image)
+  setSeg(p !== "postop");            // post-op: CT-only until the clean re-measurable seg ships
   resetView();
   centreOnConstruction();
   computePlaneMap();
@@ -725,10 +725,22 @@ function renderReport() {
   // post-op plan banner with the pre→post change
   let plan = "";
   if (current.postop_plan) {
-    const p = current.postop_plan, pre = current.preop_summary || {};
-    plan = `<tr class="planrow"><td colspan="2">Simulated correction · ΔLL ${p.delta_deg}° `
-      + `(approach: ${String(p.technique).toUpperCase()}) &nbsp;|&nbsp; LL ${pre.LL}→${s.LL}° · `
-      + `PI−LL ${pre["PI-LL"] ? pre["PI-LL"].pi_minus_ll : "?"}→${s["PI-LL"] ? s["PI-LL"].pi_minus_ll : "?"}°</td></tr>`;
+    const p = current.postop_plan, pre = current.preop_summary || {}, tg = p.targets || {};
+    const span = p.level_span || p.level || "";
+    const proc = p.cage_levels
+      ? `${p.cage_levels}-level interbody fusion · ${String(p.technique).toUpperCase()} ${span} — cage per disc, no body resection`
+      : `${String(p.technique).toUpperCase()}${span ? " · " + span : ""}`;
+    const chip = (lbl, v) => v != null ? `<span>${lbl} <b>+${v}°</b></span>` : "";
+    plan = `<tr class="planrow"><td colspan="2">`
+      + `<div class="plan-proc">${proc}</div>`
+      + `<div class="plan-grid">`
+      +   chip("lordosis restored", p.delta_deg)
+      +   chip("reciprocal thoracic", p.reciprocal_tk_deg)
+      +   chip("pelvic anteversion", p.pelvic_antevert_deg)
+      + `</div>`
+      + (tg["PI-LL"] != null ? `<div class="plan-tgt">Age-adjusted targets (Lafage, age ${p.age}): `
+          + `PI−LL ${tg["PI-LL"]}° · PT ${tg.PT}° · SVA ${tg.SVA_mm} mm</div>` : "")
+      + `</td></tr>`;
   }
   els.report.innerHTML = plan + rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
   if (s.schwab) {
