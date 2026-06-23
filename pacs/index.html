@@ -3,7 +3,7 @@
   OpenSpineConsortium — PACS demo.
   A NiiVue-based viewer that loads CTSpinoPelvic1K cases, toggles the
   segmentation, and renders spinopelvic angles (PI / SS / PT / LL) computed by
-  OpenSpineToolbox (ostk). Angle values are precomputed (metrics.json) and
+  OpenSpineToolkit (ostk). Angle values are precomputed (metrics.json) and
   "calculated" on click to simulate a real-time PACS measurement workflow.
 
   Serve over HTTP (NiiVue fetches .nii.gz): e.g. `python -m http.server` then
@@ -14,7 +14,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
-  <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolbox." />
+  <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolkit." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="pacs.css" />
 </head>
@@ -25,7 +25,7 @@
     <div class="topbar__right">
       <label for="caseSel" class="sr-only">Case</label>
       <select id="caseSel" class="select"></select>
-      <a class="topbar__link" href="https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolbox" target="_blank" rel="noopener">ostk ↗</a>
+      <a class="topbar__link" href="https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolkit" target="_blank" rel="noopener">ostk ↗</a>
     </div>
   </header>
 

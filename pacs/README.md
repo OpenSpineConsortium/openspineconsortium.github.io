@@ -2,7 +2,7 @@
 
 A NiiVue-based PACS-style viewer for CTSpinoPelvic1K. It loads a real CT +
 segmentation, toggles the masks, and renders spinopelvic angles — **PI, SS, PT,
-LL** — that were computed by [OpenSpineToolbox (`ostk`)](https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolbox).
+LL** — that were computed by [OpenSpineToolkit (`ostk`)](https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolkit).
 Values are precomputed (`metrics.json`); clicking a measurement animates the
 construction on the sagittal view to simulate a live PACS measurement.
 
@@ -21,7 +21,7 @@ Each case is `ct.nii.gz` + `seg.nii.gz` + `metrics.json`, listed in
 which **crops to the bone bounding box, optionally bone-masks, and downsamples** —
 turning a ~300 MB CT into ~1 MB:
 ```bash
-# in the OpenSpineToolbox repo
+# in the OpenSpineToolkit repo
 python tools/export_demo_case.py \
   --ct 0001_ct.nii.gz --label 0001_label.nii.gz \
   --case-id 0001 --title "Case 0001" \
