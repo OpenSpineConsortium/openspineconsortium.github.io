@@ -226,7 +226,7 @@ async function applyPhase(p) {
   await nv.loadVolumes(vols);
   segIdx = current.files.ct ? 1 : 0;
   applyWL("bone");
-  setSeg(p !== "postop");            // post-op: CT-only until the clean re-measurable seg ships
+  setSeg(true);                      // masks ride the same bend, so the overlay works in both phases
   resetView();
   centreOnConstruction();
   computePlaneMap();
