@@ -12,7 +12,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
   <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolbox." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -37,7 +37,7 @@
       <div id="loading" class="loading">loading volume…</div>
       <div class="viewport__hud">
         <span id="hudCase">—</span>
-        <span class="viewport__hint">scroll = slice · left-drag = zoom · right-drag = pan</span>
+        <span class="viewport__hint">desktop: scroll=slice · drag=zoom · right-drag=pan · touch: 1-finger=slice · pinch=zoom/pan</span>
       </div>
     </section>
 
@@ -80,6 +80,6 @@
     </aside>
   </main>
 
-  <script type="module" src="pacs.js?v=20260622m"></script>
+  <script type="module" src="pacs.js?v=20260622n"></script>
 </body>
 </html>

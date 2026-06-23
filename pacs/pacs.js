@@ -69,15 +69,61 @@ function applyView() {
 function resetView() { view.zoom = 1; view.panX = 0; view.panY = 0; applyView(); }
 // dragMode:0 means NiiVue ignores drags, so we DON'T block its events — leaving them
 // through keeps NiiVue's wheel handler alive (scroll = slice). We only read the drag.
+// Step the displayed slice by a frac amount (shared by wheel + 1-finger touch).
+function stepSliceFrac(df) {
+  if (!nv || !nv.scene || !nv.scene.crosshairPos) return;
+  if (!planeMap) computePlaneMap();
+  const depth = planeMap ? 3 - planeMap.iH - planeMap.iV : 0;
+  const cp = nv.scene.crosshairPos;
+  cp[depth] = Math.min(1, Math.max(0, cp[depth] + df));
+  nv.drawScene();
+}
+
+// ---- touch (iOS / Android): 1 finger = scroll slices, 2 fingers = pinch-zoom + pan.
+// Branches on pointerType so the desktop mouse mapping is untouched.
+const touches = new Map();          // pointerId -> {x, y}
+let pinch = null;                   // 2-finger baseline {dist, cx, cy, zoom, panX, panY}
+const tList = () => [...touches.values()];
+const tDist = () => { const [a, b] = tList(); return Math.hypot(a.x - b.x, a.y - b.y); };
+const tMid = () => { const [a, b] = tList(); return [(a.x + b.x) / 2, (a.y + b.y) / 2]; };
+
 let drag = null;
 els.gl.addEventListener("contextmenu", (e) => e.preventDefault());
 els.gl.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "touch") {
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) {
+      const m = tMid();
+      pinch = { dist: tDist() || 1, cx: m[0], cy: m[1], zoom: view.zoom, panX: view.panX, panY: view.panY };
+    }
+    try { els.gl.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+    return;
+  }
   drag = { pan: e.button === 2, x: e.clientX, y: e.clientY, moved: false,
            zoom: view.zoom, panX: view.panX, panY: view.panY };
   try { els.gl.setPointerCapture(e.pointerId); } catch (_) {}
   e.preventDefault();
 });
 els.gl.addEventListener("pointermove", (e) => {
+  if (e.pointerType === "touch") {
+    const p = touches.get(e.pointerId);
+    if (!p) return;
+    const prevY = p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (touches.size >= 2 && pinch) {              // pinch -> zoom + 2-finger pan
+      const m = tMid();
+      view.zoom = Math.max(0.4, Math.min(12, pinch.zoom * (tDist() / pinch.dist)));
+      view.panX = pinch.panX + (m[0] - pinch.cx);
+      view.panY = pinch.panY + (m[1] - pinch.cy);
+      applyView();
+    } else if (touches.size === 1) {               // one finger -> scroll slices
+      const h = els.gl.getBoundingClientRect().height || 1;
+      stepSliceFrac((prevY - e.clientY) / h);      // finger up = advance
+    }
+    e.preventDefault();
+    return;
+  }
   if (!drag) return;
   if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 4) drag.moved = true;
   if (drag.pan) {                                  // RIGHT-drag -> pan
@@ -89,10 +135,16 @@ els.gl.addEventListener("pointermove", (e) => {
   applyView();
   e.preventDefault();
 });
+function endTouch(e) {
+  touches.delete(e.pointerId);
+  if (touches.size < 2) pinch = null;              // re-baseline on the next 2nd finger
+}
 els.gl.addEventListener("pointerup", (e) => {
+  if (e.pointerType === "touch") { endTouch(e); e.preventDefault(); return; }
   if (drag && !drag.moved && !drag.pan) moveCrosshairTo(e.clientX, e.clientY);  // left CLICK
   drag = null;
 });
+els.gl.addEventListener("pointercancel", (e) => { if (e.pointerType === "touch") endTouch(e); });
 
 // Left CLICK (no drag) localizes: move NiiVue's crosshair to the click point. The gl
 // canvas is CSS-zoomed, so we invert the transform via its on-screen rect (linear)
@@ -120,14 +172,11 @@ function moveCrosshairTo(clientX, clientY) {
 // zoom/pan and regardless of where the cursor is.
 els.gl.addEventListener("wheel", (e) => {
   e.preventDefault(); e.stopImmediatePropagation();
-  if (!nv || !nv.scene || !nv.scene.crosshairPos) return;
   if (!planeMap) computePlaneMap();
   const depth = planeMap ? 3 - planeMap.iH - planeMap.iV : 0;
   const dims = (nv.back && nv.back.dims) || (nv.volumes[0] && nv.volumes[0].dims) || null;
   const n = dims && dims.length > depth + 1 ? dims[depth + 1] : 100;
-  const cp = nv.scene.crosshairPos;
-  cp[depth] = Math.min(1, Math.max(0, cp[depth] + (e.deltaY > 0 ? 1 : -1) / Math.max(1, n)));
-  nv.drawScene();
+  stepSliceFrac((e.deltaY > 0 ? 1 : -1) / Math.max(1, n));
 }, { passive: false, capture: true });
 
 // ---- data -----------------------------------------------------------------
