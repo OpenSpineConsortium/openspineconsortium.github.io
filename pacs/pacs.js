@@ -67,14 +67,16 @@ function applyView() {
   els.overlay.style.transform = tf;
 }
 function resetView() { view.zoom = 1; view.panX = 0; view.panY = 0; applyView(); }
+// dragMode:0 means NiiVue ignores drags, so we DON'T block its events — leaving them
+// through keeps NiiVue's wheel handler alive (scroll = slice). We only read the drag.
 let drag = null;
 els.gl.addEventListener("contextmenu", (e) => e.preventDefault());
 els.gl.addEventListener("pointerdown", (e) => {
   drag = { pan: e.button === 2, x: e.clientX, y: e.clientY,
            zoom: view.zoom, panX: view.panX, panY: view.panY };
   try { els.gl.setPointerCapture(e.pointerId); } catch (_) {}
-  e.stopImmediatePropagation(); e.preventDefault();
-}, true);
+  e.preventDefault();
+});
 els.gl.addEventListener("pointermove", (e) => {
   if (!drag) return;
   if (drag.pan) {                                  // RIGHT-drag -> pan
@@ -84,9 +86,24 @@ els.gl.addEventListener("pointermove", (e) => {
     view.zoom = Math.max(0.4, Math.min(12, drag.zoom * Math.exp((drag.y - e.clientY) * 0.005)));
   }
   applyView();
-  e.stopImmediatePropagation(); e.preventDefault();
-}, true);
-els.gl.addEventListener("pointerup", (e) => { if (drag) { drag = null; e.stopImmediatePropagation(); } }, true);
+  e.preventDefault();
+});
+els.gl.addEventListener("pointerup", () => { drag = null; });
+// Scroll = slice. We handle the wheel ourselves (capture + stop) because once the gl
+// canvas is CSS-zoomed, NiiVue's own wheel hit-test (getBoundingClientRect-based) is
+// off and it ignores the scroll. This steps the slice directly, so it works at ANY
+// zoom/pan and regardless of where the cursor is.
+els.gl.addEventListener("wheel", (e) => {
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (!nv || !nv.scene || !nv.scene.crosshairPos) return;
+  if (!planeMap) computePlaneMap();
+  const depth = planeMap ? 3 - planeMap.iH - planeMap.iV : 0;
+  const dims = (nv.back && nv.back.dims) || (nv.volumes[0] && nv.volumes[0].dims) || null;
+  const n = dims && dims.length > depth + 1 ? dims[depth + 1] : 100;
+  const cp = nv.scene.crosshairPos;
+  cp[depth] = Math.min(1, Math.max(0, cp[depth] + (e.deltaY > 0 ? 1 : -1) / Math.max(1, n)));
+  nv.drawScene();
+}, { passive: false, capture: true });
 
 // ---- data -----------------------------------------------------------------
 async function loadManifest() {
@@ -284,6 +301,7 @@ function drawOverlay() {
     const st = active.get(a.id);
     if (st && st.t >= 1) drawRule(a, dpr);
   }
+  drawLabels(dpr);                                  // value labels, globally decluttered
   if (DEBUG) drawDebugHud(dpr);
 }
 
@@ -382,15 +400,96 @@ function drawAngle(a, t, dpr) {
       ctx.setLineDash([]);
     }
   }
-  // value label
-  const L = mmToPx(a.label_at);
-  if (L) {
+  // value label is drawn later, in a global declutter pass (drawLabels)
+}
+
+// closest point on segment AB to point P (screen px)
+function closestOnSeg(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+  let t = L2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return [ax + t * dx, ay + t * dy];
+}
+
+// Dynamic anti-overlap: push label boxes apart from EACH OTHER and away from the
+// construction LINES/ARCS (obstacles), with a weak spring to each label's anchor.
+// The spring is released for the final iterations so clearance converges even if a
+// label has to travel far to find clear space (readability > staying near the line).
+function declutter(boxes, obstacles, dpr) {
+  const pad = 4 * dpr, clr = 10 * dpr;
+  for (let it = 0; it < 140; it++) {
+    let moved = false;
+    for (let i = 0; i < boxes.length; i++) {          // label vs label
+      for (let j = i + 1; j < boxes.length; j++) {
+        const A = boxes[i], B = boxes[j];
+        const dx = B.x - A.x, dy = B.y - A.y;
+        const ox = (A.hw + B.hw + pad) - Math.abs(dx);
+        const oy = (A.hh + B.hh + pad) - Math.abs(dy);
+        if (ox > 0 && oy > 0) {
+          moved = true;
+          if (ox <= oy) { const p = ox / 2 * (dx < 0 ? -1 : 1); A.x -= p; B.x += p; }
+          else { const p = oy / 2 * (dy < 0 ? -1 : 1); A.y -= p; B.y += p; }
+        }
+      }
+    }
+    for (const b of boxes) {                          // label vs lines/arcs
+      for (const s of obstacles) {
+        const c = closestOnSeg(b.x, b.y, s[0], s[1], s[2], s[3]);
+        const dx = b.x - c[0], dy = b.y - c[1];
+        const ox = (b.hw + clr) - Math.abs(dx), oy = (b.hh + clr) - Math.abs(dy);
+        if (ox > 0 && oy > 0) {                        // closest point inside the box -> push out
+          moved = true;
+          if (ox <= oy) b.x += (dx < 0 ? -1 : 1) * ox;
+          else b.y += (dy < 0 ? -1 : 1) * oy;
+        }
+      }
+    }
+    if (it < 90) for (const b of boxes) {             // spring back early; release late
+      b.x += (b.x0 - b.x) * 0.04; b.y += (b.y0 - b.y) * 0.04;
+    } else if (!moved) break;
+  }
+}
+
+function drawLabels(dpr) {
+  const fs = Math.max(14, 15 * dpr);
+  ctx.font = `${fs}px "IBM Plex Mono", monospace`;
+  const boxes = [], obstacles = [];
+  for (const a of current.geometry.angles) {
+    const st = active.get(a.id);
+    if (!st || st.t < 1) continue;
+    const addSeg = (s) => { const p = mmToPx(s[0]), q = mmToPx(s[1]); if (p && q) obstacles.push([p[0], p[1], q[0], q[1]]); };
+    (a.segments || []).forEach(addSeg);
+    (a.dashed || []).forEach(addSeg);
+    if (a.arc) {                                       // sample the arc into short segments
+      const C = mmToPx(a.arc.center), A = mmToPx(a.arc.a), B = mmToPx(a.arc.b);
+      if (C && A && B) {
+        const r = (a.arc_r_px || 30) * dpr;
+        let ba = Math.atan2(A[1] - C[1], A[0] - C[0]);
+        let dd = Math.atan2(B[1] - C[1], B[0] - C[0]) - ba;
+        while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+        let prev = null;
+        for (let k = 0; k <= 6; k++) {
+          const ang = ba + dd * k / 6, pt = [C[0] + r * Math.cos(ang), C[1] + r * Math.sin(ang)];
+          if (prev) obstacles.push([prev[0], prev[1], pt[0], pt[1]]);
+          prev = pt;
+        }
+      }
+    }
+    if (!a.label_at) continue;
+    const L = mmToPx(a.label_at);
+    if (!L) continue;
     const txt = `${a.id} ${a.value}${a.units}`;
-    ctx.font = `${Math.max(14, 15 * dpr)}px "IBM Plex Mono", monospace`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.lineWidth = Math.max(3, 4 * dpr); ctx.strokeStyle = "rgba(0,0,0,0.92)";
-    ctx.strokeText(txt, L[0], L[1]);
-    ctx.fillStyle = a.color; ctx.fillText(txt, L[0], L[1]);
+    boxes.push({ txt, color: a.color, x: L[0], y: L[1], x0: L[0], y0: L[1],
+                 hw: ctx.measureText(txt).width / 2 + 2 * dpr, hh: fs / 2 + 2 * dpr });
+  }
+  declutter(boxes, obstacles, dpr);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineWidth = Math.max(3, 4 * dpr);
+  for (const b of boxes) {
+    const x = Math.min(els.overlay.width - b.hw, Math.max(b.hw, b.x));
+    const y = Math.min(els.overlay.height - b.hh, Math.max(b.hh, b.y));
+    ctx.strokeStyle = "rgba(0,0,0,0.92)"; ctx.strokeText(b.txt, x, y);
+    ctx.fillStyle = b.color; ctx.fillText(b.txt, x, y);
   }
 }
 
@@ -431,7 +530,7 @@ function drawRule(a, dpr) {
   }
   ctx.setLineDash([]);
   // <-> arrow over each half + its length printed IN LINE with the arrow (rotated)
-  ctx.font = `${Math.max(11, 12 * dpr)}px "IBM Plex Mono", monospace`;
+  ctx.font = `${Math.max(8, 8.5 * dpr)}px "IBM Plex Mono", monospace`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (const s of r.spans || []) {
     const p = mmToPx(s.a), q = mmToPx(s.b);
@@ -512,11 +611,34 @@ function renderReport() {
   if (s["PI-LL"]) rows.push(["PI − LL", f(s["PI-LL"].pi_minus_ll)]);
   els.report.innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
   if (s.schwab) {
+    const sw = s.schwab, pll = s["PI-LL"] || {}, obj = sw.objectives || {};
     const g = (x) => `<span class="grade grade--${x === "++" ? 2 : x === "+" ? 1 : 0}">${x}</span>`;
-    els.schwab.innerHTML =
-      `<div><b>SRS-Schwab</b></div>
-       <div>PI–LL ${g(s.schwab["PI-LL"])} · PT ${g(s.schwab.PT)}</div>
-       <div>LL increase needed: <b>${s.schwab.ll_increase_needed_deg}°</b></div>`;
+    const chk = (ok) => ok == null ? '<span class="muted">—</span>'
+      : `<span class="grade grade--${ok ? 0 : 2}">${ok ? "✓" : "✗"}</span>`;
+    const tgt = pll.ll_target_deg ? `${pll.ll_target_deg[0]}–${pll.ll_target_deg[1]}°` : "—";
+    const rou = ({ "1-2": "1–2", "3": "3", "4": "4" })[s.roussouly] || s.roussouly || "—";
+    els.schwab.innerHTML = `
+      <div class="sb-h"><b>SRS-Schwab</b> <span class="muted">sagittal modifier · grade 0 / + / ++</span></div>
+      <table class="sb">
+        <tr><td>PI–LL</td><td>${f(pll.pi_minus_ll)}</td><td>${g(sw["PI-LL"])}</td>
+            <td class="muted">0:&lt;10 · +:10–20 · ++:&gt;20</td></tr>
+        <tr><td>PT</td><td>${f(s.PT)}</td><td>${g(sw.PT)}</td>
+            <td class="muted">0:&lt;20 · +:20–30 · ++:&gt;30</td></tr>
+        <tr><td>SVA</td><td class="muted">n/a</td><td class="muted">—</td>
+            <td class="muted">needs C7 (out of FOV)</td></tr>
+      </table>
+      <div class="sb-h"><b>Alignment targets</b> <span class="muted">Greenberg §73.6</span></div>
+      <table class="sb">
+        <tr><td>LL = PI ± 9°</td><td>${tgt}</td><td>${chk(obj["LL=PI±9°"])}</td>
+            <td class="muted">LL ${f(s.LL)}</td></tr>
+        <tr><td>PT &lt; 20°</td><td></td><td>${chk(obj["PT<20°"])}</td>
+            <td class="muted">PT ${f(s.PT)}</td></tr>
+        <tr><td>ΔLL to target</td><td><b>${sw.ll_increase_needed_deg}°</b></td>
+            <td colspan="2" class="muted">lordosis to restore (Eq. 73.1)</td></tr>
+      </table>
+      <div class="sb-h"><b>Morphotype</b></div>
+      <div class="muted">PI ${f(s.PI)} (${s.pi_category || "—"}) · Roussouly ${rou}
+        <span title="SS alone cannot split type 1 vs 2">(by SS ${f(s.SS)})</span></div>`;
   } else {
     els.schwab.innerHTML =
       `<div class="muted">PI / SS / PT unlock once the case has femur GT (v3).
