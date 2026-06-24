@@ -16,7 +16,7 @@
   <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
   <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolkit." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css?v=20260624a" />
+  <link rel="stylesheet" href="pacs.css?v=20260624h" />
 </head>
 <body>
   <header class="topbar">
@@ -34,7 +34,7 @@
     <section class="viewport">
       <canvas id="gl"></canvas>
       <canvas id="overlay" class="overlay"></canvas>
-      <div id="loading" class="loading">loading volume…</div>
+      <div id="loading" class="loading"><div class="loadbar"><span></span></div><div class="loadtxt">loading…</div></div>
       <div class="viewport__hud">
         <span id="hudCase">—</span>
         <span class="viewport__hint viewport__hint--desktop">scroll = slice · drag = zoom · right-drag = pan</span>
@@ -86,6 +86,6 @@
     </aside>
   </main>
 
-  <script type="module" src="pacs.js?v=20260624g"></script>
+  <script type="module" src="pacs.js?v=20260624h"></script>
 </body>
 </html>

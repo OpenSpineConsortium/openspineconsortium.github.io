@@ -32,8 +32,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);over
 .viewport{position:relative;background:#000;overflow:hidden;touch-action:none}
 #gl{width:100%;height:100%;display:block;touch-action:none;-webkit-user-select:none;user-select:none}
 .overlay{position:absolute;inset:0;pointer-events:none}
-.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);color:var(--ink-faint);font-size:.85rem}
+.loading{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;
+  align-items:center;justify-content:center;font-family:var(--mono);color:var(--ink-faint)}
+.loadbar{width:190px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.loadbar span{display:block;height:100%;width:42%;border-radius:2px;background:var(--teal-br);
+  animation:loadslide 1.05s ease-in-out infinite}
+@keyframes loadslide{0%{transform:translateX(-115%)}100%{transform:translateX(305%)}}
+.loadtxt{font-size:.76rem;letter-spacing:.03em}
 .viewport__hud{position:absolute;left:14px;bottom:12px;display:flex;flex-direction:column;gap:4px;
   font-family:var(--mono);font-size:.74rem;color:var(--ink-soft);text-shadow:0 1px 3px #000}
 .viewport__hint{color:var(--ink-faint)}

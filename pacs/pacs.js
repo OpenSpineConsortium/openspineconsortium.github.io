@@ -228,8 +228,8 @@ function prefetchPhase(p) {
   [f.ct, f.seg].forEach((n) => { if (n) fetch(volURL(n), { cache: "force-cache" }).catch(() => {}); });
 }
 
-// Progressive load: (1) text/measurements instantly, (2) masks (small) for a fast first
-// paint, (3) CT in the background for the full image, (4) prefetch the other phase.
+// Load the phase's CT + seg together (single clean paint, progress bar while it loads),
+// then prefetch the OTHER phase so the Pre/Post toggle stays low-latency.
 async function applyPhase(p) {
   phase = p;
   const post = (p === "postop" && caseData.postop) ? caseData.postop : null;
@@ -239,43 +239,29 @@ async function applyPhase(p) {
         postop_plan: post.plan, preop_summary: post.preop_summary }
     : caseData;
   active.clear();
-
-  // (1) TEXT FIRST — measurements + report render immediately (no volume needed)
+  els.loading.style.display = "flex";
+  const seq = ++loadSeq;
+  const segOpac = els.segOpacity.value / 100;
+  const vols = [];
+  if (current.files.ct) vols.push({ url: volURL(current.files.ct), colormap: "gray" });
+  vols.push({ url: volURL(current.files.seg), colormap: "random", opacity: segOpac });
+  await nv.loadVolumes(vols);
+  if (seq !== loadSeq) return;                  // a newer phase switch superseded us
+  segIdx = current.files.ct ? 1 : 0;
+  applyWL("bone");
+  setSeg(true);
+  resetView();
+  centreOnConstruction();
+  computePlaneMap();
   buildMetricButtons();
   for (const a of current.geometry.angles) if (a.value != null) active.set(a.id, { t: 1, start: 0 });
   for (const b of els.metricBtns.children) b.classList.toggle("is-active", active.has(b.dataset.id));
   renderReport();
   els.hudCase.textContent = (current.label || current.case_id) +
     (post ? "  ·  POST-OP (simulated)" : "");
-
-  // (2) MASKS FIRST — load just the segmentation (small) for a fast first paint
-  const seq = ++loadSeq;
-  els.loading.style.display = "flex";
-  const segOpac = els.segOpacity.value / 100;
-  await nv.loadVolumes([{ url: volURL(current.files.seg), colormap: "random", opacity: segOpac }]);
-  if (seq !== loadSeq) return;                 // a newer phase switch superseded us
-  segIdx = 0; ctReady = false;
-  resetView(); computePlaneMap(); centreOnConstruction(); setSeg(true);
   els.loading.style.display = "none";
   nv.drawScene();
-
-  // (3) CT IN THE BACKGROUND — re-layer as CT base + seg overlay, preserving the view
-  if (current.files.ct) {
-    const cross = nv.scene.crosshairPos ? nv.scene.crosshairPos.slice() : null;
-    nv.loadVolumes([
-      { url: volURL(current.files.ct), colormap: "gray" },
-      { url: volURL(current.files.seg), colormap: "random", opacity: segOpac },
-    ]).then(() => {
-      if (seq !== loadSeq) return;
-      segIdx = 1; ctReady = true;
-      applyWL("bone"); setSeg(segOn); computePlaneMap();
-      if (cross) { try { nv.scene.crosshairPos = cross; } catch (e) { /* drift */ } }
-      nv.drawScene();
-    }).catch(() => {});
-  }
-
-  // (4) PREFETCH the other phase so the toggle is low-latency
-  prefetchPhase(p === "preop" ? "postop" : "preop");
+  prefetchPhase(p === "preop" ? "postop" : "preop");   // warm cache for a snappy toggle
 }
 
 let segIdx = 1;
