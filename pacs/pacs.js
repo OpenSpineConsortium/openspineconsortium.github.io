@@ -40,7 +40,7 @@ const els = {
 };
 
 const ctx = els.overlay.getContext("2d");
-const DATA_BUILD = "20260624f";    // bump when nii.gz volumes change (cache-bust)
+const DATA_BUILD = "20260624i";    // bump when nii.gz volumes change (cache-bust)
 // ostk label-id -> display name (L1-L6=1-6, S1=7, sacrum=8, hips=9/10, femurs=11/12,
 // T1-T13=13-25); ribs (26-49) intentionally unnamed so the readout stays clinical.
 const LABEL_NAMES = (() => {
