@@ -41,6 +41,14 @@ const els = {
 
 const ctx = els.overlay.getContext("2d");
 const DATA_BUILD = "20260624f";    // bump when nii.gz volumes change (cache-bust)
+// ostk label-id -> display name (L1-L6=1-6, S1=7, sacrum=8, hips=9/10, femurs=11/12,
+// T1-T13=13-25); ribs (26-49) intentionally unnamed so the readout stays clinical.
+const LABEL_NAMES = (() => {
+  const m = { 1: "L1", 2: "L2", 3: "L3", 4: "L4", 5: "L5", 6: "L6", 7: "S1",
+              8: "Sacrum", 9: "L hip", 10: "R hip", 11: "L femur", 12: "R femur" };
+  for (let i = 1; i <= 13; i++) m[12 + i] = "T" + i;
+  return m;
+})();
 let nv, current = null;            // current = parsed metrics.json
 const active = new Map();          // angle id -> {t:0..1} animation state
 
@@ -208,7 +216,20 @@ async function loadCase(dir) {
   await applyPhase(startPost ? "postop" : "preop");
 }
 
-// Show the pre-op case or its simulated post-op state (own volumes + construction).
+const volURL = (f) => `data/${currentDir}/${f}?v=${DATA_BUILD}`;
+const filesForPhase = (p) =>
+  (p === "postop" && caseData.postop) ? caseData.postop.files : caseData.files;
+let loadSeq = 0, ctReady = false;
+
+// Warm the browser cache for the OTHER phase's volumes so the Pre/Post toggle is snappy.
+function prefetchPhase(p) {
+  const f = filesForPhase(p);
+  if (!f) return;
+  [f.ct, f.seg].forEach((n) => { if (n) fetch(volURL(n), { cache: "force-cache" }).catch(() => {}); });
+}
+
+// Progressive load: (1) text/measurements instantly, (2) masks (small) for a fast first
+// paint, (3) CT in the background for the full image, (4) prefetch the other phase.
 async function applyPhase(p) {
   phase = p;
   const post = (p === "postop" && caseData.postop) ? caseData.postop : null;
@@ -217,31 +238,44 @@ async function applyPhase(p) {
         geometry: post.geometry, summary: post.summary,
         postop_plan: post.plan, preop_summary: post.preop_summary }
     : caseData;
-  els.loading.style.display = "flex";
   active.clear();
-  const base = `data/${currentDir}/`;
-  const cb = `?v=${DATA_BUILD}`;            // cache-bust volumes so data updates actually load
-  const vols = [];
-  if (current.files.ct) vols.push({ url: base + current.files.ct + cb, colormap: "gray" });
-  vols.push({ url: base + current.files.seg + cb, colormap: "random",
-              opacity: els.segOpacity.value / 100 });
-  await nv.loadVolumes(vols);
-  segIdx = current.files.ct ? 1 : 0;
-  applyWL("bone");
-  setSeg(true);                      // masks ride the same bend, so the overlay works in both phases
-  resetView();
-  centreOnConstruction();
-  computePlaneMap();
+
+  // (1) TEXT FIRST — measurements + report render immediately (no volume needed)
   buildMetricButtons();
-  for (const a of current.geometry.angles) {
-    if (a.value != null) active.set(a.id, { t: 1, start: 0 });
-  }
+  for (const a of current.geometry.angles) if (a.value != null) active.set(a.id, { t: 1, start: 0 });
   for (const b of els.metricBtns.children) b.classList.toggle("is-active", active.has(b.dataset.id));
   renderReport();
   els.hudCase.textContent = (current.label || current.case_id) +
     (post ? "  ·  POST-OP (simulated)" : "");
+
+  // (2) MASKS FIRST — load just the segmentation (small) for a fast first paint
+  const seq = ++loadSeq;
+  els.loading.style.display = "flex";
+  const segOpac = els.segOpacity.value / 100;
+  await nv.loadVolumes([{ url: volURL(current.files.seg), colormap: "random", opacity: segOpac }]);
+  if (seq !== loadSeq) return;                 // a newer phase switch superseded us
+  segIdx = 0; ctReady = false;
+  resetView(); computePlaneMap(); centreOnConstruction(); setSeg(true);
   els.loading.style.display = "none";
   nv.drawScene();
+
+  // (3) CT IN THE BACKGROUND — re-layer as CT base + seg overlay, preserving the view
+  if (current.files.ct) {
+    const cross = nv.scene.crosshairPos ? nv.scene.crosshairPos.slice() : null;
+    nv.loadVolumes([
+      { url: volURL(current.files.ct), colormap: "gray" },
+      { url: volURL(current.files.seg), colormap: "random", opacity: segOpac },
+    ]).then(() => {
+      if (seq !== loadSeq) return;
+      segIdx = 1; ctReady = true;
+      applyWL("bone"); setSeg(segOn); computePlaneMap();
+      if (cross) { try { nv.scene.crosshairPos = cross; } catch (e) { /* drift */ } }
+      nv.drawScene();
+    }).catch(() => {});
+  }
+
+  // (4) PREFETCH the other phase so the toggle is low-latency
+  prefetchPhase(p === "preop" ? "postop" : "preop");
 }
 
 let segIdx = 1;
@@ -397,7 +431,35 @@ function drawOverlay() {
     if (st && st.t >= 1) drawRule(a, dpr);
   }
   drawLabels(dpr);                                  // value labels, globally decluttered
+  drawCrosshairLabel(dpr);                          // which structure the crosshair sits on
   if (DEBUG) drawDebugHud(dpr);
+}
+
+// Box readout: name the segmentation label the green crosshair (+) is currently on.
+function drawCrosshairLabel(dpr) {
+  if (!segOn || !nv?.scene?.crosshairPos || !nv.volumes[segIdx]) return;
+  let name = null;
+  try {
+    const frac = nv.scene.crosshairPos;
+    const vox = nv.frac2vox(frac, segIdx);
+    const v = Math.round(nv.volumes[segIdx].getValue(vox[0], vox[1], vox[2]));
+    name = LABEL_NAMES[v] || null;
+  } catch (e) { return; }                           // API drift -> just don't draw
+  if (!name) return;
+  let p; try { p = nv.frac2canvasPos(Array.from(nv.scene.crosshairPos)); } catch (e) { return; }
+  if (!p) return;
+  ctx.save();
+  ctx.font = `${13 * dpr}px ui-monospace, monospace`;
+  const w = ctx.measureText(name).width + 16 * dpr, h = 22 * dpr;
+  let x = p[0] + 14 * dpr, y = p[1] - h - 10 * dpr;
+  if (x + w > els.overlay.width) x = p[0] - w - 14 * dpr;   // flip if off-edge
+  if (y < 0) y = p[1] + 12 * dpr;
+  ctx.fillStyle = "rgba(8,11,16,0.86)";
+  ctx.strokeStyle = "#36d399"; ctx.lineWidth = 1.5 * dpr;
+  ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = "#36d399"; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  ctx.fillText(name, x + 8 * dpr, y + h / 2);
+  ctx.restore();
 }
 
 function drawDebugHud(dpr) {
