@@ -40,7 +40,7 @@ const els = {
 };
 
 const ctx = els.overlay.getContext("2d");
-const DATA_BUILD = "20260624e";    // bump when nii.gz volumes change (cache-bust)
+const DATA_BUILD = "20260624f";    // bump when nii.gz volumes change (cache-bust)
 let nv, current = null;            // current = parsed metrics.json
 const active = new Map();          // angle id -> {t:0..1} animation state
 
