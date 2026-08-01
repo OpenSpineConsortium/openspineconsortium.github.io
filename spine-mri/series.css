@@ -74,7 +74,13 @@ body.sm .card a, body.sm .rule a,
 body.sm figcaption a, body.sm .foot a { text-decoration: underline; }
 
 /* ---------- surfaces ---------- */
-body.sm .card                     { background: var(--paper-card); }
+/* Content blocks are see-through: the border defines them and the page
+   shows through. The handout's own CSS sets .card to #fff; this wins
+   because series.css loads last. */
+body.sm .card                     { background: transparent; }
+body.sm .mimic                    { background: transparent; }
+body.sm .gloss                    { background: transparent; }
+body.sm .takeaway                 { background: rgba(14, 95, 88, .07); }
 body.sm .imgcell, body.sm .ph     { background: #EFEADC; }
 body.sm thead th                  { background: rgba(14, 95, 88, .10); }
 body.sm tbody tr:nth-child(even)  { background: rgba(26, 28, 24, .03); }
