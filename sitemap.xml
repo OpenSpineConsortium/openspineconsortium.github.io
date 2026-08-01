@@ -15,4 +15,10 @@
     <lastmod>2026-06-21</lastmod>
     <priority>0.6</priority>
   </url>
+  <url><loc>https://openspineconsortium.com/spine-mri/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://openspineconsortium.com/spine-mri/timeline.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://openspineconsortium.com/spine-mri/01-cervical-cord-compression.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://openspineconsortium.com/spine-mri/02-lumbar-central-stenosis.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://openspineconsortium.com/spine-mri/03-nerve-root-and-foramen.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://openspineconsortium.com/spine-mri/04-anatomic-checkpoints.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
 </urlset>

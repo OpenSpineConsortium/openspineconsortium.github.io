@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading the compressed cord &middot; Reading Spine MRI &middot; OpenSpineConsortium</title>
+<meta name="description" content="Cervical spine MRI: which sequence is which, an eight-step read, the five findings that change management, and three artefacts that will fool you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+  :root{
+    --ink:#1A1C18; --muted:#585B50; --faint:#8C8E82; --rule:#DCD7C8;
+    --navy:#0E5F58; --navy-soft:#E7EFEC;
+    --green:#2E7D4F; --green-soft:#E5EFE4;
+    --orange:#BC6B26; --orange-soft:#F7E9D6;
+    --red:#A3301F;   --red-soft:#F6E4DE;
+    --grey-soft:#F1EEE3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:#fff; margin:0;
+    padding:2.5em 1.5em 6em; line-height:1.55; font-size:16px;
+  }
+  .wrap{max-width:1500px;margin:0 auto;}
+  .col{max-width:1180px;}
+
+  h1{font-size:30px;color:var(--navy);margin:0 0 .15em;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:18px;margin:0 0 .3em;}
+  .src{color:var(--faint);font-size:14px;margin:0 0 2.6em;font-style:italic;}
+
+  h2{font-size:21px;color:var(--navy);margin:3em 0 .2em;
+     border-bottom:2px solid var(--rule);padding-bottom:.35em;}
+  h2 .n{display:inline-block;background:var(--navy);color:#fff;border-radius:50%;
+        width:1.45em;height:1.45em;line-height:1.45em;text-align:center;
+        font-size:.8em;margin-right:.5em;}
+  .lede{color:var(--muted);font-size:16px;margin:.6em 0 1.4em;}
+
+  /* ── finding card ── */
+  .card{display:grid;grid-template-columns:300px 1fr;gap:26px;
+        border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;
+        margin:0 0 22px;background:#fff;}
+  .card.g{border-color:var(--green);}  .card.o{border-color:var(--orange);}
+  .card.r{border-color:var(--red);}    .card.n{border-color:var(--navy);}
+  .card .body{padding:20px 24px 22px 0;}
+  .imgcell{padding:14px;background:#EFEADC;border-right:1.6px solid var(--rule);}
+  .imgcell img{width:100%;height:auto;display:block;border-radius:5px;background:#111;}
+  .attrib{font-size:12.5px;color:var(--faint);margin-top:.6em;line-height:1.35;font-style:italic;}
+  .card.g .imgcell{border-right-color:var(--green);} .card.o .imgcell{border-right-color:var(--orange);}
+  .card.r .imgcell{border-right-color:var(--red);}   .card.n .imgcell{border-right-color:var(--navy);}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .trio figcaption,.duo figcaption{font-size:12px;color:var(--faint);text-align:center;margin-top:.3em;}
+  .pair img{max-width:100%;max-height:360px;width:auto;height:auto;display:block;margin:0 auto;
+            border-radius:5px;background:#111;}
+  .pair .a,.pair .b{display:flex;flex-direction:column;}
+  .pair .a img,.pair .b img{margin-top:auto;margin-bottom:auto;}
+  figure.wide{margin:1.6em 0;}
+  figure.wide img{max-width:100%;width:auto;height:auto;display:block;margin:0 auto;
+                  border-radius:6px;background:#111;}
+  figure.wide figcaption{font-size:14px;color:var(--faint);margin-top:.7em;line-height:1.5;}
+  .lic{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;padding:.15em .5em;
+       border-radius:3px;background:#E5EFE4;color:#2E7D4F;margin-left:.4em;vertical-align:.08em;}
+  .duo figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:.35em;}
+  .card h3{margin:0 0 .1em;font-size:19px;}
+  .card.g h3{color:var(--green);} .card.o h3{color:var(--orange);}
+  .card.r h3{color:var(--red);}   .card.n h3{color:var(--navy);}
+  .where{font-size:14px;color:var(--faint);margin:0 0 .9em;font-style:italic;}
+  .card p{margin:.5em 0;}
+  .card dl{display:grid;grid-template-columns:auto 1fr;gap:.35em .9em;margin:.9em 0 0;}
+  .card dt{font-weight:700;white-space:nowrap;}
+  .card dd{margin:0;}
+
+  /* ── image placeholder ── */
+  .ph{background:#EFEADC;border-right:1.6px dashed var(--rule);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:18px 14px;min-height:230px;color:#8a949c;}
+  .ph b{font-size:14px;letter-spacing:.04em;display:block;margin-bottom:.5em;}
+  .ph span{font-size:13px;line-height:1.4;}
+  .card.g .ph{border-right-color:var(--green);}
+  .card.o .ph{border-right-color:var(--orange);}
+  .card.r .ph{border-right-color:var(--red);}
+  .card.n .ph{border-right-color:var(--navy);}
+
+  /* ── mimic pair ── */
+  .mimic{border:1.6px solid var(--red);border-radius:9px;margin:0 0 22px;overflow:hidden;}
+  .mimic .head{background:var(--red-soft);padding:16px 24px;}
+  .mimic .head h3{margin:0;font-size:19px;color:var(--red);}
+  .mimic .head p{margin:.35em 0 0;font-size:16px;}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .pair > div{padding:0;}
+  .pair .lab{padding:12px 20px;font-size:14px;font-weight:700;}
+  .pair .a .lab{background:var(--red-soft);color:var(--red);}
+  .pair .b .lab{background:var(--green-soft);color:var(--green);}
+  .pair .ph{border-right:1.6px solid var(--rule);min-height:210px;}
+  .pair .b .ph{border-right:none;}
+  .pair .cap{padding:12px 20px 18px;font-size:14px;color:var(--muted);}
+
+  /* ── callouts ── */
+  .rule{border-left:5px solid var(--navy);background:var(--navy-soft);
+        padding:1em 1.2em;margin:1.2em 0;border-radius:0 6px 6px 0;}
+  .rule.r{border-left-color:var(--red);background:var(--red-soft);}
+  .rule.g{border-left-color:var(--green);background:var(--green-soft);}
+  .rule b{color:var(--navy);} .rule.r b{color:var(--red);} .rule.g b{color:var(--green);}
+
+  table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:16px;}
+  thead th{background:var(--navy-soft);color:var(--navy);text-align:left;
+           font-weight:700;border-bottom:2px solid var(--navy);}
+  th,td{padding:.6em .8em;border-bottom:1px solid var(--rule);vertical-align:top;}
+  tbody tr:nth-child(even){background:#F6F3E9;}
+
+  figure{margin:1.2em 0;}
+  /* width:100% + height:auto lets the browser derive height from the viewBox ratio.
+     Without it the SVG keeps its native 1460px width, overflows, and scrolls. */
+  svg{display:block;width:100%;height:auto;max-width:1460px;margin:0 auto;}
+
+  .foot{margin-top:4em;border-top:1px solid var(--rule);padding-top:1.2em;
+        font-size:15px;color:var(--muted);}
+  @media print{ body{padding:0;} .card,.mimic{page-break-inside:avoid;} h2{page-break-after:avoid;} }
+  @media (max-width:900px){ .card{grid-template-columns:1fr;} .card .body{padding:0 22px 22px;}
+    .ph{border-right:none;border-bottom:1.6px dashed var(--rule);} }
+</style>
+<link rel="stylesheet" href="series.css">
+</head>
+<body class="sm">
+  <header class="nav" id="nav">
+    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
+      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="../index.html#project">Project</a>
+      <a href="../index.html#datasets">Datasets</a>
+      <a href="../index.html#people">People</a>
+      <a href="../index.html#organization">Organization</a>
+      <a href="../index.html#education">Education</a>
+      <a href="../index.html#workshop">Workshop</a>
+      <a href="../index.html#goals">Goals</a>
+      <a href="index.html" class="is-active">Spine MRI</a>
+      <a href="../pacs/">Demo</a>
+      <a href="../index.html#join" class="nav__cta">Get Involved</a>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <div class="sm-bar">
+    <div class="sm-bar__in">
+      <a class="sm-bar__hub" href="index.html">Reading Spine MRI</a>
+      <nav class="sm-pills" aria-label="Series"><a class="sm-pill" href="timeline.html">Timelines</a><a class="sm-pill is-current" href="01-cervical-cord-compression.html">Part 1</a><a class="sm-pill" href="02-lumbar-central-stenosis.html">Part 2</a><a class="sm-pill" href="03-nerve-root-and-foramen.html">Part 3</a><a class="sm-pill" href="04-anatomic-checkpoints.html">Part 4</a></nav>
+    </div>
+  </div>
+
+<div class="wrap">
+
+<div class="col">
+<p style="font-size:14px;letter-spacing:.06em;color:var(--navy);font-weight:700;margin:0 0 .4em;">
+  Neuroradiology series &#183; Part 1 of 4</p>
+<h1>Reading the Compressed Cord</h1>
+<p class="sub">Cervical neuroradiology for advanced practice providers — what to look at, in what order, and what fools you.</p>
+<p class="src">Companion to the timeline figures.</p>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 2.6em;">
+  <div style="border:1.8px solid var(--navy);background:var(--navy-soft);border-radius:8px;padding:12px 14px;">
+    <div style="font-size:13px;font-weight:700;color:var(--navy);letter-spacing:.04em;">Part 1 &#183; you are here</div>
+    <div style="font-size:15px;margin-top:.25em;">Cervical cord compression</div>
+  </div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 2</div>
+    <div style="font-size:15px;margin-top:.25em;">Lumbar central stenosis — Schizas, dural sac area</div>
+  </div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 3</div>
+    <div style="font-size:15px;margin-top:.25em;">Nerve root &amp; foramen — Pfirrmann, Lee, denervation oedema</div>
+  </div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 4</div>
+    <div style="font-size:15px;margin-top:.25em;">Anatomic checkpoints — conus level, what not to miss</div>
+  </div>
+</div>
+</div>
+
+
+<!-- ══════════════════ 1 ══════════════════ -->
+<h2><span class="n">1</span>Before you open the study</h2>
+<div class="col">
+<p class="lede">Three habits, ten seconds each. They change what you see.</p>
+
+<div class="rule">
+  <b>Know the clinical question first.</b> "Weak hands, dropping objects, wide-based gait, eight months" sends you to
+  the cord. A read without a question is a tour, not an examination — and you will find degeneration, because
+  everyone has it.
+</div>
+
+<div class="rule">
+  <b>Do not read the report first.</b> If you are trying to build recognition, reading the impression destroys the
+  training value of the study. You will see what you were told to see. Read cold, commit in writing, then compare.
+</div>
+
+<div class="rule r">
+  <b>Check the study can answer the question.</b> No axial T2 through the level of interest? Then nobody can grade
+  the compression, including the radiologist. Recognising an inadequate study is itself a clinical skill, and
+  catching it early saves a wasted clinic visit.
+</div>
+</div>
+
+
+<!-- ══════════════════ 2 ══════════════════ -->
+<h2><span class="n">2</span>Which sequence is which</h2>
+<div class="col">
+<p class="lede">One heuristic settles it: <b>CSF bright → T2 or STIR. Fat also bright → T2. Fat dark → STIR.</b></p>
+</div>
+
+<div class="card n">
+  <div class="imgcell"><div class="trio"><figure style="margin:0"><img class="zoom" src="figures/panels/seq_a_STIR.jpg" alt="Sagittal STIR cervical spine" data-cap="STIR. CSF is bright AND the subcutaneous fat behind the neck is dark — that fat suppression is what tells you it is STIR and not T2. Oedema in the injured interspinous ligament (arrow) is conspicuous only here."><figcaption>STIR<br><span style="font-size:11px">CSF bright, fat dark</span></figcaption></figure><figure style="margin:0"><img class="zoom" src="figures/panels/seq_b_T2.jpg" alt="Sagittal T2 cervical spine" data-cap="T2. CSF bright and fat also bright. This is the sequence you judge cord compression on."><figcaption>T2<br><span style="font-size:11px">CSF bright, fat bright</span></figcaption></figure><figure style="margin:0"><img class="zoom" src="figures/panels/seq_c_T1.jpg" alt="Sagittal T1 cervical spine" data-cap="T1. The CSF column has gone dark and the marrow and fat are bright — the reverse of T2. This is where T1 hypointensity within the cord is judged."><figcaption>T1<br><span style="font-size:11px">CSF dark, fat bright</span></figcaption></figure></div><div class="attrib"><b>Look only at the CSF column</b> to tell these apart — it is bright, bright, dark from left to right.<br>Sagittal STIR / T2 / T1 of one cervical spine, one patient, one sitting. From a paediatric flexion injury, so the vertebral marrow is redder and less bright on T1 than an adult’s would be — the CSF signal is the reliable cue at any age.<br><b>GRE is deliberately not in this strip</b> — in a routine cervical protocol it is acquired <i>axially</i>, not sagittally, so it does not belong in a sagittal comparison. See below.<br>Sjoberg et al., <i>Children</i> 2023;10:1094, Fig 9 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>The orientation image</h3>
+    <p class="where">One cervical spine, the same sitting, three sequences side by side</p>
+    <p>This is the single highest-value teaching image in the talk. Everything downstream depends on the audience
+    knowing which sequence they are looking at without being told.</p>
+    <dl>
+      <dt>T1</dt><dd>Anatomy, marrow, <b>myelomalacia</b> (dark cord). Fat is bright, CSF is dark.</dd>
+      <dt>T2</dt><dd>CSF contrast, <b>cord signal change</b>, disc morphology. Both CSF and fat bright.</dd>
+      <dt>STIR</dt><dd>Edema — marrow, ligament. CSF bright, fat suppressed to dark.</dd>
+      <dt>GRE<br><span style="font-size:11px;font-weight:400">gradient echo</span></dt>
+        <dd>Calcification, <b>ossified ligament</b>, haemorrhage. Usually an <b>axial</b> acquisition —
+        see the next card.</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="col">
+<h3 style="margin-top:1.8em">The fourth sequence: gradient echo</h3>
+<p>Gradient echo (GRE) is the one you are least likely to have seen, because it is not part of the sagittal
+stack. Most cervical protocols acquire it <b>axially</b>, angled through each disc space. Your scanner
+probably calls it something else — <b>MERGE</b> on a GE machine, <b>MEDIC</b> on a Siemens, or just
+<b>T2*</b> (say "T-two-star"). Those are vendor brand names for the same family of sequence.</p>
+<p>You are not usually asked to identify a gradient echo at a glance. You are asked <i>whether it is worth
+getting</i>, and there are two answers that matter.</p>
+
+<div class="rule" style="margin:1.4em 0">
+  <b>OPLL = ossification of the posterior longitudinal ligament.</b> The posterior longitudinal ligament is
+  the strap running down the <i>back</i> of the vertebral bodies, immediately in front of the cord. In some
+  people it slowly turns to bone. When that happens it stops behaving like a ligament and becomes a rigid
+  bar of bone pressing on the cord from the front — and it keeps growing.<br><br>
+  It matters to you for one reason: <b>it changes the operation.</b> Ordinary spondylosis can often be
+  decompressed from behind, letting the cord drift backwards away from the disc and bone in front. If a
+  thick bar of ossified ligament is in the way, the cord may have nowhere to drift to, and the surgeon has
+  to come from the front instead. (The measurement that predicts this is called the <i>K-line</i>; you do
+  not need to draw it, only to know that the question exists.) Commonest in patients of East Asian
+  ancestry, but present everywhere.
+</div>
+</div>
+
+<figure class="wide">
+  <img class="zoom" src="figures/from_web/opll_fig1_T2_T1_FLASH_CT.jpg"
+       alt="Sagittal T2, T1, gradient echo and CT of the same cervical spine showing OPLL"
+       data-cap="Same patient, same cervical spine, four ways. (a) Sagittal T2 and (b) sagittal T1 show a disc herniation at C4/5 (open arrows) and an ambiguous dark band behind the vertebral body (arrowhead) — neither sequence can tell you whether that band is ossified ligament, calcified disc, or nothing. (c) Sagittal 3D FLASH, a gradient-echo sequence reconstructed to look CT-like, shows the ossification directly (arrows). (d) Sagittal CT confirms OPLL. Note that in this CT-like FLASH reconstruction the ossification is BRIGHT; on a standard T2* GRE, calcium and blood instead bloom DARK.">
+  <figcaption><b>Reason one — it settles ossified ligament, and that changes the operation.</b>
+  On T2 (a) and T1 (b) the band behind the vertebral body (arrowhead) is just dark — and dark on both is
+  ambiguous, because ossified ligament, calcified disc and cortical bone all look identical. The gradient
+  echo (c) resolves it; CT (d) confirms.<br>
+  <b>One caveat, or it will confuse people:</b> panel (c) is reconstructed to look like CT, so the
+  ossification appears <i>bright</i>. On the standard T2* gradient echo in your own protocol, calcium and
+  blood do the opposite and <i>bloom dark</i>. Same family of sequence, opposite appearance.<br>
+  Yoon et al., <i>Neuroradiology</i> 2025, Fig 1 <span class="lic">CC BY 4.0</span></figcaption>
+</figure>
+
+<div class="card n">
+  <div class="imgcell"><div class="duo">
+    <figure style="margin:0"><img class="zoom" src="figures/panels/flow_C_axT2_real_blood.jpg"
+      alt="Axial T2 with an eccentric dark spot beside the cord"
+      data-cap="Axial T2 through the cervical spine after a motor vehicle collision. There is an eccentric dark focus beside the cord (arrow). On this sequence alone you cannot say whether it is blood or moving CSF.">
+      <figcaption>T2 — dark spot<br><span style="font-size:11px">blood, or just flow?</span></figcaption></figure>
+    <figure style="margin:0"><img class="zoom" src="figures/panels/flow_D_axGRE_blooms.jpg"
+      alt="Axial gradient echo showing the same spot blooming larger and blacker"
+      data-cap="Axial GRE at the same level. The dark focus has bloomed — bigger and blacker than on T2 — which confirms haemorrhagic products. Flow artifact would have vanished instead.">
+      <figcaption>GRE — it bloomed<br><span style="font-size:11px">bigger, blacker = blood</span></figcaption></figure>
+  </div><div class="attrib">Rakesh et al., <i>Insights Imaging</i> 2025;16:2153, Fig 5c&ndash;d
+  <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>Reason two — it separates blood from flow artifact</h3>
+    <p class="where">Axial T2 first, then axial GRE at the same level</p>
+    <p>An eccentric dark spot beside the cord on T2 is ambiguous: it could be haemorrhage, or it could just
+    be moving CSF. The gradient echo decides it, and the two answers look opposite:</p>
+    <dl>
+      <dt>Blood</dt><dd><b>Blooms</b> — the dark spot gets <i>bigger and blacker</i> on GRE than it was on T2.</dd>
+      <dt>Flow</dt><dd><b>Vanishes</b> — the dark patch disappears entirely and the CSF goes uniformly bright.</dd>
+    </dl>
+    <p>This card shows the blooming version. You will see the vanishing version in
+    <b>section 5</b>, where the same trick is used to throw out a false call of cord compression.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════ 3 ══════════════════ -->
+<h2><span class="n">3</span>The eight-step read</h2>
+<div class="col">
+<p class="lede">Run it in this order every time. The order is front-loaded by urgency, so if you are interrupted after
+step three you have already found what matters.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 1460 430" role="img" aria-label="Eight-step cervical MRI search protocol">
+  <defs>
+    <marker id="fw" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#9AA08C"/></marker>
+  </defs>
+  <text x="10" y="26" font-size="16" fill="#585B50">Sagittal T2 finds it &#183; sagittal T1 confirms it &#183; axial T2 grades it.</text>
+
+  <!-- row 1 -->
+  <g>
+    <rect x="10" y="52" width="340" height="106" rx="8" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.8"/>
+    <text x="32" y="82" font-size="19" font-weight="700" fill="#A3301F">1 &#183; Sagittal T2, scroll</text>
+    <text x="32" y="108" font-size="16" fill="#1A1C18">Where does the bright CSF stripe</text>
+    <text x="32" y="130" font-size="16" fill="#1A1C18">disappear? Mark every level.</text>
+    <line x1="358" y1="105" x2="392" y2="105" stroke="#9AA08C" stroke-width="2" marker-end="url(#fw)"/>
+
+    <rect x="400" y="52" width="340" height="106" rx="8" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.8"/>
+    <text x="422" y="82" font-size="19" font-weight="700" fill="#A3301F">2 &#183; Cord signal, same levels</text>
+    <text x="422" y="108" font-size="16" fill="#1A1C18">Bright signal <tspan font-style="italic">inside</tspan> the cord?</text>
+    <text x="422" y="130" font-size="16" fill="#1A1C18">Focal or diffuse? How many levels?</text>
+    <line x1="748" y1="105" x2="782" y2="105" stroke="#9AA08C" stroke-width="2" marker-end="url(#fw)"/>
+
+    <rect x="790" y="52" width="340" height="106" rx="8" fill="#F6E4DE" stroke="#A3301F" stroke-width="2.6"/>
+    <text x="812" y="82" font-size="19" font-weight="700" fill="#A3301F">3 &#183; Switch to sagittal T1</text>
+    <text x="812" y="108" font-size="16" fill="#1A1C18">Is the cord <tspan font-weight="700">dark</tspan> where T2 was</text>
+    <text x="812" y="130" font-size="16" fill="#1A1C18">bright? The step everyone skips.</text>
+    <line x1="1138" y1="105" x2="1172" y2="105" stroke="#9AA08C" stroke-width="2" marker-end="url(#fw)"/>
+
+    <rect x="1180" y="52" width="270" height="106" rx="8" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.8"/>
+    <text x="1202" y="82" font-size="19" font-weight="700" fill="#BC6B26">4 &#183; Axial T2</text>
+    <text x="1202" y="108" font-size="16" fill="#1A1C18">At every flagged level.</text>
+    <text x="1202" y="130" font-size="16" fill="#1A1C18">This is where you grade.</text>
+  </g>
+
+  <!-- row 2 -->
+  <g>
+    <rect x="10" y="200" width="340" height="106" rx="8" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.8"/>
+    <text x="32" y="230" font-size="19" font-weight="700" fill="#BC6B26">5 &#183; Alignment</text>
+    <text x="32" y="256" font-size="16" fill="#1A1C18">Lordotic, straight or kyphotic?</text>
+    <text x="32" y="278" font-size="16" fill="#1A1C18">Five seconds. Decides the approach.</text>
+    <line x1="358" y1="253" x2="392" y2="253" stroke="#9AA08C" stroke-width="2" marker-end="url(#fw)"/>
+
+    <rect x="400" y="200" width="340" height="106" rx="8" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.8"/>
+    <text x="422" y="230" font-size="19" font-weight="700" fill="#BC6B26">6 &#183; Soft or hard?</text>
+    <text x="422" y="256" font-size="16" fill="#1A1C18">Disc, osteophyte or ossified ligament.</text>
+    <text x="422" y="278" font-size="16" fill="#1A1C18">If unsure, say so &#8212; that is a CT question.</text>
+    <line x1="748" y1="253" x2="782" y2="253" stroke="#9AA08C" stroke-width="2" marker-end="url(#fw)"/>
+
+    <rect x="790" y="200" width="340" height="106" rx="8" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.8"/>
+    <text x="812" y="230" font-size="19" font-weight="700" fill="#2E7D4F">7 &#183; Foramina</text>
+    <text x="812" y="256" font-size="16" fill="#1A1C18">Root compromise at each level.</text>
+    <text x="812" y="278" font-size="16" fill="#1A1C18">Radiculopathy changes the plan.</text>
+    <line x1="1138" y1="253" x2="1172" y2="253" stroke="#9AA08C" stroke-width="2" marker-end="url(#fw)"/>
+
+    <rect x="1180" y="200" width="270" height="106" rx="8" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.8"/>
+    <text x="1202" y="230" font-size="19" font-weight="700" fill="#2E7D4F">8 &#183; Everything else</text>
+    <text x="1202" y="256" font-size="16" fill="#1A1C18">Marrow, soft tissue,</text>
+    <text x="1202" y="278" font-size="16" fill="#1A1C18">lung apices, posterior fossa.</text>
+  </g>
+
+  <rect x="10" y="344" width="1440" height="70" rx="8" fill="#F1EEE3" stroke="#9AA08C" stroke-width="1.4"/>
+  <text x="32" y="374" font-size="19" font-weight="700" fill="#0E5F58">The safety rule</text>
+  <text x="32" y="400" font-size="16" fill="#1A1C18">Your read exists to <tspan font-weight="700">raise</tspan> urgency, never to lower it. A degenerative-looking scan does not exclude ALS, MS, B12 deficiency or cord tumour.</text>
+</svg>
+</figure>
+
+
+<!-- ══════════════════ 4 ══════════════════ -->
+<h2><span class="n">4</span>The findings that change management</h2>
+<div class="col">
+<p class="lede">Five findings. For each: where to look, what you see, how to grade it, and what it means.</p>
+<p style="margin:0 0 1.4em;font-size:15px;"><b>The colour of each card is its severity.</b> <span style="color:var(--orange);font-weight:700;">Orange</span> = mechanical, potentially reversible &#183; <span style="color:var(--red);font-weight:700;">Red</span> = the cord itself is injured. They are ordered worst-last: <b>cord atrophy is the most serious finding on this page</b>, not the mildest.</p>
+</div>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/panels/kwok_sagittal_T2_multilevel.jpg" alt="Sagittal T2 with effaced CSF at C5-6 and C6-7" data-cap="Sagittal T2. Follow the bright CSF stripe down the front of the cord: generous at C3–C4, squeezed out at C5–C6 and C6–C7. This is step 1 of the read. Kwok &amp; Cheung, BMC Musculoskelet Disord 2020, Fig 1 (CC BY 4.0)."><div class="attrib">Kwok &amp; Cheung 2020, Fig 1 · <b>CC BY 4.0 — free to use</b></div></div>
+  <div class="body">
+    <h3>Loss of the CSF stripe</h3>
+    <p class="where">Sagittal T2 to detect · axial T2 to characterise</p>
+    <p>The bright CSF outlining the cord thins, then disappears. Trace the anterior and posterior columns
+    <b>separately</b> — they are effaced independently and the pattern matters.</p>
+    <dl>
+      <dt>Grade 0</dt><dd>Normal subarachnoid space</dd>
+      <dt>Grade 1</dt><dd>Partial obliteration, anterior <i>or</i> posterior</dd>
+      <dt>Grade 2</dt><dd>Complete obliteration, <b>no cord deformity</b></dd>
+      <dt>Grade 3</dt><dd>Cord deformity or impingement</dd>
+    </dl>
+    <p style="margin-top:1em"><b>What it means:</b> effacement without deformity is the entry point to the
+    "asymptomatic compression" conversation. On its own it is not an operative finding.</p>
+  </div>
+</div>
+
+<div class="card o">
+  <div class="imgcell"><div class="trio"><figure style="margin:0"><img class="zoom" src="figures/panels/kad_A_impingement.jpg" alt="Focal ventral impingement, CSF preserved" data-cap="Grade 1 — small focal ventral impingement. The cord is dented but still round, and CSF is still visible all the way around it."><figcaption>indented<br><span style="font-size:11px">CSF preserved</span></figcaption></figure><figure style="margin:0"><img class="zoom" src="figures/panels/kad_B_flattened.jpg" alt="Flattened cord, partial CSF loss" data-cap="Grade 2 — flat ventral compression. The cord has lost its rounded front and the ventral CSF is partly gone."><figcaption>flattened<br><span style="font-size:11px">ventral CSF partly gone</span></figcaption></figure><figure style="margin:0"><img class="zoom" src="figures/panels/kad_C_severe.jpg" alt="Severe circumferential compression, CSF effaced" data-cap="Grade 3 — severe circumferential asymmetrical compression. The cord is flattened and CSF is almost completely effaced."><figcaption>severe<br><span style="font-size:11px">CSF effaced</span></figcaption></figure></div><figure style="margin:10px 0 0"><img class="zoom" src="figures/panels/bednarik_b_banana_cord_CR037.jpg" alt="Banana-shaped cord with compression ratio 0.37" data-cap="The same shape change, measured. Banana-like cord from ventral compression: compression ratio 0.37, cross-sectional area 71 mm² — both printed on the original figure. Bednarik, Eur Spine J 2008, Fig 2b."><figcaption>the same change, measured<br><span style="font-size:11px">compression ratio 0.37 · cross-sectional area 71 mm²</span></figcaption></figure><div class="attrib">Grades: Kadanka et al., <i>Front Neurol</i> 2024;15:1341371, Fig 1 <span class="lic">CC BY 4.0</span><br>Measured example: Bednarik et al., <i>Eur Spine J</i> 2008, Fig 2b · permission pending</div></div>
+  <div class="body">
+    <h3>Cord deformation</h3>
+    <p class="where">Axial T2 at the narrowest level — never grade shape off a sagittal</p>
+    <p>The normal cervical cord is a rounded oval, wider side-to-side than front-to-back. Under compression it
+    flattens, then becomes crescentic as the anterior surface is indented.</p>
+    <p><b>Compression ratio</b> = smallest AP diameter ÷ largest transverse diameter. Lower is worse.
+    Two readers measuring the same cord agree closely on it (ICC 0.80, where 1.0 is perfect).</p>
+    <div class="rule" style="margin:1em 0 0">
+      <b>Cord shape beats canal diameter</b> — it reflects what is happening to neural tissue rather than to
+      the container.
+    </div>
+  </div>
+</div>
+
+<div class="card r">
+  <div class="imgcell"><div class="duo"><figure style="margin:0"><img class="zoom" src="figures/panels/arvin_B_diffuse_T2.jpg" alt="Diffuse T2 cord signal" data-cap="DIFFUSE T2 signal — hazy, spanning segments, ill-defined margins. Arvin, Spine 2013, Fig 1b."><figcaption>diffuse</figcaption></figure><figure style="margin:0"><img class="zoom" src="figures/panels/arvin_C_focal_T2.jpg" alt="Focal T2 cord signal" data-cap="FOCAL T2 signal — one segment, crisp margins. Worse baseline gait and balance, but these patients made the largest post-operative gains. Arvin, Spine 2013, Fig 1c."><figcaption>focal</figcaption></figure></div><div class="attrib">Arvin et al., Spine 2013, Figure 1b–c · permission pending</div></div>
+  <div class="body">
+    <h3>T2 hyperintensity in the cord</h3>
+    <p class="where">Sagittal T2 to detect · <b>axial T2 to confirm it is real</b></p>
+    <p>Bright signal <i>within</i> the cord substance, usually at or just above the level of maximal compression,
+    often centred on central grey matter. Characterise it as <b>focal</b> (one segment, crisp) or
+    <b>diffuse</b> (spanning segments, hazy), and count the levels.</p>
+    <table style="font-size:15px">
+      <tr><td><b>Multilevel T2</b></td><td>Worse baseline severity and lower recovery ratio (<i>p</i> = 0.001). Present in 27%.</td></tr>
+      <tr><td><b>Single-level T2</b></td><td>Outcomes no different from no signal change at all (<i>p</i> = 0.275).</td></tr>
+    </table>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>T2 signal alone decides nothing.</b> It raises concern; it does not make the decision. Count levels
+      before you weight it.
+    </div>
+  </div>
+</div>
+
+<div class="card r">
+  <div class="imgcell"><div class="duo"><figure style="margin:0"><img class="zoom" src="figures/panels/arvin_E_low_T1.jpg" alt="Low T1 signal in the cord" data-cap="Low T1 signal within the cord — cavitation and established myelomalacia. Arvin, Spine 2013, Fig 1e."><figcaption>low T1 signal</figcaption></figure><figure style="margin:0"><img class="zoom" src="figures/panels/kato_D_post_new_T1hypo.jpg" alt="New T1 hypointensity after surgery" data-cap="T1 hypointensity that appeared AFTER decompression (C6/7 ACDF). mJOA still improved 11→13 — the signal marks permanent injury, not surgical failure. Kato, Spine 2018, Fig 2d."><figcaption>new post-op T1 hypo</figcaption></figure></div><div class="attrib">Arvin, Spine 2013, Fig 1e · Kato, Spine 2018, Fig 2d · permission pending</div></div>
+  <div class="body">
+    <h3>T1 hypointensity — the money finding</h3>
+    <p class="where">Sagittal T1, deliberately, at every level where T2 was bright</p>
+    <p>Cord darker than normal cord at the same level. This is cavitation and established myelomalacia, not
+    reversible oedema. It will not announce itself — you have to switch sequences and look.</p>
+    <table style="font-size:15px">
+      <tr><td>Reduced recovery ratio</td><td><i>p</i> = 0.03</td></tr>
+      <tr><td>Lower odds of an optimal outcome</td><td>OR 0.45, <i>p</i> = 0.005</td></tr>
+      <tr><td>Post-op resolution improves outcome?</td><td><b>No</b> (<i>p</i> = 0.36) — unlike T2</td></tr>
+    </table>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>The caveat that must travel with it.</b> Inter-rater agreement is only <b>fair</b> (&#954; = 0.31, versus
+      0.60 for T2), and it appears in under 20% of patients. When you think you see it, say
+      <i>"possible T1 hypointensity — worth a second look"</i> rather than asserting it.
+    </div>
+    <p style="margin-top:1em"><b>Say this to the patient:</b> <i>"This doesn't mean don't operate. It means the
+    goal shifts from restoring what you've lost toward protecting what you still have."</i></p>
+  </div>
+</div>
+
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/atrophy_fig6_2yr_thin_cord.jpg" alt="Axial and sagittal T2 showing a thinned cord with restored CSF space" data-cap="Two-year follow-up after decompression. (A) Axial T2 at C5–6: the ventral CSF space has been re-established and is bright all the way around, but the cord itself is visibly thinned (arrow). (B) Sagittal T2: the same level, with focal myelomalacia and relative widening of the dorsal CSF space — chronic remodelling. The canal looks decompressed because the cord shrank into it."><div class="attrib"><b>The canal is not roomy because the compression resolved — it is roomy because the cord shrank into it.</b><br>Two-year follow-up MRI after single-level anterior cervical corpectomy. Cureus 2026;18:e107566, Fig 6 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>Cord atrophy</h3>
+    <p class="where">Sagittal T2 for impression · axial T2 compared to uninvolved levels</p>
+    <div class="rule r" style="margin:0 0 1em">
+      <b>This is the worst finding on the page.</b> Cord tissue has been lost and will not grow back. Where T2
+      signal change can resolve after decompression, atrophy does not. Surgery here is about
+      <b>protecting what remains</b>, not restoring what has gone — and expectations should be set that way
+      before the operation, not after it.
+    </div>
+    <p>Reduced cord calibre, often with a deceptively <b>roomy</b> CSF space — the canal looks decompressed because
+    the cord shrank, not because the compression resolved. A classic trap in a severely myelopathic patient.</p>
+    <p><b>Mimic:</b> physiologic tapering below the cervical enlargement (roughly below C6) is normal. Compare to
+    expected calibre at that level, not to the enlargement above.</p>
+    <p>The example shown is a two-year post-operative follow-up, where the contrast is easiest to see — but
+    atrophy is <b>not</b> a post-surgical finding. It occurs in long-standing untreated compression too, and
+    that is where it does the most damage: a scan that reads as "adequate canal" in a patient who is
+    visibly myelopathic. <b>Trust the examination over the roominess.</b></p>
+  </div>
+</div>
+
+
+<!-- ══════════════════ 5 ══════════════════ -->
+<h2><span class="n">5</span>Three things that will fool you</h2>
+<div class="col">
+<p class="lede">Every one of these is a false positive that looks convincing on a single image and evaporates on a
+second plane. This is the highest-yield section of the talk.</p>
+</div>
+
+<div class="mimic">
+  <div class="head">
+    <h3>Truncation (Gibbs) artifact — the commonest false-positive cord finding</h3>
+    <p>A thin bright line down the centre of the cord on sagittal T2. It is <b>linear, uniform across many
+    segments, and vanishes on the axial.</b> Real signal change is segmental and persists.</p>
+  </div>
+  <div class="pair">
+    <div class="a">
+      <div class="lab">What fools you — sagittal T2</div>
+      <img class="zoom" src="figures/panels/trunc_A_sagittal.jpg" alt="Sagittal T2 with a central bright line in the cord" data-cap="Sagittal T2. A thin bright line sits in the exact centre of the cord, uniform in thickness and running across many segments (arrow). It reads as a syrinx. The yellow line is the localiser for the axial.">
+      <div class="cap">Reads as a syrinx or extensive cord signal change. Note the yellow localiser line — that is the level of the axial beside it.</div>
+    </div>
+    <div class="b">
+      <div class="lab">The disproof — axial T2, same patient</div>
+      <img class="zoom" src="figures/panels/trunc_B_axial_lipsign.jpg" alt="Axial T2 showing the lip sign" data-cap="Axial T2 at that level. No cavity. The published mnemonic is the &quot;lip sign&quot; — the cord’s central signal is a flat, lip-shaped slit rather than a round cavity, which confirms the sagittal line was a truncation artifact. Cropped from the inset panel of the original figure.">
+      <div class="cap">No cavity — the central signal is lip-shaped, not round. Always confirm cord signal on the axial before you call it.<br><span style="font-size:12px">Nayak &amp; Gaikwad, <i>Korean J Radiol</i> 2019;20:1474, Fig 1, cropped <span class="lic">CC BY-NC 4.0</span></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mimic">
+  <div class="head">
+    <h3>CSF flow artifact — mimics effacement, and mimics blood</h3>
+    <p>Moving CSF loses signal, so dark patches appear in the subarachnoid space and read as loss of the CSF
+    stripe — or, when eccentric, as haemorrhage. Named explicitly as a source of diagnostic error in the
+    cervical stenosis literature. <b>A gradient-echo sequence settles it:</b> the artifact disappears, real
+    blood blooms darker.</p>
+  </div>
+  <div class="pair">
+    <div class="a">
+      <div class="lab">What fools you — axial T2</div>
+      <img class="zoom" src="figures/panels/flow_A_axT2_artifact.jpg" alt="Axial T2 with flow-related signal loss around the cord" data-cap="Axial T2 through the cervical spine. Dark, patchy signal loss sits in the CSF on both sides of the cord (arrows) from flowing CSF. It reads as effaced subarachnoid space.">
+      <div class="cap">Looks like the CSF around the cord has been squeezed out.</div>
+    </div>
+    <div class="b">
+      <div class="lab">The disproof — gradient echo, same level</div>
+      <img class="zoom" src="figures/panels/flow_B_axGRE_clean.jpg" alt="Axial GRE at the same level, CSF uniformly bright" data-cap="Axial GRE at the identical level. The CSF is now a clean uniform bright ring all the way around the cord. The dark patches were flow, not compression and not blood.">
+      <div class="cap">A clean bright ring of CSF, circumferentially. The T2 was lying.<br><span style="font-size:12px">Rakesh et al., <i>Insights Imaging</i> 2025;16:2153, Fig 5a–b <span class="lic">CC BY 4.0</span></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="mimic">
+  <div class="head">
+    <h3>Oblique slice angle — makes a compressed cord look normal</h3>
+    <p>If the axial slice is not perpendicular to the cord — common at the apex of a kyphosis — the cord is cut at a slant. The slant <b>stretches the front-to-back dimension</b> by 1&#8239;&#247;&#8239;cos&#8239;&#952; while leaving the side-to-side dimension untouched, so the cord looks <b>rounder and larger than it really is.</b> The compression ratio comes out too high and the cross-sectional area is overestimated. <b>This error runs toward false reassurance</b> — it makes a compressed cord read as an adequate one, which is why it is worth knowing. Check the slice angulation on the localiser before you trust a compression ratio.</p>
+  </div>
+  <div class="pair">
+    <div class="a">
+      <div class="lab">What fools you — an axial cut on the slant</div>
+      <svg viewBox="0 0 700 500" role="img" aria-label="Axial slice cutting a tilted cord on the slant">
+<text x="18" y="26" font-size="17" font-weight="700" fill="#A3301F">Slice left at a fixed angle</text>
+<text x="18" y="48" font-size="15" fill="#8C8E82">side view &#183; cord tilted 30&#176; at the kyphotic apex</text>
+<g transform="rotate(30.0 158.0 205.0)"><rect x="126.0" y="110.0" width="64.0" height="190.0" rx="32.0" fill="#dfe7ec" stroke="#9AA08C" stroke-width="2"/></g>
+<text x="198" y="279" font-size="13" fill="#7c8b99">cord</text>
+<line x1="78.3" y1="159.0" x2="237.7" y2="251.0" stroke="#A9AE9B" stroke-width="1.6" stroke-dasharray="3 4"/>
+<text x="243.7" y="265.0" font-size="12.5" fill="#9AA08C">where perpendicular would be</text>
+<path d="M 216.0 205.0 A 58.0 58.0 0 0 0 208.2 234.0" fill="none" stroke="#A3301F" stroke-width="1.8"/>
+<text x="224.0" y="227.0" font-size="14" font-weight="700" fill="#A3301F">30&#176; off</text>
+<line x1="30.0" y1="205.0" x2="286.0" y2="205.0" stroke="#A3301F" stroke-width="2.8" stroke-dasharray="8 5"/>
+<text x="294.0" y="210.0" font-size="14" font-weight="700" fill="#A3301F">slice plane</text>
+<text x="520" y="72" font-size="15" fill="#8C8E82" text-anchor="middle">what the axial shows</text>
+<ellipse cx="520.0" cy="190.0" rx="95.0" ry="60.3" fill="#E7EFEC" stroke="#A3301F" stroke-width="2.8"/>
+<ellipse cx="520.0" cy="190.0" rx="95.0" ry="52.2" fill="none" stroke="#A9AE9B" stroke-width="1.6" stroke-dasharray="4 4"/>
+<text x="520.0" y="270.3" font-size="12.5" fill="#9AA08C" text-anchor="middle">dashed = the true cord</text>
+<line x1="425.0" y1="282.0" x2="615.0" y2="282.0" stroke="#8C8E82" stroke-width="1.4"/>
+<text x="520.0" y="302.0" font-size="14" fill="#8C8E82" text-anchor="middle">side-to-side 10.0 mm</text>
+<line x1="635.0" y1="129.7" x2="635.0" y2="250.3" stroke="#A3301F" stroke-width="1.6"/>
+<text x="643.0" y="191.0" font-size="14" font-weight="700" fill="#A3301F">6.4 mm</text>
+<text x="643.0" y="209.0" font-size="12.5" fill="#8C8E82">front-to-back</text>
+<text x="18" y="352" font-size="15" fill="#1A1C18">the cut crosses <tspan font-weight="700" fill="#A3301F">15%</tspan> more cord front-to-back</text>
+<line x1="18" y1="374" x2="682" y2="374" stroke="#DCD7C8" stroke-width="1.4"/>
+<text x="18" y="408" font-size="16" fill="#1A1C18">compression ratio <tspan font-size="14" fill="#8C8E82">(front-to-back &#247; side-to-side)</tspan></text>
+<text x="18" y="452" font-size="34" font-weight="700" fill="#A3301F">0.64</text>
+<text x="98" y="452" font-size="17" fill="#A3301F">reads as mild &#8212; and it is wrong</text>
+<text x="18" y="484" font-size="15" fill="#1A1C18">cross-sectional area overestimated by <tspan font-weight="700" fill="#A3301F">15%</tspan> as well</text>
+</svg>
+      <div class="cap">The number looks reassuring. It is an artefact of the geometry, not the cord.</div>
+    </div>
+    <div class="b">
+      <div class="lab">The fix — re-angle to the cord</div>
+      <svg viewBox="0 0 700 500" role="img" aria-label="Axial slice re-angled perpendicular to the tilted cord">
+<text x="18" y="26" font-size="17" font-weight="700" fill="#2E7D4F">Slice re-angled to the cord</text>
+<text x="18" y="48" font-size="15" fill="#8C8E82">side view &#183; cord tilted 30&#176; at the kyphotic apex</text>
+<g transform="rotate(30.0 158.0 205.0)"><rect x="126.0" y="110.0" width="64.0" height="190.0" rx="32.0" fill="#dfe7ec" stroke="#9AA08C" stroke-width="2"/></g>
+<text x="198" y="279" font-size="13" fill="#7c8b99">cord</text>
+<polyline points="165.5,192.0 178.5,199.5 171.0,212.5" fill="none" stroke="#2E7D4F" stroke-width="2"/>
+<line x1="47.1" y1="141.0" x2="268.9" y2="269.0" stroke="#2E7D4F" stroke-width="2.8" stroke-dasharray="8 5"/>
+<text x="276.9" y="274.0" font-size="14" font-weight="700" fill="#2E7D4F">slice plane</text>
+<text x="520" y="72" font-size="15" fill="#8C8E82" text-anchor="middle">what the axial shows</text>
+<ellipse cx="520.0" cy="190.0" rx="95.0" ry="52.2" fill="#E7EFEC" stroke="#2E7D4F" stroke-width="2.8"/>
+<line x1="425.0" y1="282.0" x2="615.0" y2="282.0" stroke="#8C8E82" stroke-width="1.4"/>
+<text x="520.0" y="302.0" font-size="14" fill="#8C8E82" text-anchor="middle">side-to-side 10.0 mm</text>
+<line x1="635.0" y1="137.8" x2="635.0" y2="242.2" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="643.0" y="191.0" font-size="14" font-weight="700" fill="#2E7D4F">5.5 mm</text>
+<text x="643.0" y="209.0" font-size="12.5" fill="#8C8E82">front-to-back</text>
+<text x="18" y="352" font-size="15" fill="#1A1C18">the cut crosses the cord at its true width</text>
+<line x1="18" y1="374" x2="682" y2="374" stroke="#DCD7C8" stroke-width="1.4"/>
+<text x="18" y="408" font-size="16" fill="#1A1C18">compression ratio <tspan font-size="14" fill="#8C8E82">(front-to-back &#247; side-to-side)</tspan></text>
+<text x="18" y="452" font-size="34" font-weight="700" fill="#2E7D4F">0.55</text>
+<text x="98" y="452" font-size="17" fill="#2E7D4F">the real number</text>
+<text x="18" y="484" font-size="15" fill="#1A1C18">same cord, same patient, honest geometry</text>
+</svg>
+      <div class="cap">Angle each axial block to the disc space it crosses, rather than one fixed tilt for the whole stack. If you cannot re-angle, grade at a level where the cord runs straight.<br><span style="font-size:12px">Schematic drawn for this handout &#183; geometry, not a case</span></div>
+    </div>
+  </div>
+  <div style="padding:16px 24px 20px;border-top:1.6px solid var(--red);background:#F8F2EC;">
+    <p style="margin:0 0 .7em;font-weight:700;color:var(--red);font-size:17px;">So how do you fix it?</p>
+    <dl style="display:grid;grid-template-columns:auto 1fr;gap:.55em 1.2em;margin:0;font-size:15px;">
+      <dt style="font-weight:700;">Reading a study already done</dt>
+      <dd style="margin:0;">You cannot un-angle it, and nothing you do at the workstation recovers the true
+      number. <b>Do not quote a compression ratio from that level.</b> Grade at a neighbouring level where the
+      cord runs straight, or describe it in words &mdash; <i>"severe ventral compression at C5&ndash;6"</i> is
+      defensible; <i>"compression ratio 0.64"</i> is not.</dd>
+      <dt style="font-weight:700;">If the decision turns on it</dt>
+      <dd style="margin:0;">Ask for a re-angled axial block through that level, or a reformat perpendicular to
+      the cord if a 3D isotropic sequence was acquired. That is minutes of scanner time, and cheap when the
+      question is operate or watch.</dd>
+      <dt style="font-weight:700;">Preventing it next time</dt>
+      <dd style="margin:0;">Axial blocks should be angled to <i>each</i> disc space rather than one fixed tilt
+      for the whole stack. Worth mentioning to your techs once &mdash; it is a protocol habit, not a special
+      request.</dd>
+      <dt style="font-weight:700;">The sentence that protects the patient</dt>
+      <dd style="margin:0;"><b>"Measurement unreliable at this level &mdash; slice angulation."</b> That tells
+      the surgeon far more than a falsely reassuring number does, and it is the one thing here that is entirely
+      within your control.</dd>
+    </dl>
+  </div>
+</div>
+
+
+<!-- ══════════════════ 6 ══════════════════ -->
+<h2><span class="n">6</span>What you can and cannot call</h2>
+<div class="col">
+<figure class="wide">
+  <img class="zoom" src="figures/from_web/kadanka_fig2_dcm_vs_adcc.jpg" alt="Two patients with the same degree of cord compression, one myelopathic and one not" data-cap="Top row (A, B): a patient with symptomatic degenerative cervical myelopathy. Bottom row (C, D): a patient with NO myelopathic signs or symptoms. Sagittal on the left, axial on the right. There is no visible difference in the severity of compression between them.">
+  <figcaption><b>This is the whole reason the section exists.</b> Top row (A, B) is a patient with symptomatic
+  myelopathy. Bottom row (C, D) is a patient with <b>no myelopathic signs or symptoms at all.</b> Same sequences,
+  same planes, and no visible difference in the severity of compression. You cannot read severity of disease off
+  severity of compression — the examination decides that, not the picture.<br>
+  Kadanka et al., <i>Front Neurol</i> 2024;15:1341371, Fig 2 <span class="lic">CC BY 4.0</span></figcaption>
+</figure>
+<table>
+  <thead><tr><th style="width:50%">Call it and act on it</th><th>Defer it, always</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Presence, level and number of levels of compression</td>
+      <td>Any mass, marrow replacement or enhancing lesion</td>
+    </tr>
+    <tr>
+      <td>Loss of CSF signal around the cord</td>
+      <td>Infection — discitis, epidural abscess, paraspinal collection</td>
+    </tr>
+    <tr>
+      <td>Cord deformation and gross atrophy</td>
+      <td>Intramedullary lesions that are not clearly compression-related</td>
+    </tr>
+    <tr>
+      <td>T2 hyperintensity and (cautiously) T1 hypointensity</td>
+      <td>Anything outside the spine on the visible slices</td>
+    </tr>
+    <tr>
+      <td>Gross alignment — lordosis, kyphosis, listhesis</td>
+      <td>Post-operative scar versus recurrent disc</td>
+    </tr>
+    <tr>
+      <td><b>Study adequacy for the clinical question</b></td>
+      <td>Anything you are about to talk yourself into</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="rule g">
+  <b>The calibration that makes all of this safe.</b> 52% of asymptomatic adults have disc bulges; disc
+  degeneration runs from 37% at age 20 to 96% at age 80. Finding degeneration on an MRI is about as informative
+  as finding grey hair. It acquires meaning only when it explains <i>this</i> patient's syndrome at
+  <i>that</i> level — which is why you establish the clinical question before you open the study.
+</div>
+</div>
+
+
+<div class="foot col">
+<b>Sources for the figures quoted above</b>
+<p style="margin:.5em 0">
+Nouri A, et al. <i>Spine</i> 2017;42:1851–1858 (n = 419) — T1 and T2 signal prognostics, inter-rater reliability.
+&#183; Kato S, et al. <i>Spine</i> 2018;43:824–831 (n = 167) — post-operative signal resolution.
+&#183; Karpova A, et al. <i>Spine</i> 2013;38:245–252 — reliability of quantitative measures.
+&#183; Jensen MC, et al. <i>NEJM</i> 1994;331:69–73 and Brinjikji W, et al. <i>AJNR</i> 2015;36:811–816 — asymptomatic base rates.
+&#183; Crawford CH III, et al. <i>JAAOS</i> 2026;34(4):e555–e560 — artifact as a source of diagnostic error.
+</p>
+<p style="margin:.8em 0 0"><i>Prepared for the MANS 2026 Summer Meeting APP session. This supports clinical triage
+and communication; it does not substitute for formal radiologic interpretation.</i></p>
+</div>
+
+</div>
+
+<div id="lb" role="dialog" aria-label="Zoomed image" aria-modal="true">
+  <button id="lbclose" aria-label="Close">&#10005;</button>
+  <img id="lbimg" alt="">
+  <div id="lbcap"></div>
+</div>
+<style>
+  #lb{position:fixed;inset:0;background:rgba(12,16,20,.94);z-index:9999;
+      display:none;align-items:center;justify-content:center;flex-direction:column;padding:2.5vh 3vw;}
+  #lb.on{display:flex;}
+  #lbimg{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:6px;
+         box-shadow:0 8px 40px rgba(0,0,0,.6);background:#111;cursor:zoom-out;}
+  #lbcap{color:#e8ecef;font-size:16px;margin-top:1em;max-width:1100px;text-align:center;line-height:1.5;}
+  #lbclose{position:absolute;top:18px;right:24px;background:none;border:0;color:#e8ecef;
+           font-size:30px;line-height:1;cursor:pointer;padding:.2em .4em;border-radius:6px;}
+  #lbclose:hover{background:rgba(255,255,255,.12);}
+  .zoom{cursor:zoom-in;transition:filter .12s;}
+  .zoom:hover{filter:brightness(1.06);}
+</style>
+<script>
+(function(){
+  var lb=document.getElementById('lb'), im=document.getElementById('lbimg'), cp=document.getElementById('lbcap');
+  function open(src,cap){ im.src=src; cp.textContent=cap||''; lb.classList.add('on');
+                          document.body.style.overflow='hidden'; }
+  function close(){ lb.classList.remove('on'); im.src=''; document.body.style.overflow=''; }
+  document.addEventListener('click', function(e){
+    var t=e.target;
+    if(t.classList && t.classList.contains('zoom')){
+      open(t.getAttribute('src')||t.getAttribute('href'), t.getAttribute('data-cap')||t.alt);
+      return;
+    }
+    if(t.id==='lb'||t.id==='lbimg'||t.id==='lbclose') close();
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
+})();
+</script>
+<footer class="sm-foot">
+  <div class="sm-pnwrap"><a class="sm-pn" href="timeline.html"><span class="sm-pn__k">&larr; Previous</span><span class="sm-pn__t">Timelines &middot; How cord compression behaves over time</span></a><a class="sm-pn sm-pn--next" href="02-lumbar-central-stenosis.html"><span class="sm-pn__k">Next &rarr;</span><span class="sm-pn__t">Part 2 &middot; Lumbar central stenosis</span></a></div>
+  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="../index.html">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
+</footer>
+
+<script>
+(function(){
+  var nav=document.getElementById('nav');
+  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
+  window.addEventListener('scroll', s, {passive:true}); s();
+  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
+  t.addEventListener('click', function(){
+    var o=l.classList.toggle('is-open');
+    t.classList.toggle('is-open', o);
+    t.setAttribute('aria-expanded', o?'true':'false');
+  });
+})();
+</script>
+</body>
+</html>

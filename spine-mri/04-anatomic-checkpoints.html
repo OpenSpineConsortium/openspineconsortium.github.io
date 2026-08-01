@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomic checkpoints &middot; Reading Spine MRI &middot; OpenSpineConsortium</title>
+<meta name="description" content="Where the cord ends and whether you are counting the right level: conus position, transitional anatomy, and when the conus itself is the lesion.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+  :root{
+    --ink:#1A1C18; --muted:#585B50; --faint:#8C8E82; --rule:#DCD7C8;
+    --navy:#0E5F58; --navy-soft:#E7EFEC;
+    --green:#2E7D4F; --green-soft:#E5EFE4;
+    --orange:#BC6B26; --orange-soft:#F7E9D6;
+    --red:#A3301F;   --red-soft:#F6E4DE;
+    --grey-soft:#F1EEE3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:#fff; margin:0;
+    padding:2.5em 1.5em 6em; line-height:1.55; font-size:16px;
+  }
+  .wrap{max-width:1500px;margin:0 auto;}
+  .col{max-width:1180px;}
+
+  h1{font-size:30px;color:var(--navy);margin:0 0 .15em;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:18px;margin:0 0 .3em;}
+  .src{color:var(--faint);font-size:14px;margin:0 0 2.6em;font-style:italic;}
+
+  h2{font-size:21px;color:var(--navy);margin:3em 0 .2em;
+     border-bottom:2px solid var(--rule);padding-bottom:.35em;}
+  h2 .n{display:inline-block;background:var(--navy);color:#fff;border-radius:50%;
+        width:1.45em;height:1.45em;line-height:1.45em;text-align:center;
+        font-size:.8em;margin-right:.5em;}
+  .lede{color:var(--muted);font-size:16px;margin:.6em 0 1.4em;}
+
+  /* ── finding card ── */
+  .card{display:grid;grid-template-columns:300px 1fr;gap:26px;
+        border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;
+        margin:0 0 22px;background:#fff;}
+  .card.g{border-color:var(--green);}  .card.o{border-color:var(--orange);}
+  .card.r{border-color:var(--red);}    .card.n{border-color:var(--navy);}
+  .card .body{padding:20px 24px 22px 0;}
+  .imgcell{padding:14px;background:#EFEADC;border-right:1.6px solid var(--rule);}
+  .imgcell img{width:100%;height:auto;display:block;border-radius:5px;background:#111;}
+  .attrib{font-size:12.5px;color:var(--faint);margin-top:.6em;line-height:1.35;font-style:italic;}
+  .card.g .imgcell{border-right-color:var(--green);} .card.o .imgcell{border-right-color:var(--orange);}
+  .card.r .imgcell{border-right-color:var(--red);}   .card.n .imgcell{border-right-color:var(--navy);}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .trio figcaption,.duo figcaption{font-size:12px;color:var(--faint);text-align:center;margin-top:.3em;}
+  .pair img{max-width:100%;max-height:360px;width:auto;height:auto;display:block;margin:0 auto;
+            border-radius:5px;background:#111;}
+  .pair .a,.pair .b{display:flex;flex-direction:column;}
+  .pair .a img,.pair .b img{margin-top:auto;margin-bottom:auto;}
+  figure.wide{margin:1.6em 0;}
+  figure.wide img{max-width:100%;width:auto;height:auto;display:block;margin:0 auto;
+                  border-radius:6px;background:#111;}
+  figure.wide figcaption{font-size:14px;color:var(--faint);margin-top:.7em;line-height:1.5;}
+  .lic{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;padding:.15em .5em;
+       border-radius:3px;background:#E5EFE4;color:#2E7D4F;margin-left:.4em;vertical-align:.08em;}
+  .duo figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:.35em;}
+  .card h3{margin:0 0 .1em;font-size:19px;}
+  .card.g h3{color:var(--green);} .card.o h3{color:var(--orange);}
+  .card.r h3{color:var(--red);}   .card.n h3{color:var(--navy);}
+  .where{font-size:14px;color:var(--faint);margin:0 0 .9em;font-style:italic;}
+  .card p{margin:.5em 0;}
+  .card dl{display:grid;grid-template-columns:auto 1fr;gap:.35em .9em;margin:.9em 0 0;}
+  .card dt{font-weight:700;white-space:nowrap;}
+  .card dd{margin:0;}
+
+  /* ── image placeholder ── */
+  .ph{background:#EFEADC;border-right:1.6px dashed var(--rule);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:18px 14px;min-height:230px;color:#8a949c;}
+  .ph b{font-size:14px;letter-spacing:.04em;display:block;margin-bottom:.5em;}
+  .ph span{font-size:13px;line-height:1.4;}
+  .card.g .ph{border-right-color:var(--green);}
+  .card.o .ph{border-right-color:var(--orange);}
+  .card.r .ph{border-right-color:var(--red);}
+  .card.n .ph{border-right-color:var(--navy);}
+
+  /* ── mimic pair ── */
+  .mimic{border:1.6px solid var(--red);border-radius:9px;margin:0 0 22px;overflow:hidden;}
+  .mimic .head{background:var(--red-soft);padding:16px 24px;}
+  .mimic .head h3{margin:0;font-size:19px;color:var(--red);}
+  .mimic .head p{margin:.35em 0 0;font-size:16px;}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .pair > div{padding:0;}
+  .pair .lab{padding:12px 20px;font-size:14px;font-weight:700;}
+  .pair .a .lab{background:var(--red-soft);color:var(--red);}
+  .pair .b .lab{background:var(--green-soft);color:var(--green);}
+  .pair .ph{border-right:1.6px solid var(--rule);min-height:210px;}
+  .pair .b .ph{border-right:none;}
+  .pair .cap{padding:12px 20px 18px;font-size:14px;color:var(--muted);}
+
+  /* ── callouts ── */
+  .rule{border-left:5px solid var(--navy);background:var(--navy-soft);
+        padding:1em 1.2em;margin:1.2em 0;border-radius:0 6px 6px 0;}
+  .rule.r{border-left-color:var(--red);background:var(--red-soft);}
+  .rule.g{border-left-color:var(--green);background:var(--green-soft);}
+  .rule b{color:var(--navy);} .rule.r b{color:var(--red);} .rule.g b{color:var(--green);}
+
+  table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:16px;}
+  thead th{background:var(--navy-soft);color:var(--navy);text-align:left;
+           font-weight:700;border-bottom:2px solid var(--navy);}
+  th,td{padding:.6em .8em;border-bottom:1px solid var(--rule);vertical-align:top;}
+  tbody tr:nth-child(even){background:#F6F3E9;}
+
+  figure{margin:1.2em 0;}
+  /* width:100% + height:auto lets the browser derive height from the viewBox ratio.
+     Without it the SVG keeps its native 1460px width, overflows, and scrolls. */
+  svg{display:block;width:100%;height:auto;max-width:1460px;margin:0 auto;}
+
+  .foot{margin-top:4em;border-top:1px solid var(--rule);padding-top:1.2em;
+        font-size:15px;color:var(--muted);}
+  @media print{ body{padding:0;} .card,.mimic{page-break-inside:avoid;} h2{page-break-after:avoid;} }
+  @media (max-width:900px){ .card{grid-template-columns:1fr;} .card .body{padding:0 22px 22px;}
+    .ph{border-right:none;border-bottom:1.6px dashed var(--rule);} }
+</style>
+<link rel="stylesheet" href="series.css">
+</head>
+<body class="sm">
+  <header class="nav" id="nav">
+    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
+      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="../index.html#project">Project</a>
+      <a href="../index.html#datasets">Datasets</a>
+      <a href="../index.html#people">People</a>
+      <a href="../index.html#organization">Organization</a>
+      <a href="../index.html#education">Education</a>
+      <a href="../index.html#workshop">Workshop</a>
+      <a href="../index.html#goals">Goals</a>
+      <a href="index.html" class="is-active">Spine MRI</a>
+      <a href="../pacs/">Demo</a>
+      <a href="../index.html#join" class="nav__cta">Get Involved</a>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <div class="sm-bar">
+    <div class="sm-bar__in">
+      <a class="sm-bar__hub" href="index.html">Reading Spine MRI</a>
+      <nav class="sm-pills" aria-label="Series"><a class="sm-pill" href="timeline.html">Timelines</a><a class="sm-pill" href="01-cervical-cord-compression.html">Part 1</a><a class="sm-pill" href="02-lumbar-central-stenosis.html">Part 2</a><a class="sm-pill" href="03-nerve-root-and-foramen.html">Part 3</a><a class="sm-pill is-current" href="04-anatomic-checkpoints.html">Part 4</a></nav>
+    </div>
+  </div>
+
+<div class="wrap">
+
+<div class="col">
+<p style="font-size:14px;letter-spacing:.06em;color:var(--navy);font-weight:700;margin:0 0 .4em;">
+  Neuroradiology series &#183; Part 4 of 4</p>
+<h1>Anatomic Checkpoints</h1>
+<p class="sub">Two questions to settle before you grade anything &#8212; where the cord ends, and whether you are counting the right level.</p>
+<p class="src">Companion to Parts 1&#8211;3.</p>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 2.6em;">
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 1</div>
+    <div style="font-size:15px;margin-top:.25em;">Cervical cord compression</div></div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 2</div>
+    <div style="font-size:15px;margin-top:.25em;">Lumbar central stenosis &#8212; Schizas</div></div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 3</div>
+    <div style="font-size:15px;margin-top:.25em;">Nerve root &amp; foramen</div></div>
+  <div style="border:1.8px solid var(--navy);background:var(--navy-soft);border-radius:8px;padding:12px 14px;">
+    <div style="font-size:13px;font-weight:700;color:var(--navy);letter-spacing:.04em;">Part 4 &#183; you are here</div>
+    <div style="font-size:15px;margin-top:.25em;">Anatomic checkpoints</div></div>
+</div>
+</div>
+
+<!-- 1 -->
+<h2><span class="n">1</span>Why this part is last, and why it happens first</h2>
+<div class="col">
+<p class="lede">Everything in Parts 1 to 3 assumed two things without saying so: that the spinal cord ends where
+you expect, and that the level you are naming is the level you are looking at. <b>Both assumptions fail often
+enough to check every time</b>, and both fail silently.</p>
+<p>These are quick checks &#8212; seconds each, at the start of the study, before any grading. They are last in
+the series because they only make sense once you know what you are grading, and first in practice because
+everything downstream depends on them.</p>
+<div class="rule">
+  <b>Two questions, in this order.</b><br>
+  1 &#183; <b>Where does the cord end?</b> If it ends low, you are no longer reading a degenerative study.<br>
+  2 &#183; <b>Am I counting the right level?</b> If the anatomy is transitional, every level name below it is
+  provisional until you say what you counted from.
+</div>
+</div>
+
+<!-- 2 -->
+<h2><span class="n">2</span>Checkpoint one &#8212; where does the cord end?</h2>
+<div class="col">
+<p class="lede">Step 1 of the lumbar read. Find the tip of the conus on the mid-line sagittal before you look
+at a single disc.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 620" role="img" aria-label="Where the conus medullaris ends, normative distribution">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">Where the cord actually ends</text>
+<text x="110" y="64" font-size="16" fill="#585B50">944 consecutive adults on MRI. Read the last row first &#8212; it is the only one that changes what you do.</text>
+<text x="136" y="122" font-size="19" fill="#585B50" font-weight="700">Conus terminates</text>
+<text x="700" y="122" font-size="19" fill="#585B50" font-weight="700">Proportion</text>
+<text x="958" y="122" font-size="19" fill="#585B50" font-weight="700">What it means</text>
+<line x1="110" y1="132" x2="1420" y2="132" stroke="#DCD7C8" stroke-width="1.4"/>
+<rect x="110" y="148" width="500" height="80" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/><rect x="110" y="148" width="7" height="80" rx="3.5" fill="#2E7D4F"/>
+<text x="136" y="196" font-size="16" fill="#2E7D4F" font-weight="700">Ends at the L1 vertebra</text>
+<rect x="626" y="148" width="300" height="80" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="776" y="200" font-size="21" fill="#2E7D4F" font-weight="700" text-anchor="middle">51.1%</text>
+<rect x="942" y="148" width="478" height="80" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="966" y="182" font-size="16" fill="#1A1C18">The single commonest place. Peak density is the lower thir</text>
+<text x="966" y="206" font-size="16" fill="#1A1C18">d of L1.</text>
+<rect x="110" y="244" width="500" height="80" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/><rect x="110" y="244" width="7" height="80" rx="3.5" fill="#2E7D4F"/>
+<text x="136" y="292" font-size="16" fill="#2E7D4F" font-weight="700">At or above the L1&#8211;L2 interspace</text>
+<rect x="626" y="244" width="300" height="80" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="776" y="296" font-size="21" fill="#2E7D4F" font-weight="700" text-anchor="middle">81.1%</text>
+<rect x="942" y="244" width="478" height="80" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="966" y="278" font-size="16" fill="#1A1C18">Four out of five people. This is the ordinary range.</text>
+<rect x="110" y="340" width="500" height="80" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="110" y="340" width="7" height="80" rx="3.5" fill="#BC6B26"/>
+<text x="136" y="388" font-size="16" fill="#BC6B26" font-weight="700">Below the L1&#8211;L2 interspace</text>
+<rect x="626" y="340" width="300" height="80" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="776" y="392" font-size="21" fill="#BC6B26" font-weight="700" text-anchor="middle">18.9%</text>
+<rect x="942" y="340" width="478" height="80" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="966" y="374" font-size="16" fill="#1A1C18">Lower than average, and still entirely normal. Do not call</text>
+<text x="966" y="398" font-size="16" fill="#1A1C18">this tethering.</text>
+<rect x="110" y="436" width="500" height="80" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="110" y="436" width="7" height="80" rx="3.5" fill="#A3301F"/>
+<text x="136" y="484" font-size="16" fill="#A3301F" font-weight="700">At or below the L2&#8211;L3 interspace</text>
+<rect x="626" y="436" width="300" height="80" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="776" y="488" font-size="21" fill="#A3301F" font-weight="700" text-anchor="middle">0.7%</text>
+<rect x="942" y="436" width="478" height="80" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="966" y="470" font-size="16" fill="#1A1C18">About one person in 140. This is where the finding stops b</text>
+<text x="966" y="494" font-size="16" fill="#1A1C18">eing a variant.</text>
+<rect x="110" y="532" width="1310" height="76" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<rect x="110" y="532" width="7" height="76" rx="3.5" fill="#A3301F"/>
+<text x="134" y="564" font-size="16" fill="#A3301F" font-weight="700">The line to remember</text>
+<text x="134" y="590" font-size="16" fill="#1A1C18">A conus ending below the mid-body of L2 is outside the normal range at any age. It is not a degenerative finding and it is not incidental &#8212; it asks a different question entirely.</text>
+</svg>
+</figure>
+<div class="col">
+<div class="rule g">
+  <b>Note how wide the normal range is.</b> Nearly one person in five has a conus ending <i>below</i> the
+  L1&#8211;L2 interspace and is completely normal. A conus at L2 is not tethering. The threshold that matters is
+  lower and much rarer: <b>at or below the L2&#8211;L3 interspace, which was 0.7%</b> of 944 adults.
+</div>
+<div class="rule r">
+  <b>Why an APP should care, in one sentence.</b> A low conus points at tethered cord &#8212; a different
+  disease, a different operation, and a different specialist. It also changes where a spinal anaesthetic can
+  safely be placed, which is the reason this dataset exists in the first place.
+</div>
+</div>
+
+<!-- 3 -->
+<h2><span class="n">3</span>Checkpoint two &#8212; are you counting the right level?</h2>
+<div class="col">
+<p class="lede">This is the least glamorous thing in the whole series and probably the most consequential.
+Numbering is an <b>assumption</b>, and it is wrong often enough to check.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 640" role="img" aria-label="How to count vertebral levels reliably">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">Roughly one spine in nine is not built to the standard plan</text>
+<text x="110" y="64" font-size="16" fill="#585B50">Whole-spine MRI in 420 consecutive patients. Numbering is an assumption, and it is wrong often enough to matter.</text>
+<rect x="110" y="108" width="620" height="132" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="110" y="108" width="7" height="132" rx="3.5" fill="#BC6B26"/>
+<text x="136" y="158" font-size="21" fill="#BC6B26" font-weight="700">3.3%</text>
+<text x="240" y="148" font-size="16" fill="#1A1C18">have a lumbosacral</text>
+<text x="240" y="172" font-size="16" fill="#BC6B26" font-weight="700">transitional vertebra</text>
+<text x="136" y="206" font-size="16" fill="#585B50">L5 partly sacralised, or S1 partly lumbarised</text>
+<rect x="770" y="108" width="620" height="132" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="770" y="108" width="7" height="132" rx="3.5" fill="#BC6B26"/>
+<text x="796" y="158" font-size="21" fill="#BC6B26" font-weight="700">7.7%</text>
+<text x="900" y="148" font-size="16" fill="#1A1C18">have some other</text>
+<text x="900" y="172" font-size="16" fill="#BC6B26" font-weight="700">numerical variant</text>
+<text x="796" y="206" font-size="16" fill="#585B50">extra or missing segments elsewhere in the column</text>
+<text x="110" y="296" font-size="19" fill="#0E5F58" font-weight="700">The rule that prevents the error</text>
+<rect x="110" y="316" width="305" height="168" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/><rect x="110" y="316" width="7" height="168" rx="3.5" fill="#0E5F58"/>
+<text x="134" y="350" font-size="16" fill="#0E5F58" font-weight="700">Count from a fixed point</text>
+<text x="134" y="378" font-size="16" fill="#1A1C18">Start at a landmark you can</text>
+<text x="134" y="402" font-size="16" fill="#1A1C18">defend &#8212; the last rib-bearing</text>
+<text x="134" y="426" font-size="16" fill="#1A1C18">vertebra, or C2 &#8212; and count</text>
+<text x="134" y="450" font-size="16" fill="#1A1C18">down on one long sagittal.</text>
+<rect x="445" y="316" width="305" height="168" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/><rect x="445" y="316" width="7" height="168" rx="3.5" fill="#0E5F58"/>
+<text x="469" y="350" font-size="16" fill="#0E5F58" font-weight="700">Never count from the gap</text>
+<text x="469" y="378" font-size="16" fill="#1A1C18">&#8220;The lowest disc&#8221; is not a</text>
+<text x="469" y="402" font-size="16" fill="#1A1C18">landmark. A sacralised L5 has</text>
+<text x="469" y="426" font-size="16" fill="#1A1C18">no mobile disc below it, so the</text>
+<text x="469" y="450" font-size="16" fill="#1A1C18">lowest disc may be L4&#8211;5.</text>
+<rect x="780" y="316" width="305" height="168" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/><rect x="780" y="316" width="7" height="168" rx="3.5" fill="#0E5F58"/>
+<text x="804" y="350" font-size="16" fill="#0E5F58" font-weight="700">Name your landmark</text>
+<text x="804" y="378" font-size="16" fill="#1A1C18">Write it down: &#8220;counting from</text>
+<text x="804" y="402" font-size="16" fill="#1A1C18">the last rib-bearing vertebra,</text>
+<text x="804" y="426" font-size="16" fill="#1A1C18">this is L4&#8211;5.&#8221; The next reader</text>
+<text x="804" y="450" font-size="16" fill="#1A1C18">can then check your count.</text>
+<rect x="1115" y="316" width="305" height="168" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="1115" y="316" width="7" height="168" rx="3.5" fill="#A3301F"/>
+<text x="1139" y="350" font-size="16" fill="#A3301F" font-weight="700">Flag the variant itself</text>
+<text x="1139" y="378" font-size="16" fill="#1A1C18">If the anatomy is transitional,</text>
+<text x="1139" y="402" font-size="16" fill="#1A1C18">say so in the first line. It is</text>
+<text x="1139" y="426" font-size="16" fill="#1A1C18">not a footnote &#8212; it changes</text>
+<text x="1139" y="450" font-size="16" fill="#1A1C18">what every level below is called.</text>
+<rect x="110" y="512" width="1310" height="108" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<rect x="110" y="512" width="7" height="108" rx="3.5" fill="#A3301F"/>
+<text x="134" y="546" font-size="16" fill="#A3301F" font-weight="700">This is a documented &#8220;never event&#8221;, not a hypothetical</text>
+<text x="134" y="574" font-size="16" fill="#1A1C18">A published case: a microdiscectomy carried out one level too high, leaving the original disc untreated, because the patient had ribs at C7</text>
+<text x="134" y="598" font-size="16" fill="#1A1C18">and only eleven thoracic pairs. At the revision, experienced surgeons counting carefully from several landmarks were still uncertain.</text>
+</svg>
+</figure>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/lstv_fig1_sacralised_L5.jpg"
+    alt="Sacralised L5 on whole-spine sagittal MRI, coronal MRI and radiograph"
+    data-cap="26-year-old woman with a sacralised L5. (a) Whole-spine sagittal T1 - the sequence you can actually count on. (b) Coronal. (c) AP radiograph. The lowest lumbar segment is partly fused to the sacrum, so the lowest mobile disc is higher than you would assume.">
+    <div class="attrib">Tins &amp; Balain, <i>Insights Imaging</i> 2016;7:199&#8211;203, Fig 1 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>Sacralised L5 &#8212; the lowest disc is not L5&#8211;S1</h3>
+    <p class="where">Whole-spine sagittal, panel (a)</p>
+    <p>The lowest lumbar segment has partly fused to the sacrum. If you count upward from &#8220;the lowest
+    mobile disc&#8221;, you will name every level one lower than it is.</p>
+    <div class="rule" style="margin:1em 0 0">
+      <b>Notice what panel (a) is:</b> a whole-spine sagittal. This is why counting needs a long sequence or a
+      localiser that reaches a fixed landmark. On a lumbar-only study there may be nothing reliable to count
+      from.
+    </div>
+  </div>
+</div>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/lstv_fig2_lumbarised_S1.jpg"
+    alt="Lumbarised S1 on whole-spine sagittal MRI, coronal MRI and radiographs"
+    data-cap="15-year-old boy with a lumbarised S1. (a) Whole-spine sagittal T1. (b) Coronal. (c, d) Radiographs. The top sacral segment has separated and behaves like a sixth lumbar vertebra, so there is an extra mobile level below L5.">
+    <div class="attrib">Tins &amp; Balain, <i>Insights Imaging</i> 2016;7:199&#8211;203, Fig 2 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>Lumbarised S1 &#8212; there is an extra level</h3>
+    <p class="where">Whole-spine sagittal, panel (a)</p>
+    <p>The opposite error. The top sacral segment has separated and behaves like a sixth lumbar vertebra, giving
+    an extra mobile disc below L5. Count from below here and every level comes out one <i>too high</i>.</p>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>The two variants push the count in opposite directions</b>, which is exactly why &#8220;count from the
+      bottom&#8221; is not a method. Say what you counted <i>from</i>.
+    </div>
+  </div>
+</div>
+
+<!-- 4 -->
+<h2><span class="n">4</span>Checkpoint three &#8212; is the conus itself the problem?</h2>
+<div class="col">
+<p class="lede">Parts 1 to 3 were about things pressing on neural tissue from outside. Occasionally the tissue
+itself is the lesion, and it sits exactly where a routine lumbar study starts.</p>
+<div class="rule r">
+  <b>The presentation that should stop you.</b> Saddle anaesthesia, new retention, bilateral leg symptoms
+  &#8212; the picture everyone is trained to call cauda equina &#8212; can also be produced by a lesion
+  <i>in the conus itself.</i> The symptoms are similar; the cause is not degenerative; the workup is different.
+  If the discs look unimpressive against the symptoms, <b>look hard at the conus before you accept the study
+  as negative.</b>
+</div>
+</div>
+
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/conus_fig9_saddle_anaes.jpg"
+    alt="Sagittal T2, STIR and post-contrast T1 showing an abnormal conus"
+    data-cap="52-year-old man presenting with saddle anaesthesia and incontinence - the classic cauda equina presentation. (a) Sagittal T2 shows mild expansion of the conus medullaris. (b) Sagittal STIR shows subtle high signal. (c) Post-contrast T1 shows diffuse cloud-like enhancement of the conus. The problem is in the cord, not around it.">
+    <div class="attrib">Sagittal T2, STIR, and post-contrast T1.<br>
+    <i>Insights Imaging</i> 2025;16:2117, Fig 9 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>Cauda equina symptoms, conus cause</h3>
+    <p class="where">Sagittal T2 first &#8212; then look again with fresh eyes</p>
+    <p>This man presented with <b>saddle anaesthesia and incontinence.</b> The T2 shows only <i>mild
+    expansion</i> of the conus and the STIR change is described as <b>subtle</b>. It is the contrast study that
+    makes it obvious.</p>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>What to take from this.</b> The finding that explained everything was easy to miss on the sequences a
+      routine lumbar study actually contains. You are not expected to make this diagnosis. You are expected to
+      notice that <b>the discs do not explain the patient</b>, and to say so.
+    </div>
+  </div>
+</div>
+
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/conus_fig4_expansion.jpg"
+    alt="Sagittal T2 and post-contrast images of an expanded, enhancing conus"
+    data-cap="56-year-old man with low back pain, lower limb numbness and weakness. (a) Sagittal T2 shows a hyperintense lesion in the conus with significant cord expansion. (b, c) Post-contrast T1 shows prominent enhancement of the expanded conus.">
+    <div class="attrib"><i>Insights Imaging</i> 2025;16:2117, Fig 4 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>When it is not subtle</h3>
+    <p class="where">Sagittal T2 &#183; low back pain, numbness and weakness</p>
+    <p>The same region, and here the cord is frankly <b>expanded</b> with bright signal inside it. Note the
+    presenting complaint: low back pain with leg symptoms &#8212; indistinguishable, on the referral, from any
+    degenerative study you will read this week.</p>
+    <dl>
+      <dt>Expansion</dt><dd>The cord is <b>fatter</b> than the segment above. Compression makes cord thinner,
+        never fatter. Expansion is always a defer.</dd>
+      <dt>Signal inside</dt><dd>Bright T2 <i>within</i> the conus, not around it.</dd>
+    </dl>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>The single rule:</b> a cord that is bigger than it should be is never degenerative.
+    </div>
+  </div>
+</div>
+
+<div class="card n">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/conus_fig12_congenital.jpg"
+    alt="Sagittal and axial T2 showing a syrinx, duplicated dural sac and incomplete posterior fusion"
+    data-cap="47-year-old woman with back pain. (a) Sagittal T2 shows a focal central syrinx at T12 and L1. (b) A duplicated dural sac separated by a midline spur. (c) Axial T2 shows incomplete fusion of the posterior elements of L5. Three congenital findings in one routine study for back pain.">
+    <div class="attrib"><i>Insights Imaging</i> 2025;16:2117, Fig 12 <span class="lic">CC BY 4.0</span></div></div>
+  <div class="body">
+    <h3>Congenital findings hide in ordinary studies</h3>
+    <p class="where">A routine lumbar MRI for back pain</p>
+    <p>A 47-year-old scanned for back pain, with <b>three</b> congenital findings: a small syrinx at
+    T12&#8211;L1, a duplicated dural sac split by a midline bony spur, and incomplete fusion of the posterior
+    elements of L5.</p>
+    <p>None of these is what the scan was ordered for. All of them change the anatomy an operation would
+    encounter, and the split dural sac belongs in the same family as the low conus in checkpoint one.</p>
+    <div class="rule" style="margin:1em 0 0">
+      <b>Why it belongs in this part:</b> these are the findings that are missed precisely because the reader
+      already decided what study they were looking at. The checkpoints exist to interrupt that.
+    </div>
+  </div>
+</div>
+
+<!-- 5 -->
+<h2><span class="n">5</span>What you can and cannot call</h2>
+<div class="col">
+<table>
+  <thead><tr><th style="width:50%">Call it and act on it</th><th>Defer it, always</th></tr></thead>
+  <tbody>
+    <tr><td>The level at which the conus ends</td><td>Why a conus is expanded or enhancing</td></tr>
+    <tr><td>That the conus is or is not below the L2&#8211;L3 interspace</td><td>Any intramedullary lesion, of any kind</td></tr>
+    <tr><td>That the segmentation is transitional, and what you counted from</td><td>Which numbering convention the surgeon should adopt</td></tr>
+    <tr><td>That the cord looks expanded rather than compressed</td><td>Tumour versus inflammation versus infarct</td></tr>
+    <tr><td>That the degenerative findings do not explain the symptoms</td><td>What the alternative diagnosis is</td></tr>
+  </tbody>
+</table>
+<div class="rule">
+  <b>The sentence to write.</b> <i>"Counting from the last rib-bearing vertebra, this is a transitional
+  segment with a sacralised L5; levels are named accordingly. Conus terminates at the lower third of L1.
+  No cord expansion or intramedullary signal change."</i> Two sentences, and the next reader knows exactly
+  what you assumed.
+</div>
+<div class="rule g">
+  <b>Where the series ends.</b> Across four parts the recurring point has not been any grading system &#8212; it
+  is that <b>your read exists to raise a question, never to close one.</b> Schizas grades, Pfirrmann grades and
+  Lee grades all describe pictures. The checkpoints in this part describe whether the picture is the one you
+  think you are looking at.
+</div>
+</div>
+
+<!-- 6 -->
+<h2><span class="n">6</span>Where this stops being a teaching point</h2>
+<div class="col">
+<p class="lede">The counting problem in &#167;3 is not only a reading problem. It is also the reason a whole
+class of spine AI quietly fails.</p>
+
+<p>A segmentation model trained on ordinary spines learns that the vertebra above the sacrum is L5. Show it a
+<b>sacralised L5</b> and it will confidently label the level below as S1 when the surgeon calls it L5 &#8212; or
+show it a <b>lumbarised S1</b> and every label above shifts by one. The model is not uncertain. It is wrong, and
+it is wrong in exactly the same direction a hurried human is wrong, so a second reader agreeing with it proves
+nothing.</p>
+
+<p>That failure mode is invisible unless a dataset <i>contains</i> transitional anatomy and labels it as such.
+Most public spine datasets do not: transitional cases are uncommon enough that they get excluded during curation,
+or included and mislabelled by the very convention that the variant breaks.</p>
+
+<div class="rule g">
+  <b>This is why <a href="../index.html#datasets" style="color:inherit">CTSpinoPelvic1K</a> exists.</b>
+  It is the first CT segmentation dataset for the spine and pelvis built to be <b>LSTV-aware</b> &#8212;
+  transitional anatomy is deliberately represented and explicitly annotated rather than quietly dropped. The
+  clinical checkpoint you have just read and the labelling standard the dataset uses are the same idea, one
+  applied by a person and one by a model.
+  <div style="margin-top:1em">
+    <a href="../index.html#datasets" style="display:inline-block;background:#0E5F58;color:#fff;
+       text-decoration:none;padding:.6em 1.2em;border-radius:6px;font-weight:700;font-size:15px;">
+      See CTSpinoPelvic1K &rarr;</a>
+    <a href="../index.html" style="display:inline-block;margin-left:.6em;color:#0E5F58;
+       text-decoration:none;padding:.6em .9em;font-weight:600;font-size:15px;">
+      OpenSpineConsortium home</a>
+  </div>
+</div>
+
+<p style="font-size:15px;color:var(--faint);margin-top:1.6em">
+  The education model that produced this series is described in Schehr A, Kim J, Schwing G,
+  <i>OpenSpineConsortium: an open-source framework for medical student engagement in computational spine
+  imaging research</i>, Cureus 2026;18(7):e112661
+  (<a href="https://doi.org/10.7759/cureus.112661" target="_blank" rel="noopener">doi:10.7759/cureus.112661</a>).
+</p>
+</div>
+
+<div class="foot">
+<b>Sources.</b>
+Paul JE, et al. <i>Conus medullaris termination: assessing safety of spinal anaesthesia in the L2&#8211;L3
+interspace.</i> Acta Anaesthesiol Scand 2025;69(3):e14580. &#8212; 944 adults on MRI; conus at L1 in 51.1%,
+at or above the L1&#8211;L2 interspace in 81.1%, at or below the L2&#8211;L3 interspace in 0.7%.<br><br>
+Tins BJ, Balain B. <i>Incidence of numerical variants and transitional lumbosacral vertebrae on whole-spine
+MRI.</i> Insights Imaging 2016;7(2):199&#8211;203 <span class="lic">CC BY 4.0</span> &#8212; 420 consecutive
+whole-spine MRI studies; transitional lumbosacral vertebra in 3.3%, other numerical variants in 7.7%.<br><br>
+Lindley EM, Botolin S, Burger EL, Patel VV. <i>Unusual spine anatomy contributing to wrong level spine surgery:
+a case report and recommendations for decreasing the risk of preventable "never events".</i> Patient Saf Surg
+2011;5:33 <span class="lic">CC BY 2.0</span> &#8212; the wrong-level case described in &#167;3.<br><br>
+<i>Pathology of the conus medullaris and cauda equina: beyond the usual suspects.</i> Insights Imaging
+2025;16:2117 <span class="lic">CC BY 4.0</span> &#8212; source of the three conus cases in &#167;4.<br><br>
+Every image on this page is openly licensed and clickable.
+</div>
+
+</div>
+
+<div id="lb" role="dialog" aria-label="Zoomed image" aria-modal="true">
+  <button id="lbclose" aria-label="Close">&#10005;</button>
+  <img id="lbimg" alt="">
+  <div id="lbcap"></div>
+</div>
+<style>
+  #lb{position:fixed;inset:0;background:rgba(12,16,20,.94);z-index:9999;
+      display:none;align-items:center;justify-content:center;flex-direction:column;padding:2.5vh 3vw;}
+  #lb.on{display:flex;}
+  #lbimg{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:6px;
+         box-shadow:0 8px 40px rgba(0,0,0,.6);background:#111;cursor:zoom-out;}
+  #lbcap{color:#e8ecef;font-size:16px;margin-top:1em;max-width:1100px;text-align:center;line-height:1.5;}
+  #lbclose{position:absolute;top:18px;right:24px;background:none;border:0;color:#e8ecef;
+           font-size:30px;line-height:1;cursor:pointer;padding:.2em .4em;border-radius:6px;}
+  #lbclose:hover{background:rgba(255,255,255,.12);}
+  .zoom{cursor:zoom-in;transition:filter .12s;}
+  .zoom:hover{filter:brightness(1.06);}
+</style>
+<script>
+(function(){
+  var lb=document.getElementById('lb'), im=document.getElementById('lbimg'), cp=document.getElementById('lbcap');
+  function open(src,cap){ im.src=src; cp.textContent=cap||''; lb.classList.add('on');
+                          document.body.style.overflow='hidden'; }
+  function close(){ lb.classList.remove('on'); im.src=''; document.body.style.overflow=''; }
+  document.addEventListener('click', function(e){
+    var t=e.target;
+    if(t.classList && t.classList.contains('zoom')){
+      open(t.getAttribute('src')||t.getAttribute('href'), t.getAttribute('data-cap')||t.alt);
+      return;
+    }
+    if(t.id==='lb'||t.id==='lbimg'||t.id==='lbclose') close();
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
+})();
+</script>
+<footer class="sm-foot">
+  <div class="sm-pnwrap"><a class="sm-pn" href="03-nerve-root-and-foramen.html"><span class="sm-pn__k">&larr; Previous</span><span class="sm-pn__t">Part 3 &middot; Nerve root and foramen</span></a><span></span></div>
+  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="../index.html">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
+</footer>
+
+<script>
+(function(){
+  var nav=document.getElementById('nav');
+  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
+  window.addEventListener('scroll', s, {passive:true}); s();
+  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
+  t.addEventListener('click', function(){
+    var o=l.classList.toggle('is-open');
+    t.classList.toggle('is-open', o);
+    t.setAttribute('aria-expanded', o?'true':'false');
+  });
+})();
+</script>
+</body>
+</html>

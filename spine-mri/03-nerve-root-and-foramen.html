@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nerve root and foramen &middot; Reading Spine MRI &middot; OpenSpineConsortium</title>
+<meta name="description" content="Two zones, two grading systems, two sequences: Pfirrmann in the lateral recess, Lee in the foramen, and the muscle finding that localises the level.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+  :root{
+    --ink:#1A1C18; --muted:#585B50; --faint:#8C8E82; --rule:#DCD7C8;
+    --navy:#0E5F58; --navy-soft:#E7EFEC;
+    --green:#2E7D4F; --green-soft:#E5EFE4;
+    --orange:#BC6B26; --orange-soft:#F7E9D6;
+    --red:#A3301F;   --red-soft:#F6E4DE;
+    --grey-soft:#F1EEE3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:#fff; margin:0;
+    padding:2.5em 1.5em 6em; line-height:1.55; font-size:16px;
+  }
+  .wrap{max-width:1500px;margin:0 auto;}
+  .col{max-width:1180px;}
+
+  h1{font-size:30px;color:var(--navy);margin:0 0 .15em;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:18px;margin:0 0 .3em;}
+  .src{color:var(--faint);font-size:14px;margin:0 0 2.6em;font-style:italic;}
+
+  h2{font-size:21px;color:var(--navy);margin:3em 0 .2em;
+     border-bottom:2px solid var(--rule);padding-bottom:.35em;}
+  h2 .n{display:inline-block;background:var(--navy);color:#fff;border-radius:50%;
+        width:1.45em;height:1.45em;line-height:1.45em;text-align:center;
+        font-size:.8em;margin-right:.5em;}
+  .lede{color:var(--muted);font-size:16px;margin:.6em 0 1.4em;}
+
+  /* ── finding card ── */
+  .card{display:grid;grid-template-columns:300px 1fr;gap:26px;
+        border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;
+        margin:0 0 22px;background:#fff;}
+  .card.g{border-color:var(--green);}  .card.o{border-color:var(--orange);}
+  .card.r{border-color:var(--red);}    .card.n{border-color:var(--navy);}
+  .card .body{padding:20px 24px 22px 0;}
+  .imgcell{padding:14px;background:#EFEADC;border-right:1.6px solid var(--rule);}
+  .imgcell img{width:100%;height:auto;display:block;border-radius:5px;background:#111;}
+  .attrib{font-size:12.5px;color:var(--faint);margin-top:.6em;line-height:1.35;font-style:italic;}
+  .card.g .imgcell{border-right-color:var(--green);} .card.o .imgcell{border-right-color:var(--orange);}
+  .card.r .imgcell{border-right-color:var(--red);}   .card.n .imgcell{border-right-color:var(--navy);}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .trio figcaption,.duo figcaption{font-size:12px;color:var(--faint);text-align:center;margin-top:.3em;}
+  .pair img{max-width:100%;max-height:360px;width:auto;height:auto;display:block;margin:0 auto;
+            border-radius:5px;background:#111;}
+  .pair .a,.pair .b{display:flex;flex-direction:column;}
+  .pair .a img,.pair .b img{margin-top:auto;margin-bottom:auto;}
+  figure.wide{margin:1.6em 0;}
+  figure.wide img{max-width:100%;width:auto;height:auto;display:block;margin:0 auto;
+                  border-radius:6px;background:#111;}
+  figure.wide figcaption{font-size:14px;color:var(--faint);margin-top:.7em;line-height:1.5;}
+  .lic{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;padding:.15em .5em;
+       border-radius:3px;background:#E5EFE4;color:#2E7D4F;margin-left:.4em;vertical-align:.08em;}
+  .duo figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:.35em;}
+  .card h3{margin:0 0 .1em;font-size:19px;}
+  .card.g h3{color:var(--green);} .card.o h3{color:var(--orange);}
+  .card.r h3{color:var(--red);}   .card.n h3{color:var(--navy);}
+  .where{font-size:14px;color:var(--faint);margin:0 0 .9em;font-style:italic;}
+  .card p{margin:.5em 0;}
+  .card dl{display:grid;grid-template-columns:auto 1fr;gap:.35em .9em;margin:.9em 0 0;}
+  .card dt{font-weight:700;white-space:nowrap;}
+  .card dd{margin:0;}
+
+  /* ── image placeholder ── */
+  .ph{background:#EFEADC;border-right:1.6px dashed var(--rule);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:18px 14px;min-height:230px;color:#8a949c;}
+  .ph b{font-size:14px;letter-spacing:.04em;display:block;margin-bottom:.5em;}
+  .ph span{font-size:13px;line-height:1.4;}
+  .card.g .ph{border-right-color:var(--green);}
+  .card.o .ph{border-right-color:var(--orange);}
+  .card.r .ph{border-right-color:var(--red);}
+  .card.n .ph{border-right-color:var(--navy);}
+
+  /* ── mimic pair ── */
+  .mimic{border:1.6px solid var(--red);border-radius:9px;margin:0 0 22px;overflow:hidden;}
+  .mimic .head{background:var(--red-soft);padding:16px 24px;}
+  .mimic .head h3{margin:0;font-size:19px;color:var(--red);}
+  .mimic .head p{margin:.35em 0 0;font-size:16px;}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .pair > div{padding:0;}
+  .pair .lab{padding:12px 20px;font-size:14px;font-weight:700;}
+  .pair .a .lab{background:var(--red-soft);color:var(--red);}
+  .pair .b .lab{background:var(--green-soft);color:var(--green);}
+  .pair .ph{border-right:1.6px solid var(--rule);min-height:210px;}
+  .pair .b .ph{border-right:none;}
+  .pair .cap{padding:12px 20px 18px;font-size:14px;color:var(--muted);}
+
+  /* ── callouts ── */
+  .rule{border-left:5px solid var(--navy);background:var(--navy-soft);
+        padding:1em 1.2em;margin:1.2em 0;border-radius:0 6px 6px 0;}
+  .rule.r{border-left-color:var(--red);background:var(--red-soft);}
+  .rule.g{border-left-color:var(--green);background:var(--green-soft);}
+  .rule b{color:var(--navy);} .rule.r b{color:var(--red);} .rule.g b{color:var(--green);}
+
+  table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:16px;}
+  thead th{background:var(--navy-soft);color:var(--navy);text-align:left;
+           font-weight:700;border-bottom:2px solid var(--navy);}
+  th,td{padding:.6em .8em;border-bottom:1px solid var(--rule);vertical-align:top;}
+  tbody tr:nth-child(even){background:#F6F3E9;}
+
+  figure{margin:1.2em 0;}
+  /* width:100% + height:auto lets the browser derive height from the viewBox ratio.
+     Without it the SVG keeps its native 1460px width, overflows, and scrolls. */
+  svg{display:block;width:100%;height:auto;max-width:1460px;margin:0 auto;}
+
+  .foot{margin-top:4em;border-top:1px solid var(--rule);padding-top:1.2em;
+        font-size:15px;color:var(--muted);}
+  @media print{ body{padding:0;} .card,.mimic{page-break-inside:avoid;} h2{page-break-after:avoid;} }
+  @media (max-width:900px){ .card{grid-template-columns:1fr;} .card .body{padding:0 22px 22px;}
+    .ph{border-right:none;border-bottom:1.6px dashed var(--rule);} }
+</style>
+<link rel="stylesheet" href="series.css">
+</head>
+<body class="sm">
+  <header class="nav" id="nav">
+    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
+      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="../index.html#project">Project</a>
+      <a href="../index.html#datasets">Datasets</a>
+      <a href="../index.html#people">People</a>
+      <a href="../index.html#organization">Organization</a>
+      <a href="../index.html#education">Education</a>
+      <a href="../index.html#workshop">Workshop</a>
+      <a href="../index.html#goals">Goals</a>
+      <a href="index.html" class="is-active">Spine MRI</a>
+      <a href="../pacs/">Demo</a>
+      <a href="../index.html#join" class="nav__cta">Get Involved</a>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <div class="sm-bar">
+    <div class="sm-bar__in">
+      <a class="sm-bar__hub" href="index.html">Reading Spine MRI</a>
+      <nav class="sm-pills" aria-label="Series"><a class="sm-pill" href="timeline.html">Timelines</a><a class="sm-pill" href="01-cervical-cord-compression.html">Part 1</a><a class="sm-pill" href="02-lumbar-central-stenosis.html">Part 2</a><a class="sm-pill is-current" href="03-nerve-root-and-foramen.html">Part 3</a><a class="sm-pill" href="04-anatomic-checkpoints.html">Part 4</a></nav>
+    </div>
+  </div>
+
+<div class="wrap">
+
+<div class="col">
+<p style="font-size:14px;letter-spacing:.06em;color:var(--navy);font-weight:700;margin:0 0 .4em;">
+  Neuroradiology series &#183; Part 3 of 4</p>
+<h1>Nerve Root &amp; Foramen</h1>
+<p class="sub">Two zones, two grading systems, two sequences &#8212; and the muscle finding that tells you which level is live.</p>
+<p class="src">Companion to Parts 1 and 2.</p>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 2.6em;">
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 1</div>
+    <div style="font-size:15px;margin-top:.25em;">Cervical cord compression</div></div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 2</div>
+    <div style="font-size:15px;margin-top:.25em;">Lumbar central stenosis &#8212; Schizas</div></div>
+  <div style="border:1.8px solid var(--navy);background:var(--navy-soft);border-radius:8px;padding:12px 14px;">
+    <div style="font-size:13px;font-weight:700;color:var(--navy);letter-spacing:.04em;">Part 3 &#183; you are here</div>
+    <div style="font-size:15px;margin-top:.25em;">Nerve root &amp; foramen</div></div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 4</div>
+    <div style="font-size:15px;margin-top:.25em;">Anatomic checkpoints &#8212; conus level</div></div>
+</div>
+</div>
+
+<!-- 1 -->
+<h2><span class="n">1</span>Two zones, and the root that belongs to each</h2>
+<div class="col">
+<p class="lede">Part 2 graded the <b>middle</b> of the canal, where the whole cauda equina sits. This part is about
+the two places a <b>single named root</b> gets caught &#8212; and they are different problems, on different
+sequences, with different grading systems.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 600" role="img" aria-label="Which nerve root sits in which zone and which grading system applies">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">Which root, which zone, which system</text>
+<text x="110" y="64" font-size="16" fill="#585B50">Two different roots are in trouble at the same disc level, and they are graded on different sequences. Getting this wrong renames the patient&#8217;s problem.</text>
+<text x="136" y="122" font-size="19" fill="#585B50" font-weight="700">Where you are looking</text>
+<text x="536" y="122" font-size="19" fill="#585B50" font-weight="700">Which root is there</text>
+<text x="958" y="122" font-size="19" fill="#585B50" font-weight="700">How to grade it</text>
+<line x1="110" y1="132" x2="1420" y2="132" stroke="#DCD7C8" stroke-width="1.4"/>
+<rect x="110" y="148" width="386" height="140" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="110" y="148" width="7" height="140" rx="3.5" fill="#BC6B26"/>
+<text x="136" y="186" font-size="19" fill="#BC6B26" font-weight="700">Lateral recess</text>
+<text x="136" y="218" font-size="16" fill="#1A1C18">also called the subarticular zone &#8212;</text>
+<text x="136" y="242" font-size="16" fill="#1A1C18">inside the canal, before the foramen</text>
+<rect x="512" y="148" width="400" height="140" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="536" y="186" font-size="16" fill="#BC6B26" font-weight="700">The TRAVERSING root</text>
+<text x="536" y="216" font-size="16" fill="#1A1C18">At L4&#8211;5 that is the L5 root,</text>
+<text x="536" y="240" font-size="16" fill="#1A1C18">on its way down to exit at L5&#8211;S1.</text>
+<rect x="928" y="148" width="492" height="140" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="958" y="188" font-size="21" fill="#BC6B26" font-weight="700">Pfirrmann</text>
+<text x="958" y="220" font-size="16" fill="#1A1C18">graded on axial T2</text>
+<text x="958" y="248" font-size="16" fill="#585B50">0 contact &#183; 1 &#183; 2 &#183; 3</text>
+<rect x="110" y="312" width="386" height="140" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="110" y="312" width="7" height="140" rx="3.5" fill="#A3301F"/>
+<text x="136" y="350" font-size="19" fill="#A3301F" font-weight="700">The foramen</text>
+<text x="136" y="382" font-size="16" fill="#1A1C18">the doorway itself, out to the side</text>
+<rect x="512" y="312" width="400" height="140" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="536" y="350" font-size="16" fill="#A3301F" font-weight="700">The EXITING root</text>
+<text x="536" y="380" font-size="16" fill="#1A1C18">At L4&#8211;5 that is the L4 root,</text>
+<text x="536" y="404" font-size="16" fill="#1A1C18">leaving the canal at this level.</text>
+<rect x="928" y="312" width="492" height="140" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="958" y="352" font-size="21" fill="#A3301F" font-weight="700">Lee</text>
+<text x="958" y="384" font-size="16" fill="#1A1C18">graded on sagittal T1</text>
+<text x="958" y="412" font-size="16" fill="#585B50">0 &#183; 1 &#183; 2 &#183; 3</text>
+<rect x="110" y="486" width="1310" height="96" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/>
+<rect x="110" y="486" width="7" height="96" rx="3.5" fill="#0E5F58"/>
+<text x="134" y="520" font-size="16" fill="#0E5F58" font-weight="700">The error that actually happens</text>
+<text x="134" y="548" font-size="16" fill="#1A1C18">A disc at L4&#8211;5 usually catches the L5 root in the recess. The same level failing at the foramen catches L4 instead. Same disc, different leg,</text>
+<text x="134" y="572" font-size="16" fill="#1A1C18">different operation. If the grade and the symptoms name different roots, say so rather than picking one.</text>
+</svg>
+</figure>
+<div class="col">
+<div class="rule r">
+  <b>Two different papers are both called &#8220;the Lee grading system&#8221;, and both come from the same unit
+  in Seoul.</b> Lee <i>S</i> et al., AJR 2010, grades the <b>foramen</b> &#8212; that is the one on this page.
+  Lee <i>GY</i> et al., Skeletal Radiol 2011, grades the <b>central canal</b> &#8212; that is the one compared
+  against Schizas in Part 2. If someone says &#8220;Lee grade 2&#8221; without saying which, ask.
+</div>
+</div>
+
+<!-- 2 -->
+<h2><span class="n">2</span>Pfirrmann &#8212; the root in the lateral recess</h2>
+<div class="col">
+<p class="lede">Four grades, on <b>axial T2</b>, describing what a disc is doing to one root. The whole system is
+a sequence of four verbs: <b>nothing, touching, pushing, squashing.</b></p>
+<div class="rule">
+  <b>Why this one earns its place.</b> Most grading systems only ever show that readers agree with each other.
+  Pfirrmann went further: 94 of the roots were then <b>operated on</b>, and the grade read off the MRI was
+  compared with what the surgeon recorded. The correlation was <b>r = 0.86.</b> The grade predicts what is
+  actually found at the time of surgery.
+</div>
+</div>
+
+<div class="card g">
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig1_grade0_normal.jpg" alt="Diagram and axial T2 showing a normal nerve root" data-cap="Grade 0, normal. Diagram left, transverse T2 right. No compromise of the nerve root. There is no contact between disc material and the root, and the epidural fat layer between them is preserved."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade 0 &#8212; normal</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>No contact between disc material and the root, and the <b>epidural fat layer between them is still there.</b> That fat layer is the thing to look for &#8212; it is the first thing to go.</p>
+    <div class="rule " style="margin:1em 0 0"><b>What it means:</b> this root is not the explanation. Keep looking.</div>
+  </div>
+</div>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig2_grade1_contact.jpg" alt="Diagram and axial T2 showing disc material contacting the nerve root" data-cap="Grade 1, contact. Disc material (arrowheads) is in visible contact with the right nerve root (arrow). The normal epidural fat layer between the two is no longer evident, but the root is in a normal position with no dorsal deviation."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 2 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade 1 &#8212; contact</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>Disc material is <b>touching</b> the root and the fat layer between them has gone. But the root is still in its normal position &#8212; it has not been pushed anywhere.</p>
+    <div class="rule g" style="margin:1em 0 0"><b>What it means:</b> common, and on its own weak evidence. Contact without displacement is found in plenty of people who feel nothing.</div>
+  </div>
+</div>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig3_grade2_deviation.jpg" alt="Diagram and axial T2 showing the nerve root deviated dorsally" data-cap="Grade 2, deviation. The right nerve root (arrow) has been displaced dorsally by contact with disc material (arrowheads). The root has moved from its normal position but is not compressed."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 3 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade 2 &#8212; deviation</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>The root has been <b>pushed backwards</b> out of its normal position by disc material. It is displaced, but it still has its own shape.</p>
+    <div class="rule g" style="margin:1em 0 0"><b>What it means:</b> now the disc is doing something mechanical to a named root. Worth correlating carefully against which leg and which dermatome.</div>
+  </div>
+</div>
+
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig4_grade3_compression.jpg" alt="Diagram and axial T2 showing the nerve root compressed and flattened" data-cap="Grade 3, compression. The right nerve root (arrow) is compressed between disc material (arrowheads) and the wall of the spinal canal. The root may appear flattened, or become indistinguishable from the disc material itself."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 4 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade 3 &#8212; compression</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>The root is <b>trapped between disc material and the wall of the canal.</b> It may look flattened, or you may not be able to tell root from disc at all &#8212; that inability to separate them <i>is</i> the finding.</p>
+    <div class="rule r" style="margin:1em 0 0"><b>What it means:</b> the most severe grade, and the one that most often matches a convincing radicular story. Say which root and which side.</div>
+  </div>
+</div>
+
+
+<!-- 3 -->
+<h2><span class="n">3</span>Lee &#8212; the root in the foramen</h2>
+<div class="col">
+<p class="lede">Four grades again, but a completely different question. In the foramen the root normally sits in a
+<b>cuff of fat</b>, and the grade counts <b>from how many directions that fat has been squeezed out.</b></p>
+<div class="rule r">
+  <b>Change sequence here, or you will miss it.</b> Lee is graded on <b>sagittal T1</b>, not T2. Perineural fat
+  is <b>bright on T1</b>, so the fat cuff &#8212; and its disappearance &#8212; is obvious there and much harder to
+  judge on T2. The original paper used T2 only as a cross-check, to avoid calling a perineural cyst or a swollen
+  root as stenosis.
+</div>
+</div>
+
+<figure class="wide">
+  <img class="zoom" src="figures/panels/lee_compare_all.jpg"
+       alt="All five Lee grades side by side: schematic above, zoomed MRI below"
+       data-cap="The complete Lee system. Top row: the schematic for each grade. Bottom row: the matching sagittal T1, cropped to the foramen so the root and its fat cuff are actually visible. Read left to right - fat present on all sides, then squeezed from two directions, then from four, then the root itself giving way.">
+  <figcaption><b>Click this one first, and read it left to right.</b> The whole system is one question asked five
+  times: how many directions has the fat gone from? Both grade&#8239;1 variants are shown because they look
+  completely different from each other and are the same grade &#8212; that is the part people find confusing.<br>
+  The MRI panels are <b>cropped to the foramen</b>; the full parasagittal images are in the cards below.<br>
+  Lee S et al., <i>AJR</i> 2010;194:1095&#8211;8, Figures 1&#8211;6 <span class="lic">permission pending</span></figcaption>
+</figure>
+
+<div class="col">
+<p class="lede" style="margin-top:1.6em">Individually, with what to say about each:</p>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:1.2em 0 0;">
+
+<div style="border:1.6px solid #2E7D4F;border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 12px;background:#E5EFE4;color:#2E7D4F;font-weight:700;font-size:16px;">Grade 0
+    <span style="font-weight:400;font-size:13px;display:block;">normal</span></div>
+  <div style="padding:10px;background:#fff;border-bottom:1px solid var(--rule);">
+    <img class="zoom" src="figures/panels/lee_dia_A_grade0.png" alt="Schematic, Lee Grade 0" data-cap="Schematic of a normal foramen. NR = nerve root, V = vertebral body, D = disc, LF = ligamentum flavum, FJ = facet joint."
+         style="width:100%;height:auto;display:block;"></div>
+  <div style="padding:10px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/lee_zoom_grade0.jpg" alt="Sagittal T1, Lee Grade 0" data-cap="Detail of the sagittal T1, cropped to the foramen. 62-year-old woman with low back pain: a normal nerve root, its bright fat cuff intact all the way round."
+         style="width:100%;height:auto;display:block;border-radius:4px;background:#111;"></div>
+  <div style="padding:10px 12px;font-size:14px;line-height:1.45;">Fat surrounds the root on all sides.</div>
+</div>
+
+<div style="border:1.6px solid #BC6B26;border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 12px;background:#F7E9D6;color:#BC6B26;font-weight:700;font-size:16px;">Grade 1
+    <span style="font-weight:400;font-size:13px;display:block;">mild &#183; transverse</span></div>
+  <div style="padding:10px;background:#fff;border-bottom:1px solid var(--rule);">
+    <img class="zoom" src="figures/panels/lee_dia_B_grade1_transverse.png" alt="Schematic, Lee Grade 1" data-cap="Perineural fat obliterated in the transverse direction (arrows), from disc space narrowing and thickened ligamentum flavum. No change in root shape."
+         style="width:100%;height:auto;display:block;"></div>
+  <div style="padding:10px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/lee_zoom_grade1_transverse.jpg" alt="Sagittal T1, Lee Grade 1" data-cap="Detail of the sagittal T1, cropped to the foramen. 69-year-old woman with right leg pain: the transverse width of the foramen is narrowed and the fat is squeezed out front-to-back (arrows)."
+         style="width:100%;height:auto;display:block;border-radius:4px;background:#111;"></div>
+  <div style="padding:10px 12px;font-size:14px;line-height:1.45;">Fat gone in <b>two opposing</b> directions &#8212; here front-to-back.</div>
+</div>
+
+<div style="border:1.6px solid #BC6B26;border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 12px;background:#F7E9D6;color:#BC6B26;font-weight:700;font-size:16px;">Grade 1
+    <span style="font-weight:400;font-size:13px;display:block;">mild &#183; vertical</span></div>
+  <div style="padding:10px;background:#fff;border-bottom:1px solid var(--rule);">
+    <img class="zoom" src="figures/panels/lee_dia_C_grade1_vertical.png" alt="Schematic, Lee Grade 1" data-cap="Perineural fat obliterated in the vertical direction (arrows), from disc space narrowing and disco-osteophytic protrusion. No change in root shape."
+         style="width:100%;height:auto;display:block;"></div>
+  <div style="padding:10px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/lee_zoom_grade1_vertical.jpg" alt="Sagittal T1, Lee Grade 1" data-cap="Detail of the sagittal T1, cropped to the foramen. 63-year-old man with left leg weakness: foraminal height is reduced and the fat is squeezed out top-and-bottom (arrows)."
+         style="width:100%;height:auto;display:block;border-radius:4px;background:#111;"></div>
+  <div style="padding:10px 12px;font-size:14px;line-height:1.45;">Also two directions &#8212; but top-and-bottom instead.</div>
+</div>
+
+<div style="border:1.6px solid #B5563F;border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 12px;background:#F6E4DE;color:#B5563F;font-weight:700;font-size:16px;">Grade 2
+    <span style="font-weight:400;font-size:13px;display:block;">moderate</span></div>
+  <div style="padding:10px;background:#fff;border-bottom:1px solid var(--rule);">
+    <img class="zoom" src="figures/panels/lee_dia_D_grade2.png" alt="Schematic, Lee Grade 2" data-cap="Perineural fat obliterated in four directions, vertical and transverse (arrows), without any change in the shape of the root."
+         style="width:100%;height:auto;display:block;"></div>
+  <div style="padding:10px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/lee_zoom_grade2.jpg" alt="Sagittal T1, Lee Grade 2" data-cap="Detail of the sagittal T1, cropped to the foramen. 65-year-old woman with right leg pain: fat obliterated from all four directions (arrows), but the root still holds its shape."
+         style="width:100%;height:auto;display:block;border-radius:4px;background:#111;"></div>
+  <div style="padding:10px 12px;font-size:14px;line-height:1.45;">Fat gone in <b>all four</b> directions. Root shape still normal.</div>
+</div>
+
+<div style="border:1.6px solid #A3301F;border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 12px;background:#F6E4DE;color:#A3301F;font-weight:700;font-size:16px;">Grade 3
+    <span style="font-weight:400;font-size:13px;display:block;">severe</span></div>
+  <div style="padding:10px;background:#fff;border-bottom:1px solid var(--rule);">
+    <img class="zoom" src="figures/panels/lee_dia_E_grade3.png" alt="Schematic, Lee Grade 3" data-cap="Grade 3: the nerve root shows collapse or morphologic change - the step beyond simply losing the surrounding fat."
+         style="width:100%;height:auto;display:block;"></div>
+  <div style="padding:10px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/lee_zoom_grade3.jpg" alt="Sagittal T1, Lee Grade 3" data-cap="Detail of the sagittal T1, cropped to the foramen. 82-year-old woman with right leg pain: collapse of the right L4-L5 nerve root (arrows) - the root itself has given way."
+         style="width:100%;height:auto;display:block;border-radius:4px;background:#111;"></div>
+  <div style="padding:10px 12px;font-size:14px;line-height:1.45;">The root itself <b>collapses or changes shape.</b></div>
+</div>
+
+</div>
+<div class="col">
+<p style="font-size:14px;color:var(--faint);font-style:italic;margin:1em 0 0;">Schematics and cases both from
+Lee S et al., <i>AJR</i> 2010;194:1095&#8211;8, Figures 1&#8211;6 <span class="lic">permission pending</span>.
+Every panel is clickable.</p>
+<div class="rule g">
+  <b>Both systems are reliable, and Lee is the more reproducible of the two.</b> Pfirrmann reported &#954;
+  0.62&#8211;0.67 between observers and 0.72&#8211;0.77 within one observer &#8212; substantial. Lee reported
+  &#954; 0.905&#8211;1.0 between observers and 0.800&#8211;1.0 within &#8212; near perfect. Counting how many
+  directions the fat has gone is an easier judgement than deciding whether a root has been deviated.
+</div>
+</div>
+
+<!-- 4 -->
+<h2><span class="n">4</span>The sequence trap</h2>
+<div class="col">
+<p class="lede">Everything in Parts 1 and 2 was graded on T2. <b>This part is where that habit breaks.</b></p>
+<table>
+  <thead><tr><th style="width:22%">System</th><th style="width:22%">Sequence</th><th>Because</th></tr></thead>
+  <tbody>
+    <tr><td><b>Schizas</b> &#183; central canal</td><td>Axial <b>T2</b></td>
+        <td>You are looking for cerebrospinal fluid, which is bright on T2.</td></tr>
+    <tr><td><b>Pfirrmann</b> &#183; lateral recess</td><td>Axial <b>T2</b></td>
+        <td>You are looking at the root against fluid and disc, in cross-section.</td></tr>
+    <tr style="background:var(--red-soft);"><td><b>Lee</b> &#183; foramen</td><td>Sagittal <b>T1</b></td>
+        <td><b>You are looking for fat, which is bright on T1.</b> On T2 the fat cuff is far less conspicuous and
+            the grade becomes guesswork.</td></tr>
+  </tbody>
+</table>
+<div class="rule">
+  <b>Practical version.</b> When you get to step 4 of the lumbar read, <b>change sequence.</b> If you grade
+  foramina off the T2 stack because that is what was already on screen, you will under-call foraminal disease
+  &#8212; which is already the most commonly missed lesion in the lumbar spine.
+</div>
+</div>
+
+<!-- 5 -->
+<h2><span class="n">5</span>Denervation oedema &#8212; the level localiser</h2>
+<div class="col">
+<p class="lede">Three levels look degenerate. The patient has one radiculopathy. Anatomy cannot tell you which
+level is live &#8212; but the <b>muscle</b> sometimes can.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 560" role="img" aria-label="Why paraspinal denervation oedema localises the level">
+<defs><marker id="ar" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#585B50"/></marker></defs>
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">Why muscle signal localises the level</text>
+<text x="110" y="64" font-size="16" fill="#585B50">This is the one finding on the study that comes from the patient&#8217;s physiology rather than their anatomy &#8212; which is why it settles arguments.</text>
+<rect x="110" y="110" width="296" height="176" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="110" y="110" width="7" height="176" rx="3.5" fill="#A3301F"/>
+<text x="134" y="148" font-size="16" fill="#A3301F" font-weight="700">A root is compressed</text>
+<text x="134" y="180" font-size="16" fill="#1A1C18">at one level, on one side</text>
+<path d="M 414 198 L 436 198" stroke="#585B50" stroke-width="2.4" marker-end="url(#ar)"/>
+<rect x="446" y="110" width="296" height="176" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="446" y="110" width="7" height="176" rx="3.5" fill="#A3301F"/>
+<text x="470" y="148" font-size="16" fill="#A3301F" font-weight="700">Its dorsal ramus fails</text>
+<text x="470" y="180" font-size="16" fill="#1A1C18">the medial branch supplies</text>
+<text x="470" y="204" font-size="16" fill="#1A1C18">multifidus &#8212; and it supplies</text>
+<text x="470" y="228" font-size="16" fill="#1A1C18">essentially ONE segment</text>
+<path d="M 750 198 L 772 198" stroke="#585B50" stroke-width="2.4" marker-end="url(#ar)"/>
+<rect x="782" y="110" width="296" height="176" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="782" y="110" width="7" height="176" rx="3.5" fill="#BC6B26"/>
+<text x="806" y="148" font-size="16" fill="#BC6B26" font-weight="700">That slip denervates</text>
+<text x="806" y="180" font-size="16" fill="#1A1C18">muscle fibres lose their nerve</text>
+<text x="806" y="204" font-size="16" fill="#1A1C18">supply and take on water</text>
+<path d="M 1086 198 L 1108 198" stroke="#585B50" stroke-width="2.4" marker-end="url(#ar)"/>
+<rect x="1118" y="110" width="296" height="176" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/><rect x="1118" y="110" width="7" height="176" rx="3.5" fill="#2E7D4F"/>
+<text x="1142" y="148" font-size="16" fill="#2E7D4F" font-weight="700">STIR lights up</text>
+<text x="1142" y="180" font-size="16" fill="#1A1C18">bright signal in multifidus</text>
+<text x="1142" y="204" font-size="16" fill="#1A1C18">at that level, on that side,</text>
+<text x="1142" y="228" font-size="16" fill="#1A1C18">and not its neighbours</text>
+<rect x="110" y="320" width="644" height="96" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/>
+<rect x="110" y="320" width="7" height="96" rx="3.5" fill="#0E5F58"/>
+<text x="134" y="354" font-size="16" fill="#0E5F58" font-weight="700">What it is worth</text>
+<text x="134" y="382" font-size="16" fill="#1A1C18">It tells you which level is <tspan font-style="italic">currently</tspan> symptomatic when three levels</text>
+<text x="134" y="406" font-size="16" fill="#1A1C18">look equally degenerate. Anatomy cannot do that.</text>
+<rect x="786" y="320" width="634" height="96" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<rect x="786" y="320" width="7" height="96" rx="3.5" fill="#A3301F"/>
+<text x="810" y="354" font-size="16" fill="#A3301F" font-weight="700">What it is not</text>
+<text x="810" y="382" font-size="16" fill="#1A1C18">Not fatty atrophy. Fat is bright on T1 and stays bright when fat is</text>
+<text x="810" y="406" font-size="16" fill="#1A1C18">suppressed; oedema is bright on STIR and dark on T1. Opposite findings.</text>
+<rect x="110" y="444" width="1310" height="96" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<rect x="110" y="444" width="7" height="96" rx="3.5" fill="#BC6B26"/>
+<text x="134" y="478" font-size="16" fill="#BC6B26" font-weight="700">Read it side to side, never top to bottom</text>
+<text x="134" y="506" font-size="16" fill="#1A1C18">Compare left multifidus against right multifidus at the same level. Both sides age together, so an asymmetry is the signal. Comparing one</text>
+<text x="134" y="530" font-size="16" fill="#1A1C18">level against another tells you far less, because everybody&#8217;s lower lumbar muscle looks worse than their upper.</text>
+</svg>
+</figure>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/panels/denerv_axial_unilateral.jpg"
+    alt="Axial T2 fat-saturated showing unilateral muscle oedema with both sides in frame"
+    data-cap="Axial T2 with fat suppression through the hips. A 53-year-old with a right foot drop after a fall. The tensor fascia lata (wavy arrow) and gluteus minimus (star) on the right are diffusely bright - acute denervation. The identical muscles on the left are dark. Both sides are in the frame, which is the only reason the asymmetry is obvious.">
+    <div class="attrib">Acute denervation in a lumbosacral myotome, one side only.<br>
+    Soldatelli et al., <i>Biomed Res Int</i> 2018;2018:9608947, Fig 4d <span class="lic">CC BY</span></div></div>
+  <div class="body">
+    <h3>What denervation oedema looks like</h3>
+    <p class="where">Axial T2 fat-sat or STIR &#183; both sides in the frame, always</p>
+    <p>Diffusely bright muscle on one side, normal muscle on the other. No mass, no fluid collection, no
+    disruption of the muscle architecture &#8212; just <b>signal</b>, filling the whole belly of the affected
+    muscles.</p>
+    <div class="rule" style="margin:1em 0">
+      <b>Read it side to side.</b> The finding is not that the right side is bright &#8212; it is that the right
+      is bright <i>and the left is not.</i> Both sides age at the same rate, so asymmetry is the entire signal.
+      Comparing one level against another tells you far less.
+    </div>
+    <p><b>An honest caveat about this image.</b> These are gluteal and tensor fascia lata muscles, not
+    multifidus &#8212; the same phenomenon in the same region, one myotome further out. I could not find an
+    openly licensed image of acute <i>paraspinal</i> denervation specifically, having looked from several
+    directions. What this teaches is the <i>appearance</i>; the muscle you would apply it to in the lumbar
+    spine is multifidus, immediately beside the affected level.</p>
+  </div>
+</div>
+
+<figure>
+
+<svg viewBox="0 0 1460 570" role="img" aria-label="How denervated muscle changes on MRI over time">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">Denervated muscle changes over time, and swaps which sequence shows it</text>
+<text x="110" y="64" font-size="16" fill="#585B50">The same muscle is bright on opposite sequences depending on how long ago the nerve failed. Read one sequence alone and you will date it wrongly.</text>
+<rect x="110" y="108" width="420" height="306" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="110" y="108" width="7" height="306" rx="3.5" fill="#A3301F"/>
+<text x="136" y="148" font-size="21" fill="#A3301F" font-weight="700">Acute</text>
+<text x="136" y="176" font-size="16" fill="#585B50">under 1 month</text>
+<line x1="136" y1="192" x2="504" y2="192" stroke="#DCD7C8" stroke-width="1.4"/>
+<text x="136" y="224" font-size="16" fill="#585B50">T1</text>
+<text x="504" y="224" font-size="16" fill="#A3301F" text-anchor="end">normal</text>
+<text x="136" y="258" font-size="16" fill="#585B50">T2 / STIR</text>
+<text x="504" y="258" font-size="16" fill="#A3301F" font-weight="700" text-anchor="end">BRIGHT</text>
+<text x="136" y="292" font-size="16" fill="#585B50">With contrast</text>
+<text x="504" y="292" font-size="16" fill="#A3301F" text-anchor="end">enhances</text>
+<text x="136" y="348" font-size="16" fill="#1A1C18">The muscle is oedematous.</text>
+<text x="136" y="373" font-size="16" fill="#1A1C18">Nothing has been lost yet.</text>
+<rect x="550" y="108" width="420" height="306" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="550" y="108" width="7" height="306" rx="3.5" fill="#BC6B26"/>
+<text x="576" y="148" font-size="21" fill="#BC6B26" font-weight="700">Subacute</text>
+<text x="576" y="176" font-size="16" fill="#585B50">1 to 6 months</text>
+<line x1="576" y1="192" x2="944" y2="192" stroke="#DCD7C8" stroke-width="1.4"/>
+<text x="576" y="224" font-size="16" fill="#585B50">T1</text>
+<text x="944" y="224" font-size="16" fill="#BC6B26" text-anchor="end">normal-ish</text>
+<text x="576" y="258" font-size="16" fill="#585B50">T2 / STIR</text>
+<text x="944" y="258" font-size="16" fill="#BC6B26" font-weight="700" text-anchor="end">BRIGHT</text>
+<text x="576" y="292" font-size="16" fill="#585B50">With contrast</text>
+<text x="944" y="292" font-size="16" fill="#BC6B26" text-anchor="end">variable</text>
+<text x="576" y="348" font-size="16" fill="#1A1C18">Still reversible territory.</text>
+<text x="576" y="373" font-size="16" fill="#1A1C18">Fat has not replaced muscle yet.</text>
+<rect x="990" y="108" width="420" height="306" rx="7" fill="#F1EEE3" stroke="#585B50" stroke-width="1.6"/><rect x="990" y="108" width="7" height="306" rx="3.5" fill="#585B50"/>
+<text x="1016" y="148" font-size="21" fill="#1A1C18" font-weight="700">Chronic</text>
+<text x="1016" y="176" font-size="16" fill="#585B50">beyond 6 months</text>
+<line x1="1016" y1="192" x2="1384" y2="192" stroke="#DCD7C8" stroke-width="1.4"/>
+<text x="1016" y="224" font-size="16" fill="#585B50">T1</text>
+<text x="1384" y="224" font-size="16" fill="#1A1C18" font-weight="700" text-anchor="end">BRIGHT &#8212; fat</text>
+<text x="1016" y="258" font-size="16" fill="#585B50">T2 / STIR</text>
+<text x="1384" y="258" font-size="16" fill="#1A1C18" text-anchor="end">dark</text>
+<text x="1016" y="292" font-size="16" fill="#585B50">With contrast</text>
+<text x="1384" y="292" font-size="16" fill="#1A1C18" text-anchor="end">none</text>
+<text x="1016" y="348" font-size="16" fill="#1A1C18">Muscle has been replaced by fat.</text>
+<text x="1016" y="373" font-size="16" fill="#1A1C18">This does not come back.</text>
+<rect x="110" y="442" width="1310" height="108" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/>
+<rect x="110" y="442" width="7" height="108" rx="3.5" fill="#0E5F58"/>
+<text x="134" y="476" font-size="16" fill="#0E5F58" font-weight="700">Why the scan can beat the nerve study to the answer</text>
+<text x="134" y="504" font-size="16" fill="#1A1C18">Muscle signal change can be imaged at any point after the deficit appears. Electromyography normally has to wait</text>
+<text x="134" y="528" font-size="16" fill="#1A1C18"><tspan font-weight="700">two to three weeks</tspan> before it shows anything. Inside that first fortnight the scan may be the only test that can localise the level.</text>
+</svg>
+</figure>
+
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/from_web/denerv_entrap_fig2_T2_vs_T1.jpg"
+    alt="T2 fat-saturated and T1 images of the same denervated muscles"
+    data-cap="The same two muscles on two sequences. (a) T2 with fat saturation: supraspinatus and infraspinatus are bright - oedema. (b) T1: the same muscles show fatty infiltration and volume loss. This patient has both, because the denervation has lasted long enough to move from one stage into the next. Suprascapular denervation, confirmed on EMG.">
+    <div class="attrib">Chahal et al., <i>Radiol Res Pract</i> 2012;2012:230679, Fig 2 <span class="lic">CC BY</span></div></div>
+  <div class="body">
+    <h3>Oedema and fatty atrophy are opposite findings</h3>
+    <p class="where">The same muscles &#183; T2 fat-sat above, T1 below</p>
+    <p>This is the confusion worth heading off, because the two mean opposite things about <b>time</b> and they
+    appear on opposite sequences:</p>
+    <dl>
+      <dt>Oedema</dt><dd><b>Bright on T2 / STIR, dark on T1.</b> Something is happening now, and there is still
+        muscle there to save.</dd>
+      <dt>Fatty atrophy</dt><dd><b>Bright on T1, suppressed on STIR.</b> Something happened months ago and
+        muscle has already been replaced.</dd>
+    </dl>
+    <p>This patient shows <b>both</b> &#8212; common, and the reason the two sequences have to be read together.</p>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>The trap:</b> bright paraspinal muscle on a T1 image is not an acute finding. It is fat, and it is old
+      news. Chronic multifidus fatty change is near-universal in degenerative spines and says nothing about
+      which level is symptomatic today.
+    </div>
+  </div>
+</div>
+
+<!-- 6 -->
+<h2><span class="n">6</span>What you can and cannot call</h2>
+<div class="col">
+<table>
+  <thead><tr><th style="width:50%">Call it and act on it</th><th>Defer it, always</th></tr></thead>
+  <tbody>
+    <tr><td>Which root is affected, and on which side</td><td>Any mass or enhancing lesion around a root</td></tr>
+    <tr><td>Pfirrmann grade in the recess &#183; Lee grade in the foramen</td><td>Whether a root is inflamed &#8212; that needs contrast and a radiologist</td></tr>
+    <tr><td>Whether the fat cuff is preserved or gone</td><td>Plexus or extraforaminal disease</td></tr>
+    <tr><td>Whether the imaging matches the dermatome</td><td>Whether the finding is old or new, from one study alone</td></tr>
+    <tr><td>Asymmetric muscle signal, if you see it</td><td>The operative level &#8212; the surgeon&#8217;s call</td></tr>
+  </tbody>
+</table>
+<div class="rule">
+  <b>The sentence to write.</b> <i>"Right L4&#8211;5 foraminal narrowing, Lee grade 3, with collapse of the
+  exiting right L4 root. Recess is Pfirrmann 1 bilaterally. Symptoms are right anterior thigh &#8212; fits L4,
+  fits the foramen."</i> Naming the zone, the root and the side is what makes a read useful.
+</div>
+</div>
+
+<div class="foot">
+<b>Sources.</b>
+Pfirrmann CW, Dora C, Schmid MR, Zanetti M, Hodler J, Boos N. <i>MR image-based grading of lumbar nerve root
+compromise due to disk herniation: reliability study with surgical correlation.</i> Radiology
+2004;230(2):583&#8211;588. &#8212; grade definitions, &#954; 0.62&#8211;0.67 interobserver and 0.72&#8211;0.77
+intraobserver, and r&#8239;=&#8239;0.86 against surgical grading, all checked against the full text.<br><br>
+Lee S, Lee JW, Yeom JS, et al. <i>A practical MRI grading system for lumbar foraminal stenosis.</i> AJR Am J
+Roentgenol 2010;194(4):1095&#8211;1098. &#8212; grade definitions, sagittal T1 as the primary sequence, and
+&#954; 0.905&#8211;1.0 interobserver / 0.800&#8211;1.0 intraobserver, all checked against the full text. The
+system was developed by consensus between two radiologists, two orthopaedic surgeons and three neurosurgeons,
+and it replaced the earlier Wildermuth and Kunogi&#8211;Hasue schemes, neither of which accounted for direct
+root compression or deformity.<br><br>
+Figures reproduced from those two papers pending permission. Every image on this page is clickable.
+</div>
+
+</div>
+
+<div id="lb" role="dialog" aria-label="Zoomed image" aria-modal="true">
+  <button id="lbclose" aria-label="Close">&#10005;</button>
+  <img id="lbimg" alt="">
+  <div id="lbcap"></div>
+</div>
+<style>
+  #lb{position:fixed;inset:0;background:rgba(12,16,20,.94);z-index:9999;
+      display:none;align-items:center;justify-content:center;flex-direction:column;padding:2.5vh 3vw;}
+  #lb.on{display:flex;}
+  #lbimg{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:6px;
+         box-shadow:0 8px 40px rgba(0,0,0,.6);background:#111;cursor:zoom-out;}
+  #lbcap{color:#e8ecef;font-size:16px;margin-top:1em;max-width:1100px;text-align:center;line-height:1.5;}
+  #lbclose{position:absolute;top:18px;right:24px;background:none;border:0;color:#e8ecef;
+           font-size:30px;line-height:1;cursor:pointer;padding:.2em .4em;border-radius:6px;}
+  #lbclose:hover{background:rgba(255,255,255,.12);}
+  .zoom{cursor:zoom-in;transition:filter .12s;}
+  .zoom:hover{filter:brightness(1.06);}
+</style>
+<script>
+(function(){
+  var lb=document.getElementById('lb'), im=document.getElementById('lbimg'), cp=document.getElementById('lbcap');
+  function open(src,cap){ im.src=src; cp.textContent=cap||''; lb.classList.add('on');
+                          document.body.style.overflow='hidden'; }
+  function close(){ lb.classList.remove('on'); im.src=''; document.body.style.overflow=''; }
+  document.addEventListener('click', function(e){
+    var t=e.target;
+    if(t.classList && t.classList.contains('zoom')){
+      open(t.getAttribute('src')||t.getAttribute('href'), t.getAttribute('data-cap')||t.alt);
+      return;
+    }
+    if(t.id==='lb'||t.id==='lbimg'||t.id==='lbclose') close();
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
+})();
+</script>
+<footer class="sm-foot">
+  <div class="sm-pnwrap"><a class="sm-pn" href="02-lumbar-central-stenosis.html"><span class="sm-pn__k">&larr; Previous</span><span class="sm-pn__t">Part 2 &middot; Lumbar central stenosis</span></a><a class="sm-pn sm-pn--next" href="04-anatomic-checkpoints.html"><span class="sm-pn__k">Next &rarr;</span><span class="sm-pn__t">Part 4 &middot; Anatomic checkpoints</span></a></div>
+  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="../index.html">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
+</footer>
+
+<script>
+(function(){
+  var nav=document.getElementById('nav');
+  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
+  window.addEventListener('scroll', s, {passive:true}); s();
+  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
+  t.addEventListener('click', function(){
+    var o=l.classList.toggle('is-open');
+    t.classList.toggle('is-open', o);
+    t.setAttribute('aria-expanded', o?'true':'false');
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+/* ============================================================
+   series.css — Reading Spine MRI
+
+   Load order per page:
+     1. ../assets/css/style.css   site theme + the real site header
+     2. the handout's own <style>  layout of the teaching content
+     3. this file                  reconciles the two
+
+   The site stylesheet applies a hard `* { margin:0; padding:0 }`
+   reset that the handouts were never written against. Much of what
+   follows restores the spacing that reset removes, then moves the
+   handout typography onto the site's typefaces.
+   ============================================================ */
+
+/* ---------- page shell ---------- */
+body.sm {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(900px 600px at 88% -5%, rgba(14, 95, 88, 0.07), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  color: var(--ink);
+  font-family: var(--font-body);
+  padding: 0 0 5em;
+}
+body.sm .wrap { padding: 0 24px; }
+
+/* the site header is position:fixed — clear it before the series bar */
+body.sm .sm-bar { margin-top: 68px; }
+
+/* ---------- series bar ---------- */
+.sm-bar {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-card);
+  position: sticky; top: 0; z-index: 60;
+}
+.sm-bar__in {
+  max-width: 1500px; margin: 0 auto; padding: 9px 24px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.sm-bar__hub {
+  font-family: var(--font-display); font-size: 1.02rem; font-weight: 600;
+  color: var(--teal) !important;
+}
+.sm-pills { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.sm-pill {
+  font-family: var(--font-body); font-size: 12.5px; font-weight: 500;
+  padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--ink-soft) !important;
+}
+.sm-pill:hover { border-color: var(--teal); color: var(--ink) !important; }
+.sm-pill.is-current { background: var(--teal); border-color: var(--teal); color: var(--paper-card) !important; }
+
+/* ---------- restore what the global reset removed ---------- */
+body.sm .col p,
+body.sm .wrap > p                 { margin: 0 0 1em; }
+body.sm .card p                   { margin: .5em 0; }
+body.sm .rule p                   { margin: 0 0 .6em; }
+body.sm .rule p:last-child        { margin-bottom: 0; }
+body.sm .col ul, body.sm .col ol  { margin: 0 0 1em; padding-left: 1.35em; }
+body.sm .col li                   { margin: .3em 0; }
+body.sm dd                        { margin: 0; }
+body.sm figure                    { margin: 1.2em 0; }
+body.sm figcaption                { margin-top: .7em; }
+body.sm table                     { margin: 1.2em 0; }
+body.sm .foot                     { margin-top: 4em; padding-top: 1.2em; }
+
+/* ---------- typography onto the site faces ---------- */
+body.sm h1, body.sm h2, body.sm h3 { font-family: var(--font-display); font-weight: 500; }
+body.sm h1                         { letter-spacing: -.01em; }
+body.sm h2                         { color: var(--teal); }
+body.sm .card h3                   { font-weight: 600; }
+body.sm a                          { color: var(--teal); }
+body.sm .card a, body.sm .rule a,
+body.sm figcaption a, body.sm .foot a { text-decoration: underline; }
+
+/* ---------- surfaces ---------- */
+body.sm .card                     { background: var(--paper-card); }
+body.sm .imgcell, body.sm .ph     { background: #EFEADC; }
+body.sm thead th                  { background: rgba(14, 95, 88, .10); }
+body.sm tbody tr:nth-child(even)  { background: rgba(26, 28, 24, .03); }
+
+/* SVG figures were authored on white — seat them on a card */
+body.sm figure > svg {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 6px;
+}
+
+/* ---------- prev / next ---------- */
+.sm-foot {
+  border-top: 1px solid var(--line); background: var(--paper-card);
+  margin-top: 4em; padding: 30px 24px 46px;
+}
+.sm-pnwrap { max-width: 1500px; margin: 0 auto; display: flex;
+             justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sm-pn {
+  flex: 1 1 300px; max-width: 470px; display: block; padding: 14px 18px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--paper);
+  transition: border-color .15s var(--ease), transform .15s var(--ease);
+}
+.sm-pn:hover { border-color: var(--teal); transform: translateY(-1px); }
+.sm-pn--next { text-align: right; margin-left: auto; }
+.sm-pn__k { display: block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--ochre); font-weight: 600; }
+.sm-pn__t { display: block; margin-top: 3px; font-size: 15.5px; color: var(--ink); font-weight: 500; }
+.sm-foot__note { max-width: 1500px; margin: 22px auto 0; font-size: 13.5px; color: var(--ink-faint); }
+.sm-foot__note a { color: var(--teal); text-decoration: underline; }
+
+/* ---------- hub ---------- */
+body.sm-hub {
+  background-color: var(--paper); color: var(--ink); font-family: var(--font-body);
+}
+.smh__wrap { max-width: 1180px; margin: 0 auto; padding: 116px 24px 90px; }
+.smh__kicker { font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase;
+               color: var(--ochre); font-weight: 600; margin: 0 0 .6em; }
+.smh__title { font-family: var(--font-display); font-size: clamp(2rem, 4.4vw, 3.1rem);
+              line-height: 1.08; margin: 0 0 .35em; font-weight: 500; }
+.smh__lede { font-size: 1.1rem; color: var(--ink-soft); max-width: 64ch; margin: 0 0 1.1em; }
+.smh__meta { font-size: .95rem; color: var(--ink-faint); max-width: 72ch; margin: 0; }
+.smh__meta a { color: var(--teal); text-decoration: underline; }
+.smh__list { list-style: none; padding: 0; margin: 44px 0 0; display: grid; gap: 16px; }
+.smh__card { display: grid; grid-template-columns: 104px 1fr; gap: 24px; align-items: start;
+             padding: 24px 26px; border: 1px solid var(--line); border-radius: 12px;
+             background: var(--paper-card);
+             transition: border-color .15s var(--ease), transform .15s var(--ease); }
+.smh__card:hover { border-color: var(--teal); transform: translateY(-2px); }
+.smh__badge { font-family: var(--font-display); font-size: 1.06rem; font-weight: 600; color: var(--teal); }
+.smh__h { font-family: var(--font-display); font-size: 1.46rem; font-weight: 500;
+          margin: 0 0 .35em; line-height: 1.22; }
+.smh__d { margin: 0; font-size: .97rem; color: var(--ink-soft); }
+.smh__go { margin: .75em 0 0; font-size: 13px; font-weight: 600; color: var(--ochre); }
+.smh__note { margin: 44px 0 0; padding: 22px 26px; border-radius: 12px;
+             border: 1px solid var(--line); border-left: 4px solid var(--ochre);
+             background: var(--paper-card); font-size: .96rem; color: var(--ink-soft); }
+.smh__note b { color: var(--ink); }
+.smh__note a { color: var(--teal); text-decoration: underline; }
+.smh__note p { margin: 0 0 .8em; }
+.smh__note p:last-child { margin-bottom: 0; }
+
+@media (max-width: 760px) {
+  .smh__card { grid-template-columns: 1fr; gap: 8px; }
+  .sm-pills { width: 100%; margin-left: 0; }
+  .sm-pn--next { text-align: left; }
+  body.sm .card { grid-template-columns: 1fr; }
+}

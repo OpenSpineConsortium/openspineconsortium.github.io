@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumbar central stenosis &middot; Reading Spine MRI &middot; OpenSpineConsortium</title>
+<meta name="description" content="Grading the dural sac by what is inside it: the Schizas system, why morphology beats measuring area, and a drill.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+  :root{
+    --ink:#1A1C18; --muted:#585B50; --faint:#8C8E82; --rule:#DCD7C8;
+    --navy:#0E5F58; --navy-soft:#E7EFEC;
+    --green:#2E7D4F; --green-soft:#E5EFE4;
+    --orange:#BC6B26; --orange-soft:#F7E9D6;
+    --red:#A3301F;   --red-soft:#F6E4DE;
+    --grey-soft:#F1EEE3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:#fff; margin:0;
+    padding:2.5em 1.5em 6em; line-height:1.55; font-size:16px;
+  }
+  .wrap{max-width:1500px;margin:0 auto;}
+  .col{max-width:1180px;}
+
+  h1{font-size:30px;color:var(--navy);margin:0 0 .15em;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:18px;margin:0 0 .3em;}
+  .src{color:var(--faint);font-size:14px;margin:0 0 2.6em;font-style:italic;}
+
+  h2{font-size:21px;color:var(--navy);margin:3em 0 .2em;
+     border-bottom:2px solid var(--rule);padding-bottom:.35em;}
+  h2 .n{display:inline-block;background:var(--navy);color:#fff;border-radius:50%;
+        width:1.45em;height:1.45em;line-height:1.45em;text-align:center;
+        font-size:.8em;margin-right:.5em;}
+  .lede{color:var(--muted);font-size:16px;margin:.6em 0 1.4em;}
+
+  /* ── finding card ── */
+  .card{display:grid;grid-template-columns:300px 1fr;gap:26px;
+        border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;
+        margin:0 0 22px;background:#fff;}
+  .card.g{border-color:var(--green);}  .card.o{border-color:var(--orange);}
+  .card.r{border-color:var(--red);}    .card.n{border-color:var(--navy);}
+  .card .body{padding:20px 24px 22px 0;}
+  .imgcell{padding:14px;background:#EFEADC;border-right:1.6px solid var(--rule);}
+  .imgcell img{width:100%;height:auto;display:block;border-radius:5px;background:#111;}
+  .attrib{font-size:12.5px;color:var(--faint);margin-top:.6em;line-height:1.35;font-style:italic;}
+  .card.g .imgcell{border-right-color:var(--green);} .card.o .imgcell{border-right-color:var(--orange);}
+  .card.r .imgcell{border-right-color:var(--red);}   .card.n .imgcell{border-right-color:var(--navy);}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .trio figcaption,.duo figcaption{font-size:12px;color:var(--faint);text-align:center;margin-top:.3em;}
+  .pair img{max-width:100%;max-height:360px;width:auto;height:auto;display:block;margin:0 auto;
+            border-radius:5px;background:#111;}
+  .pair .a,.pair .b{display:flex;flex-direction:column;}
+  .pair .a img,.pair .b img{margin-top:auto;margin-bottom:auto;}
+  figure.wide{margin:1.6em 0;}
+  figure.wide img{max-width:100%;width:auto;height:auto;display:block;margin:0 auto;
+                  border-radius:6px;background:#111;}
+  figure.wide figcaption{font-size:14px;color:var(--faint);margin-top:.7em;line-height:1.5;}
+  .lic{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;padding:.15em .5em;
+       border-radius:3px;background:#E5EFE4;color:#2E7D4F;margin-left:.4em;vertical-align:.08em;}
+  .duo figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:.35em;}
+  .card h3{margin:0 0 .1em;font-size:19px;}
+  .card.g h3{color:var(--green);} .card.o h3{color:var(--orange);}
+  .card.r h3{color:var(--red);}   .card.n h3{color:var(--navy);}
+  .where{font-size:14px;color:var(--faint);margin:0 0 .9em;font-style:italic;}
+  .card p{margin:.5em 0;}
+  .card dl{display:grid;grid-template-columns:auto 1fr;gap:.35em .9em;margin:.9em 0 0;}
+  .card dt{font-weight:700;white-space:nowrap;}
+  .card dd{margin:0;}
+
+  /* ── image placeholder ── */
+  .ph{background:#EFEADC;border-right:1.6px dashed var(--rule);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:18px 14px;min-height:230px;color:#8a949c;}
+  .ph b{font-size:14px;letter-spacing:.04em;display:block;margin-bottom:.5em;}
+  .ph span{font-size:13px;line-height:1.4;}
+  .card.g .ph{border-right-color:var(--green);}
+  .card.o .ph{border-right-color:var(--orange);}
+  .card.r .ph{border-right-color:var(--red);}
+  .card.n .ph{border-right-color:var(--navy);}
+
+  /* ── mimic pair ── */
+  .mimic{border:1.6px solid var(--red);border-radius:9px;margin:0 0 22px;overflow:hidden;}
+  .mimic .head{background:var(--red-soft);padding:16px 24px;}
+  .mimic .head h3{margin:0;font-size:19px;color:var(--red);}
+  .mimic .head p{margin:.35em 0 0;font-size:16px;}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .pair > div{padding:0;}
+  .pair .lab{padding:12px 20px;font-size:14px;font-weight:700;}
+  .pair .a .lab{background:var(--red-soft);color:var(--red);}
+  .pair .b .lab{background:var(--green-soft);color:var(--green);}
+  .pair .ph{border-right:1.6px solid var(--rule);min-height:210px;}
+  .pair .b .ph{border-right:none;}
+  .pair .cap{padding:12px 20px 18px;font-size:14px;color:var(--muted);}
+
+  /* ── callouts ── */
+  .rule{border-left:5px solid var(--navy);background:var(--navy-soft);
+        padding:1em 1.2em;margin:1.2em 0;border-radius:0 6px 6px 0;}
+  .rule.r{border-left-color:var(--red);background:var(--red-soft);}
+  .rule.g{border-left-color:var(--green);background:var(--green-soft);}
+  .rule b{color:var(--navy);} .rule.r b{color:var(--red);} .rule.g b{color:var(--green);}
+
+  table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:16px;}
+  thead th{background:var(--navy-soft);color:var(--navy);text-align:left;
+           font-weight:700;border-bottom:2px solid var(--navy);}
+  th,td{padding:.6em .8em;border-bottom:1px solid var(--rule);vertical-align:top;}
+  tbody tr:nth-child(even){background:#F6F3E9;}
+
+  figure{margin:1.2em 0;}
+  /* width:100% + height:auto lets the browser derive height from the viewBox ratio.
+     Without it the SVG keeps its native 1460px width, overflows, and scrolls. */
+  svg{display:block;width:100%;height:auto;max-width:1460px;margin:0 auto;}
+
+  .foot{margin-top:4em;border-top:1px solid var(--rule);padding-top:1.2em;
+        font-size:15px;color:var(--muted);}
+  @media print{ body{padding:0;} .card,.mimic{page-break-inside:avoid;} h2{page-break-after:avoid;} }
+  @media (max-width:900px){ .card{grid-template-columns:1fr;} .card .body{padding:0 22px 22px;}
+    .ph{border-right:none;border-bottom:1.6px dashed var(--rule);} }
+</style>
+<link rel="stylesheet" href="series.css">
+</head>
+<body class="sm">
+  <header class="nav" id="nav">
+    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
+      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="../index.html#project">Project</a>
+      <a href="../index.html#datasets">Datasets</a>
+      <a href="../index.html#people">People</a>
+      <a href="../index.html#organization">Organization</a>
+      <a href="../index.html#education">Education</a>
+      <a href="../index.html#workshop">Workshop</a>
+      <a href="../index.html#goals">Goals</a>
+      <a href="index.html" class="is-active">Spine MRI</a>
+      <a href="../pacs/">Demo</a>
+      <a href="../index.html#join" class="nav__cta">Get Involved</a>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <div class="sm-bar">
+    <div class="sm-bar__in">
+      <a class="sm-bar__hub" href="index.html">Reading Spine MRI</a>
+      <nav class="sm-pills" aria-label="Series"><a class="sm-pill" href="timeline.html">Timelines</a><a class="sm-pill" href="01-cervical-cord-compression.html">Part 1</a><a class="sm-pill is-current" href="02-lumbar-central-stenosis.html">Part 2</a><a class="sm-pill" href="03-nerve-root-and-foramen.html">Part 3</a><a class="sm-pill" href="04-anatomic-checkpoints.html">Part 4</a></nav>
+    </div>
+  </div>
+
+<div class="wrap">
+
+<div class="col">
+<p style="font-size:14px;letter-spacing:.06em;color:var(--navy);font-weight:700;margin:0 0 .4em;">
+  Neuroradiology series &#183; Part 2 of 4</p>
+<h1>Lumbar Central Stenosis</h1>
+<p class="sub">Grading the dural sac by what is inside it &#8212; and why that beats measuring it.</p>
+<p class="src">Companion to Part 1 and the timeline figures.</p>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 2.6em;">
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 1</div>
+    <div style="font-size:15px;margin-top:.25em;">Cervical cord compression</div>
+  </div>
+  <div style="border:1.8px solid var(--navy);background:var(--navy-soft);border-radius:8px;padding:12px 14px;">
+    <div style="font-size:13px;font-weight:700;color:var(--navy);letter-spacing:.04em;">Part 2 &#183; you are here</div>
+    <div style="font-size:15px;margin-top:.25em;">Lumbar central stenosis &#8212; Schizas</div>
+  </div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 3</div>
+    <div style="font-size:15px;margin-top:.25em;">Nerve root &amp; foramen &#8212; Pfirrmann, Lee, denervation oedema</div>
+  </div>
+  <div style="border:1.4px solid var(--rule);border-radius:8px;padding:12px 14px;color:var(--faint);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.04em;">Part 4</div>
+    <div style="font-size:15px;margin-top:.25em;">Anatomic checkpoints &#8212; conus level</div>
+  </div>
+</div>
+</div>
+
+<!-- 1 -->
+<h2><span class="n">1</span>Before you open the study</h2>
+<div class="col">
+<p class="lede">The cervical question is <i>is the cord in danger.</i> The lumbar question is different, and softer:
+<b>does this picture explain this patient&#8217;s legs?</b></p>
+<p>Nobody dies of lumbar stenosis. That changes what your read is for. You are not triaging a cord at risk &#8212;
+you are deciding whether the imaging supports the story the patient is telling, because the operation is offered
+for <b>symptoms</b>, not for pictures.</p>
+<div class="rule r">
+  <b>The one exception, and it is absolute.</b> Saddle anaesthesia, new urinary retention or overflow, or new
+  bilateral leg weakness is <b>cauda equina syndrome until disproved</b> &#8212; a same-day surgical problem.
+  No grade on this page overrides those three symptoms, and no grade is needed to act on them.
+</div>
+<p>Two habits will save you more than any grading system. <b>Count the levels from the sacrum every time</b> &#8212;
+transitional anatomy is common and a mislabelled level ends up in an operative note. And <b>look at the patient&#8217;s
+age before the pictures</b>: disc degeneration, bulges and facet arthropathy are near-universal past sixty, and
+finding them tells you almost nothing on its own.</p>
+</div>
+
+<!-- 2 -->
+<h2><span class="n">2</span>The seven-step read</h2>
+<div class="col">
+<p class="lede">Run it in this order every time. Step 1 first, because if the conus is low nothing else on the study
+means what you think it means.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 560" role="img" aria-label="Seven-step lumbar MRI search protocol">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">The seven-step lumbar read</text>
+<text x="110" y="64" font-size="16" fill="#585B50">Same discipline as the cervical read: front-loaded, so an interruption after step three still leaves you with what matters.</text>
+<rect x="110" y="96" width="305" height="128" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="110" y="96" width="7" height="128" rx="3.5" fill="#A3301F"/>
+<text x="134" y="130" font-size="16" fill="#A3301F" font-weight="700">1 &#183; Find the conus first</text>
+<text x="134" y="160" font-size="16" fill="#1A1C18">Sagittal T2, mid-line. Count up</text>
+<text x="134" y="183" font-size="16" fill="#1A1C18">from the sacrum. Below mid-L2</text>
+<text x="134" y="206" font-size="16" fill="#1A1C18">is abnormal at any age.</text>
+<rect x="445" y="96" width="305" height="128" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="445" y="96" width="7" height="128" rx="3.5" fill="#A3301F"/>
+<text x="469" y="130" font-size="16" fill="#A3301F" font-weight="700">2 &#183; Scroll the thecal sac</text>
+<text x="469" y="160" font-size="16" fill="#1A1C18">Sagittal T2. Where does the</text>
+<text x="469" y="183" font-size="16" fill="#1A1C18">CSF column narrow or vanish?</text>
+<text x="469" y="206" font-size="16" fill="#1A1C18">Mark every level.</text>
+<rect x="780" y="96" width="305" height="128" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="780" y="96" width="7" height="128" rx="3.5" fill="#A3301F"/>
+<text x="804" y="130" font-size="16" fill="#A3301F" font-weight="700">3 &#183; Grade it, axial T2</text>
+<text x="804" y="160" font-size="16" fill="#1A1C18">Schizas at each narrowed level.</text>
+<text x="804" y="183" font-size="16" fill="#1A1C18">The highest-yield single skill</text>
+<text x="804" y="206" font-size="16" fill="#1A1C18">in lumbar imaging.</text>
+<rect x="1115" y="96" width="305" height="128" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="1115" y="96" width="7" height="128" rx="3.5" fill="#BC6B26"/>
+<text x="1139" y="130" font-size="16" fill="#BC6B26" font-weight="700">4 &#183; Both foramina</text>
+<text x="1139" y="160" font-size="16" fill="#1A1C18">Parasagittal T2, left and right.</text>
+<text x="1139" y="183" font-size="16" fill="#1A1C18">The classic miss &#8212; invisible</text>
+<text x="1139" y="206" font-size="16" fill="#1A1C18">unless you go looking.</text>
+<rect x="110" y="250" width="305" height="128" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="110" y="250" width="7" height="128" rx="3.5" fill="#BC6B26"/>
+<text x="134" y="284" font-size="16" fill="#BC6B26" font-weight="700">5 &#183; Lateral recess</text>
+<text x="134" y="314" font-size="16" fill="#1A1C18">Axial. Is the traversing root</text>
+<text x="134" y="337" font-size="16" fill="#1A1C18">displaced, deviated or</text>
+<text x="134" y="360" font-size="16" fill="#1A1C18">compressed?</text>
+<rect x="445" y="250" width="305" height="128" rx="7" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/><rect x="445" y="250" width="7" height="128" rx="3.5" fill="#BC6B26"/>
+<text x="469" y="284" font-size="16" fill="#BC6B26" font-weight="700">6 &#183; Muscle, side to side</text>
+<text x="469" y="314" font-size="16" fill="#1A1C18">STIR or T2 fat-sat. Denervation</text>
+<text x="469" y="337" font-size="16" fill="#1A1C18">oedema localises the level when</text>
+<text x="469" y="360" font-size="16" fill="#1A1C18">the anatomy is ambiguous.</text>
+<rect x="780" y="250" width="305" height="128" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/><rect x="780" y="250" width="7" height="128" rx="3.5" fill="#2E7D4F"/>
+<text x="804" y="284" font-size="16" fill="#2E7D4F" font-weight="700">7 &#183; Everything else</text>
+<text x="804" y="314" font-size="16" fill="#1A1C18">Marrow, endplates, alignment,</text>
+<text x="804" y="337" font-size="16" fill="#1A1C18">pars defects, and anything</text>
+<text x="804" y="360" font-size="16" fill="#1A1C18">that is not degenerative.</text>
+<rect x="110" y="404" width="1310" height="76" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/>
+<rect x="110" y="404" width="7" height="76" rx="3.5" fill="#0E5F58"/>
+<text x="134" y="436" font-size="16" fill="#0E5F58" font-weight="700">The safety rule &#8212; identical to the cervical read</text>
+<text x="134" y="462" font-size="16" fill="#1A1C18">Your read exists to raise urgency, never to lower it. Saddle anaesthesia, new retention or bilateral leg weakness is a same-day problem no grade overrides.</text>
+</svg>
+</figure>
+
+<!-- 3 -->
+<h2><span class="n">3</span>Schizas &#8212; the whole system on one page</h2>
+<div class="col">
+<p class="lede">Seven grades, built from a single observation: <b>what is the ratio of rootlets to cerebrospinal
+fluid inside the dural sac?</b> Nothing is measured. Nothing is calculated.</p>
+<div class="rule">
+  <b>The rule that makes it learnable:</b> look <i>inside</i> the sac, not at the bone around it. If you can see
+  cerebrospinal fluid, it is A or B. If you cannot see any, it is C or D. That single split is the clinically
+  important one, and it takes about two seconds.
+</div>
+</div>
+
+<figure class="wide" style="max-width:760px;margin:1.6em 0;">
+  <img class="zoom" src="figures/from_papers/schizas2010_p02_984x1770.jpeg"
+       alt="The complete Schizas classification: schematic and matched MRI for grades A1 to D"
+       data-cap="The complete Schizas classification. Left column: schematic of the dural sac contents. Right column: a matched axial T2 for each grade. A1 to A4 all have clearly visible cerebrospinal fluid and differ only in where the rootlets have settled. B has rootlets filling the sac but still individually countable, giving a grainy look. C is a homogeneous grey sac with no fluid signal at all, but posterior epidural fat is still present. D is the same with the posterior epidural fat gone as well.">
+  <figcaption><b>Read it top to bottom as one continuous process:</b> the rootlets start settled dorsally in a
+  generous pool of fluid, gradually fill the sac, and finally the fluid disappears altogether.<br>
+  Schizas et al., <i>Spine</i> 2010;35:1919&#8211;24, Figure 1 <span class="lic">permission pending</span></figcaption>
+</figure>
+
+<!-- 4 -->
+<h2><span class="n">4</span>The four grades that change anything</h2>
+<div class="col">
+<p class="lede">A1 to A4 differ only in where the rootlets have settled under gravity &#8212; a distinction worth
+knowing exists, and not worth drilling. <b>Learn the four letters.</b></p>
+</div>
+
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_A1.jpg" alt="Axial T2, Schizas grade A" data-cap="Cerebrospinal fluid is obvious inside the sac and individual rootlets can be picked out. The four subtypes (A1&#8211;A4) describe only where the rootlets have settled &#8212; dorsally, in a horseshoe, or centrally."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade A &#8212; fluid clearly visible</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>Cerebrospinal fluid is obvious inside the sac and individual rootlets can be picked out. The four subtypes (A1&#8211;A4) describe only where the rootlets have settled &#8212; dorsally, in a horseshoe, or centrally.</p>
+    <div class="rule g" style="margin:1em 0 0"><b>What it means:</b> No or minor stenosis. If this is the narrowest level, the imaging does not support decompression, whatever the measured area says.</div>
+  </div>
+</div>
+<div class="card o">
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_B.jpg" alt="Axial T2, Schizas grade B" data-cap="The rootlets occupy the whole sac and are no longer separated by a clear pool of fluid, but you can still make out individual roots. Some fluid remains, giving the sac a grainy texture rather than a smooth one."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade B &#8212; rootlets fill the sac, but still countable</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>The rootlets occupy the whole sac and are no longer separated by a clear pool of fluid, but you can still make out individual roots. Some fluid remains, giving the sac a <b>grainy</b> texture rather than a smooth one.</p>
+    <div class="rule g" style="margin:1em 0 0"><b>What it means:</b> Moderate stenosis. The grainy look is the giveaway &#8212; graininess means fluid is still in there.</div>
+  </div>
+</div>
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_C.jpg" alt="Axial T2, Schizas grade C" data-cap="No rootlets can be identified. The sac is a homogeneous grey disc with no fluid signal anywhere inside. Posterior epidural fat is still visible behind it."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade C &#8212; no fluid at all, fat still present</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>No rootlets can be identified. The sac is a <b>homogeneous grey disc</b> with no fluid signal anywhere inside. Posterior epidural fat is still visible behind it.</p>
+    <div class="rule r" style="margin:1em 0 0"><b>What it means:</b> Severe stenosis. In the Schizas cohort, 20 of 37 surgical patients had this as their narrowest grade.</div>
+  </div>
+</div>
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_D.jpg" alt="Axial T2, Schizas grade D" data-cap="As grade C &#8212; a homogeneous grey sac &#8212; and in addition the posterior epidural fat has been squeezed out. Nothing is left between the sac and the posterior arch."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>Grade D &#8212; no fluid, no posterior fat either</h3>
+    <p class="where">Axial T2 at the disc level</p>
+    <p>As grade C &#8212; a homogeneous grey sac &#8212; and in addition the <b>posterior epidural fat has been squeezed out</b>. Nothing is left between the sac and the posterior arch.</p>
+    <div class="rule r" style="margin:1em 0 0"><b>What it means:</b> Extreme stenosis. Not one patient in the low-back-pain-only group had a grade D level.</div>
+  </div>
+</div>
+
+<!-- 5 -->
+<h2><span class="n">5</span>Why the picture beats the number</h2>
+<div class="col">
+<p class="lede">Dural sac cross-sectional area is the conventional measurement: under 100&#8239;mm&#178; is called
+relative stenosis, under 75&#8239;mm&#178; absolute. Schizas tested that against morphology, and the number lost.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 620" role="img" aria-label="Where dural sac area and Schizas grade disagree">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">Where the number and the picture disagree</text>
+<text x="110" y="64" font-size="16" fill="#585B50">Both directions of error happen, and they cancel out in opposite ways. This is the case for grading morphology rather than measuring area.</text>
+<text x="136" y="118" font-size="19" fill="#585B50" font-weight="700">What the measurement says</text>
+<text x="628" y="118" font-size="19" fill="#585B50" font-weight="700">What the morphology says</text>
+<text x="1120" y="118" font-size="19" fill="#585B50" font-weight="700">How often</text>
+<line x1="110" y1="128" x2="1420" y2="128" stroke="#DCD7C8" stroke-width="1.4"/>
+<rect x="110" y="140" width="380" height="132" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/><rect x="110" y="140" width="7" height="132" rx="3.5" fill="#A3301F"/>
+<text x="136" y="174" font-size="16" fill="#A3301F" font-weight="700">Over-called</text>
+<text x="136" y="202" font-size="16" fill="#1A1C18">"66 mm&#178; &#8212; below the 75 mm&#178;</text>
+<text x="136" y="224" font-size="16" fill="#1A1C18">threshold for absolute stenosis."</text>
+<rect x="506" y="140" width="560" height="132" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="528" y="180" font-size="16" fill="#1A1C18">Grade A. Cerebrospinal fluid and</text>
+<text x="528" y="204" font-size="16" fill="#1A1C18">individual rootlets plainly visible.</text>
+<text x="528" y="228" font-size="16" fill="#1A1C18">No rootlet impingement at all.</text>
+<rect x="1082" y="140" width="338" height="132" rx="7" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="1251" y="192" font-size="19" fill="#A3301F" font-weight="700" text-anchor="middle">40 levels</text>
+<text x="1251" y="222" font-size="19" fill="#A3301F" font-weight="700" text-anchor="middle">in 35 patients</text>
+<text x="1251" y="258" font-size="13" fill="#A3301F" text-anchor="middle" font-style="italic" opacity=".85">Schizas 2010, Figure 3</text>
+<rect x="110" y="300" width="380" height="132" rx="7" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/><rect x="110" y="300" width="7" height="132" rx="3.5" fill="#B5563F"/>
+<text x="136" y="334" font-size="16" fill="#B5563F" font-weight="700">Under-called</text>
+<text x="136" y="362" font-size="16" fill="#1A1C18">"Over 100 mm&#178; &#8212; above even</text>
+<text x="136" y="384" font-size="16" fill="#1A1C18">the relative stenosis line."</text>
+<rect x="506" y="300" width="560" height="132" rx="7" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/>
+<text x="528" y="340" font-size="16" fill="#1A1C18">Grade C. A homogeneous grey sac</text>
+<text x="528" y="364" font-size="16" fill="#1A1C18">with no cerebrospinal fluid signal</text>
+<text x="528" y="388" font-size="16" fill="#1A1C18">anywhere inside it.</text>
+<rect x="1082" y="300" width="338" height="132" rx="7" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/>
+<text x="1251" y="366" font-size="19" fill="#B5563F" font-weight="700" text-anchor="middle">12 patients</text>
+<text x="1251" y="418" font-size="13" fill="#B5563F" text-anchor="middle" font-style="italic" opacity=".85">Schizas 2010, Results</text>
+<rect x="110" y="470" width="1310" height="118" rx="7" fill="#E7EFEC" stroke="#0E5F58" stroke-width="1.6"/>
+<rect x="110" y="470" width="7" height="118" rx="3.5" fill="#0E5F58"/>
+<text x="134" y="504" font-size="16" fill="#0E5F58" font-weight="700">Why area measurement fails</text>
+<text x="134" y="532" font-size="16" fill="#1A1C18">A cross-sectional area is one number describing a shape it cannot capture. Two sacs of identical area can hold rootlets floating in</text>
+<text x="134" y="556" font-size="16" fill="#1A1C18">cerebrospinal fluid, or packed solid with none. The rootlet-to-fluid ratio is the thing that correlates with the patient &#8212; so grade it directly.</text>
+</svg>
+</figure>
+
+<div class="card r">
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_fig3_66mm_gradeA.jpg"
+    alt="Axial T2 at L4-L5, dural sac area 66 square millimetres but grade A morphology"
+    data-cap="Axial T2 at L4-L5. The measured dural sac cross-sectional area is 66 square millimetres, which is below the 75 square millimetre threshold for 'absolute stenosis'. But the morphology is grade A: cerebrospinal fluid is plainly visible and the rootlets are not impinged. The number would have sent this patient toward an operation.">
+    <div class="attrib">Schizas et al., Spine 2010, Figure 3 <span class="lic">permission pending</span></div></div>
+  <div class="body">
+    <h3>The case that makes the argument</h3>
+    <p class="where">Axial T2 at L4&#8211;L5 &#8212; the paper&#8217;s own worked example</p>
+    <p>Measured dural sac area: <b>66&#8239;mm&#178;.</b> That is below 75, so by the conventional numeric criterion
+    this is <i>absolute stenosis</i> &#8212; the most severe label the measurement offers.</p>
+    <p>Now look at it. Cerebrospinal fluid is plainly visible. The rootlets are not impinged. It is a
+    <b>grade A</b> sac, and grade A is where 23 of 27 low-back-pain-only patients sat.</p>
+    <div class="rule r" style="margin:1em 0 0">
+      <b>The sac is small, but it is not full.</b> A narrow sac with room inside it is not the same problem as a
+      wide sac packed solid, and only one of those two facts is visible in a cross-sectional area.
+    </div>
+  </div>
+</div>
+
+<figure class="wide" style="max-width:900px;">
+  <img class="zoom" src="figures/from_papers/schizas2010_p03_984x608.jpeg"
+       alt="Dural sac area ranges for each Schizas grade, showing wide overlap"
+       data-cap="Measured dural sac cross-sectional area plotted against morphologic grade. Each grade spans a wide range of areas and the ranges overlap heavily. Grade A extends past 300 square millimetres; grade C reaches well above 100. There is no area threshold that cleanly separates the grades.">
+  <figcaption><b>The same data as a picture.</b> Every grade spans a wide range of areas, and the ranges overlap
+  heavily &#8212; grade C cases appear above 100&#8239;mm&#178; while grade A cases appear below 50. There is no cut-off
+  you could draw on this axis that would reproduce the grades.<br>
+  Schizas et al., <i>Spine</i> 2010, Figure 2 <span class="lic">permission pending</span></figcaption>
+</figure>
+
+<!-- 6 -->
+<h2><span class="n">6</span>Does the grade actually track the patient?</h2>
+<div class="col">
+<p class="lede">This is the question that decides whether a grading system is worth your time. Schizas applied it
+to three groups: people with back pain only, people treated conservatively, and people who went to surgery.</p>
+</div>
+<figure>
+
+<svg viewBox="0 0 1460 620" role="img" aria-label="Distribution of Schizas grades across three patient groups">
+<text x="110" y="34" font-size="21" fill="#0E5F58" font-weight="700">The grade tracks what happened to the patient</text>
+<text x="110" y="64" font-size="16" fill="#585B50">Narrowest grade per patient, in the three groups Schizas studied. Each bar is one group; width is proportion of that group.</text>
+<rect x="700" y="104" width="20" height="20" rx="4" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="728" y="120" font-size="16" fill="#2E7D4F" font-weight="700">Grade A</text>
+<rect x="818" y="104" width="20" height="20" rx="4" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="846" y="120" font-size="16" fill="#BC6B26" font-weight="700">Grade B</text>
+<rect x="936" y="104" width="20" height="20" rx="4" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/>
+<text x="964" y="120" font-size="16" fill="#B5563F" font-weight="700">Grade C</text>
+<rect x="1054" y="104" width="20" height="20" rx="4" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="1082" y="120" font-size="16" fill="#A3301F" font-weight="700">Grade D</text>
+<text x="110" y="202" font-size="16" fill="#1A1C18" font-weight="700">Low back pain only</text>
+<text x="110" y="226" font-size="14" fill="#585B50">no stenosis symptoms</text>
+<text x="110" y="252" font-size="14" fill="#585B50">n = 27</text>
+<rect x="470" y="188" width="707.037" height="64" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="823.519" y="218" font-size="16" fill="#2E7D4F" font-weight="700" text-anchor="middle">A</text>
+<text x="823.519" y="240" font-size="14" fill="#2E7D4F" text-anchor="middle">23</text>
+<rect x="1177.04" y="188" width="30.7407" height="64" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<rect x="1207.78" y="188" width="92.2222" height="64" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/>
+<text x="1253.89" y="218" font-size="16" fill="#B5563F" font-weight="700" text-anchor="middle">C</text>
+<text x="1253.89" y="240" font-size="14" fill="#B5563F" text-anchor="middle">3</text>
+<text x="1340" y="226" font-size="21" fill="#585B50" font-weight="700" text-anchor="middle">11%</text>
+<text x="110" y="330" font-size="16" fill="#1A1C18" font-weight="700">Treated conservatively</text>
+<text x="110" y="354" font-size="14" fill="#585B50">symptomatic, managed without surgery</text>
+<text x="110" y="380" font-size="14" fill="#585B50">n = 31</text>
+<rect x="470" y="316" width="428.387" height="64" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<text x="684.194" y="346" font-size="16" fill="#2E7D4F" font-weight="700" text-anchor="middle">A</text>
+<text x="684.194" y="368" font-size="14" fill="#2E7D4F" text-anchor="middle">16</text>
+<rect x="898.387" y="316" width="160.645" height="64" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="978.71" y="346" font-size="16" fill="#BC6B26" font-weight="700" text-anchor="middle">B</text>
+<text x="978.71" y="368" font-size="14" fill="#BC6B26" text-anchor="middle">6</text>
+<rect x="1059.03" y="316" width="160.645" height="64" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/>
+<text x="1139.35" y="346" font-size="16" fill="#B5563F" font-weight="700" text-anchor="middle">C</text>
+<text x="1139.35" y="368" font-size="14" fill="#B5563F" text-anchor="middle">6</text>
+<rect x="1219.68" y="316" width="80.3226" height="64" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="1259.84" y="346" font-size="16" fill="#A3301F" font-weight="700" text-anchor="middle">D</text>
+<text x="1259.84" y="368" font-size="14" fill="#A3301F" text-anchor="middle">3</text>
+<text x="1340" y="354" font-size="21" fill="#585B50" font-weight="700" text-anchor="middle">29%</text>
+<text x="110" y="458" font-size="16" fill="#1A1C18" font-weight="700">Went to surgery</text>
+<text x="110" y="482" font-size="14" fill="#585B50">symptomatic, decompressed</text>
+<text x="110" y="508" font-size="14" fill="#585B50">n = 37</text>
+<rect x="470" y="444" width="22.4324" height="64" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<rect x="492.432" y="444" width="67.2973" height="64" fill="#F7E9D6" stroke="#BC6B26" stroke-width="1.6"/>
+<text x="526.081" y="474" font-size="16" fill="#BC6B26" font-weight="700" text-anchor="middle">B</text>
+<text x="526.081" y="496" font-size="14" fill="#BC6B26" text-anchor="middle">3</text>
+<rect x="559.73" y="444" width="448.649" height="64" fill="#F6E4DE" stroke="#B5563F" stroke-width="1.6"/>
+<text x="784.054" y="474" font-size="16" fill="#B5563F" font-weight="700" text-anchor="middle">C</text>
+<text x="784.054" y="496" font-size="14" fill="#B5563F" text-anchor="middle">20</text>
+<rect x="1008.38" y="444" width="291.622" height="64" fill="#F6E4DE" stroke="#A3301F" stroke-width="1.6"/>
+<text x="1154.19" y="474" font-size="16" fill="#A3301F" font-weight="700" text-anchor="middle">D</text>
+<text x="1154.19" y="496" font-size="14" fill="#A3301F" text-anchor="middle">13</text>
+<text x="1340" y="482" font-size="21" fill="#A3301F" font-weight="700" text-anchor="middle">89%</text>
+<text x="1340" y="150" font-size="14" fill="#585B50" font-weight="700" text-anchor="middle">C or D</text>
+<rect x="110" y="556" width="1310" height="48" rx="7" fill="#E5EFE4" stroke="#2E7D4F" stroke-width="1.6"/>
+<rect x="110" y="556" width="7" height="48" rx="3.5" fill="#2E7D4F"/>
+<text x="134" y="586" font-size="16" fill="#2E7D4F" font-weight="700">Read the right-hand column downwards: 11%, 29%, 89%. The grade is not describing the picture &#8212; it is describing the patient.</text>
+</svg>
+</figure>
+<div class="col">
+<div class="rule g">
+  <b>What to take from this.</b> Grades C and D account for <b>89% of the surgical group</b> and
+  <b>11% of the back-pain-only group.</b> That is a real separation, achieved with no measurement and no
+  calculation &#8212; just looking inside the sac. It is also why the A1&#8211;A4 subtypes are not worth drilling:
+  they all sit in the same clinical bucket.
+</div>
+</div>
+
+<!-- 7 -->
+<h2><span class="n">7</span>Drill</h2>
+<div class="col">
+<p class="lede">Four axial T2s. Grade each one before you open the answer. Ask only: <b>can I see cerebrospinal
+fluid inside the sac?</b> &#8212; then, if not, <b>is there still fat behind it?</b></p>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:1.4em 0 0;">
+
+<div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 1</div>
+  <div style="padding:12px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/schizas_fig3_66mm_gradeA.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 1"
+         data-cap="Drill case 1 &#8212; grade it before opening the answer."
+         style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
+  </div>
+  <details style="padding:12px 14px;font-size:15px;">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy);">Show answer</summary>
+    <p style="margin:.7em 0 0;font-size:19px;font-weight:700;color:var(--red);">Grade A</p>
+    <p style="margin:.4em 0 0;font-size:14px;color:var(--muted);line-height:1.5;">Fluid is clearly visible and rootlets are not impinged. Measured area 66&#8239;mm&#178; &#8212; which is why this case is in the paper. The number says absolute stenosis; the morphology says A.</p>
+  </details>
+</div>
+
+<div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 2</div>
+  <div style="padding:12px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/drill_2.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 2"
+         data-cap="Drill case 2 &#8212; grade it before opening the answer."
+         style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
+  </div>
+  <details style="padding:12px 14px;font-size:15px;">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy);">Show answer</summary>
+    <p style="margin:.7em 0 0;font-size:19px;font-weight:700;color:var(--red);">Grade C</p>
+    <p style="margin:.4em 0 0;font-size:14px;color:var(--muted);line-height:1.5;">A homogeneous grey sac with no fluid signal inside it, but posterior epidural fat is still present behind the sac. No fluid + fat still there = C.</p>
+  </details>
+</div>
+
+<div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 3</div>
+  <div style="padding:12px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/drill_1.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 3"
+         data-cap="Drill case 3 &#8212; grade it before opening the answer."
+         style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
+  </div>
+  <details style="padding:12px 14px;font-size:15px;">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy);">Show answer</summary>
+    <p style="margin:.7em 0 0;font-size:19px;font-weight:700;color:var(--red);">Grade A3</p>
+    <p style="margin:.4em 0 0;font-size:14px;color:var(--muted);line-height:1.5;">Rootlets lie dorsally and occupy more than half the sac, but fluid is still clearly visible ventrally. Within grade A &#8212; the subtype is A3, which changes nothing clinically.</p>
+  </details>
+</div>
+
+<div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
+  <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 4</div>
+  <div style="padding:12px;background:#EFEADC;">
+    <img class="zoom" src="figures/panels/drill_3.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 4"
+         data-cap="Drill case 4 &#8212; grade it before opening the answer."
+         style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
+  </div>
+  <details style="padding:12px 14px;font-size:15px;">
+    <summary style="cursor:pointer;font-weight:700;color:var(--navy);">Show answer</summary>
+    <p style="margin:.7em 0 0;font-size:19px;font-weight:700;color:var(--red);">Grade D</p>
+    <p style="margin:.4em 0 0;font-size:14px;color:var(--muted);line-height:1.5;">No fluid inside the sac and no posterior epidural fat either. Nothing between the sac and the posterior arch. That second absence is the whole difference between C and D.</p>
+  </details>
+</div>
+
+</div>
+
+<figure class="wide" style="max-width:520px;margin-top:2em;">
+  <img class="zoom" src="figures/panels/schizas_myelogram.jpg"
+       alt="Coronal MR myelogram showing the cerebrospinal fluid column interrupted at two levels"
+       data-cap="Coronal MR myelographic sequence from the same patient as drill cases 2, 3 and 4. The bright cerebrospinal fluid column is interrupted at the two levels graded C and D, and continues at the level graded A3. The grade and the block are the same observation seen two ways.">
+  <figcaption><b>The same patient, seen whole.</b> This is the coronal myelographic sequence from cases 2&#8211;4.
+  The bright fluid column is <b>interrupted at exactly the levels graded C and D</b> and flows past the level
+  graded A3. The grading is not an abstraction &#8212; it is the block, seen on a single axial slice.<br>
+  Schizas et al., <i>Spine</i> 2010, Figure 4 <span class="lic">permission pending</span></figcaption>
+</figure>
+
+<!-- 8 -->
+<h2><span class="n">8</span>Why this system, and not one of the others</h2>
+<div class="col">
+<p class="lede">Schizas is <b>not</b> the newest &#8212; Lee is a year later and performs about as well. It is,
+by a wide margin, the <b>most cited</b>, and the reasons it won out are worth two minutes because they are
+reasons about evidence, not fashion.</p>
+
+<table>
+  <thead><tr>
+    <th style="width:20%">System</th><th style="width:8%">Year</th><th style="width:26%">What it looks at</th>
+    <th style="width:10%">Grades</th><th style="width:36%">Where it stands now</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td><b>Canal diameter</b><br><span style="font-size:14px;color:var(--faint)">Verbiest lineage</span></td>
+      <td>1954&#8211;</td>
+      <td>Front-to-back diameter of the bony canal</td>
+      <td>2 bands</td>
+      <td>Superseded. Steurer&#8217;s review found cut-offs of &lt;10, &lt;12 <i>and</i> &lt;15&#8239;mm all in
+          active use, none of them validated.</td>
+    </tr>
+    <tr>
+      <td><b>Dural sac cross-sectional area</b></td>
+      <td>1980s&#8211;</td>
+      <td>Measured area of the sac on one axial slice</td>
+      <td>continuous</td>
+      <td>Still quoted in reports. Disagrees with morphology in <i>both</i> directions (&#167;5), and repeat
+          measurements of the same slice vary by 6&#8211;9&#8239;mm&#178;.</td>
+    </tr>
+    <tr style="background:var(--navy-soft);">
+      <td><b>Schizas</b></td>
+      <td><b>2010</b></td>
+      <td>Rootlet-to-fluid ratio inside the sac, plus dorsal epidural fat</td>
+      <td>7<br><span style="font-size:14px;color:var(--faint)">A1&#8211;A4, B, C, D</span></td>
+      <td><b>488 citations.</b> &#954; 0.44 between observers in the original paper; ICC 0.83&#8211;0.98 in later
+          work with trained readers.</td>
+    </tr>
+    <tr>
+      <td><b>Lee</b></td>
+      <td>2011</td>
+      <td>Obliteration of the anterior fluid space, and whether individual roots can still be separated</td>
+      <td>4<br><span style="font-size:14px;color:var(--faint)">0&#8211;3</span></td>
+      <td>147 citations. ICC 0.84&#8211;0.98 &#8212; statistically indistinguishable from Schizas when the two
+          were run head to head.</td>
+    </tr>
+    <tr>
+      <td><b>Nerve root sedimentation sign</b><br><span style="font-size:14px;color:var(--faint)">Barz</span></td>
+      <td>2010</td>
+      <td>Do the roots settle dorsally under gravity, or stay suspended?</td>
+      <td>binary</td>
+      <td>An adjunct rather than a grade. Head to head against Schizas: AUC <b>0.853 vs 0.943</b>, losing mostly
+          on specificity (76% vs 88%).</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 style="margin-top:1.8em;color:var(--navy);">Why it won</h3>
+<div class="rule">
+  <b>1 &#183; It arrived exactly as measurement was collapsing.</b> One year after Schizas, Steurer published a
+  systematic review of quantitative criteria for lumbar stenosis. It found <b>ten different parameters</b> in use,
+  with incompatible cut-offs, and concluded there were <b>no validated criteria</b> at all &#8212; only 4 of 63
+  primary studies even reported the radiological thresholds they had used to enrol patients. Schizas offered
+  something that needed no threshold.
+</div>
+<div class="rule">
+  <b>2 &#183; It was validated against what happened to the patient.</b> Most grading papers report only whether
+  readers agree with each other. Schizas tested the grade against three real groups &#8212; back pain only,
+  treated conservatively, and operated (&#167;6). Agreement between readers tells you a system is <i>consistent</i>;
+  only that three-group design tells you it is <i>about anything</i>.
+</div>
+<div class="rule">
+  <b>3 &#183; Learnability was tested deliberately, not assumed.</b> The original paper had it applied by junior
+  orthopaedic trainees, and by a surgeon and radiologist <b>in a different country who received only the written
+  description with no briefing.</b> That is an unusual thing to put in your own paper, and it is the reason this
+  is a reasonable skill to teach to an audience of APPs in twenty minutes.
+</div>
+<div class="rule">
+  <b>4 &#183; It was published where surgeons read.</b> <i>Spine</i>, not a radiology journal. The people who
+  decide whether to operate encountered it directly.
+</div>
+
+<div class="rule r">
+  <b>The honest caveat, because you may hear otherwise.</b> A 2023 review describes the <i>Lee</i> system as
+  &#8220;now widely accepted in clinical practice, included in web-based radiology resources, and cited in many
+  studies.&#8221; That review is <b>co-authored by Joon Woo Lee, a developer of the Lee system</b> &#8212; so treat
+  it as a claim by an interested party rather than a neutral finding. On citation count Schizas leads
+  488 to 147. Both systems are defensible and they ask nearly the same question.<br><br>
+  <b>Practical answer: if your radiologists report in Lee grades, learn Lee.</b> Grade 0&#8211;1 maps to Schizas
+  A&#8211;B, and grade 2&#8211;3 to C&#8211;D. The underlying skill &#8212; <i>can I see cerebrospinal fluid inside
+  the sac?</i> &#8212; is identical, and it is the skill that transfers.
+</div>
+</div>
+
+<!-- 9 -->
+<h2><span class="n">9</span>Honest limits</h2>
+<div class="col">
+<div class="rule r">
+  <b>Interobserver agreement is only fair.</b> Across all readers in the original study, &#954; was
+  <b>0.44</b> between observers and <b>0.65</b> within the same observer. Among readers at the unit that devised
+  it, those rose to 0.67 and 0.77 &#8212; and the authors saw a <b>learning effect between readings.</b> Two
+  honest conclusions: the system is teachable and improves with practice, and a single grade from a single reader
+  is not a hard number. Where a grade drives a decision, say who graded it.
+</div>
+<table>
+  <thead><tr><th style="width:50%">Call it and act on it</th><th>Defer it, always</th></tr></thead>
+  <tbody>
+    <tr><td>The Schizas grade at each narrowed level</td><td>Any mass, marrow replacement or enhancing lesion</td></tr>
+    <tr><td>Which level is narrowest</td><td>Anything that is not degenerative in origin</td></tr>
+    <tr><td>Whether fluid is present inside the sac</td><td>Infection, and any destructive endplate change</td></tr>
+    <tr><td>Conus position, and whether it is normal</td><td>The final operative level &#8212; that is the surgeon&#8217;s call</td></tr>
+    <tr><td>That the imaging does or does not match the legs</td><td>Whether an area measurement means anything here</td></tr>
+  </tbody>
+</table>
+<div class="rule">
+  <b>The sentence to write.</b> <i>"Grade C at L4&#8211;5, grade A3 at L3&#8211;4; narrowest level L4&#8211;5.
+  Symptoms are bilateral and positional and fit that level."</i> That is a defensible, useful read from an APP.
+  What is not defensible is <i>"severe stenosis"</i> with no level and no grade attached.
+</div>
+</div>
+
+<div class="foot">
+<b>Source.</b> Schizas C, Theumann N, Burn A, Tansey R, Wardlaw D, Smith FW, Kulik G.
+<i>Qualitative grading of severity of lumbar spinal stenosis based on the morphology of the dural sac on magnetic
+resonance images.</i> Spine 2010;35(21):1919&#8211;1924. All grading definitions, reliability figures and group
+distributions on this page are taken from that paper and were checked against its full text.<br><br>
+<b>Comparison sources (&#167;8).</b>
+Lee GY, Lee JW, Choi HS, Oh KJ, Kang HS. <i>A new grading system of lumbar central canal stenosis on MRI: an easy
+and reliable measurement.</i> Skeletal Radiol 2011;40(8):1033&#8211;9.
+&#183; Ko Y-j, Lee E, Lee JW, et al. <i>Clinical validity of two different grading systems for lumbar central canal
+stenosis: Schizas and Lee classification systems.</i> PLoS ONE 2020;15(5):e0233633.
+&#183; Steurer J, Roner S, Gnannt R, Hodler J. <i>Quantitative radiologic criteria for the diagnosis of lumbar
+spinal stenosis: a systematic literature review.</i> BMC Musculoskelet Disord 2011;12:175.
+&#183; Seo J, Lee JW. <i>Magnetic resonance imaging grading systems for central canal and neural foraminal
+stenoses.</i> Korean J Radiol 2023;24(3):224&#8211;234.
+&#183; Qian G, et al. <i>Value of nerve root sedimentation sign in diagnosis and surgical indication of lumbar
+spinal stenosis.</i> BMC Musculoskelet Disord 2023;24:336.
+&#183; Citation counts from Europe PMC, retrieved for this handout.<br><br>
+Figures reproduced from the same paper pending permission. Every image on this page is clickable.
+</div>
+
+</div>
+
+<div id="lb" role="dialog" aria-label="Zoomed image" aria-modal="true">
+  <button id="lbclose" aria-label="Close">&#10005;</button>
+  <img id="lbimg" alt="">
+  <div id="lbcap"></div>
+</div>
+<style>
+  #lb{position:fixed;inset:0;background:rgba(12,16,20,.94);z-index:9999;
+      display:none;align-items:center;justify-content:center;flex-direction:column;padding:2.5vh 3vw;}
+  #lb.on{display:flex;}
+  #lbimg{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:6px;
+         box-shadow:0 8px 40px rgba(0,0,0,.6);background:#111;cursor:zoom-out;}
+  #lbcap{color:#e8ecef;font-size:16px;margin-top:1em;max-width:1100px;text-align:center;line-height:1.5;}
+  #lbclose{position:absolute;top:18px;right:24px;background:none;border:0;color:#e8ecef;
+           font-size:30px;line-height:1;cursor:pointer;padding:.2em .4em;border-radius:6px;}
+  #lbclose:hover{background:rgba(255,255,255,.12);}
+  .zoom{cursor:zoom-in;transition:filter .12s;}
+  .zoom:hover{filter:brightness(1.06);}
+</style>
+<script>
+(function(){
+  var lb=document.getElementById('lb'), im=document.getElementById('lbimg'), cp=document.getElementById('lbcap');
+  function open(src,cap){ im.src=src; cp.textContent=cap||''; lb.classList.add('on');
+                          document.body.style.overflow='hidden'; }
+  function close(){ lb.classList.remove('on'); im.src=''; document.body.style.overflow=''; }
+  document.addEventListener('click', function(e){
+    var t=e.target;
+    if(t.classList && t.classList.contains('zoom')){
+      open(t.getAttribute('src')||t.getAttribute('href'), t.getAttribute('data-cap')||t.alt);
+      return;
+    }
+    if(t.id==='lb'||t.id==='lbimg'||t.id==='lbclose') close();
+  });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
+})();
+</script>
+<footer class="sm-foot">
+  <div class="sm-pnwrap"><a class="sm-pn" href="01-cervical-cord-compression.html"><span class="sm-pn__k">&larr; Previous</span><span class="sm-pn__t">Part 1 &middot; Reading the compressed cord</span></a><a class="sm-pn sm-pn--next" href="03-nerve-root-and-foramen.html"><span class="sm-pn__k">Next &rarr;</span><span class="sm-pn__t">Part 3 &middot; Nerve root and foramen</span></a></div>
+  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="../index.html">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
+</footer>
+
+<script>
+(function(){
+  var nav=document.getElementById('nav');
+  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
+  window.addEventListener('scroll', s, {passive:true}); s();
+  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
+  t.addEventListener('click', function(){
+    var o=l.classList.toggle('is-open');
+    t.classList.toggle('is-open', o);
+    t.setAttribute('aria-expanded', o?'true':'false');
+  });
+})();
+</script>
+</body>
+</html>
