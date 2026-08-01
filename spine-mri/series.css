@@ -79,13 +79,38 @@ body.sm .imgcell, body.sm .ph     { background: #EFEADC; }
 body.sm thead th                  { background: rgba(14, 95, 88, .10); }
 body.sm tbody tr:nth-child(even)  { background: rgba(26, 28, 24, .03); }
 
-/* SVG figures were authored on white — seat them on a card */
-body.sm figure > svg {
-  background: var(--paper-card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 6px;
+/* Figures are drawn on transparent ground so the page's paper and grain
+   show through them. Do not give these a background. */
+body.sm figure > svg { background: transparent; }
+
+/* ---------- the four-part strip at the head of each part ---------- */
+.partnav {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  margin: 0 0 2.6em;
 }
+.partnav__i {
+  display: block; padding: 13px 15px; border-radius: 9px;
+  border: 1.4px solid var(--line); background: transparent;
+  text-decoration: none !important; color: var(--ink-soft) !important;
+  transition: border-color .15s var(--ease), transform .15s var(--ease),
+              background .15s var(--ease);
+}
+.partnav__i:hover {
+  border-color: var(--teal); background: var(--paper-card);
+  transform: translateY(-2px); color: var(--ink) !important;
+}
+.partnav__i.is-current {
+  border-width: 1.8px; border-color: var(--teal);
+  background: rgba(14, 95, 88, .08); color: var(--ink) !important;
+}
+.partnav__k {
+  display: block; font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
+}
+.partnav__i.is-current .partnav__k { color: var(--teal); }
+.partnav__t { display: block; font-size: 15px; margin-top: .25em; }
+
+@media (max-width: 900px) { .partnav { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .partnav { grid-template-columns: 1fr; } }
 
 /* ---------- prev / next ---------- */
 .sm-foot {
