@@ -89,6 +89,9 @@ body.sm tbody tr:nth-child(even)  { background: rgba(26, 28, 24, .03); }
    show through them. Do not give these a background. */
 body.sm figure > svg { background: transparent; }
 
+/* A figure narrower than the text column sits centred, not flush left. */
+body.sm figure.wide { margin-left: auto; margin-right: auto; }
+
 /* ---------- the four-part strip at the head of each part ---------- */
 .partnav {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
