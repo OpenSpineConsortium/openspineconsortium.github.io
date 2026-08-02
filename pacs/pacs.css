@@ -157,3 +157,24 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
   .sb td:nth-child(2){margin-left:auto;text-align:right;padding-right:0}
   .sb td:nth-child(4){flex-basis:100%;padding-left:0;font-size:.86em}
 }
+
+/* ── modality tabs (CT | X-ray) ───────────────────────────────────────────── */
+.modetabs{display:flex;gap:2px;margin-left:18px;background:rgba(255,255,255,.06);
+          border-radius:8px;padding:3px;}
+.modetab{display:inline-block;padding:.32em .95em;border-radius:6px;font-size:13px;
+         font-weight:600;letter-spacing:.02em;text-decoration:none;color:#9aa6b2;}
+.modetab:hover{color:#dfe6ec;}
+.modetab.is-on{background:#1f6feb;color:#fff;}
+
+/* ── X-ray viewport ───────────────────────────────────────────────────────── */
+.viewport--xr{display:flex;align-items:center;justify-content:center;background:#06090d;}
+.xrimg{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;gap:14px;padding:6vh 8vw;text-align:center;color:#c6cfd7;}
+.empty__msg{font-size:15px;color:#9aa6b2;max-width:52ch;line-height:1.5;}
+.drop{border:1.5px dashed #3b4a58;border-radius:10px;padding:22px 26px;max-width:56ch;
+      transition:border-color .12s,background .12s;}
+.drop.is-over{border-color:#1f6feb;background:rgba(31,111,235,.08);}
+.drop p{margin:.35em 0;font-size:14px;line-height:1.55;}
+.drop__note{color:#7f8b96;font-size:12.5px;}
+.linklike{color:#6ea8fe;text-decoration:underline;cursor:pointer;}
