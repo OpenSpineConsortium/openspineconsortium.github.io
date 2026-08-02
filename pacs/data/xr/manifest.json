@@ -1,9 +1,9 @@
 {
   "cases": [
     {
-      "id": "_selftest",
-      "label": "Geometry self-test \u2014 synthetic schematic",
-      "dir": "_selftest"
+      "id": "0003",
+      "label": "Case 0003 \u2014 DRR of the CT case",
+      "dir": "0003"
     }
   ]
 }

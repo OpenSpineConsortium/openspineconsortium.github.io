@@ -1,0 +1,243 @@
+{
+  "case_id": "0003",
+  "title": "Case 0003 \u2014 DRR (same scan as the CT tab)",
+  "image": "image.png",
+  "summary": {
+    "case_id": "0003",
+    "supine_ct": true,
+    "PI": 55.531,
+    "SS": 32.314,
+    "PT": 23.218,
+    "LL": 45.7,
+    "PI-LL": {
+      "pi_minus_ll": 9.826,
+      "abs_pi_minus_ll": 9.826,
+      "ll_target_deg": [
+        46.5,
+        64.5
+      ],
+      "within_target_9deg": false,
+      "surgical_target": true,
+      "schwab_modifier": "0",
+      "ll_shortfall_deg": 0.826
+    },
+    "schwab": {
+      "PI-LL": "0",
+      "PT": "+",
+      "SVA": "out_of_scope",
+      "objectives": {
+        "LL=PI\u00b19\u00b0": false,
+        "PT<20\u00b0": false,
+        "SVA<5cm": null
+      },
+      "ll_increase_needed_deg": 4.044
+    },
+    "qc_flags": [
+      "ok"
+    ],
+    "method_version": "pi-v1+ll-v1",
+    "pi_category": "average",
+    "roussouly": "1-2",
+    "surgery": {
+      "ll_to_restore_deg": 4.044,
+      "severity": "mild",
+      "primary": "anterior/interbody fusion \u2014 single- or two-level ALIF (\u22486\u00b0, best at L5\u2013S1) \u00b1 LLIF",
+      "osteotomy": null,
+      "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
+      "objectives": {
+        "LL=PI\u00b19\u00b0": false,
+        "PT<20\u00b0": false
+      },
+      "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 4.0\u00b0 (Eq. 73.1); |PI\u2212LL| 9.8\u00b0, PT 23.2\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0\u00b0."
+    },
+    "modality": "XR (DRR)"
+  },
+  "geometry": {
+    "space": "image_px",
+    "drr": {
+      "pixel_spacing_mm": 1.0,
+      "origin_world_mm": [
+        -8.421778414103215,
+        187.5030897371824,
+        -488.04531743710766
+      ],
+      "axes": {
+        "anterior": [
+          0.02757745439221419,
+          0.999619669679046,
+          -0.0
+        ],
+        "cranial": [
+          0.014085325684238044,
+          -0.00038858521739700827,
+          0.9999007213728259
+        ],
+        "lr": [
+          0.9995204288105443,
+          -0.027574716540401178,
+          -0.014090684798910073
+        ]
+      },
+      "shape": [
+        420,
+        260
+      ],
+      "fov_mm": [
+        260.0,
+        420.0
+      ],
+      "method_version": "ostk-drr-v1"
+    },
+    "angles": [
+      {
+        "id": "SS",
+        "label": "Sacral Slope",
+        "color": "#60a5fa",
+        "segments": [
+          [
+            [
+              76.49,
+              254.31
+            ],
+            [
+              189.34,
+              181.32
+            ]
+          ]
+        ],
+        "dashed": [
+          [
+            [
+              200.11,
+              217.82
+            ],
+            [
+              65.71,
+              217.82
+            ]
+          ]
+        ],
+        "label_at": [
+          95.95,
+          197.66
+        ],
+        "value": 32.314,
+        "units": "\u00b0"
+      },
+      {
+        "id": "PT",
+        "label": "Pelvic Tilt",
+        "color": "#f59e0b",
+        "segments": [
+          [
+            [
+              88.96,
+              314.93
+            ],
+            [
+              132.91,
+              217.82
+            ]
+          ]
+        ],
+        "dashed": [
+          [
+            [
+              88.96,
+              314.93
+            ],
+            [
+              88.96,
+              227.57
+            ]
+          ]
+        ],
+        "label_at": [
+          125.92,
+          271.25
+        ],
+        "value": 23.218,
+        "units": "\u00b0"
+      },
+      {
+        "id": "PI",
+        "label": "Pelvic Incidence",
+        "color": "#a78bfa",
+        "segments": [
+          [
+            [
+              88.96,
+              314.93
+            ],
+            [
+              132.91,
+              217.82
+            ]
+          ],
+          [
+            [
+              76.49,
+              254.31
+            ],
+            [
+              189.34,
+              181.32
+            ]
+          ]
+        ],
+        "dashed": [
+          [
+            [
+              132.91,
+              217.82
+            ],
+            [
+              89.14,
+              150.13
+            ]
+          ]
+        ],
+        "label_at": [
+          183.31,
+          187.58
+        ],
+        "value": 55.531,
+        "units": "\u00b0"
+      },
+      {
+        "id": "LL",
+        "label": "Lumbar Lordosis",
+        "color": "#34d399",
+        "segments": [
+          [
+            [
+              96.01,
+              37.91
+            ],
+            [
+              201.11,
+              60.56
+            ]
+          ],
+          [
+            [
+              83.72,
+              242.0
+            ],
+            [
+              174.01,
+              183.6
+            ]
+          ]
+        ],
+        "dashed": [],
+        "label_at": [
+          185.75,
+          131.02
+        ],
+        "value": 45.7,
+        "units": "\u00b0"
+      }
+    ]
+  }
+}

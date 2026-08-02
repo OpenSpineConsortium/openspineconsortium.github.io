@@ -12,7 +12,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Spinopelvic X-ray demo — OpenSpineConsortium</title>
+  <title>Spinopelvic DRR demo — OpenSpineConsortium</title>
   <meta name="description" content="Lateral radiograph tab of the OpenSpineConsortium spinopelvic demo: pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis drawn on a lateral spine film." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="pacs.css?v=20260802a" />
@@ -38,13 +38,7 @@
       <canvas id="overlay" class="overlay"></canvas>
       <div id="loading" class="loading" hidden><div class="loadbar"><span></span></div><div class="loadtxt">loading…</div></div>
       <div id="emptyState" class="empty" hidden>
-        <div class="empty__msg">No X-ray case loaded.</div>
-        <div id="dropZone" class="drop">
-          <p><b>Drop a lateral spine film here</b>, or <label class="linklike" for="fileInput">choose a file</label>.</p>
-          <input id="fileInput" type="file" accept="image/*" hidden />
-          <p class="drop__note">The image is read locally in your browser with <code>FileReader</code>
-             and is <b>never uploaded</b> — this build has no upload endpoint.</p>
-        </div>
+        <div class="empty__msg">No DRR bundle loaded.</div>
       </div>
       <div class="viewport__hud"><span id="hudCase">—</span></div>
     </section>
@@ -66,11 +60,16 @@
       <div class="panel__group">
         <h2 class="panel__h">What this needs from the film</h2>
         <p class="panel__note">
-          <b>LL</b> and <b>SS</b> need only the L1 and S1 superior endplates.
-          <b>PI</b> and <b>PT</b> additionally need the <b>femoral head centres</b> — visible on a
-          standing full-spine lateral, usually <b>not</b> on a coned lumbar lateral. On a film
-          without femoral heads those two are reported as <span class="muted">n/a</span> rather
-          than estimated.
+          This is a <b>DRR</b> — the CT of the case in the other tab, integrated along the
+          patient's true <b>bicoxofemoral axis</b>, so the projection is the one the angles are
+          actually defined in. Constructions come from <b>ostk</b>'s own 2-D projection
+          (<code>ostk.drr</code> + <code>ostk.project2d</code>), and the values are copied
+          verbatim from the CT bundle — the two tabs report the same numbers by construction.
+          <br><br>
+          On a real film, <b>LL</b> and <b>SS</b> need only the L1 and S1 endplates, but
+          <b>PI</b> and <b>PT</b> need the <b>femoral head centres</b> — absent from a coned
+          lumbar lateral, in which case ostk returns them as
+          <span class="muted">n/a</span> rather than estimating.
         </p>
       </div>
 
@@ -82,6 +81,6 @@
     </aside>
   </main>
 
-  <script type="module" src="xr.js?v=20260802a"></script>
+  <script type="module" src="xr.js?v=20260802b"></script>
 </body>
 </html>
