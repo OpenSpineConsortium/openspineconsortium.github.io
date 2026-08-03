@@ -122,34 +122,95 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
             here = project_to_plane_2d(world[None, :], origin, ant, cranial)[0]
             ll_lines[lvl] = (here, np.asarray(ll["endplate_normals_2d"][lvl], float))
 
-    half = 0.16 * max(W_mm, H_mm)
-    horiz = [[ep_mid[0] - half, ep_mid[1]], [ep_mid[0] + half, ep_mid[1]]]
-    vert = [[bicox[0], bicox[1]], [bicox[0], bicox[1] + half * 1.3]]
+    # ---- construction geometry -------------------------------------------------
+    # Each parameter is drawn as a proper ANGLE: two rays from a shared vertex plus a
+    # polyline arc between them, so it reads as a measurement rather than as crossing
+    # lines. Arcs are emitted as explicit points (no SVG arc-flag/sweep ambiguity).
+    def unit(v):
+        v = np.asarray(v, float)
+        n = np.linalg.norm(v)
+        return v / n if n else v
+
+    def ray(vertex, direction, length):
+        return [list(map(float, vertex)),
+                list(map(float, np.asarray(vertex) + unit(direction) * length))]
+
+    def arc_pts(vertex, d1, d2, r, n=28):
+        """Points along the wedge from d1 to d2 about `vertex`, taking the SHORT way."""
+        a1, a2 = np.arctan2(*unit(d1)[::-1]), np.arctan2(*unit(d2)[::-1])
+        d = (a2 - a1 + np.pi) % (2 * np.pi) - np.pi          # signed, |d| <= pi
+        return [[float(vertex[0] + r * np.cos(a1 + d * t / (n - 1))),
+                 float(vertex[1] + r * np.sin(a1 + d * t / (n - 1)))] for t in range(n)]
+
+    def label_for(vertex, d1, d2, r):
+        """Just outside the arc, on its bisector -- never on top of either ray."""
+        b = unit(unit(d1) + unit(d2))
+        if not np.any(b):
+            b = unit([-d1[1], d1[0]])
+        return list(map(float, np.asarray(vertex) + b * (r + 16)))
+
+    L = 0.13 * max(W_mm, H_mm)          # ray length
+    R = L * 0.55                        # arc radius
+    ep_dir = np.array([-ep_n[1], ep_n[0]], float)      # along the S1 endplate
+    if ep_dir[0] < 0:
+        ep_dir = -ep_dir                                # point anteriorly
+    horiz, vert_up = np.array([1.0, 0.0]), np.array([0.0, 1.0])
+    to_mid = np.asarray(ep_mid, float) - np.asarray(bicox, float)
+
+    def build(pid, vertex, d1, d2, solid, dashed):
+        return {"id": pid, "label": {"SS": "Sacral Slope", "PT": "Pelvic Tilt",
+                                     "PI": "Pelvic Incidence",
+                                     "LL": "Lumbar Lordosis"}[pid],
+                "color": COLORS[pid],
+                "segments": [[to_px(p) for p in seg] for seg in solid],
+                "dashed":   [[to_px(p) for p in seg] for seg in dashed],
+                "arc": [to_px(p) for p in arc_pts(vertex, d1, d2, R)],
+                "label_at": to_px(label_for(vertex, d1, d2, R))}
 
     angles = [
-        {"id": "SS", "label": "Sacral Slope", "color": COLORS["SS"],
-         "segments": [[to_px(p) for p in line_through(ep_mid, ep_n, half)]],
-         "dashed": [[to_px(horiz[0]), to_px(horiz[1])]],
-         "label_at": to_px([ep_mid[0] + half * 0.55, ep_mid[1] + half * 0.30])},
-        {"id": "PT", "label": "Pelvic Tilt", "color": COLORS["PT"],
-         "segments": [[to_px(bicox), to_px(ep_mid)]],
-         "dashed": [[to_px(vert[0]), to_px(vert[1])]],
-         "label_at": to_px([bicox[0] - half * 0.55, bicox[1] + half * 0.65])},
-        {"id": "PI", "label": "Pelvic Incidence", "color": COLORS["PI"],
-         "segments": [[to_px(bicox), to_px(ep_mid)],
-                      [to_px(p) for p in line_through(ep_mid, ep_n, half)]],
-         "dashed": [[to_px(ep_mid),
-                     to_px([ep_mid[0] + ep_n[0] * half * 1.2, ep_mid[1] + ep_n[1] * half * 1.2])]],
-         "label_at": to_px([ep_mid[0] - half * 0.75, ep_mid[1] + half * 0.45])},
+        # SS: S1 endplate vs the horizontal, at the endplate midpoint
+        build("SS", ep_mid, ep_dir, horiz,
+              [line_through(ep_mid, ep_n, L)],
+              [ray(ep_mid, horiz, L)]),
+        # PT: hip->endplate vs the vertical, at the femoral head
+        build("PT", bicox, to_mid, vert_up,
+              [ray(bicox, to_mid, float(np.linalg.norm(to_mid)))],
+              [ray(bicox, vert_up, L)]),
+        # PI: endplate NORMAL vs endplate->hip, at the endplate midpoint
+        build("PI", ep_mid, ep_n, -to_mid,
+              [[list(map(float, ep_mid)), list(map(float, bicox))]],
+              [ray(ep_mid, ep_n, L), line_through(ep_mid, ep_n, L * 0.7)]),
     ]
     if "L1" in ll_lines and "S1" in ll_lines:
         (p1, n1), (ps, ns) = ll_lines["L1"], ll_lines["S1"]
-        angles.append(
-            {"id": "LL", "label": "Lumbar Lordosis", "color": COLORS["LL"],
-             "segments": [[to_px(p) for p in line_through(p1, n1, half * 0.8)],
-                          [to_px(p) for p in line_through(ps, ns, half * 0.8)]],
-             "dashed": [], "label_at": to_px([(p1[0] + ps[0]) / 2 - half * 0.7,
-                                              (p1[1] + ps[1]) / 2])})
+        d1 = np.array([-n1[1], n1[0]], float); d1 = d1 if d1[0] > 0 else -d1
+        ds = np.array([-ns[1], ns[0]], float); ds = ds if ds[0] > 0 else -ds
+        # Cobb vertex = where the two endplate lines meet; fall back to their midpoint
+        Amat = np.array([d1, -ds]).T
+        try:
+            t = np.linalg.solve(Amat, np.asarray(ps, float) - np.asarray(p1, float))
+            vtx = np.asarray(p1, float) + d1 * t[0]
+        except np.linalg.LinAlgError:
+            vtx = (np.asarray(p1, float) + np.asarray(ps, float)) / 2
+        # The two endplate lines usually meet OFF the film (normal for a Cobb angle).
+        # Only draw the vertex/arc when it actually lands on the image; otherwise show
+        # the two endplates alone with the label between them.
+        vpx = to_px(vtx)
+        on_film = -10 <= vpx[0] <= W + 10 and -10 <= vpx[1] <= H + 10
+        if on_film:
+            angles.append(build("LL", vtx, np.asarray(p1, float) - vtx,
+                                np.asarray(ps, float) - vtx,
+                                [line_through(p1, n1, L * 0.75), line_through(ps, ns, L * 0.75)],
+                                [[list(map(float, vtx)), list(map(float, p1))],
+                                 [list(map(float, vtx)), list(map(float, ps))]]))
+        else:
+            mid_pt = (np.asarray(p1, float) + np.asarray(ps, float)) / 2
+            angles.append({
+                "id": "LL", "label": "Lumbar Lordosis", "color": COLORS["LL"],
+                "segments": [[to_px(p) for p in line_through(p1, n1, L * 0.95)],
+                             [to_px(p) for p in line_through(ps, ns, L * 0.95)]],
+                "dashed": [], "arc": [],
+                "label_at": to_px([mid_pt[0] - L * 0.55, mid_pt[1]])})
 
     # summary: copied verbatim from the CT bundle -- same scan, same numbers
     ct_metrics = json.loads((case_dir / "metrics.json").read_text())

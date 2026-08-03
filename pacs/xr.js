@@ -16,7 +16,7 @@
   the browser and nothing is uploaded; this is a viewer.
 */
 
-const XR_BUILD = "20260803c";
+const XR_BUILD = "20260803d";
 
 const els = {
   img:     document.getElementById("xrimg"),
@@ -63,10 +63,13 @@ function strokePath(d, color, w, dash) {
 
 function drawAngle(a, g) {
   const seg = (p, q) => `M${p[0]},${p[1]} L${q[0]},${q[1]}`;
+  const poly = (pts) => pts.map((p, i) => `${i ? "L" : "M"}${p[0]},${p[1]}`).join(" ");
   for (const s of a.segments || [])
     strokePath(seg(s[0], s[1]), a.color, 2.6).forEach(n => g.appendChild(n));
   for (const s of a.dashed || [])
     strokePath(seg(s[0], s[1]), a.color, 1.8, "5 4").forEach(n => g.appendChild(n));
+  if (Array.isArray(a.arc) && a.arc.length > 1)   // the wedge -- makes it read as an angle
+    strokePath(poly(a.arc), a.color, 1.8, "4 3").forEach(n => g.appendChild(n));
   if (a.label_at) {
     const t = el("text", { x: a.label_at[0], y: a.label_at[1], fill: a.color });
     t.textContent = `${a.id} ${a.value}${a.units || "°"}`;
@@ -87,14 +90,19 @@ function drawOverlay() {
 
 /* A DRR is one static image -- nothing to scroll to and nothing to wait for -- so
    every construction is shown on load; the buttons toggle them. */
-function drawAll() {
-  if (!current) return;
-  current.geometry.angles.forEach((a, i) => {
-    active.set(a.id, true);
-    const b = els.metrics.children[i];
-    if (b) b.classList.add("is-on");
-  });
+/* ONE construction at a time. Drawing all four at once put SS, PT and PI inside the
+   same ~60 px of sacrum and they became unreadable. Opens on PI. */
+function select(id) {
+  active.clear();
+  if (id) active.set(id, true);
+  [...els.metrics.children].forEach(b => b.classList.toggle("is-on", b.dataset.id === id));
   drawOverlay();
+}
+
+function drawAll() {
+  if (!current || !current.geometry.angles.length) return;
+  const first = current.geometry.angles.find(a => a.id === "PI") || current.geometry.angles[0];
+  select(first.id);
 }
 
 /* ── panels ──────────────────────────────────────────────────────────────── */
@@ -122,11 +130,8 @@ function renderButtons() {
     b.innerHTML = `<span class="metric__k">${a.id}</span>`
                 + `<span class="metric__v">${a.value}${a.units || "°"}</span>`;
     b.style.setProperty("--c", a.color);
-    b.onclick = () => {
-      if (active.has(a.id)) { active.delete(a.id); b.classList.remove("is-on"); }
-      else { active.set(a.id, true); b.classList.add("is-on"); }
-      drawOverlay();
-    };
+    b.dataset.id = a.id;
+    b.onclick = () => select(active.has(a.id) ? null : a.id);
     els.metrics.appendChild(b);
   }
 }
