@@ -10,13 +10,13 @@
   geometry space differs:
 
       geometry.space = "world_mm"   (CT)  3-D  -> NiiVue mmToPx()
-      geometry.space = "image_px"   (XR)  2-D  -> imgToPx() below
+      geometry.space = "image_px"   (XR)  2-D  -> used verbatim in the svg viewBox
 
   Bundles are built by pacs/tools/export_xr_demo_case.py. Nothing is computed in
   the browser and nothing is uploaded; this is a viewer.
 */
 
-const XR_BUILD = "20260803b";
+const XR_BUILD = "20260803c";
 
 const els = {
   img:     document.getElementById("xrimg"),
@@ -30,105 +30,71 @@ const els = {
   loading: document.getElementById("loading"),
   empty:   document.getElementById("emptyState"),
 };
-const ctx = els.overlay.getContext("2d");
+
 
 let current = null;            // parsed metrics.json
-let imgNat = { w: 0, h: 0 };   // natural pixel size of the DRR
-const active = new Map();      // angle id -> {t} animation state
+const active = new Map();      // angle id -> shown
 
-/* ── image pixel -> canvas pixel ─────────────────────────────────────────────
-   The DRR is rendered with object-fit: contain, so replicate that letterbox. */
-function imgToPx(p) {
-  if (!imgNat.w || !imgNat.h) return null;
-  const r = els.img.getBoundingClientRect();
-  const o = els.overlay.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  const s = Math.min(r.width / imgNat.w, r.height / imgNat.h);
-  const offX = r.left - o.left + (r.width  - imgNat.w * s) / 2;
-  const offY = r.top  - o.top  + (r.height - imgNat.h * s) / 2;
-  return [(offX + p[0] * s) * dpr, (offY + p[1] * s) * dpr];
+/* ── SVG overlay ─────────────────────────────────────────────────────────────
+   The svg's viewBox IS the DRR's pixel grid and it shares the image's box, so a
+   point from metrics.json is used verbatim. This replaced a canvas + hand-rolled
+   letterbox mapping, which is exactly where the overlay kept failing to line up. */
+const SVGNS = "http://www.w3.org/2000/svg";
+
+function el(tag, attrs) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
 }
 
 function syncOverlaySize() {
-  const dpr = window.devicePixelRatio || 1;
-  const r = els.overlay.getBoundingClientRect();
-  els.overlay.width  = Math.round(r.width  * dpr);
-  els.overlay.height = Math.round(r.height * dpr);
+  if (!current) return;
+  const [H, W] = current.geometry.drr.shape;      // shape is [H, W]
+  els.overlay.setAttribute("viewBox", `0 0 ${W} ${H}`);
   drawOverlay();
 }
 
-/* ── drawing (same visual language as pacs.js) ───────────────────────────── */
-
-const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-
-function strokeLine(p, q, color, w) {
-  ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(0,0,0,0.85)"; ctx.lineWidth = w + 3;
-  ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
-  ctx.strokeStyle = color; ctx.lineWidth = w;
-  ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+function strokePath(d, color, w, dash) {
+  const halo = el("path", { d, class: "halo", "stroke-width": w + 2.5 });
+  const line = el("path", { d, class: "seg", stroke: color, "stroke-width": w });
+  if (dash) { halo.setAttribute("stroke-dasharray", dash); line.setAttribute("stroke-dasharray", dash); }
+  return [halo, line];
 }
 
-function drawAngle(a, t, dpr) {
-  if (!a || !Array.isArray(a.segments)) return;
-  const lw = Math.max(3, 3.5 * dpr);
-  for (const s of a.segments) {                      // solid = anatomical line
-    const p = imgToPx(s[0]), q = imgToPx(s[1]);
-    if (p && q) strokeLine(p, lerp(p, q, t), a.color, lw);
-  }
-  if (Array.isArray(a.dashed) && a.dashed.length) {  // dashed = reference line
-    ctx.setLineDash([6 * dpr, 5 * dpr]);
-    for (const s of a.dashed) {
-      const p = imgToPx(s[0]), q = imgToPx(s[1]);
-      if (p && q) strokeLine(p, lerp(p, q, t), a.color, Math.max(2, 2.2 * dpr));
-    }
-    ctx.setLineDash([]);
-  }
-  if (t < 1) return;
-  const L = imgToPx(a.label_at);
-  if (L) {
-    const txt = `${a.id} ${a.value}${a.units || "°"}`;
-    ctx.font = `${Math.max(13, 14 * dpr)}px "IBM Plex Mono", monospace`;
-    const w = ctx.measureText(txt).width, h = 21 * dpr;
-    ctx.fillStyle = "rgba(8,12,18,0.82)";
-    ctx.fillRect(L[0] - 6, L[1] - h + 5, w + 12, h);
-    ctx.fillStyle = a.color;
-    ctx.fillText(txt, L[0], L[1]);
+function drawAngle(a, g) {
+  const seg = (p, q) => `M${p[0]},${p[1]} L${q[0]},${q[1]}`;
+  for (const s of a.segments || [])
+    strokePath(seg(s[0], s[1]), a.color, 2.6).forEach(n => g.appendChild(n));
+  for (const s of a.dashed || [])
+    strokePath(seg(s[0], s[1]), a.color, 1.8, "5 4").forEach(n => g.appendChild(n));
+  if (a.label_at) {
+    const t = el("text", { x: a.label_at[0], y: a.label_at[1], fill: a.color });
+    t.textContent = `${a.id} ${a.value}${a.units || "°"}`;
+    g.appendChild(t);
   }
 }
 
 function drawOverlay() {
-  ctx.clearRect(0, 0, els.overlay.width, els.overlay.height);
+  els.overlay.innerHTML = "";
   if (!current) return;
-  const dpr = window.devicePixelRatio || 1;
   for (const a of current.geometry.angles) {
-    const st = active.get(a.id);
-    if (st) drawAngle(a, st.t, dpr);
+    if (!active.has(a.id)) continue;
+    const g = el("g", {});
+    drawAngle(a, g);
+    els.overlay.appendChild(g);
   }
 }
 
-/* A DRR is a single static image -- there is no slice to scroll to and nothing to
-   wait for, so every construction is drawn on load (staggered, so they read as being
-   constructed). The buttons then toggle individual ones. */
+/* A DRR is one static image -- nothing to scroll to and nothing to wait for -- so
+   every construction is shown on load; the buttons toggle them. */
 function drawAll() {
   if (!current) return;
   current.geometry.angles.forEach((a, i) => {
-    setTimeout(() => animate(a.id), i * 160);
+    active.set(a.id, true);
     const b = els.metrics.children[i];
     if (b) b.classList.add("is-on");
   });
-}
-
-function animate(id) {
-  const st = { t: 0 };
-  active.set(id, st);
-  const t0 = performance.now(), dur = 480;
-  const step = (now) => {
-    st.t = Math.min(1, (now - t0) / dur);
-    drawOverlay();
-    if (st.t < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
+  drawOverlay();
 }
 
 /* ── panels ──────────────────────────────────────────────────────────────── */
@@ -157,8 +123,9 @@ function renderButtons() {
                 + `<span class="metric__v">${a.value}${a.units || "°"}</span>`;
     b.style.setProperty("--c", a.color);
     b.onclick = () => {
-      if (active.has(a.id)) { active.delete(a.id); b.classList.remove("is-on"); drawOverlay(); }
-      else { animate(a.id); b.classList.add("is-on"); }
+      if (active.has(a.id)) { active.delete(a.id); b.classList.remove("is-on"); }
+      else { active.set(a.id, true); b.classList.add("is-on"); }
+      drawOverlay();
     };
     els.metrics.appendChild(b);
   }
@@ -173,7 +140,7 @@ function showEmpty(on, msg) {
 
 function showImage(src) {
   return new Promise((res, rej) => {
-    els.img.onload = () => { imgNat = { w: els.img.naturalWidth, h: els.img.naturalHeight }; res(); };
+    els.img.onload = () => res();
     els.img.onerror = () => rej(new Error("image not found"));
     els.img.src = src;
   });

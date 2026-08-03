@@ -15,7 +15,7 @@
   <title>Spinopelvic DRR demo — OpenSpineConsortium</title>
   <meta name="description" content="Lateral radiograph tab of the OpenSpineConsortium spinopelvic demo: pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis drawn on a lateral spine film." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css?v=20260803b" />
+  <link rel="stylesheet" href="pacs.css?v=20260803c" />
 </head>
 <body>
   <header class="topbar">
@@ -34,8 +34,13 @@
 
   <main class="stage">
     <section class="viewport viewport--xr">
-      <img id="xrimg" class="xrimg" alt="Lateral radiograph of the spine" />
-      <canvas id="overlay" class="overlay"></canvas>
+      <div class="xrwrap">
+        <img id="xrimg" class="xrimg" alt="Lateral radiograph of the spine" />
+        <!-- viewBox is the DRR's own pixel grid, so metrics.json coordinates are used
+             VERBATIM: the browser applies the same letterbox as the image and the two
+             line up by construction, with no JS mapping to get wrong. -->
+        <svg id="overlay" class="xrsvg" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
       <div id="loading" class="loading" hidden><div class="loadbar"><span></span></div><div class="loadtxt">loading…</div></div>
       <div id="emptyState" class="empty" hidden>
         <div class="empty__msg">No DRR bundle loaded.</div>
@@ -81,6 +86,6 @@
     </aside>
   </main>
 
-  <script type="module" src="xr.js?v=20260803b"></script>
+  <script type="module" src="xr.js?v=20260803c"></script>
 </body>
 </html>

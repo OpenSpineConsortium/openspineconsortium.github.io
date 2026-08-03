@@ -185,3 +185,13 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
    .empty are display:flex, and an author rule beats the UA [hidden]{display:none},
    so without this both overlays stay permanently visible on top of the viewport. */
 [hidden]{display:none !important;}
+
+/* XR overlay: the svg shares the image's box and viewBox, so DRR pixel coordinates
+   map themselves -- no canvas arithmetic. */
+.xrwrap{position:relative;height:100%;display:inline-flex;}
+.xrwrap .xrimg{height:100%;width:auto;max-width:100%;display:block;}
+.xrsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+.xrsvg .seg{stroke-linecap:round;fill:none;}
+.xrsvg .halo{stroke:rgba(0,0,0,.85);fill:none;stroke-linecap:round;}
+.xrsvg text{font:600 13px "IBM Plex Mono",monospace;paint-order:stroke;
+            stroke:rgba(8,12,18,.9);stroke-width:4px;}
