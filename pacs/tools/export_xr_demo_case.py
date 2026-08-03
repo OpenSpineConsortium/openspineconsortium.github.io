@@ -142,12 +142,17 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
         return [[float(vertex[0] + r * np.cos(a1 + d * t / (n - 1))),
                  float(vertex[1] + r * np.sin(a1 + d * t / (n - 1)))] for t in range(n)]
 
-    def label_for(vertex, d1, d2, r):
-        """Just outside the arc, on its bisector -- never on top of either ray."""
-        b = unit(unit(d1) + unit(d2))
-        if not np.any(b):
-            b = unit([-d1[1], d1[0]])
-        return list(map(float, np.asarray(vertex) + b * (r + 16)))
+    # Labels go in the MARGINS beside the film, with a leader back to the vertex --
+    # the way the CT tab does it. All four parameters share the sacrum, so a label
+    # placed near its own arc collides with the other three. Fixed slots can never
+    # overlap each other, whatever the anatomy does.
+    #  (x in image px -- negative = left of the film, >W = right; y = fraction of H)
+    LABEL_SLOTS = {"LL": (-14.0, 0.30, "end"), "SS": (None, 0.545, "start"),
+                   "PT": (-14.0, 0.80, "end"), "PI": (None, 0.90, "start")}
+
+    def label_slot(pid):
+        x, fy, anchor = LABEL_SLOTS[pid]
+        return ([float(W + 14) if x is None else x, float(H * fy)], anchor)
 
     L = 0.13 * max(W_mm, H_mm)          # ray length
     R = L * 0.55                        # arc radius
@@ -170,14 +175,17 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
     horiz, vert_up = np.array([1.0, 0.0]), np.array([0.0, 1.0])
 
     def build(pid, vertex, d1, d2, solid, dashed):
+        arc = [to_px(p) for p in arc_pts(vertex, d1, d2, R)]
+        lab, anchor = label_slot(pid)
         return {"id": pid, "label": {"SS": "Sacral Slope", "PT": "Pelvic Tilt",
                                      "PI": "Pelvic Incidence",
                                      "LL": "Lumbar Lordosis"}[pid],
                 "color": COLORS[pid],
                 "segments": [[to_px(p) for p in seg] for seg in solid],
                 "dashed":   [[to_px(p) for p in seg] for seg in dashed],
-                "arc": [to_px(p) for p in arc_pts(vertex, d1, d2, R)],
-                "label_at": to_px(label_for(vertex, d1, d2, R))}
+                "arc": arc,
+                "label_at": lab, "label_anchor": anchor,
+                "leader": [lab, arc[len(arc) // 2]]}   # label -> middle of its own wedge
 
     to_mid = S1_ANCHOR - np.asarray(bicox, float)      # hip -> S1 endplate anchor
     angles = [
@@ -223,7 +231,8 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
                 "segments": [[to_px(p) for p in line_through(p1, n1, L)],
                              [to_px(p) for p in S1_LINE]],     # the shared S1 endplate
                 "dashed": [], "arc": [],
-                "label_at": to_px([mid_pt[0] - L * 0.55, mid_pt[1]])})
+                "label_at": label_slot("LL")[0], "label_anchor": label_slot("LL")[1],
+                "leader": [label_slot("LL")[0], to_px(mid_pt)]})
 
     # summary: copied verbatim from the CT bundle -- same scan, same numbers
     ct_metrics = json.loads((case_dir / "metrics.json").read_text())

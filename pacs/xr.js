@@ -16,7 +16,7 @@
   the browser and nothing is uploaded; this is a viewer.
 */
 
-const XR_BUILD = "20260803f";
+const XR_BUILD = "20260803g";
 
 const els = {
   img:     document.getElementById("xrimg"),
@@ -70,8 +70,13 @@ function drawAngle(a, g) {
     strokePath(seg(s[0], s[1]), a.color, 1.8, "5 4").forEach(n => g.appendChild(n));
   if (Array.isArray(a.arc) && a.arc.length > 1)   // the wedge -- makes it read as an angle
     strokePath(poly(a.arc), a.color, 1.8, "4 3").forEach(n => g.appendChild(n));
+  if (Array.isArray(a.leader) && a.leader.length === 2)
+    strokePath(seg(a.leader[0], a.leader[1]), a.color, 1.1, "3 4")
+      .forEach(n => { n.setAttribute("opacity", ".55"); g.appendChild(n); });
   if (a.label_at) {
-    const t = el("text", { x: a.label_at[0], y: a.label_at[1], fill: a.color });
+    const t = el("text", { x: a.label_at[0], y: a.label_at[1], fill: a.color,
+                           "text-anchor": a.label_anchor || "start",
+                           "dominant-baseline": "middle" });
     t.textContent = `${a.id} ${a.value}${a.units || "°"}`;
     g.appendChild(t);
   }
@@ -90,19 +95,20 @@ function drawOverlay() {
 
 /* A DRR is one static image -- nothing to scroll to and nothing to wait for -- so
    every construction is shown on load; the buttons toggle them. */
-/* ONE construction at a time. Drawing all four at once put SS, PT and PI inside the
-   same ~60 px of sacrum and they became unreadable. Opens on PI. */
-function select(id) {
-  active.clear();
-  if (id) active.set(id, true);
-  [...els.metrics.children].forEach(b => b.classList.toggle("is-on", b.dataset.id === id));
+/* All four render together, like the CT tab. That only works because the labels sit
+   in the margins beside the film with a leader back to their own wedge -- placed near
+   their arcs they all collide in the sacrum. Buttons toggle each independently. */
+function toggle(id, on) {
+  if (on) active.set(id, true); else active.delete(id);
+  [...els.metrics.children].forEach(b => b.classList.toggle("is-on", active.has(b.dataset.id)));
   drawOverlay();
 }
 
 function drawAll() {
-  if (!current || !current.geometry.angles.length) return;
-  const first = current.geometry.angles.find(a => a.id === "PI") || current.geometry.angles[0];
-  select(first.id);
+  if (!current) return;
+  current.geometry.angles.forEach(a => active.set(a.id, true));
+  [...els.metrics.children].forEach(b => b.classList.add("is-on"));
+  drawOverlay();
 }
 
 /* ── panels ──────────────────────────────────────────────────────────────── */
@@ -131,7 +137,7 @@ function renderButtons() {
                 + `<span class="metric__v">${a.value}${a.units || "°"}</span>`;
     b.style.setProperty("--c", a.color);
     b.dataset.id = a.id;
-    b.onclick = () => select(active.has(a.id) ? null : a.id);
+    b.onclick = () => toggle(a.id, !active.has(a.id));
     els.metrics.appendChild(b);
   }
 }
