@@ -178,3 +178,8 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .drop p{margin:.35em 0;font-size:14px;line-height:1.55;}
 .drop__note{color:#7f8b96;font-size:12.5px;}
 .linklike{color:#6ea8fe;text-decoration:underline;cursor:pointer;}
+
+/* The `hidden` attribute must win over the display rules above. .loading and
+   .empty are display:flex, and an author rule beats the UA [hidden]{display:none},
+   so without this both overlays stay permanently visible on top of the viewport. */
+[hidden]{display:none !important;}
