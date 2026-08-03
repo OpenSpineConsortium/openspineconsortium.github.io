@@ -151,6 +151,12 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
 
     L = 0.13 * max(W_mm, H_mm)          # ray length
     R = L * 0.55                        # arc radius
+    # ONE S1 endplate line, shared by SS, PI and LL. The LL chain and the PI fit return
+    # the SAME endplate normal but anchor at different points (the chain's S1 reference
+    # vs the fitted endplate midpoint) -- 6.4 mm apart on case 0003 -- so drawing each
+    # from its own anchor put two parallel "S1 endplates" on the film. Anchor everything
+    # at the fitted midpoint, which is the endplate ostk actually fits.
+    S1_LINE = line_through(ep_mid, ep_n, L)
     ep_dir = np.array([-ep_n[1], ep_n[0]], float)      # along the S1 endplate
     if ep_dir[0] < 0:
         ep_dir = -ep_dir                                # point anteriorly
@@ -170,7 +176,7 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
     angles = [
         # SS: S1 endplate vs the horizontal, at the endplate midpoint
         build("SS", ep_mid, ep_dir, horiz,
-              [line_through(ep_mid, ep_n, L)],
+              [S1_LINE],
               [ray(ep_mid, horiz, L)]),
         # PT: hip->endplate vs the vertical, at the femoral head
         build("PT", bicox, to_mid, vert_up,
@@ -178,20 +184,20 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
               [ray(bicox, vert_up, L)]),
         # PI: endplate NORMAL vs endplate->hip, at the endplate midpoint
         build("PI", ep_mid, ep_n, -to_mid,
-              [[list(map(float, ep_mid)), list(map(float, bicox))]],
-              [ray(ep_mid, ep_n, L), line_through(ep_mid, ep_n, L * 0.7)]),
+              [S1_LINE, [list(map(float, ep_mid)), list(map(float, bicox))]],
+              [ray(ep_mid, ep_n, L)]),
     ]
     if "L1" in ll_lines and "S1" in ll_lines:
         (p1, n1), (ps, ns) = ll_lines["L1"], ll_lines["S1"]
         d1 = np.array([-n1[1], n1[0]], float); d1 = d1 if d1[0] > 0 else -d1
-        ds = np.array([-ns[1], ns[0]], float); ds = ds if ds[0] > 0 else -ds
+        ds = np.array([-ep_n[1], ep_n[0]], float); ds = ds if ds[0] > 0 else -ds
         # Cobb vertex = where the two endplate lines meet; fall back to their midpoint
         Amat = np.array([d1, -ds]).T
         try:
-            t = np.linalg.solve(Amat, np.asarray(ps, float) - np.asarray(p1, float))
+            t = np.linalg.solve(Amat, np.asarray(ep_mid, float) - np.asarray(p1, float))
             vtx = np.asarray(p1, float) + d1 * t[0]
         except np.linalg.LinAlgError:
-            vtx = (np.asarray(p1, float) + np.asarray(ps, float)) / 2
+            vtx = (np.asarray(p1, float) + np.asarray(ep_mid, float)) / 2
         # The two endplate lines usually meet OFF the film (normal for a Cobb angle).
         # Only draw the vertex/arc when it actually lands on the image; otherwise show
         # the two endplates alone with the label between them.
@@ -199,16 +205,16 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
         on_film = -10 <= vpx[0] <= W + 10 and -10 <= vpx[1] <= H + 10
         if on_film:
             angles.append(build("LL", vtx, np.asarray(p1, float) - vtx,
-                                np.asarray(ps, float) - vtx,
-                                [line_through(p1, n1, L * 0.75), line_through(ps, ns, L * 0.75)],
+                                np.asarray(ep_mid, float) - vtx,
+                                [line_through(p1, n1, L), S1_LINE],
                                 [[list(map(float, vtx)), list(map(float, p1))],
                                  [list(map(float, vtx)), list(map(float, ps))]]))
         else:
-            mid_pt = (np.asarray(p1, float) + np.asarray(ps, float)) / 2
+            mid_pt = (np.asarray(p1, float) + np.asarray(ep_mid, float)) / 2
             angles.append({
                 "id": "LL", "label": "Lumbar Lordosis", "color": COLORS["LL"],
-                "segments": [[to_px(p) for p in line_through(p1, n1, L * 0.95)],
-                             [to_px(p) for p in line_through(ps, ns, L * 0.95)]],
+                "segments": [[to_px(p) for p in line_through(p1, n1, L)],
+                             [to_px(p) for p in S1_LINE]],     # the shared S1 endplate
                 "dashed": [], "arc": [],
                 "label_at": to_px([mid_pt[0] - L * 0.55, mid_pt[1]])})
 
