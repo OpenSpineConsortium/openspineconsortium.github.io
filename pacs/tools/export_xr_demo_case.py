@@ -122,127 +122,59 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
             here = project_to_plane_2d(world[None, :], origin, ant, cranial)[0]
             ll_lines[lvl] = (here, np.asarray(ll["endplate_normals_2d"][lvl], float))
 
-    # ---- construction geometry -------------------------------------------------
-    # Each parameter is drawn as a proper ANGLE: two rays from a shared vertex plus a
-    # polyline arc between them, so it reads as a measurement rather than as crossing
-    # lines. Arcs are emitted as explicit points (no SVG arc-flag/sweep ambiguity).
-    def unit(v):
-        v = np.asarray(v, float)
-        n = np.linalg.norm(v)
-        return v / n if n else v
+    # ---- construction geometry --------------------------------------------------
+    # PROJECT THE CT BUNDLE'S OWN CONSTRUCTIONS into the DRR plane rather than
+    # rebuilding them. The CT metrics.json already carries every segment, dashed
+    # reference, arc and label in world mm -- the layout you see on the CT tab. Both
+    # tabs then draw the identical construction of the identical case, and the drawn
+    # wedge equals the printed value by construction (no re-derivation to drift).
+    ct_metrics = json.loads((case_dir / "metrics.json").read_text())
+    ct_geo = ct_metrics.get("geometry") or {}
 
-    def ray(vertex, direction, length):
-        return [list(map(float, vertex)),
-                list(map(float, np.asarray(vertex) + unit(direction) * length))]
+    def w2(p):
+        """world mm -> plane mm (the DRR's own frame)."""
+        return project_to_plane_2d(np.asarray(p, float)[None, :], origin, ant, cranial)[0]
 
-    def arc_pts(vertex, d1, d2, r, n=28):
-        """Points along the wedge from d1 to d2 about `vertex`, taking the SHORT way."""
-        a1, a2 = np.arctan2(*unit(d1)[::-1]), np.arctan2(*unit(d2)[::-1])
-        d = (a2 - a1 + np.pi) % (2 * np.pi) - np.pi          # signed, |d| <= pi
-        return [[float(vertex[0] + r * np.cos(a1 + d * t / (n - 1))),
-                 float(vertex[1] + r * np.sin(a1 + d * t / (n - 1)))] for t in range(n)]
+    def w2px(p):
+        return to_px(w2(p))
 
-    # Labels go in the MARGINS beside the film, with a leader back to the vertex --
-    # the way the CT tab does it. All four parameters share the sacrum, so a label
-    # placed near its own arc collides with the other three. Fixed slots can never
-    # overlap each other, whatever the anatomy does.
-    #  (x in image px -- negative = left of the film, >W = right; y = fraction of H)
-    LABEL_SLOTS = {"LL": (-14.0, 0.30, "end"), "SS": (None, 0.545, "start"),
-                   "PT": (-14.0, 0.80, "end"), "PI": (None, 0.90, "start")}
+    def arc_from_ct(a):
+        """The CT stores an arc as {center, a, b} + arc_r_mm. Re-emit it as an explicit
+        polyline in the projected plane, at the same world radius."""
+        arc = a.get("arc")
+        if not arc:
+            return []
+        C, A, B = (w2(arc["center"]), w2(arc["a"]), w2(arc["b"]))
+        r = float(a.get("arc_r_mm") or np.linalg.norm(A - C))
+        d1, d2 = A - C, B - C
+        n1 = np.linalg.norm(d1) or 1.0
+        n2 = np.linalg.norm(d2) or 1.0
+        a1 = np.arctan2(d1[1] / n1, d1[0] / n1)
+        a2 = np.arctan2(d2[1] / n2, d2[0] / n2)
+        dd = (a2 - a1 + np.pi) % (2 * np.pi) - np.pi
+        N = 32
+        return [to_px([C[0] + r * np.cos(a1 + dd * t / (N - 1)),
+                       C[1] + r * np.sin(a1 + dd * t / (N - 1))]) for t in range(N)]
 
-    def label_slot(pid):
-        x, fy, anchor = LABEL_SLOTS[pid]
-        return ([float(W + 14) if x is None else x, float(H * fy)], anchor)
-
-    L = 0.13 * max(W_mm, H_mm)          # ray length
-    R = L * 0.55                        # arc radius
-    # ONE S1 endplate line, shared by SS, PI and LL.
-    #
-    # The LL chain and the PI fit return the SAME endplate normal but anchor at different
-    # points -- 6.4 mm apart on case 0003, entirely along the normal -- so drawing each
-    # from its own anchor put two parallel "S1 endplates" on the film.
-    #
-    # We anchor on the LL CHAIN's S1 centroid, not the PI fit's. LL's comes from
-    # metrics._endplate_normal_from_label -> fit_endplate(**corner_params_for_level("S1")),
-    # which project2d's own docstring calls "the more robust spine.endplate_from_label";
-    # PI's is a plain fit_plane_tls centroid. On the DRR the LL anchor sits on the
-    # sacral promontory and the PI one floats above it.
-    S1_ANCHOR = np.asarray(ll_lines["S1"][0], float) if "S1" in ll_lines else np.asarray(ep_mid, float)
-    S1_LINE = line_through(S1_ANCHOR, ep_n, L)
-    ep_dir = np.array([-ep_n[1], ep_n[0]], float)      # along the S1 endplate
-    if ep_dir[0] < 0:
-        ep_dir = -ep_dir                                # point anteriorly
-    horiz, vert_up = np.array([1.0, 0.0]), np.array([0.0, 1.0])
-
-    def build(pid, vertex, d1, d2, solid, dashed):
-        arc = [to_px(p) for p in arc_pts(vertex, d1, d2, R)]
-        lab, anchor = label_slot(pid)
-        return {"id": pid, "label": {"SS": "Sacral Slope", "PT": "Pelvic Tilt",
-                                     "PI": "Pelvic Incidence",
-                                     "LL": "Lumbar Lordosis"}[pid],
-                "color": COLORS[pid],
-                "segments": [[to_px(p) for p in seg] for seg in solid],
-                "dashed":   [[to_px(p) for p in seg] for seg in dashed],
-                "arc": arc,
-                "label_at": lab, "label_anchor": anchor,
-                "leader": [lab, arc[len(arc) // 2]]}   # label -> middle of its own wedge
-
-    to_mid = S1_ANCHOR - np.asarray(bicox, float)      # hip -> S1 endplate anchor
-    angles = [
-        # SS: S1 endplate vs the horizontal, at the endplate anchor
-        build("SS", S1_ANCHOR, ep_dir, horiz,
-              [S1_LINE],
-              [ray(S1_ANCHOR, horiz, L)]),
-        # PT: hip->endplate vs the vertical, at the femoral head
-        build("PT", bicox, to_mid, vert_up,
-              [ray(bicox, to_mid, float(np.linalg.norm(to_mid)))],
-              [ray(bicox, vert_up, L)]),
-        # PI: endplate NORMAL vs endplate->hip, at the endplate anchor
-        build("PI", S1_ANCHOR, ep_n, to_mid,
-              [S1_LINE, [list(map(float, S1_ANCHOR)), list(map(float, bicox))]],
-              [ray(S1_ANCHOR, ep_n, L)]),
-    ]
-    if "L1" in ll_lines and "S1" in ll_lines:
-        (p1, n1), (ps, ns) = ll_lines["L1"], ll_lines["S1"]
-        d1 = np.array([-n1[1], n1[0]], float); d1 = d1 if d1[0] > 0 else -d1
-        ds = np.array([-ep_n[1], ep_n[0]], float); ds = ds if ds[0] > 0 else -ds
-        # Cobb vertex = where the two endplate lines meet; fall back to their midpoint
-        Amat = np.array([d1, -ds]).T
-        try:
-            t = np.linalg.solve(Amat, S1_ANCHOR - np.asarray(p1, float))
-            vtx = np.asarray(p1, float) + d1 * t[0]
-        except np.linalg.LinAlgError:
-            vtx = (np.asarray(p1, float) + S1_ANCHOR) / 2
-        # The two endplate lines usually meet OFF the film (normal for a Cobb angle).
-        # Only draw the vertex/arc when it actually lands on the image; otherwise show
-        # the two endplates alone with the label between them.
-        vpx = to_px(vtx)
-        on_film = -10 <= vpx[0] <= W + 10 and -10 <= vpx[1] <= H + 10
-        if on_film:
-            angles.append(build("LL", vtx, np.asarray(p1, float) - vtx,
-                                S1_ANCHOR - vtx,
-                                [line_through(p1, n1, L), S1_LINE],
-                                [[list(map(float, vtx)), list(map(float, p1))],
-                                 [list(map(float, vtx)), list(map(float, ps))]]))
-        else:
-            mid_pt = (np.asarray(p1, float) + S1_ANCHOR) / 2
-            angles.append({
-                "id": "LL", "label": "Lumbar Lordosis", "color": COLORS["LL"],
-                "segments": [[to_px(p) for p in line_through(p1, n1, L)],
-                             [to_px(p) for p in S1_LINE]],     # the shared S1 endplate
-                "dashed": [], "arc": [],
-                "label_at": label_slot("LL")[0], "label_anchor": label_slot("LL")[1],
-                "leader": [label_slot("LL")[0], to_px(mid_pt)]})
+    angles = []
+    for a in ct_geo.get("angles", []):
+        angles.append({
+            "id": a["id"], "label": a.get("label", a["id"]),
+            "value": a.get("value"), "units": a.get("units", "°"),
+            "color": a.get("color", COLORS.get(a["id"], "#ffffff")),
+            "segments": [[w2px(p) for p in seg] for seg in (a.get("segments") or [])],
+            "dashed":   [[w2px(p) for p in seg] for seg in (a.get("dashed") or [])],
+            "arc": arc_from_ct(a),
+            "label_at": w2px(a["label_at"]) if a.get("label_at") else None,
+        })
+    if not angles:
+        raise SystemExit("CT bundle has no geometry.angles to project")
 
     # summary: copied verbatim from the CT bundle -- same scan, same numbers
     ct_metrics = json.loads((case_dir / "metrics.json").read_text())
     summary = dict(ct_metrics["summary"])
     summary["modality"] = "XR (DRR)"
-    for a in angles:
-        v = summary.get(a["id"])
-        a["value"] = v
-        a["units"] = "°"
-    angles = [a for a in angles if a["value"] is not None]
+    angles = [a for a in angles if a.get("value") is not None]
 
     out_dir.mkdir(parents=True, exist_ok=True)
     from PIL import Image

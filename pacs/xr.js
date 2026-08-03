@@ -16,7 +16,7 @@
   the browser and nothing is uploaded; this is a viewer.
 */
 
-const XR_BUILD = "20260803g";
+const XR_BUILD = "20260803h";
 
 const els = {
   img:     document.getElementById("xrimg"),
