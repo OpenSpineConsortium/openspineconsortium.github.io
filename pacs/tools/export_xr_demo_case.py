@@ -151,17 +151,23 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
 
     L = 0.13 * max(W_mm, H_mm)          # ray length
     R = L * 0.55                        # arc radius
-    # ONE S1 endplate line, shared by SS, PI and LL. The LL chain and the PI fit return
-    # the SAME endplate normal but anchor at different points (the chain's S1 reference
-    # vs the fitted endplate midpoint) -- 6.4 mm apart on case 0003 -- so drawing each
-    # from its own anchor put two parallel "S1 endplates" on the film. Anchor everything
-    # at the fitted midpoint, which is the endplate ostk actually fits.
-    S1_LINE = line_through(ep_mid, ep_n, L)
+    # ONE S1 endplate line, shared by SS, PI and LL.
+    #
+    # The LL chain and the PI fit return the SAME endplate normal but anchor at different
+    # points -- 6.4 mm apart on case 0003, entirely along the normal -- so drawing each
+    # from its own anchor put two parallel "S1 endplates" on the film.
+    #
+    # We anchor on the LL CHAIN's S1 centroid, not the PI fit's. LL's comes from
+    # metrics._endplate_normal_from_label -> fit_endplate(**corner_params_for_level("S1")),
+    # which project2d's own docstring calls "the more robust spine.endplate_from_label";
+    # PI's is a plain fit_plane_tls centroid. On the DRR the LL anchor sits on the
+    # sacral promontory and the PI one floats above it.
+    S1_ANCHOR = np.asarray(ll_lines["S1"][0], float) if "S1" in ll_lines else np.asarray(ep_mid, float)
+    S1_LINE = line_through(S1_ANCHOR, ep_n, L)
     ep_dir = np.array([-ep_n[1], ep_n[0]], float)      # along the S1 endplate
     if ep_dir[0] < 0:
         ep_dir = -ep_dir                                # point anteriorly
     horiz, vert_up = np.array([1.0, 0.0]), np.array([0.0, 1.0])
-    to_mid = np.asarray(ep_mid, float) - np.asarray(bicox, float)
 
     def build(pid, vertex, d1, d2, solid, dashed):
         return {"id": pid, "label": {"SS": "Sacral Slope", "PT": "Pelvic Tilt",
@@ -173,19 +179,20 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
                 "arc": [to_px(p) for p in arc_pts(vertex, d1, d2, R)],
                 "label_at": to_px(label_for(vertex, d1, d2, R))}
 
+    to_mid = S1_ANCHOR - np.asarray(bicox, float)      # hip -> S1 endplate anchor
     angles = [
-        # SS: S1 endplate vs the horizontal, at the endplate midpoint
-        build("SS", ep_mid, ep_dir, horiz,
+        # SS: S1 endplate vs the horizontal, at the endplate anchor
+        build("SS", S1_ANCHOR, ep_dir, horiz,
               [S1_LINE],
-              [ray(ep_mid, horiz, L)]),
+              [ray(S1_ANCHOR, horiz, L)]),
         # PT: hip->endplate vs the vertical, at the femoral head
         build("PT", bicox, to_mid, vert_up,
               [ray(bicox, to_mid, float(np.linalg.norm(to_mid)))],
               [ray(bicox, vert_up, L)]),
-        # PI: endplate NORMAL vs endplate->hip, at the endplate midpoint
-        build("PI", ep_mid, ep_n, -to_mid,
-              [S1_LINE, [list(map(float, ep_mid)), list(map(float, bicox))]],
-              [ray(ep_mid, ep_n, L)]),
+        # PI: endplate NORMAL vs endplate->hip, at the endplate anchor
+        build("PI", S1_ANCHOR, ep_n, to_mid,
+              [S1_LINE, [list(map(float, S1_ANCHOR)), list(map(float, bicox))]],
+              [ray(S1_ANCHOR, ep_n, L)]),
     ]
     if "L1" in ll_lines and "S1" in ll_lines:
         (p1, n1), (ps, ns) = ll_lines["L1"], ll_lines["S1"]
@@ -194,10 +201,10 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
         # Cobb vertex = where the two endplate lines meet; fall back to their midpoint
         Amat = np.array([d1, -ds]).T
         try:
-            t = np.linalg.solve(Amat, np.asarray(ep_mid, float) - np.asarray(p1, float))
+            t = np.linalg.solve(Amat, S1_ANCHOR - np.asarray(p1, float))
             vtx = np.asarray(p1, float) + d1 * t[0]
         except np.linalg.LinAlgError:
-            vtx = (np.asarray(p1, float) + np.asarray(ep_mid, float)) / 2
+            vtx = (np.asarray(p1, float) + S1_ANCHOR) / 2
         # The two endplate lines usually meet OFF the film (normal for a Cobb angle).
         # Only draw the vertex/arc when it actually lands on the image; otherwise show
         # the two endplates alone with the label between them.
@@ -205,12 +212,12 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
         on_film = -10 <= vpx[0] <= W + 10 and -10 <= vpx[1] <= H + 10
         if on_film:
             angles.append(build("LL", vtx, np.asarray(p1, float) - vtx,
-                                np.asarray(ep_mid, float) - vtx,
+                                S1_ANCHOR - vtx,
                                 [line_through(p1, n1, L), S1_LINE],
                                 [[list(map(float, vtx)), list(map(float, p1))],
                                  [list(map(float, vtx)), list(map(float, ps))]]))
         else:
-            mid_pt = (np.asarray(p1, float) + np.asarray(ep_mid, float)) / 2
+            mid_pt = (np.asarray(p1, float) + S1_ANCHOR) / 2
             angles.append({
                 "id": "LL", "label": "Lumbar Lordosis", "color": COLORS["LL"],
                 "segments": [[to_px(p) for p in line_through(p1, n1, L)],
