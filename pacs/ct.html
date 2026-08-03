@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!--
+  OpenSpineConsortium — PACS demo.
+  A NiiVue-based viewer that loads CTSpinoPelvic1K cases, toggles the
+  segmentation, and renders spinopelvic angles (PI / SS / PT / LL) computed by
+  OpenSpineToolkit (ostk). Angle values are precomputed (metrics.json) and
+  "calculated" on click to simulate a real-time PACS measurement workflow.
+
+  Serve over HTTP (NiiVue fetches .nii.gz): e.g. `python -m http.server` then
+  open /pacs/.  Data bundles are produced by ostk's tools/export_demo_case.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
+  <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolkit." />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="pacs.css?v=20260803b" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar__brand" href="../index.html">Open<strong>Spine</strong>Consortium</a>
+    <span class="topbar__tag">Spinopelvic demo</span>
+    <nav class="modetabs" aria-label="Modality">
+      <a class="modetab is-on" href="ct.html" aria-current="page">CT</a>
+      <a class="modetab" href="index.html">X-ray</a>
+    </nav>
+    <div class="topbar__right">
+      <label for="caseSel" class="sr-only">Case</label>
+      <select id="caseSel" class="select"></select>
+      <a class="topbar__link" href="https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolkit" target="_blank" rel="noopener">ostk ↗</a>
+    </div>
+  </header>
+
+  <main class="stage">
+    <!-- viewport -->
+    <section class="viewport">
+      <canvas id="gl"></canvas>
+      <canvas id="overlay" class="overlay"></canvas>
+      <div id="loading" class="loading"><div class="loadbar"><span></span></div><div class="loadtxt">loading…</div></div>
+      <div class="viewport__hud">
+        <span id="hudCase">—</span>
+        <span class="viewport__hint viewport__hint--desktop">scroll = slice · drag = zoom · right-drag = pan</span>
+        <span class="viewport__hint viewport__hint--touch">1-finger = slice · pinch = zoom · 2-finger drag = pan</span>
+      </div>
+    </section>
+
+    <!-- control panel -->
+    <aside class="panel">
+      <div class="panel__group">
+        <h2 class="panel__h">Display</h2>
+        <div class="row" id="phaseRow" hidden>
+          <span class="row__label">View</span>
+          <button class="chip is-on" id="phasePre">Pre-op</button>
+          <button class="chip" id="phasePost">Post-op (sim)</button>
+        </div>
+        <button id="toggleSeg" class="ctl ctl--on" aria-pressed="true">Segmentation: on</button>
+        <div class="row">
+          <span class="row__label">Mask opacity</span>
+          <input id="segOpacity" type="range" min="0" max="100" value="55" />
+        </div>
+        <div class="row">
+          <span class="row__label">Window</span>
+          <button class="chip" data-wl="bone">Bone</button>
+          <button class="chip" data-wl="soft">Soft</button>
+          <button class="chip" data-wl="wide">Wide</button>
+        </div>
+      </div>
+
+      <div class="panel__group">
+        <h2 class="panel__h">Spinopelvic measurements</h2>
+        <p class="panel__note">Click a parameter to draw its construction on the sagittal view.</p>
+        <div id="metricBtns" class="metrics"></div>
+        <button id="clearMetrics" class="ctl ctl--ghost">Clear overlays</button>
+      </div>
+
+      <div class="panel__group">
+        <h2 class="panel__h">Report</h2>
+        <table id="report" class="report"></table>
+        <div id="schwab" class="schwab"></div>
+      </div>
+
+      <p class="disclaimer">
+        <strong>Research &amp; educational use only.</strong> A research demonstration —
+        <strong>not a medical device</strong> and <strong>not for clinical or diagnostic
+        use</strong>. Measurements and simulated post-operative results are illustrative and
+        must not guide patient care. Sample imaging is de-identified research data.
+      </p>
+    </aside>
+  </main>
+
+  <script type="module" src="pacs.js?v=20260624j"></script>
+</body>
+</html>

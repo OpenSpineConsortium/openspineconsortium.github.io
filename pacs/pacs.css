@@ -168,7 +168,9 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 
 /* ── X-ray viewport ───────────────────────────────────────────────────────── */
 .viewport--xr{display:flex;align-items:center;justify-content:center;background:#06090d;}
-.xrimg{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;}
+.xrimg{height:100%;width:auto;max-width:100%;object-fit:contain;display:block;}
+/* fill the viewport height: the DRR is only ~260x420 px, so max-width/height with
+   width:auto rendered it at natural size in the middle of a large black frame. */
 .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
        justify-content:center;gap:14px;padding:6vh 8vw;text-align:center;color:#c6cfd7;}
 .empty__msg{font-size:15px;color:#9aa6b2;max-width:52ch;line-height:1.5;}

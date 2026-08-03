@@ -16,7 +16,7 @@
   the browser and nothing is uploaded; this is a viewer.
 */
 
-const XR_BUILD = "20260803a";
+const XR_BUILD = "20260803b";
 
 const els = {
   img:     document.getElementById("xrimg"),
@@ -107,6 +107,18 @@ function drawOverlay() {
   }
 }
 
+/* A DRR is a single static image -- there is no slice to scroll to and nothing to
+   wait for, so every construction is drawn on load (staggered, so they read as being
+   constructed). The buttons then toggle individual ones. */
+function drawAll() {
+  if (!current) return;
+  current.geometry.angles.forEach((a, i) => {
+    setTimeout(() => animate(a.id), i * 160);
+    const b = els.metrics.children[i];
+    if (b) b.classList.add("is-on");
+  });
+}
+
 function animate(id) {
   const st = { t: 0 };
   active.set(id, st);
@@ -144,7 +156,10 @@ function renderButtons() {
     b.innerHTML = `<span class="metric__k">${a.id}</span>`
                 + `<span class="metric__v">${a.value}${a.units || "°"}</span>`;
     b.style.setProperty("--c", a.color);
-    b.onclick = () => { animate(a.id); b.classList.add("is-on"); };
+    b.onclick = () => {
+      if (active.has(a.id)) { active.delete(a.id); b.classList.remove("is-on"); drawOverlay(); }
+      else { animate(a.id); b.classList.add("is-on"); }
+    };
     els.metrics.appendChild(b);
   }
 }
@@ -177,6 +192,7 @@ async function loadCase(dir) {
     els.hudCase.textContent = m.title || m.case_id || dir;
     renderButtons(); renderReport(); syncOverlaySize();
     showEmpty(false);
+    drawAll();                       // static film -> show every construction straight away
   } catch (e) {
     current = null;
     els.report.innerHTML = ""; els.metrics.innerHTML = ""; els.schwab.innerHTML = "";
