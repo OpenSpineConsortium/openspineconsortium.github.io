@@ -187,15 +187,34 @@
     var ul = document.getElementById("outputsList");
     if (!ul) return;
     ul.innerHTML = "";
+    // Order by PRESENTATION FORMAT, not by id: an oral and a mini-oral are the
+    // headline results and should not be buried among the digital-only entries
+    // just because their CNS ids sort late.
+    var RANK = {
+      "selected as oral presentation": 0,
+      "selected as mini oral poster": 1,
+      "selected as printed poster": 2,
+      "selected as digital only": 3,
+      "submitted": 4
+    };
+    function rank(a) {
+      var r = RANK[(a.status || "").toLowerCase()];
+      return r === undefined ? 5 : r;
+    }
     Object.keys(abstracts)
       .filter(function (id) { return abstracts[id].cns_id; })
-      .sort()
+      .sort(function (x, y) {
+        var d = rank(abstracts[x]) - rank(abstracts[y]);
+        return d !== 0 ? d : (x < y ? -1 : 1);
+      })
       .forEach(function (id) {
         var a = abstracts[id];
         var li = document.createElement("li");
         li.appendChild(el("span", "outputs__year", "#" + a.cns_id));
         li.appendChild(document.createTextNode(a.title + " "));
-        li.appendChild(el("em", null, "(" + a.status + ")"));
+        var st = el("em", null, "(" + a.status + ")");
+        if (rank(a) <= 2) { st.className = "outputs__accepted"; }
+        li.appendChild(st);
         ul.appendChild(li);
       });
   }

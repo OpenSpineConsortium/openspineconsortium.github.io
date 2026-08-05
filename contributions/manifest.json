@@ -11,56 +11,56 @@
     "66639": {
       "title": "Beyond the Cadaver Lab: The OpenSpineConsortium as an Asynchronous, Open-Source Framework for Medical Student Engagement in Computational Spine Imaging Research",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Printed Poster",
       "project": "Consortium framework",
       "cns_id": "66639"
     },
     "66629": {
       "title": "Not All Spines Are Created Equal: A Single-Shot CT Segmentation Model for Preoperative Detection of Lumbar and Thoracic End Anomalies",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Mini Oral Poster",
       "project": "Core segmentation model",
       "cns_id": "66629"
     },
     "68300": {
       "title": "Enhancing Clinical Workflow in Scoliosis Evaluation: Automated CT-Derived Cobb Angle Measurement Using Computational Analysis",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Scoliosis / Cobb angle",
       "cns_id": "68300"
     },
     "67525": {
       "title": "Opportunistic Screening for Vertebral Degeneration Using Automated Analysis of Vertebral Hounsfield Units",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Osteoporosis / HU calculation",
       "cns_id": "67525"
     },
     "68579": {
       "title": "Sagittal Lumbar Lordosis Quantification via Automated CT Segmentation Analysis: A TRALL Angle Computational Pipeline",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Lordosis / TRALL angle",
       "cns_id": "68579"
     },
     "69734": {
       "title": "Automated Measurement of Lumbar Intervertebral Disc Heights from CT Segmentation Masks: A Preliminary Validation Study",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Disc spacing",
       "cns_id": "69734"
     },
     "69093": {
       "title": "Automated CT-Based Extraction of Pelvic Incidence and Sacral Slope for Spinopelvic Risk Stratification",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Sacral slope / pelvic incidence",
       "cns_id": "69093"
     },
     "68733": {
       "title": "Automated Vertebral Wedging Index from CT: A Geometry-Based Biomarker for Lumbar Compression Deformity",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Vertebral wedging index",
       "cns_id": "68733"
     },
@@ -74,7 +74,7 @@
     "68858": {
       "title": "Automated Lumbar Spinal Stenosis Screening via CT Morphometry: Normative Torg Ratio Values Across L1-L5 in a Multi-Configuration Dataset",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Spinal stenosis",
       "cns_id": "68858"
     },
@@ -88,7 +88,7 @@
     "67829": {
       "title": "Automated 3D Vertebral Centroid Trajectory Analysis from CT Segmentation Masks",
       "venue": "CNS 2026 Annual Meeting",
-      "status": "Submitted",
+      "status": "Selected as Digital Only",
       "project": "Centroid trajectory / tortuosity",
       "cns_id": "67829"
     },

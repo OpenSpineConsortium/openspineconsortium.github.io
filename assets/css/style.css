@@ -656,6 +656,13 @@ em { font-style: italic; }
   color: var(--ink-soft);
 }
 .outputs__list em { color: var(--ink-faint); }
+/* accepted presentation formats (oral / mini-oral / printed poster) carry the
+   result, so they read as emphasis rather than as faint metadata */
+.outputs__list em.outputs__accepted {
+  color: var(--teal);
+  font-style: normal;
+  font-weight: 600;
+}
 .outputs__year {
   font-family: var(--font-mono);
   font-size: 0.8rem;
