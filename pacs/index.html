@@ -2,20 +2,29 @@
 <!--
   OpenSpineConsortium — lateral radiograph tab of the spinopelvic demo.
 
-  Same metrics.json contract as the CT viewer (index.html / pacs.js); the only
-  difference is geometry.space = "image_px" instead of "world_mm". `summary` is
-  identical, so the report panel is shared verbatim.
+  Two panes:
 
-  Serve over HTTP: `python -m http.server` then open /pacs/xr.html
+    LEFT   a reference case. A DRR of the CT in the other tab, carrying ostk's own
+           landmarks and constructions. This is the ground-truth side: the corners
+           were derived in 3-D and projected, not read off the 2-D silhouette.
+
+    RIGHT  your own film. Drag, drop or PASTE a radiograph and a YOLO11n-Pose model
+           runs in this tab -- WebGPU if the browser has it, WASM otherwise. Nothing
+           is uploaded; there is no server to upload to.
+
+  Same metrics.json contract as the CT viewer (ct.html / pacs.js); the only difference
+  is geometry.space = "image_px" instead of "world_mm".
+
+  Serve over HTTP: `python -m http.server` then open /pacs/
 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Spinopelvic DRR demo — OpenSpineConsortium</title>
-  <meta name="description" content="Lateral radiograph tab of the OpenSpineConsortium spinopelvic demo: pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis drawn on a lateral spine film." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spinopelvic X-ray demo — OpenSpineConsortium</title>
+  <meta name="description" content="Lateral radiograph tab of the OpenSpineConsortium spinopelvic demo: vertebral corner landmarks, sacral slope and lumbar lordosis, with a YOLO-Pose model running in your own browser on your own film." />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css?v=20260803g" />
+  <link rel="stylesheet" href="pacs.css?v=20260809a" />
 </head>
 <body>
   <header class="topbar">
@@ -26,55 +35,126 @@
       <a class="modetab is-on" href="index.html" aria-current="page">X-ray</a>
     </nav>
     <div class="topbar__right">
-      <label for="caseSel" class="sr-only">Case</label>
+      <label for="caseSel" class="sr-only">Reference case</label>
       <select id="caseSel" class="select"></select>
       <a class="topbar__link" href="https://github.com/Gregory-Schwing-MD-PhD/OpenSpineToolkit" target="_blank" rel="noopener">ostk ↗</a>
     </div>
   </header>
 
-  <main class="stage">
-    <section class="viewport viewport--xr">
-      <div class="xrwrap">
-        <img id="xrimg" class="xrimg" alt="Lateral radiograph of the spine" />
-        <!-- viewBox is the DRR's own pixel grid, so metrics.json coordinates are used
-             VERBATIM: the browser applies the same letterbox as the image and the two
-             line up by construction, with no JS mapping to get wrong. -->
-        <svg id="overlay" class="xrsvg" preserveAspectRatio="xMidYMid meet"></svg>
+  <main class="stage stage--xr2">
+
+    <!-- ── pane 1 : reference case ────────────────────────────────────────── -->
+    <section class="pane" id="paneRef">
+      <div class="pane__bar">
+        <span class="pane__title">Reference case</span>
+        <span class="pane__sub" id="hudCase">—</span>
       </div>
-      <div id="loading" class="loading" hidden><div class="loadbar"><span></span></div><div class="loadtxt">loading…</div></div>
-      <div id="emptyState" class="empty" hidden>
-        <div class="empty__msg">No DRR bundle loaded.</div>
+      <div class="viewport viewport--xr">
+        <div class="xrwrap">
+          <img id="xrimg" class="xrimg" alt="Lateral radiograph of the lumbar spine and pelvis" />
+          <!-- viewBox is the DRR's own pixel grid, so metrics.json coordinates are used
+               VERBATIM: the browser applies the same letterbox as the image and the two
+               line up by construction, with no JS mapping to get wrong. -->
+          <svg id="overlay" class="xrsvg" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div id="loading" class="loading" hidden><div class="loadbar"><span></span></div><div class="loadtxt">loading…</div></div>
+        <div id="emptyState" class="empty" hidden>
+          <div class="empty__msg">No reference bundle loaded.</div>
+        </div>
       </div>
-      <div class="viewport__hud"><span id="hudCase">—</span></div>
     </section>
 
+    <!-- ── pane 2 : your film ─────────────────────────────────────────────── -->
+    <section class="pane" id="paneUser">
+      <div class="pane__bar">
+        <span class="pane__title">Your radiograph</span>
+        <span class="pane__sub" id="hudUser">drop, paste or choose a file</span>
+      </div>
+      <div class="viewport viewport--xr" id="dropzone">
+        <div class="xrwrap">
+          <img id="uimg" class="xrimg" alt="" hidden />
+          <svg id="uoverlay" class="xrsvg" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+
+        <div class="drop" id="dropPrompt">
+          <div class="drop__icon" aria-hidden="true">⌘V</div>
+          <div class="drop__h">Drop, paste or choose a lateral film</div>
+          <p class="drop__p">
+            <b>Ctrl-V / ⌘V</b> pastes an image straight from the clipboard — a screenshot
+            of a PACS window works. Drag a file anywhere onto this panel, or
+            <button class="linkbtn" id="pickBtn" type="button">browse…</button>
+          </p>
+          <p class="drop__p drop__p--quiet">
+            The model runs <b>in this tab</b>. The image is never uploaded, and this page
+            has no server that could receive one.
+          </p>
+          <input id="fileInput" type="file" accept="image/*" hidden />
+        </div>
+
+        <div class="dragveil" id="dragveil" hidden><span>Drop to analyse</span></div>
+        <div id="uloading" class="loading" hidden><div class="loadbar"><span></span></div><div class="loadtxt" id="uloadtxt">loading model…</div></div>
+      </div>
+      <div class="pane__foot">
+        <span id="engineBadge" class="badge badge--idle">model not loaded</span>
+        <span id="timing" class="pane__timing"></span>
+        <button id="clearUser" class="linkbtn linkbtn--r" type="button" hidden>clear</button>
+      </div>
+    </section>
+
+    <!-- ── panel ──────────────────────────────────────────────────────────── -->
     <aside class="panel">
       <div class="panel__group">
         <h2 class="panel__h">Spinopelvic measurements</h2>
-        <p class="panel__note">All four are drawn; click a parameter to toggle it off or back on.</p>
+        <p class="panel__note" id="metricSrc">Reference case — click a parameter to toggle it.</p>
         <div id="metricBtns" class="metrics"></div>
         <button id="clearMetrics" class="ctl ctl--ghost">Clear overlays</button>
       </div>
 
       <div class="panel__group">
-        <h2 class="panel__h">Report</h2>
-        <table id="report" class="report"></table>
-        <div id="schwab" class="schwab"></div>
+        <h2 class="panel__h">Landmarks</h2>
+        <p class="panel__note" id="lmNote">
+          Four corners per vertebra, in the order the model predicts them. Hover a row to
+          find it on the film; hover a marker for its name.
+        </p>
+        <div id="lmList" class="lmlist"></div>
       </div>
 
       <div class="panel__group">
-        <h2 class="panel__h">What this needs from the film</h2>
+        <h2 class="panel__h">Model</h2>
+        <div class="row">
+          <span class="row__label">Weights</span>
+          <select id="modelSel" class="select select--w">
+            <option value="640" selected>YOLO11n-Pose · 640 (fast)</option>
+            <option value="1024">YOLO11n-Pose · 1024 (finer)</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="row__label">Confidence</span>
+          <input id="confRange" class="range" type="range" min="0.05" max="0.9" step="0.05" value="0.5" />
+          <span id="confVal" class="row__val">0.50</span>
+        </div>
+        <button id="flipBtn" class="ctl" type="button">Mirror left ↔ right</button>
+        <p class="panel__note" style="margin-top:10px">
+          Trained on 1398 lateral lumbar films (BUU-LSPINE) at fixed hyperparameters with
+          every augmentation zeroed. Corner order is <code>sup_ant, sup_post, inf_ant,
+          inf_post</code> and it is <b>handed</b> — mirror the film if anterior and
+          posterior come out swapped.
+        </p>
+      </div>
+
+      <div class="panel__group">
+        <h2 class="panel__h">What the film has to contain</h2>
         <p class="panel__note">
-          This is a <b>DRR</b> — the CT of the case in the other tab, integrated along the
-          patient's true <b>bicoxofemoral axis</b>, so the projection is the one the angles are
-          actually defined in. Constructions come from <b>ostk</b>'s own 2-D projection
-          (<code>ostk.drr</code> + <code>ostk.project2d</code>), and the values are copied
-          verbatim from the CT bundle — the two tabs report the same numbers by construction.
+          <b>SS</b> and <b>LL</b> need only the L1 and S1 endplates, so a coned lumbar
+          lateral is enough and both are reported. <b>PI</b> and <b>PT</b> additionally
+          need the <b>femoral head centres</b>; the model has no landmark for them that
+          survives on a real film, so they are reported as
+          <span class="muted">n/a</span> rather than estimated.
           <br><br>
-          On a real film, <b>LL</b> and <b>SS</b> need only the L1 and S1 endplates, but
-          <b>PI</b> and <b>PT</b> need the <b>femoral head centres</b> — absent from a coned
-          lumbar lateral, in which case ostk returns them as
-          <span class="muted">n/a</span> rather than estimating.
+          The reference pane is a <b>DRR</b> — the CT from the other tab integrated along
+          the patient's true <b>bicoxofemoral axis</b>. Its landmarks were fitted in 3-D
+          and projected, which is why its sacral plate is the true endplate and not the
+          silhouette of the sacral ala.
         </p>
       </div>
 
@@ -86,6 +166,8 @@
     </aside>
   </main>
 
-  <script type="module" src="xr.js?v=20260803h"></script>
+  <div id="tip" class="tip" hidden></div>
+
+  <script type="module" src="xr.js?v=20260809a"></script>
 </body>
 </html>

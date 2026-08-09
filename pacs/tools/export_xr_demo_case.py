@@ -84,6 +84,59 @@ def line_through(pt, normal, half_len):
             (np.asarray(pt) + d * half_len).tolist()]
 
 
+# ── landmarks ───────────────────────────────────────────────────────────────────
+# The overlay draws four ANGLES; the model in the other pane predicts four CORNERS
+# per vertebra. To make the demo teach what the network is actually asked for, emit
+# the corners too -- and derive them the same way the amodal ground truth is derived:
+# from the 3-D segmentation, projected. A corner read off the 2-D silhouette would be
+# the wrong point (at S1 the alae superimpose on the endplate), which is the whole
+# reason these labels are made in 3-D in the first place.
+
+LEVEL_DESC = {
+    "L1": "L1 superior endplate — cranial end of the lumbar lordosis Cobb construction.",
+    "L2": "L2 superior endplate.",
+    "L3": "L3 superior endplate — the apex level in most Roussouly types.",
+    "L4": "L4 superior endplate.",
+    "L5": "L5 superior endplate.",
+    "S1": "S1 superior endplate — the sacral plate. Sacral slope is its angle to the "
+          "horizontal; it is also the caudal end of the lordosis.",
+}
+
+
+def endplate_corners(label, affine, level, origin, ant, cranial, band_mm=3.0):
+    """Anterior and posterior ends of `level`'s SUPERIOR endplate, in plane mm.
+
+    Takes the endplate plane ostk already fitted (same call the 3-D metrics use, so
+    the corners sit on the line the angle is measured from), projects that vertebra's
+    voxels into the DRR plane, keeps the ones within `band_mm` of the endplate, and
+    returns the two extremes along the endplate direction. Anterior is +u.
+    """
+    from ostk.metrics import _endplate_normal_from_label
+    from ostk.labels import LABELS
+
+    n3, c3, _rms, _k = _endplate_normal_from_label(
+        label, affine, level, "superior", D.WORLD_SUPERIOR, 0.15, 30)
+    if n3 is None or level not in LABELS:
+        return None
+    ijk = np.argwhere(label == LABELS[level])
+    if len(ijk) < 30:
+        return None
+    world = nib.affines.apply_affine(affine, ijk)
+
+    keep = np.abs((world - c3) @ n3) < band_mm
+    if keep.sum() < 8:
+        return None
+    uv = project_to_plane_2d(world[keep], origin, ant, cranial)
+    c2 = project_to_plane_2d(c3[None, :], origin, ant, cranial)[0]
+    n2 = project_to_plane_2d((c3 + n3)[None, :], origin, ant, cranial)[0] - c2
+    n2 /= (np.linalg.norm(n2) or 1.0)
+    d = np.array([-n2[1], n2[0]], float)          # along the endplate
+    if d[0] < 0:
+        d = -d                                     # point it anteriorly (+u)
+    t = (uv - c2) @ d
+    return {"ant": (c2 + d * t.max()).tolist(),
+            "post": (c2 + d * t.min()).tolist()}
+
 def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
           pixel_spacing_mm: float = 1.0, gamma: float = 0.6):
     ct = nib.load(str(case_dir / "ct.nii.gz"))
@@ -170,6 +223,39 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
     if not angles:
         raise SystemExit("CT bundle has no geometry.angles to project")
 
+    # ---- landmarks --------------------------------------------------------------
+    landmarks = []
+    for lvl in ("L1", "L2", "L3", "L4", "L5", "S1"):
+        cor = endplate_corners(S, A, lvl, origin, ant, cranial)
+        if cor is None:
+            print(f"  landmark: {lvl} superior endplate unavailable")
+            continue
+        for side, kind in (("ant", "anterior"), ("post", "posterior")):
+            landmarks.append({
+                "id": f"{lvl}_sup_{side}",
+                "level": lvl,
+                "cls": f"sup_{side}",
+                "label": f"{lvl} superior endplate, {kind}",
+                "xy": to_px(cor[side]),
+                "color": "#f8fafc",
+                "desc": LEVEL_DESC.get(lvl, ""),
+            })
+
+    # Both femoral heads project to the SAME point on a true lateral -- they are
+    # separated along the projection axis -- so the film carries ONE hip landmark and
+    # it is the bicoxofemoral midpoint by construction, not by averaging two marks.
+    landmarks.append({
+        "id": "bicox", "level": "pelvis", "cls": "hip_axis",
+        "label": "Bicoxofemoral axis (femoral head centre)",
+        "xy": to_px(w2(  # plane frame is based here, so this is the origin
+            (np.asarray(pi["origin_world_mm"], float)).tolist())),
+        "color": "#f472b6",
+        "desc": "Midpoint of the two femoral head centres (Legaye & Duval-Beaupère 1998). "
+                "On a lateral film the two heads superimpose, so this is a single point. "
+                "PI and PT are undefined without it — which is why a coned lumbar lateral "
+                "yields only SS and LL.",
+    })
+
     # summary: copied verbatim from the CT bundle -- same scan, same numbers
     ct_metrics = json.loads((case_dir / "metrics.json").read_text())
     summary = dict(ct_metrics["summary"])
@@ -188,6 +274,7 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
             "drr": {k: drr[k] for k in ("pixel_spacing_mm", "origin_world_mm",
                                         "axes", "shape", "fov_mm", "method_version")},
             "angles": angles,
+            "landmarks": landmarks,
         },
     }, indent=2))
     print(f"wrote {out_dir/'image.png'}  ({W}x{H} px, {drr['pixel_spacing_mm']} mm/px)")
@@ -197,9 +284,13 @@ def build(case_dir: Path, out_dir: Path, case_id: str, title: str,
 
 def main():
     case_id = os.environ.get("CASE", "0003")
+    # 1.0 mm/px renders 260x420 -- fine for four angle lines, too coarse once the
+    # page also puts 13 individually hoverable corner markers on the film.
+    spacing = float(os.environ.get("SPACING", "0.35"))
     src = ROOT / "data" / case_id
     out = ROOT / "data" / "xr" / case_id
-    build(src, out, case_id, f"Case {case_id} — DRR (same scan as the CT tab)")
+    build(src, out, case_id, f"Case {case_id} — DRR (same scan as the CT tab)",
+          pixel_spacing_mm=spacing)
     man = ROOT / "data" / "xr" / "manifest.json"
     man.write_text(json.dumps({"cases": [
         {"id": case_id, "label": f"Case {case_id} — DRR of the CT case", "dir": case_id},
