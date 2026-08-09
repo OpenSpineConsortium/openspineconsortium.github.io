@@ -194,5 +194,94 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .xrsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
 .xrsvg .seg{stroke-linecap:round;fill:none;}
 .xrsvg .halo{stroke:rgba(0,0,0,.85);fill:none;stroke-linecap:round;}
-.xrsvg text{font:600 13px "IBM Plex Mono",monospace;paint-order:stroke;
-            stroke:rgba(8,12,18,.9);stroke-width:4px;}
+/* NO font-size or stroke-width here. Both are set per element in viewBox units so the
+   label renders the same size whether the grid is 260x420 or 1940x2428 -- a CSS px
+   value would beat the presentation attribute and pin the type to the source
+   resolution, which is how the labels ended up microscopic on the finer DRR. */
+.xrsvg text{font-family:"IBM Plex Mono",monospace;font-weight:600;paint-order:stroke;
+            stroke:rgba(8,12,18,.9);}
+
+/* ── two-pane X-ray stage ─────────────────────────────────────────────────── */
+/* Reference on the left, your film on the right, panel on the far right. The two
+   viewports are deliberately the same size: the point of the layout is that you can
+   compare what the model found against a case whose landmarks are known. */
+.stage--xr2{display:grid;grid-template-columns:1fr 1fr 340px;gap:0;
+            height:calc(100% - 52px);}
+.pane{position:relative;display:flex;flex-direction:column;min-width:0;
+      border-right:1px solid var(--line);background:#06090d;}
+.pane__bar{display:flex;align-items:baseline;gap:10px;padding:8px 14px;
+           border-bottom:1px solid var(--line);background:var(--panel);flex:0 0 auto;}
+.pane__title{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;
+             color:var(--ink-soft);font-weight:600;}
+.pane__sub{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);
+           white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pane__foot{display:flex;align-items:center;gap:10px;padding:7px 14px;flex:0 0 auto;
+            border-top:1px solid var(--line);background:var(--panel);min-height:34px;}
+.pane__timing{font-family:var(--mono);font-size:.72rem;color:var(--ink-faint);}
+.pane .viewport{flex:1 1 auto;min-height:0;}
+/* A hairline, not a glow: the focused pane only decides which numbers the panel is
+   showing, so it must be legible without competing with the film. */
+.pane.is-focus .pane__bar{box-shadow:inset 2px 0 0 var(--teal-br);}
+.pane.is-focus .pane__title{color:var(--ink);}
+
+@media (max-width:1180px){
+  body{overflow:auto}
+  .stage--xr2{grid-template-columns:1fr;height:auto;}
+  .pane{border-right:none;border-bottom:1px solid var(--line);}
+  .pane .viewport{height:70vh;}
+  .panel{border-left:none;}
+}
+
+/* ── drop / paste target ──────────────────────────────────────────────────── */
+.drop{position:relative;z-index:2;text-align:center;background:rgba(10,13,18,.6);}
+.drop__icon{font-family:var(--mono);font-size:1.5rem;color:var(--teal-br);
+            letter-spacing:.06em;margin-bottom:6px;}
+.drop__h{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:8px;}
+.drop__p{color:var(--ink-soft);}
+.drop__p--quiet{color:var(--ink-faint);font-size:12.5px !important;}
+.linkbtn{background:none;border:none;padding:0;font:inherit;color:#6ea8fe;
+         text-decoration:underline;cursor:pointer;}
+.linkbtn:hover{color:var(--teal-br);}
+.linkbtn--r{margin-left:auto;font-size:.74rem;color:var(--ink-faint);}
+.dragveil{position:absolute;inset:0;z-index:5;display:flex;align-items:center;
+          justify-content:center;background:rgba(31,111,235,.14);
+          border:2px dashed #1f6feb;font-size:16px;font-weight:600;color:#dfe6ec;}
+
+/* ── badges ───────────────────────────────────────────────────────────────── */
+.badge{font-family:var(--mono);font-size:.7rem;padding:2px 8px;border-radius:999px;
+       border:1px solid var(--line);color:var(--ink-faint);white-space:nowrap;}
+.badge--ok{color:var(--teal-br);border-color:rgba(54,211,153,.4);}
+.badge--load{color:var(--amber);border-color:rgba(251,191,36,.4);}
+.badge--err{color:#f87171;border-color:rgba(248,113,113,.45);}
+
+/* ── landmark list ────────────────────────────────────────────────────────── */
+.lmlist{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.lmrow{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:5px;
+       font-size:.7rem;font-family:var(--mono);color:var(--ink-soft);cursor:default;}
+.lmrow i{width:7px;height:7px;border-radius:50%;flex:0 0 auto;}
+.lmrow__k{color:var(--ink);font-weight:600;min-width:22px;}
+.lmrow__n{color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lmrow.is-hot,.lmrow:hover{background:var(--bg-2);color:var(--ink);}
+
+/* ── landmark markers ─────────────────────────────────────────────────────── */
+.xrsvg .lmk{pointer-events:none;}
+.xrsvg .lm__ring{fill:none;}
+.xrsvg .lm__hit{pointer-events:auto;cursor:help;}
+.xrsvg .lm__ring.is-hot{fill:rgba(255,255,255,.22);}
+
+/* ── tooltip ──────────────────────────────────────────────────────────────── */
+.tip{position:fixed;top:0;left:0;z-index:50;max-width:34ch;pointer-events:none;
+     background:#0b1119;border:1px solid var(--line);border-radius:7px;
+     padding:8px 10px;box-shadow:0 8px 26px rgba(0,0,0,.55);}
+.tip b{display:block;font-size:.78rem;color:var(--ink);margin-bottom:3px;}
+.tip span{display:block;font-size:.72rem;color:var(--ink-soft);line-height:1.45;}
+.tip .tip__k{font-family:var(--mono);color:var(--ink-faint);margin-top:4px;}
+
+/* ── panel bits ───────────────────────────────────────────────────────────── */
+.metric__k{font-family:var(--mono);font-weight:600;min-width:30px;color:var(--c,inherit);}
+.metric__v{margin-left:auto;font-family:var(--mono);font-weight:600;}
+.metric .muted{color:var(--ink-faint);font-weight:400;}
+.select--w{flex:1;min-width:0;}
+.range{flex:1;min-width:0;accent-color:var(--teal-br);}
+.row__val{font-family:var(--mono);font-size:.75rem;color:var(--ink-soft);min-width:34px;
+          text-align:right;}

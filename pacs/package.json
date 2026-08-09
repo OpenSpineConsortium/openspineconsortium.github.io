@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "//": "Every pacs/*.js is loaded with <script type=\"module\">. This exists so Node reads them the same way the browser does, which is what pacs/tools/test_decode.mjs relies on. Nothing is installed from here."
+}
