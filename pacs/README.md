@@ -129,3 +129,25 @@ confident wrong angle.
 
 **No radiographs are committed to this repo.** The reference pane is a DRR of a CT
 case; BUU-LSPINE is evaluation-only and is not redistributed here.
+
+### Does the deployed page match the offline pipeline?
+
+`test_decode.mjs` proves the decode is identical on the same raw tensor, but it starts
+*after* preprocessing — it cannot see JPEG decoding, canvas resampling or WebGPU
+kernels. Canvas `drawImage` at `imageSmoothingQuality: "high"` area-averages a ~3.8×
+downscale where the training pipeline's cv2 `INTER_LINEAR` does not, and on individual
+films that moved LL by up to **1.6°**.
+
+So the browser is scored end to end against ground truth on real film
+(`tools/test_buu_live.py`), on the **same 40 BUU test radiographs** the offline sweep
+uses:
+
+| | vertebrae | SS MAE | LL MAE |
+|---|---|---|---|
+| offline (onnxruntime, Python) | 6.00 / 6 | 2.79° | 3.81° |
+| **live site (WebGPU)** | 6.05 / 6, 38/40 complete | **2.86°** | **3.86°** |
+
+Within **0.07°**. The per-film resampling differences are real but unbiased, and cancel
+over the set. Median inference 264 ms.
+
+No radiograph is committed here — point the script at a local directory.
