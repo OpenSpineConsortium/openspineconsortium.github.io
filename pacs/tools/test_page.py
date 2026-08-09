@@ -90,6 +90,16 @@ def main():
         check(n_btn == 4, f"4 metric buttons: PI/SS/PT/LL (got {n_btn})")
         check(rows == 13, f"13 landmark rows in panel (got {rows})")
 
+        # The two modality tabs must carry the SAME disclaimer. The X-ray tab shipped
+        # with a shortened one, which is the wrong direction: it is the tab that accepts
+        # a film the user supplies.
+        disc = " ".join(pg.inner_text(".disclaimer").split())
+        for phrase in ("Research & educational use only", "not a medical device",
+                       "not for clinical or diagnostic use",
+                       "simulated post-operative results",
+                       "Sample imaging is de-identified research data"):
+            check(phrase in disc, f"disclaimer says {phrase!r}")
+
         # the tooltip is the "interactive class names" requirement -- verify it fires
         pg.hover("#overlay .lm__hit")
         pg.wait_for_selector("#tip:not([hidden])", timeout=4000)
