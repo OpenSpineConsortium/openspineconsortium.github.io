@@ -176,7 +176,46 @@ def main():
         check("SS" in v1024 and v1024["SS"] != "n/a", f"1024 weights also run ({v1024.get('SS')})")
         pg.screenshot(path=str(SHOTS / "5_model1024.png"))
 
-        print("\n[5] page errors")
+        # A standing C2-S1 film puts the lumbar spine in about a third of the frame.
+        # Simulated here by padding the coned film into a tall canvas -- the same
+        # construction scripts/standing_scale_sweep.py sweeps, at the f that matters.
+        print("\n[5] standing framing falls back to tiles")
+        f = 0.36
+        src = Image.open(img)
+        W, H = src.size
+        tall = Image.new("L", (int(W * 1.15), int(H / f)), 114)
+        tall.paste(src.convert("L"), ((tall.width - W) // 2, (tall.height - H) // 2))
+        tall_path = SHOTS / "standing_input.png"
+        tall.save(tall_path)
+
+        pg.click("#clearUser")
+        pg.wait_for_selector("#dropPrompt:not([hidden])")
+        pg.select_option("#modelSel", "640")
+        pg.select_option("#modeSel", "single")
+        pg.set_input_files("#fileInput", str(tall_path))
+        pg.wait_for_function("document.getElementById('uimg').hidden === false",
+                             timeout=180000)
+        pg.wait_for_selector("#uloading[hidden]", state="attached", timeout=300000)
+        single_hud = pg.inner_text("#hudUser")
+        print(f"       single pass : {single_hud}")
+        check("no detections" in single_hud or "vertebrae" not in single_hud,
+              f"one pass at standing framing finds nothing ({single_hud!r})")
+
+        pg.select_option("#modeSel", "auto")
+        pg.wait_for_function(
+            "document.querySelectorAll('#uoverlay .lm__hit').length > 0", timeout=300000)
+        auto_hud = pg.inner_text("#hudUser")
+        auto_t = pg.inner_text("#timing")
+        v_st = read_metrics(pg)
+        print(f"       auto (tiled): {auto_hud} | {auto_t} | {v_st}")
+        check("tiles" in auto_t, f"auto fell back to tiling ({auto_t!r})")
+        check("vertebrae" in auto_hud, f"tiling recovers the vertebrae ({auto_hud!r})")
+        if v_st.get("SS", "n/a") != "n/a":
+            d = abs(float(v_st["SS"].rstrip("°")) - float(vals["SS"].rstrip("°")))
+            check(d < 6, f"standing-framing SS within 6° of the coned reading ({d:.1f}°)")
+        pg.screenshot(path=str(SHOTS / "6_standing_tiled.png"))
+
+        print("\n[6] page errors")
         real = [e for e in errs if "favicon" not in e.lower()]
         check(not real, f"no page errors ({real[:2]})")
 

@@ -34,6 +34,7 @@ const els = {
   uloading: $("uloading"), uloadtxt: $("uloadtxt"),
   engine: $("engineBadge"), timing: $("timing"),
   modelSel: $("modelSel"), confRange: $("confRange"), confVal: $("confVal"),
+  modeSel: $("modeSel"),
   flipBtn: $("flipBtn"), paneRef: $("paneRef"), paneUser: $("paneUser"), tip: $("tip"),
 };
 
@@ -460,7 +461,8 @@ async function analyse() {
 
     els.uloadtxt.textContent = "detecting…";
     const conf = Number(els.confRange.value);
-    const { dets, ms, backend } = await det.infer(cv, W, H, conf);
+    const { dets, ms, backend, tiles, mode } =
+      await det.infer(cv, W, H, conf, els.modeSel.value);
     if (!dets.length) {
       view.user = { shape: [H, W], angles: [], landmarks: [], unavailable: ["PI", "PT"],
                     lmNote: "No vertebra passed the confidence threshold. Lower it, or "
@@ -475,7 +477,8 @@ async function analyse() {
     active.user.clear();
     view.user.angles.forEach(a => active.user.set(a.id, true));
     els.timing.textContent = `${ms.toFixed(0)} ms · ${backend === "webgpu" ? "GPU" : "CPU"}`
-                           + ` · ${detImgsz}px`;
+                           + ` · ${detImgsz}px`
+                           + (mode === "tiled" ? ` · ${tiles} tiles` : "");
     focusPane("user");
     panelSrc = "user";
     renderPanel();
@@ -544,6 +547,7 @@ els.flipBtn.addEventListener("click", () => {
   analyse();
 });
 els.modelSel.addEventListener("change", () => { detector = null; analyse(); });
+els.modeSel.addEventListener("change", analyse);
 els.confRange.addEventListener("input", () => {
   els.confVal.textContent = Number(els.confRange.value).toFixed(2);
 });

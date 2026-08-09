@@ -48,15 +48,18 @@ export function letterboxParams(w, h, S) {
   return { scale, nw, nh, left, top };
 }
 
-export function preprocess(source, w, h, S) {
-  const lb = letterboxParams(w, h, S);
+/** @param crop optional {x,y,w,h} sub-rectangle of `source` to feed the network. */
+export function preprocess(source, w, h, S, crop) {
+  const ox = crop ? crop.x : 0, oy = crop ? crop.y : 0;
+  const cw = crop ? crop.w : w, ch = crop ? crop.h : h;
+  const lb = { ...letterboxParams(cw, ch, S), ox, oy };
   const cv = new OffscreenCanvas(S, S);
   const cx = cv.getContext("2d", { willReadFrequently: true });
   cx.fillStyle = `rgb(${PAD_GREY},${PAD_GREY},${PAD_GREY})`;
   cx.fillRect(0, 0, S, S);
   cx.imageSmoothingEnabled = true;
   cx.imageSmoothingQuality = "high";
-  cx.drawImage(source, lb.left, lb.top, lb.nw, lb.nh);
+  cx.drawImage(source, ox, oy, cw, ch, lb.left, lb.top, lb.nw, lb.nh);
   const px = cx.getImageData(0, 0, S, S).data;
   const n = S * S;
   const data = new Float32Array(3 * n);
@@ -111,14 +114,38 @@ export function decode(out, nCh, nAnc, lb, conf = CONF_DEFAULT) {
   }
   // Undo the letterbox AFTER NMS: IoU is scale-invariant, so doing it here keeps the
   // suppression identical to Ultralytics' (which also suppresses in network space).
+  const ox = lb.ox || 0, oy = lb.oy || 0;
+  const bx = x => (x - lb.left) / lb.scale + ox;
+  const by = y => (y - lb.top) / lb.scale + oy;
   return nms(raw).map(d => ({
     conf: d.conf,
-    x0: (d.x0 - lb.left) / lb.scale, y0: (d.y0 - lb.top) / lb.scale,
-    x1: (d.x1 - lb.left) / lb.scale, y1: (d.y1 - lb.top) / lb.scale,
-    kpts: d.kpts.map(k => ({ name: k.name, v: k.v,
-                             x: (k.x - lb.left) / lb.scale,
-                             y: (k.y - lb.top) / lb.scale })),
+    x0: bx(d.x0), y0: by(d.y0), x1: bx(d.x1), y1: by(d.y1),
+    kpts: d.kpts.map(k => ({ name: k.name, v: k.v, x: bx(k.x), y: by(k.y) })),
   }));
+}
+
+/* ── framing ─────────────────────────────────────────────────────────────────
+   A coned lumbar lateral and a standing C2-S1 film are the same anatomy at very
+   different scales, and one letterbox into 640 cannot serve both. Measured on 40 test
+   films re-framed to occupy a fraction f of the frame (scripts/standing_scale_sweep.py):
+
+       f        1.00  0.80  0.65  0.50  0.42  0.36  0.30  0.25  0.20
+       single   6.00  5.72  2.90  0.05  0.03  0.00  0.05  0.03  0.12   vertebrae found
+       tiled    5.40  5.42  5.58  5.45  5.65  5.45  5.42  5.53  5.45
+
+   Single-shot falls off a cliff below f ~ 0.65 and is at ZERO by the framing of a
+   standing film. Tiling is flat all the way to f = 0.20 -- median corner error stays
+   0.28-0.33% of the diagonal throughout -- but costs a little at f = 1.0, where a tile
+   edge can cut a vertebra the whole-film pass would have seen intact (6.00 -> 5.40).
+   Hence "auto": take the cheap pass, and only pay for tiles when it comes up short. */
+
+export function tileTops(w, h, overlap = 0.5) {
+  if (h <= w * 1.25) return null;              // already roughly square: one pass is right
+  const step = Math.max(1, Math.round(w * (1 - overlap)));
+  const tops = [];
+  for (let t = 0; t + w <= h; t += step) tops.push(t);
+  if (!tops.length || tops[tops.length - 1] + w < h) tops.push(Math.max(0, h - w));
+  return tops;
 }
 
 /* ── anatomy ────────────────────────────────────────────────────────────────── */
@@ -258,18 +285,41 @@ export class SpineDetector {
     return this.backend;
   }
 
-  /** @returns {{dets:Array, ms:number, backend:string, lb:object}} */
-  async infer(source, w, h, conf = CONF_DEFAULT) {
+  async #pass(source, w, h, conf, crop) {
     const o = await loadOrt();
     const S = this.imgsz;
-    const { data, lb } = preprocess(source, w, h, S);
-    const t0 = performance.now();
+    const { data, lb } = preprocess(source, w, h, S, crop);
     const res = await this.session.run(
       { images: new o.Tensor("float32", data, [1, 3, S, S]) });
-    const key = this.session.outputNames[0];
-    const out = res[key];
-    const ms = performance.now() - t0;
+    const out = res[this.session.outputNames[0]];
     const [, nCh, nAnc] = out.dims;
-    return { dets: decode(out.data, nCh, nAnc, lb, conf), ms, backend: this.backend, lb };
+    return decode(out.data, nCh, nAnc, lb, conf);
+  }
+
+  /**
+   * @param mode "auto" | "single" | "tiled"
+   * @returns {{dets:Array, ms:number, backend:string, tiles:number, mode:string}}
+   */
+  async infer(source, w, h, conf = CONF_DEFAULT, mode = "auto") {
+    const t0 = performance.now();
+    let dets = [], tiles = 1, used = "single";
+
+    if (mode !== "tiled") dets = await this.#pass(source, w, h, conf);
+
+    const tops = tileTops(w, h);
+    const needTiles = mode === "tiled"
+                   || (mode === "auto" && tops && dets.length < 5);
+    if (needTiles && tops) {
+      const all = [];
+      for (const t of tops)
+        all.push(...await this.#pass(source, w, h, conf,
+                                     { x: 0, y: t, w, h: Math.min(w, h - t) }));
+      // One global NMS over every tile's output: a vertebra seen twice across an
+      // overlap keeps whichever copy the network was more sure of.
+      dets = nms(all);
+      tiles = tops.length;
+      used = "tiled";
+    }
+    return { dets, ms: performance.now() - t0, backend: this.backend, tiles, mode: used };
   }
 }
