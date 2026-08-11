@@ -285,3 +285,10 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .range{flex:1;min-width:0;accent-color:var(--teal-br);}
 .row__val{font-family:var(--mono);font-size:.75rem;color:var(--ink-soft);min-width:34px;
           text-align:right;}
+
+/* ── teaching figure ──────────────────────────────────────────────────────── */
+.teachfig{margin:0}
+.teachfig img{width:100%;border:1px solid var(--line);border-radius:6px;display:block;
+              background:#06090d;cursor:zoom-in}
+.teachfig img:hover{border-color:var(--teal)}
+.teachfig figcaption{font-size:.7rem;color:var(--ink-faint);line-height:1.5;margin-top:6px}
