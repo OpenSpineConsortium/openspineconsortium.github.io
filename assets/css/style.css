@@ -1118,3 +1118,180 @@ em { font-style: italic; }
   .dumbbell__track { grid-area: track; }
   .dumbbell__delta { grid-area: delta; align-self: center; }
 }
+
+/* ============================================================
+   CONFERENCES
+   Where the work gets presented. The photo is portrait and the
+   awards are short, so they sit side by side on a wide screen and
+   stack on a narrow one; the poster list is a plain two-column
+   flow underneath because it is a list, not a gallery.
+   ============================================================ */
+.conf {
+  border: 1px solid var(--line);
+  background: var(--paper-card);
+  border-radius: 4px;
+  padding: clamp(1.2rem, 3vw, 2rem);
+}
+.conf__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem 1.5rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.conf__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.6vw, 1.8rem);
+  font-weight: 500;
+  line-height: 1.15;
+  margin: 0 0 0.35rem;
+  text-wrap: balance;
+}
+.conf__where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.conf__prog {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--teal);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2px;
+  white-space: nowrap;
+  transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+.conf__prog:hover { color: var(--teal-bright); border-color: var(--teal-bright); }
+
+.conf__body {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  gap: clamp(1.2rem, 3vw, 2.2rem);
+  align-items: start;
+  padding: 1.6rem 0;
+}
+.conf__figure { margin: 0; }
+.conf__figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  border: 1px solid var(--line-soft);
+}
+.conf__figure figcaption {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.conf__figure figcaption b { color: var(--ink); font-weight: 600; }
+
+.conf__sub {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin: 0 0 0.9rem;
+}
+.awards { list-style: none; margin: 0; padding: 0; }
+.award {
+  display: flex;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.award:first-child { padding-top: 0; }
+.award:last-child { border-bottom: none; padding-bottom: 0; }
+/* The place is the one loud thing in this section, so it is the only
+   element carrying the ochre. Everything else stays in the teal/ink set. */
+.award__place {
+  flex: none;
+  align-self: start;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.55rem;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}
+.award__place--first { color: var(--ochre); }
+.award__place--third { color: var(--ink-soft); }
+.award__who {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+.award__who span {
+  display: block;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  margin-top: 0.1rem;
+}
+.award__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+.conf__posters { border-top: 1px solid var(--line-soft); padding-top: 1.5rem; }
+.posters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 2;
+  column-gap: 2.2rem;
+}
+.poster {
+  break-inside: avoid;
+  margin-bottom: 1.1rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--line);
+}
+.poster__who {
+  margin: 0 0 0.15rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.poster__who span {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-left: 0.4rem;
+}
+.poster__title {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+.conf__note {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+.conf__note a { color: var(--teal); border-bottom: 1px solid var(--line); }
+.conf__note a:hover { color: var(--teal-bright); }
+
+@media (max-width: 860px) {
+  .conf__body { grid-template-columns: 1fr; }
+  .conf__figure { max-width: 320px; }
+  .posters { columns: 1; }
+}
