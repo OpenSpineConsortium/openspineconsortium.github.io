@@ -1315,3 +1315,127 @@ em { font-style: italic; }
   margin: 0;
   justify-content: flex-end;
 }
+
+/* ============================================================
+   OUTSIDE OF WORK — races
+   Two cards side by side on a wide screen. Each leads with the
+   finish time as a hero number, because that is the one thing a
+   reader wants, then the splits as a small table, then the media.
+   ============================================================ */
+.races {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: clamp(1rem, 2.5vw, 1.6rem);
+}
+.race {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: clamp(1.1rem, 2.5vw, 1.6rem);
+}
+.race__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
+  font-weight: 500;
+  margin: 0 0 0.4rem;
+  text-wrap: balance;
+}
+.race__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.9rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+/* The finish time is the hero number: one big figure, everything else recessive. */
+.race__hero {
+  margin: 1.1rem 0 0.9rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.race__hero b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 6vw, 3.2rem);
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+}
+.race__hero span {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+.race__hero a { color: var(--teal); border-bottom: 1px solid var(--line); }
+.race__hero a:hover { color: var(--teal-bright); }
+
+.splits { list-style: none; margin: 0; padding: 0; }
+.splits li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.32rem 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.9rem;
+}
+.splits li:last-child { border-bottom: none; }
+.splits__leg { flex: 1 1 auto; color: var(--ink-soft); }
+.splits__t {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.splits__p {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  min-width: 7ch;
+  text-align: right;
+}
+.race__rank {
+  margin: 0.7rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+
+/* Photo and the vertical clip side by side; both cap their height so a 9:16 video
+   cannot run away down the page. */
+.race__media {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  align-items: start;
+  margin-top: 1.1rem;
+}
+.race__media figure { margin: 0; min-width: 0; }
+.race__media img,
+.race__media video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--line-soft);
+  background: #14140f;
+}
+.race__media figure:last-child { width: 150px; }
+.race__media video { object-fit: contain; }
+.race__media figcaption {
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+@media (max-width: 520px) {
+  .race__media { grid-template-columns: 1fr; }
+  .race__media figure:last-child { width: 100%; max-width: 220px; }
+}
