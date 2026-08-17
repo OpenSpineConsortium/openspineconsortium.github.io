@@ -1295,3 +1295,14 @@ em { font-style: italic; }
   .conf__figure { max-width: 320px; }
   .posters { columns: 1; }
 }
+
+/* A second conference stacks under the first, separated rather than boxed again. */
+.conf + .conf { margin-top: 1.4rem; }
+/* A neutral badge for a presentation that is not a placed award: same shape as the
+   place badges so the column reads consistently, teal so it never reads as a prize. */
+.award__place--tag {
+  color: var(--teal);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
