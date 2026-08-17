@@ -1306,3 +1306,12 @@ em { font-style: italic; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* A conference can carry more than one document (agenda, slides). */
+.conf__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  margin: 0;
+  justify-content: flex-end;
+}
