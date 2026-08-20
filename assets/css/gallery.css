@@ -146,3 +146,12 @@
   font-size: 0.9rem;
   color: var(--ink-soft);
 }
+
+/* --- chart type sized to survive scaling into a card ---------------------
+   The first version drew 9px ticks into a 520-unit viewBox, which lands near
+   6px on screen. These are drawn into a 760-unit box at 17-19px so they stay
+   legible at any card width. */
+.gal__tick    { font-family: var(--font-mono); font-size: 17px; fill: var(--ink-soft); }
+.gal__axtitle { font-family: var(--font-body); font-size: 19px; fill: var(--ink); letter-spacing: 0.01em; }
+.gal__grid    { stroke: var(--line-soft); stroke-width: 1; }
+.gal__axis    { stroke: var(--line); stroke-width: 1.5; }

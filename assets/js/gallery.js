@@ -174,67 +174,91 @@ function makeViewer(host, spec) {
 }
 
 /* ---------------------------------------------------------- distributions */
-function drawPanel(host, p) {
-  const W = 520, H = 210, PADL = 46, PADB = 34, PADT = 12, PADR = 12;
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("class", "gal__svg");
-  const plotW = W - PADL - PADR, plotH = H - PADT - PADB;
+const NS = "http://www.w3.org/2000/svg";
 
-  const counts = p.type === "categorical" ? p.counts : p.counts;
-  const labels = p.type === "categorical"
-    ? p.categories
-    : p.edges.slice(0, -1).map((e, i) => (i % 6 === 0 ? e.toFixed(2) : ""));
+function el(tag, attrs, text) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+/* Axis ticks are chosen to land on round numbers rather than at fixed fractions of the
+   range: "0, 50, 100, 150" reads instantly where "0, 47, 94, 141" does not. */
+function niceTicks(lo, hi, want) {
+  const span = hi - lo;
+  if (span <= 0) return [lo];
+  const raw = span / want;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((v) => v >= raw) || mag * 10;
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) {
+    out.push(Math.abs(v) < 1e-9 ? 0 : +v.toFixed(6));
+  }
+  return out;
+}
+
+function drawPanel(host, p) {
+  // drawn large so the type survives being scaled into a card
+  const W = 760, H = 430, L = 92, R = 26, T = 26, B = 88;
+  const pw = W - L - R, ph = H - T - B;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "gal__svg",
+                          role: "img", "aria-label": p.title });
+
+  const counts = p.counts;
   const max = Math.max(...counts, 1);
-  const bw = plotW / counts.length;
+  const bw = pw / counts.length;
+
+  // horizontal gridlines first, so bars sit on top of them
+  const yt = niceTicks(0, max, 4);
+  for (const v of yt) {
+    const y = T + ph - (v / max) * ph;
+    svg.appendChild(el("line", { x1: L, x2: L + pw, y1: y, y2: y, class: "gal__grid" }));
+    svg.appendChild(el("text", { x: L - 12, y: y + 6, class: "gal__tick",
+                                 "text-anchor": "end" }, v));
+  }
 
   counts.forEach((c, i) => {
-    const h = (c / max) * plotH;
-    const r = document.createElementNS(ns, "rect");
-    r.setAttribute("x", PADL + i * bw + 0.6);
-    r.setAttribute("y", PADT + plotH - h);
-    r.setAttribute("width", Math.max(1, bw - 1.2));
-    r.setAttribute("height", h);
-    r.setAttribute("class", "gal__bar");
-    const t = document.createElementNS(ns, "title");
-    t.textContent = p.type === "categorical"
-      ? `${p.categories[i]}: ${c} cases`
-      : `${p.edges[i].toFixed(2)}–${p.edges[i + 1].toFixed(2)}: ${c} cases`;
-    r.appendChild(t);
+    const h = (c / max) * ph;
+    const r = el("rect", { x: L + i * bw + 1, y: T + ph - h,
+                           width: Math.max(1.5, bw - 2), height: h, class: "gal__bar" });
+    r.appendChild(el("title", null,
+      p.type === "categorical"
+        ? `${p.categories[i]}: ${c} cases`
+        : `${p.edges[i].toFixed(2)}\u2013${p.edges[i + 1].toFixed(2)}: ${c} cases`));
     svg.appendChild(r);
   });
 
-  // axis line + sparse ticks; a dense axis on a small chart is noise
-  const ax = document.createElementNS(ns, "line");
-  ax.setAttribute("x1", PADL); ax.setAttribute("x2", W - PADR);
-  ax.setAttribute("y1", PADT + plotH); ax.setAttribute("y2", PADT + plotH);
-  ax.setAttribute("class", "gal__axis");
-  svg.appendChild(ax);
+  svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
 
-  labels.forEach((lb, i) => {
-    if (!lb) return;
-    const tx = document.createElementNS(ns, "text");
-    tx.setAttribute("x", PADL + i * bw + bw / 2);
-    tx.setAttribute("y", PADT + plotH + 15);
-    tx.setAttribute("class", "gal__tick");
-    tx.setAttribute("text-anchor", "middle");
-    tx.textContent = lb;
-    svg.appendChild(tx);
-  });
-  [0, max].forEach((v) => {
-    const ty = document.createElementNS(ns, "text");
-    ty.setAttribute("x", PADL - 8);
-    ty.setAttribute("y", PADT + plotH - (v / max) * plotH + 4);
-    ty.setAttribute("class", "gal__tick");
-    ty.setAttribute("text-anchor", "end");
-    ty.textContent = v;
-    svg.appendChild(ty);
-  });
+  if (p.type === "categorical") {
+    p.categories.forEach((c, i) => {
+      svg.appendChild(el("text", { x: L + i * bw + bw / 2, y: T + ph + 28,
+                                   class: "gal__tick", "text-anchor": "middle" }, c));
+    });
+  } else {
+    const lo = p.edges[0], hi = p.edges[p.edges.length - 1];
+    for (const v of niceTicks(lo, hi, 5)) {
+      const x = L + ((v - lo) / (hi - lo)) * pw;
+      svg.appendChild(el("line", { x1: x, x2: x, y1: T + ph, y2: T + ph + 7,
+                                   class: "gal__axis" }));
+      svg.appendChild(el("text", { x, y: T + ph + 28, class: "gal__tick",
+                                   "text-anchor": "middle" }, v));
+    }
+  }
+
+  // axis TITLES -- without them a reader cannot tell what is counted, or in what unit
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 26, class: "gal__axtitle",
+                               "text-anchor": "middle" }, p.xlabel || p.title));
+  svg.appendChild(el("text", { x: 26, y: T + ph / 2, class: "gal__axtitle",
+                               "text-anchor": "middle",
+                               transform: `rotate(-90 26 ${T + ph / 2})` }, "cases"));
 
   const wrap = document.createElement("figure");
   wrap.className = "gal__panel";
-  wrap.innerHTML = `<h4>${p.title}</h4><p class="gal__sub">${p.subtitle}</p>`;
+  wrap.appendChild(el2("h4", p.title));
+  wrap.appendChild(el2("p", p.subtitle, "gal__sub"));
   wrap.appendChild(svg);
   const cap = document.createElement("figcaption");
   cap.textContent = p.caption;
@@ -242,44 +266,71 @@ function drawPanel(host, p) {
   host.appendChild(wrap);
 }
 
+function el2(tag, text, cls) {
+  const n = document.createElement(tag);
+  n.textContent = text;
+  if (cls) n.className = cls;
+  return n;
+}
+
 function drawScatter(host, p) {
-  const W = 520, H = 260, PADL = 52, PADB = 38, PADT = 12, PADR = 12;
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("class", "gal__svg");
-  const pw = W - PADL - PADR, ph = H - PADT - PADB;
-  const xs = p.points.map((q) => q.x), ys = p.points.map((q) => q.y);
+  const W = 760, H = 470, L = 92, R = 26, T = 26, B = 92;
+  const pw = W - L - R, ph = H - T - B;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "gal__svg",
+                          role: "img", "aria-label": p.title });
+
+  const xs = p.points.map((q) => q.x);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const y1 = Math.max(...ys);
-  // log y: the gap spans two orders of magnitude and contact is the interesting end
+  const ys = p.points.map((q) => q.y);
+  const yhi = Math.max(...ys);
+  // log y: the gap spans two orders of magnitude and CONTACT is the interesting end
   const ly = (v) => Math.log10(Math.max(v, 0.2));
-  const ly0 = ly(0.2), ly1 = ly(y1);
-  for (const q of p.points) {
-    const c = document.createElementNS(ns, "circle");
-    c.setAttribute("cx", PADL + ((q.x - x0) / (x1 - x0 || 1)) * pw);
-    c.setAttribute("cy", PADT + ph - ((ly(q.y) - ly0) / (ly1 - ly0 || 1)) * ph);
-    c.setAttribute("r", q.f ? 3.1 : 2);
-    c.setAttribute("class", q.f ? "gal__dot gal__dot--flag" : "gal__dot");
-    svg.appendChild(c);
+  const l0 = ly(0.2), l1 = ly(yhi);
+
+  for (const v of [0.2, 0.5, 1, 2, 5, 10, 20, 50]) {
+    if (v > yhi) break;
+    const y = T + ph - ((ly(v) - l0) / (l1 - l0)) * ph;
+    svg.appendChild(el("line", { x1: L, x2: L + pw, y1: y, y2: y, class: "gal__grid" }));
+    svg.appendChild(el("text", { x: L - 12, y: y + 6, class: "gal__tick",
+                                 "text-anchor": "end" }, v));
   }
-  const ax = document.createElementNS(ns, "line");
-  ax.setAttribute("x1", PADL); ax.setAttribute("x2", W - PADR);
-  ax.setAttribute("y1", PADT + ph); ax.setAttribute("y2", PADT + ph);
-  ax.setAttribute("class", "gal__axis");
-  svg.appendChild(ax);
-  [[PADL + pw / 2, PADT + ph + 26, p.xlabel, "middle"]].forEach(([x, y, t, a]) => {
-    const tx = document.createElementNS(ns, "text");
-    tx.setAttribute("x", x); tx.setAttribute("y", y);
-    tx.setAttribute("class", "gal__tick"); tx.setAttribute("text-anchor", a);
-    tx.textContent = t; svg.appendChild(tx);
-  });
+  for (const v of niceTicks(x0, x1, 5)) {
+    const x = L + ((v - x0) / (x1 - x0)) * pw;
+    svg.appendChild(el("line", { x1: x, x2: x, y1: T + ph, y2: T + ph + 7, class: "gal__axis" }));
+    svg.appendChild(el("text", { x, y: T + ph + 28, class: "gal__tick",
+                                 "text-anchor": "middle" }, v));
+  }
+
+  for (const q of p.points) {
+    const cx = L + ((q.x - x0) / (x1 - x0 || 1)) * pw;
+    const cy = T + ph - ((ly(q.y) - l0) / (l1 - l0 || 1)) * ph;
+    svg.appendChild(el("circle", { cx, cy, r: q.f ? 4.2 : 2.6,
+                                   class: q.f ? "gal__dot gal__dot--flag" : "gal__dot" }));
+  }
+
+  svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 30, class: "gal__axtitle",
+                               "text-anchor": "middle" }, p.xlabel));
+  svg.appendChild(el("text", { x: 26, y: T + ph / 2, class: "gal__axtitle",
+                               "text-anchor": "middle",
+                               transform: `rotate(-90 26 ${T + ph / 2})` }, p.ylabel));
+
+  // legend, because two dot sizes carrying meaning need saying out loud
+  const lg = el("g", { transform: `translate(${L + pw - 210} ${T + 6})` });
+  lg.appendChild(el("circle", { cx: 6, cy: -4, r: 2.6, class: "gal__dot" }));
+  lg.appendChild(el("text", { x: 18, y: 0, class: "gal__tick" }, "no source LSTV label"));
+  lg.appendChild(el("circle", { cx: 6, cy: 18, r: 4.2, class: "gal__dot gal__dot--flag" }));
+  lg.appendChild(el("text", { x: 18, y: 22, class: "gal__tick" }, "carries an LSTV label"));
+  svg.appendChild(lg);
+
   const wrap = document.createElement("figure");
   wrap.className = "gal__panel gal__panel--wide";
-  wrap.innerHTML = `<h4>${p.title}</h4><p class="gal__sub">${p.subtitle}</p>`;
+  wrap.appendChild(el2("h4", p.title));
+  wrap.appendChild(el2("p", p.subtitle, "gal__sub"));
   wrap.appendChild(svg);
   const cap = document.createElement("figcaption");
-  cap.textContent = p.caption + "  Larger warm dots carry a source LSTV label.";
+  cap.textContent = p.caption;
   wrap.appendChild(cap);
   host.appendChild(wrap);
 }
