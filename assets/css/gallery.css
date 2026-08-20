@@ -1,0 +1,148 @@
+/* ============================================================
+   Gallery — 3-D label surfaces and count-free distributions.
+   Inherits the site's tokens (paper ground, ink type, teal/ochre);
+   adds only what the viewers and charts need.
+   ============================================================ */
+
+.gal__lead {
+  max-width: 62ch;
+  color: var(--ink-soft);
+  margin-bottom: 2rem;
+}
+
+.gal__n {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
+  display: block;
+  margin-top: 0.4rem;
+}
+
+/* ---------------------------------------------------------- cases */
+.gal__cases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 1.6rem;
+  margin-bottom: 3.2rem;
+}
+
+.gal__case {
+  background: var(--paper-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* the canvas host. A fixed aspect keeps the grid from reflowing as WebGL
+   contexts come up at different moments. */
+.gal__stage {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #ffffff 0%, var(--paper-deep) 100%);
+  display: block;
+}
+.gal__stage canvas { display: block; width: 100%; height: 100%; }
+
+.gal__stage.is-loading::after,
+.gal__spin {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 22px; height: 22px;
+  border: 2px solid var(--line);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: gal-spin 0.9s linear infinite;
+  content: "";
+}
+.gal__stage:not(.is-loading) .gal__spin { display: none; }
+@keyframes gal-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .gal__spin { animation-duration: 3s; }
+}
+
+.gal__meta { padding: 1.05rem 1.15rem 1.15rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.gal__meta h3 {
+  font-family: var(--font-display);
+  font-size: 1.14rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.gal__meta p { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.55; }
+
+.gal__row { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-top: 0.2rem; }
+
+.gal__btn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  padding: 0.42rem 0.85rem;
+  border: 1px solid var(--teal);
+  background: transparent;
+  color: var(--teal);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+}
+.gal__btn:hover, .gal__btn:focus-visible { background: var(--teal); color: var(--paper-card); }
+.gal__btn.is-on { background: var(--teal-deep); border-color: var(--teal-deep); color: var(--paper-card); }
+.gal__btn:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
+
+.gal__id { font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint); }
+
+.gal__err { padding: 1rem; font-size: 0.85rem; color: var(--ochre); }
+
+/* ---------------------------------------------------------- distributions */
+.gal__dist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 1.5rem 1.8rem;
+}
+
+.gal__panel {
+  background: var(--paper-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  padding: 1.05rem 1.15rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.gal__panel--wide { grid-column: 1 / -1; }
+
+.gal__panel h4 {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.gal__sub { font-size: 0.82rem; color: var(--ink-faint); line-height: 1.45; }
+.gal__panel figcaption {
+  font-size: 0.83rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+/* wide charts scroll inside their own box rather than the page */
+.gal__svg { width: 100%; height: auto; display: block; margin-top: 0.4rem; overflow: visible; }
+
+.gal__bar { fill: var(--teal); opacity: 0.82; transition: opacity 0.12s var(--ease); }
+.gal__bar:hover { opacity: 1; }
+.gal__axis { stroke: var(--line); stroke-width: 1; }
+.gal__tick { font-family: var(--font-mono); font-size: 9px; fill: var(--ink-faint); }
+.gal__dot { fill: var(--ink-faint); opacity: 0.34; }
+.gal__dot--flag { fill: var(--ochre); opacity: 0.95; }
+
+.gal__note {
+  margin-top: 2rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--ochre);
+  max-width: 66ch;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
