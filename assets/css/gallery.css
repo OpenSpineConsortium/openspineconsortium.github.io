@@ -99,8 +99,11 @@
 /* ---------------------------------------------------------- distributions */
 .gal__dist {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  gap: 1.5rem 1.8rem;
+  /* WIDE panels. A 760-unit viewBox squeezed into a 330px card scales the type down to
+     about 8px; at 560px+ the scale factor is near 1 and the labels read at their design
+     size. This is the fix for "the axis titles are unreadable" -- not a bigger font. */
+  grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+  gap: 1.6rem 1.8rem;
 }
 
 .gal__panel {
@@ -155,3 +158,8 @@
 .gal__axtitle { font-family: var(--font-body); font-size: 19px; fill: var(--ink); letter-spacing: 0.01em; }
 .gal__grid    { stroke: var(--line-soft); stroke-width: 1; }
 .gal__axis    { stroke: var(--line); stroke-width: 1.5; }
+
+/* the count printed on each bar: the reader gets the number without reading the axis */
+.gal__val { font-family: var(--font-mono); font-size: 18px; fill: var(--ink); font-weight: 600; }
+.gal__tick    { font-size: 19px; }
+.gal__axtitle { font-size: 22px; font-weight: 600; }

@@ -58,11 +58,15 @@ async function loadCase(id) {
   const parts = [];
 
   for (const s of head.structures) {
-    const pos = new Uint16Array(buf, s.pos[0], s.pos[1] / 2);
-    const nrm = new Int8Array(buf, s.nrm[0], s.nrm[1]);
+    // slice(), not a view: a typed-array VIEW must start on a multiple of its element
+    // size, and an int8 normal run of odd length pushes the next array onto an odd byte
+    // offset. slice() copies into a buffer that begins at zero, so the constraint cannot
+    // be violated no matter what the writer emits.
+    const pos = new Uint16Array(buf.slice(s.pos[0], s.pos[0] + s.pos[1]));
+    const nrm = new Int8Array(buf.slice(s.nrm[0], s.nrm[0] + s.nrm[1]));
     const idx = s.idx_bytes === 4
-      ? new Uint32Array(buf, s.idx[0], s.idx[1] / 4)
-      : new Uint16Array(buf, s.idx[0], s.idx[1] / 2);
+      ? new Uint32Array(buf.slice(s.idx[0], s.idx[0] + s.idx[1]))
+      : new Uint16Array(buf.slice(s.idx[0], s.idx[0] + s.idx[1]));
 
     const p = new Float32Array(pos.length);
     for (let i = 0; i < pos.length; i += 3) {
@@ -157,7 +161,8 @@ function makeViewer(host, spec) {
   }).catch((err) => {
     host.classList.remove("is-loading");
     host.classList.add("is-error");
-    host.innerHTML = `<p class="gal__err">Could not load case ${spec.id} (${err.message}).</p>`;
+    host.innerHTML = `<p class="gal__err">Case ${spec.id} did not load: ${err.message}</p>`;
+    console.error("[gallery]", spec.id, err);
   });
 
   return {
@@ -199,34 +204,44 @@ function niceTicks(lo, hi, want) {
 }
 
 function drawPanel(host, p) {
-  // drawn large so the type survives being scaled into a card
-  const W = 760, H = 430, L = 92, R = 26, T = 26, B = 88;
+  const W = 760, H = 430, L = 96, R = 30, T = 34, B = 92;
   const pw = W - L - R, ph = H - T - B;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "gal__svg",
                           role: "img", "aria-label": p.title });
 
   const counts = p.counts;
   const max = Math.max(...counts, 1);
+  const nonzero = counts.filter((c) => c > 0);
+  const min = nonzero.length ? Math.min(...nonzero) : 1;
+  // a 734 bar beside a 35 bar leaves the small ones a couple of pixels tall; sqrt keeps
+  // the tall bar honest while giving the short ones height you can compare
+  const skew = p.type === "categorical" && max / min > 20;
+  const scale = (v) => (skew ? Math.sqrt(v / max) : v / max) * ph;
   const bw = pw / counts.length;
 
-  // horizontal gridlines first, so bars sit on top of them
   const yt = niceTicks(0, max, 4);
   for (const v of yt) {
-    const y = T + ph - (v / max) * ph;
+    const y = T + ph - scale(v);
     svg.appendChild(el("line", { x1: L, x2: L + pw, y1: y, y2: y, class: "gal__grid" }));
-    svg.appendChild(el("text", { x: L - 12, y: y + 6, class: "gal__tick",
+    svg.appendChild(el("text", { x: L - 14, y: y + 7, class: "gal__tick",
                                  "text-anchor": "end" }, v));
   }
 
   counts.forEach((c, i) => {
-    const h = (c / max) * ph;
-    const r = el("rect", { x: L + i * bw + 1, y: T + ph - h,
-                           width: Math.max(1.5, bw - 2), height: h, class: "gal__bar" });
+    const h = scale(c);
+    const r = el("rect", { x: L + i * bw + 2, y: T + ph - h,
+                           width: Math.max(2, bw - 4), height: h, class: "gal__bar" });
     r.appendChild(el("title", null,
       p.type === "categorical"
         ? `${p.categories[i]}: ${c} cases`
         : `${p.edges[i].toFixed(2)}\u2013${p.edges[i + 1].toFixed(2)}: ${c} cases`));
     svg.appendChild(r);
+    // THE COUNT, on the bar. With this the reader never has to estimate a height against
+    // an axis -- which is what made 35-versus-26 unreadable.
+    if (c > 0 && (p.type === "categorical" || bw > 26)) {
+      svg.appendChild(el("text", { x: L + i * bw + bw / 2, y: T + ph - h - 9,
+                                   class: "gal__val", "text-anchor": "middle" }, c));
+    }
   });
 
   svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
@@ -234,26 +249,25 @@ function drawPanel(host, p) {
 
   if (p.type === "categorical") {
     p.categories.forEach((c, i) => {
-      svg.appendChild(el("text", { x: L + i * bw + bw / 2, y: T + ph + 28,
+      svg.appendChild(el("text", { x: L + i * bw + bw / 2, y: T + ph + 32,
                                    class: "gal__tick", "text-anchor": "middle" }, c));
     });
   } else {
     const lo = p.edges[0], hi = p.edges[p.edges.length - 1];
     for (const v of niceTicks(lo, hi, 5)) {
       const x = L + ((v - lo) / (hi - lo)) * pw;
-      svg.appendChild(el("line", { x1: x, x2: x, y1: T + ph, y2: T + ph + 7,
-                                   class: "gal__axis" }));
-      svg.appendChild(el("text", { x, y: T + ph + 28, class: "gal__tick",
+      svg.appendChild(el("line", { x1: x, x2: x, y1: T + ph, y2: T + ph + 8, class: "gal__axis" }));
+      svg.appendChild(el("text", { x, y: T + ph + 32, class: "gal__tick",
                                    "text-anchor": "middle" }, v));
     }
   }
 
-  // axis TITLES -- without them a reader cannot tell what is counted, or in what unit
-  svg.appendChild(el("text", { x: L + pw / 2, y: H - 26, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 22, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel || p.title));
-  svg.appendChild(el("text", { x: 26, y: T + ph / 2, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
-                               transform: `rotate(-90 26 ${T + ph / 2})` }, "cases"));
+                               transform: `rotate(-90 30 ${T + ph / 2})` },
+                     skew ? "cases (\u221ascale)" : "cases"));
 
   const wrap = document.createElement("figure");
   wrap.className = "gal__panel";
@@ -261,7 +275,10 @@ function drawPanel(host, p) {
   wrap.appendChild(el2("p", p.subtitle, "gal__sub"));
   wrap.appendChild(svg);
   const cap = document.createElement("figcaption");
-  cap.textContent = p.caption;
+  cap.textContent = p.caption + (skew
+    ? "  Bar heights use a square-root scale so the small categories stay visible; the "
+      + "number on each bar is the exact count."
+    : "");
   wrap.appendChild(cap);
   host.appendChild(wrap);
 }
@@ -389,4 +406,15 @@ export function initGallery() {
     });
 }
 
-initGallery();
+// A failure anywhere in this module previously left an empty section that looked exactly
+// like "still loading". Say so on the page instead.
+try {
+  initGallery();
+} catch (err) {
+  const g = document.getElementById("gal-cases");
+  if (g) {
+    g.innerHTML = `<p class="gal__err">The 3-D viewer failed to start: ${err.message}. ` +
+                  `The published labels are unaffected.</p>`;
+  }
+  console.error("[gallery]", err);
+}
