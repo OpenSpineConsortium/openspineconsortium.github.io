@@ -45,6 +45,7 @@
       <a href="#goals">Goals</a>
       <a href="#conferences">Conferences</a>
       <a href="#outside">Outside</a>
+      <a href="#gallery">Gallery</a>
       <a href="spine-mri/">Spine MRI</a>
       <a href="pacs/ct.html">CT</a>
       <a href="pacs/">X-ray</a>
@@ -679,6 +680,43 @@
   <!-- ===================== JOIN ===================== -->
 
   <!-- ===================== OUTSIDE OF WORK ===================== -->
+
+  <section class="section" id="gallery">
+    <div class="section__head reveal">
+      <span class="section__num">09</span>
+      <h2 class="section__title">Gallery</h2>
+    </div>
+
+    <p class="section__intro reveal gal__lead">
+      Interactive surfaces built straight from the released segmentations &mdash; drag to
+      turn a specimen, or isolate the structure a case is an example of. Below them, the
+      shape of the cohort.
+      <span class="gal__n" id="gal-n">loading&hellip;</span>
+    </p>
+
+    <div class="gal__cases" id="gal-cases"></div>
+
+    <div class="section__head reveal">
+      <h3 class="section__title" style="font-size:1.5rem">What the cohort looks like</h3>
+    </div>
+
+    <p class="section__intro reveal gal__lead">
+      Every measure here is <strong>count-free</strong>: none of them requires knowing which
+      vertebra is which. A transitional vertebra cannot be named from a spine-limited field
+      of view &mdash; the same bone is a sacralised L5 or a lumbarised S1 depending only on
+      where the count starts &mdash; so these describe shape and intervals instead.
+    </p>
+
+    <div class="gal__dist" id="gal-dist"></div>
+
+    <p class="gal__note reveal">
+      Surfaces are decimated for the browser and are not the release geometry; the labels
+      themselves are published at full resolution on
+      <a href="https://huggingface.co/datasets/anonymous-mlhc/CTSpinoPelvic1K">HuggingFace</a>.
+      Images originate from the public TCIA CT&nbsp;COLONOGRAPHY collection.
+    </p>
+  </section>
+
   <section class="section section--alt" id="outside">
     <div class="section__head reveal">
       <span class="section__num">09</span>
@@ -833,6 +871,7 @@
         <a href="#goals">Goals</a>
         <a href="#conferences">Conferences</a>
         <a href="#outside">Outside</a>
+      <a href="#gallery">Gallery</a>
         <a href="spine-mri/">Spine MRI</a>
         <a href="pacs/ct.html">CT</a>
         <a href="pacs/">X-ray</a>
@@ -848,5 +887,6 @@
   <!-- Bump ?v= whenever you change style.css or main.js, so browsers and the
        GitHub Pages CDN fetch the new file instead of a cached copy. -->
   <script src="assets/js/main.js?v=20260524"></script>
+  <script type="module" src="assets/js/gallery.js?v=7d2ffa1c"></script>
 </body>
 </html>
