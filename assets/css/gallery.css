@@ -200,3 +200,9 @@
 .gal__val { font-family: var(--font-mono); font-size: 18px; fill: var(--ink); font-weight: 600; }
 .gal__tick    { font-size: 19px; }
 .gal__axtitle { font-size: 22px; font-weight: 600; }
+
+/* fitted density curves: a filled area under a firm line, with the observations
+   themselves ticked along the axis so the model never stands on its own */
+.gal__dens-fill { fill: var(--teal); fill-opacity: 0.16; stroke: none; }
+.gal__dens-line { fill: none; stroke: var(--teal-deep); stroke-width: 2.4; stroke-linejoin: round; }
+.gal__rug { stroke: var(--ink-faint); stroke-width: 1; opacity: 0.5; }
