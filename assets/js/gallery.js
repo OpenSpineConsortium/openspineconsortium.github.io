@@ -1,180 +1,146 @@
 /* ============================================================
-   Gallery — interactive 3-D label surfaces + count-free distributions.
+   Gallery — 3-D turntables + count-free distributions.
 
-   WHY SURFACES AND NOT SLICES. Every point this gallery makes is a SHAPE fact: a
-   thirteenth rib on a lumbar body, a cage bridging an interspace, a transitional
-   vertebra part-fused to the ala. A surface shows shape; a slice viewer makes you
-   reconstruct it. Per-structure meshes also let the page isolate the one bone the
-   case is an example of and fade everything else, which a volume viewer cannot do.
+   WHY STILLS RATHER THAN WebGL. The mesh viewer failed in the browser across several
+   attempts for reasons that were not visible from the build side, and a gallery that
+   does not render is worth less than one that cannot be zoomed. These frames are
+   rendered on the cluster, so every browser variable disappears at once: no GPU, no
+   import map, no typed-array alignment, no WebGL context limit. What ships is <img>.
 
-   THE PAYLOAD. One .bin per case holding every structure back to back, with a .json
-   index naming the byte ranges. Positions are uint16 quantised into the case's own
-   bounding box, normals int8. One request, no decompression, no per-structure fetch.
+   STILL INTERACTIVE. Sixteen frames on a turntable, swapped under a drag, is an object
+   movie — the trick QuickTime VR used. It needs a pointer handler and nothing else, and
+   with no JavaScript at all the first frame is still a picture of the specimen.
 
-   NO LEVEL NAMES IN THE COPY. Sacralisation and lumbarisation are one morphology
-   under two counts, so the captions describe what is visible and never assert which
-   vertebra is which.
+   NO LEVEL NAMES IN THE COPY. Sacralisation and lumbarisation are one morphology under
+   two counts, so the captions describe what is visible and never assert which vertebra
+   is which.
    ============================================================ */
 
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-
 const DATA = "assets/gallery/";
+const STILLS = DATA + "stills/";
+const NFRAMES = 16;
 
 const CASES = [
   { id: "0431", title: "A rib on a lumbar body",
-    blurb: "Both sides carry an extra rib below the last thoracic pair. Class 74/75 " +
-           "in the release, kept separate from the numbered ribs so it stays countable.",
-    focus: (s) => s.name.includes("lumbar") },
+    blurb: "An extra rib pair below the last thoracic one. Given its own class in the " +
+           "release rather than being forced to be a twelfth rib, so it stays countable." },
   { id: "0033", title: "A part-fused transitional vertebra",
     blurb: "Six rib-free bodies above the sacrum, the lowest incompletely fused on the " +
-           "left. Whether that is a sacralised or lumbarised segment depends on where " +
-           "the count starts — the fusion itself does not.",
-    focus: (s) => s.name === "L6" || s.name === "sacrum" },
+           "left. Whether that is a sacralised or a lumbarised segment depends on where " +
+           "the count starts — the fusion itself does not." },
   { id: "0631", title: "A hypoplastic twelfth rib",
-    blurb: "The lowest rib is a tenth the length of the one above it — the extreme of " +
-           "a distribution that turns out to be bimodal across the cohort.",
-    focus: (s) => /rib_(left|right)_12$/.test(s.name) },
+    blurb: "The lowest rib is a fraction of the length of the one above it — the extreme " +
+           "of a distribution that turns out to be bimodal across the cohort." },
   { id: "1035", title: "Instrumentation",
-    blurb: "Surgical hardware detected by density and confirmed by geometry. It matters " +
-           "for more than completeness: metal bridging an interspace reads as fusion to " +
-           "any distance measurement.",
-    focus: (s) => s.kind === "hardware" },
+    blurb: "Surgical hardware, found by density and confirmed by geometry. It matters " +
+           "beyond completeness: metal bridging an interspace reads as fusion to any " +
+           "distance measurement." },
   { id: "0004", title: "Unremarkable, for reference",
-    blurb: "Five rib-free bodies above the sacrum, twelve rib pairs, nothing transitional.",
-    focus: () => false },
+    blurb: "Five rib-free bodies above the sacrum, twelve rib pairs, nothing transitional." },
 ];
 
-/* ---------------------------------------------------------- mesh loading */
-async function loadCase(id) {
-  const [head, buf] = await Promise.all([
-    fetch(`${DATA}${id}.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-    fetch(`${DATA}${id}.bin`).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }),
-  ]);
-  const lo = new THREE.Vector3(...head.bbox_lo);
-  const hi = new THREE.Vector3(...head.bbox_hi);
-  const span = new THREE.Vector3().subVectors(hi, lo);
-  const group = new THREE.Group();
-  const parts = [];
+const pad2 = (i) => String(i).padStart(2, "0");
 
-  for (const s of head.structures) {
-    // slice(), not a view: a typed-array VIEW must start on a multiple of its element
-    // size, and an int8 normal run of odd length pushes the next array onto an odd byte
-    // offset. slice() copies into a buffer that begins at zero, so the constraint cannot
-    // be violated no matter what the writer emits.
-    const pos = new Uint16Array(buf.slice(s.pos[0], s.pos[0] + s.pos[1]));
-    const nrm = new Int8Array(buf.slice(s.nrm[0], s.nrm[0] + s.nrm[1]));
-    const idx = s.idx_bytes === 4
-      ? new Uint32Array(buf.slice(s.idx[0], s.idx[0] + s.idx[1]))
-      : new Uint16Array(buf.slice(s.idx[0], s.idx[0] + s.idx[1]));
+/* ---------------------------------------------------------- turntable */
+function makeTurntable(host, spec) {
+  const img = new Image();
+  img.className = "gal__frame";
+  img.alt = `Three-dimensional reconstruction of the segmented spine and pelvis, case ${spec.id}`;
+  img.draggable = false;
+  img.src = `${STILLS}${spec.id}_00.png`;
+  host.appendChild(img);
 
-    const p = new Float32Array(pos.length);
-    for (let i = 0; i < pos.length; i += 3) {
-      p[i]     = lo.x + (pos[i]     / head.quant) * span.x;
-      p[i + 1] = lo.y + (pos[i + 1] / head.quant) * span.y;
-      p[i + 2] = lo.z + (pos[i + 2] / head.quant) * span.z;
-    }
-    const n = new Float32Array(nrm.length);
-    for (let i = 0; i < nrm.length; i++) n[i] = nrm[i] / 127;
-
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(p, 3));
-    g.setAttribute("normal", new THREE.BufferAttribute(n, 3));
-    g.setIndex(new THREE.BufferAttribute(idx, 1));
-
-    const c = new THREE.Color(s.color[0] / 255, s.color[1] / 255, s.color[2] / 255);
-    const mat = new THREE.MeshStandardMaterial({
-      color: c, roughness: 0.62, metalness: 0.05,
-      transparent: true, opacity: 1,
-    });
-    const mesh = new THREE.Mesh(g, mat);
-    mesh.userData = s;
-    group.add(mesh);
-    parts.push({ mesh, meta: s });
-  }
-  // centre on the origin so orbiting feels like turning the specimen, not the camera
-  const box = new THREE.Box3().setFromObject(group);
-  const mid = box.getCenter(new THREE.Vector3());
-  group.position.sub(mid);
-  return { group, parts, radius: box.getSize(new THREE.Vector3()).length() / 2 };
-}
-
-/* ---------------------------------------------------------- one viewer */
-function makeViewer(host, spec) {
-  const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(38, 1, 1, 5000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  host.appendChild(renderer.domElement);
-
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x555044, 1.05));
-  const key = new THREE.DirectionalLight(0xffffff, 1.5);
-  key.position.set(1, 0.6, 1.2);
-  scene.add(key);
-  const rim = new THREE.DirectionalLight(0x9fd4cc, 0.5);
-  rim.position.set(-1, -0.3, -0.8);
-  scene.add(rim);
-
-  const controls = new OrbitControls(cam, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.enablePan = false;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 0.9;
-  // stop the drag from scrolling the page on touch, but let a plain swipe scroll
-  renderer.domElement.style.touchAction = "pan-y";
-
-  function size() {
-    const w = host.clientWidth, h = host.clientHeight;
-    if (!w || !h) return;
-    renderer.setSize(w, h, false);
-    cam.aspect = w / h;
-    cam.updateProjectionMatrix();
-  }
-  new ResizeObserver(size).observe(host);
-
-  let parts = [];
-  let raf = 0, visible = false;
-  function tick() {
-    raf = requestAnimationFrame(tick);
-    if (!visible) return;
-    controls.update();
-    renderer.render(scene, cam);
-  }
-
-  // only render what is on screen: five WebGL canvases all spinning is wasted battery
-  new IntersectionObserver((es) => {
-    visible = es[0].isIntersecting;
-    controls.autoRotate = visible;
-  }, { threshold: 0.05 }).observe(host);
-
-  loadCase(spec.id).then(({ group, parts: ps, radius }) => {
-    parts = ps;
-    scene.add(group);
-    cam.position.set(radius * 2.0, radius * 0.35, radius * 2.0);
-    cam.lookAt(0, 0, 0);
-    controls.target.set(0, 0, 0);
-    size();
-    host.classList.remove("is-loading");
-    tick();
-    host.dispatchEvent(new CustomEvent("ready", { detail: { parts } }));
-  }).catch((err) => {
+  img.addEventListener("load", () => host.classList.remove("is-loading"), { once: true });
+  img.addEventListener("error", () => {
     host.classList.remove("is-loading");
     host.classList.add("is-error");
-    host.innerHTML = `<p class="gal__err">Case ${spec.id} did not load: ${err.message}</p>`;
-    console.error("[gallery]", spec.id, err);
+    host.innerHTML = `<p class="gal__err">Case ${spec.id} did not load.</p>`;
+  }, { once: true });
+
+  // Preload the rest so the first drag does not stutter. The Image objects are KEPT --
+  // an unreferenced in-flight decode can be collected, and then the first turn refetches.
+  const pre = [img];
+  const srcs = [img.src];
+  for (let i = 1; i < NFRAMES; i++) {
+    const f = new Image();
+    f.src = `${STILLS}${spec.id}_${pad2(i)}.png`;
+    pre.push(f);
+    srcs.push(f.src);
+  }
+
+  let idx = 0, dragging = false, lastX = 0, acc = 0, touched = false;
+  function show(i) {
+    idx = ((i % NFRAMES) + NFRAMES) % NFRAMES;
+    img.src = srcs[idx];
+  }
+  // one full turn per ~1.4 stage widths of travel: enough control to stop on a view
+  const step = () => Math.max(22, host.clientWidth * 1.4 / NFRAMES);
+
+  function down(e) {
+    dragging = true;
+    touched = true;
+    lastX = e.touches ? e.touches[0].clientX : e.clientX;
+    acc = 0;
+    host.classList.add("is-dragging");
+  }
+  function move(e) {
+    if (!dragging) return;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    acc += x - lastX;
+    lastX = x;
+    const s = step();
+    let moved = false;
+    while (Math.abs(acc) >= s) {
+      show(idx + (acc > 0 ? -1 : 1));
+      acc -= Math.sign(acc) * s;
+      moved = true;
+    }
+    // only swallow the gesture once it is clearly horizontal, so a vertical swipe
+    // still scrolls the page on a phone
+    if (moved && e.cancelable) e.preventDefault();
+  }
+  function up() { dragging = false; host.classList.remove("is-dragging"); }
+
+  // ONE family of events, not both. Binding pointer* AND touch* means a touch device
+  // fires each handler twice and the object turns at double speed.
+  if (window.PointerEvent) {
+    host.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  } else {
+    host.addEventListener("mousedown", down);
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    host.addEventListener("touchstart", down, { passive: true });
+    host.addEventListener("touchmove", move, { passive: false });
+    host.addEventListener("touchend", up);
+  }
+
+  // keyboard: the turntable is a control, so it has to be operable without a pointer
+  host.tabIndex = 0;
+  host.setAttribute("role", "slider");
+  host.setAttribute("aria-label", `Rotate case ${spec.id}`);
+  host.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { touched = true; show(idx - 1); e.preventDefault(); }
+    if (e.key === "ArrowRight") { touched = true; show(idx + 1); e.preventDefault(); }
   });
 
+  let timer = null;
   return {
-    highlight(on) {
-      for (const { mesh, meta } of parts) {
-        const isFocus = spec.focus(meta);
-        mesh.material.opacity = on ? (isFocus ? 1 : 0.12) : 1;
-        mesh.material.depthWrite = !on || isFocus;
+    // a slow idle turn while the card is on screen, so it reads as manipulable.
+    // It stops for good once the reader takes hold of it.
+    spin(on) {
+      if (on && timer === null) {
+        timer = setInterval(() => {
+          if (dragging || touched) return;
+          show(idx + 1);
+        }, 160);
+      } else if (!on && timer !== null) {
+        clearInterval(timer);
+        timer = null;
       }
     },
-    reset() { controls.autoRotate = true; },
-    dispose() { cancelAnimationFrame(raf); renderer.dispose(); },
   };
 }
 
@@ -185,6 +151,13 @@ function el(tag, attrs, text) {
   const n = document.createElementNS(NS, tag);
   for (const k in attrs) n.setAttribute(k, attrs[k]);
   if (text != null) n.textContent = text;
+  return n;
+}
+
+function el2(tag, text, cls) {
+  const n = document.createElement(tag);
+  n.textContent = text;
+  if (cls) n.className = cls;
   return n;
 }
 
@@ -219,8 +192,7 @@ function drawPanel(host, p) {
   const scale = (v) => (skew ? Math.sqrt(v / max) : v / max) * ph;
   const bw = pw / counts.length;
 
-  const yt = niceTicks(0, max, 4);
-  for (const v of yt) {
+  for (const v of niceTicks(0, max, 4)) {
     const y = T + ph - scale(v);
     svg.appendChild(el("line", { x1: L, x2: L + pw, y1: y, y2: y, class: "gal__grid" }));
     svg.appendChild(el("text", { x: L - 14, y: y + 7, class: "gal__tick",
@@ -234,7 +206,7 @@ function drawPanel(host, p) {
     r.appendChild(el("title", null,
       p.type === "categorical"
         ? `${p.categories[i]}: ${c} cases`
-        : `${p.edges[i].toFixed(2)}\u2013${p.edges[i + 1].toFixed(2)}: ${c} cases`));
+        : `${p.edges[i].toFixed(2)}–${p.edges[i + 1].toFixed(2)}: ${c} cases`));
     svg.appendChild(r);
     // THE COUNT, on the bar. With this the reader never has to estimate a height against
     // an axis -- which is what made 35-versus-26 unreadable.
@@ -267,7 +239,7 @@ function drawPanel(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` },
-                     skew ? "cases (\u221ascale)" : "cases"));
+                     skew ? "cases (√ scale)" : "cases"));
 
   const wrap = document.createElement("figure");
   wrap.className = "gal__panel";
@@ -283,23 +255,15 @@ function drawPanel(host, p) {
   host.appendChild(wrap);
 }
 
-function el2(tag, text, cls) {
-  const n = document.createElement(tag);
-  n.textContent = text;
-  if (cls) n.className = cls;
-  return n;
-}
-
 function drawScatter(host, p) {
-  const W = 760, H = 470, L = 92, R = 26, T = 26, B = 92;
+  const W = 760, H = 470, L = 96, R = 30, T = 30, B = 92;
   const pw = W - L - R, ph = H - T - B;
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "gal__svg",
                           role: "img", "aria-label": p.title });
 
   const xs = p.points.map((q) => q.x);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
-  const ys = p.points.map((q) => q.y);
-  const yhi = Math.max(...ys);
+  const yhi = Math.max(...p.points.map((q) => q.y));
   // log y: the gap spans two orders of magnitude and CONTACT is the interesting end
   const ly = (v) => Math.log10(Math.max(v, 0.2));
   const l0 = ly(0.2), l1 = ly(yhi);
@@ -308,37 +272,37 @@ function drawScatter(host, p) {
     if (v > yhi) break;
     const y = T + ph - ((ly(v) - l0) / (l1 - l0)) * ph;
     svg.appendChild(el("line", { x1: L, x2: L + pw, y1: y, y2: y, class: "gal__grid" }));
-    svg.appendChild(el("text", { x: L - 12, y: y + 6, class: "gal__tick",
+    svg.appendChild(el("text", { x: L - 14, y: y + 7, class: "gal__tick",
                                  "text-anchor": "end" }, v));
   }
   for (const v of niceTicks(x0, x1, 5)) {
     const x = L + ((v - x0) / (x1 - x0)) * pw;
-    svg.appendChild(el("line", { x1: x, x2: x, y1: T + ph, y2: T + ph + 7, class: "gal__axis" }));
-    svg.appendChild(el("text", { x, y: T + ph + 28, class: "gal__tick",
+    svg.appendChild(el("line", { x1: x, x2: x, y1: T + ph, y2: T + ph + 8, class: "gal__axis" }));
+    svg.appendChild(el("text", { x, y: T + ph + 32, class: "gal__tick",
                                  "text-anchor": "middle" }, v));
   }
-
   for (const q of p.points) {
-    const cx = L + ((q.x - x0) / (x1 - x0 || 1)) * pw;
-    const cy = T + ph - ((ly(q.y) - l0) / (l1 - l0 || 1)) * ph;
-    svg.appendChild(el("circle", { cx, cy, r: q.f ? 4.2 : 2.6,
-                                   class: q.f ? "gal__dot gal__dot--flag" : "gal__dot" }));
+    svg.appendChild(el("circle", {
+      cx: L + ((q.x - x0) / (x1 - x0 || 1)) * pw,
+      cy: T + ph - ((ly(q.y) - l0) / (l1 - l0 || 1)) * ph,
+      r: q.f ? 4.4 : 2.8,
+      class: q.f ? "gal__dot gal__dot--flag" : "gal__dot" }));
   }
 
   svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
   svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
-  svg.appendChild(el("text", { x: L + pw / 2, y: H - 30, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 22, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel));
-  svg.appendChild(el("text", { x: 26, y: T + ph / 2, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
-                               transform: `rotate(-90 26 ${T + ph / 2})` }, p.ylabel));
+                               transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel));
 
   // legend, because two dot sizes carrying meaning need saying out loud
-  const lg = el("g", { transform: `translate(${L + pw - 210} ${T + 6})` });
-  lg.appendChild(el("circle", { cx: 6, cy: -4, r: 2.6, class: "gal__dot" }));
-  lg.appendChild(el("text", { x: 18, y: 0, class: "gal__tick" }, "no source LSTV label"));
-  lg.appendChild(el("circle", { cx: 6, cy: 18, r: 4.2, class: "gal__dot gal__dot--flag" }));
-  lg.appendChild(el("text", { x: 18, y: 22, class: "gal__tick" }, "carries an LSTV label"));
+  const lg = el("g", { transform: `translate(${L + pw - 250} ${T + 10})` });
+  lg.appendChild(el("circle", { cx: 8, cy: -5, r: 2.8, class: "gal__dot" }));
+  lg.appendChild(el("text", { x: 24, y: 1, class: "gal__tick" }, "no source LSTV label"));
+  lg.appendChild(el("circle", { cx: 8, cy: 22, r: 4.4, class: "gal__dot gal__dot--flag" }));
+  lg.appendChild(el("text", { x: 24, y: 28, class: "gal__tick" }, "carries an LSTV label"));
   svg.appendChild(lg);
 
   const wrap = document.createElement("figure");
@@ -353,37 +317,33 @@ function drawScatter(host, p) {
 }
 
 /* ---------------------------------------------------------- boot */
-export function initGallery() {
+function initGallery() {
   const grid = document.getElementById("gal-cases");
-  if (!grid) return;
-
-  for (const spec of CASES) {
-    const card = document.createElement("article");
-    card.className = "gal__case reveal";
-    card.innerHTML = `
-      <div class="gal__stage is-loading" data-case="${spec.id}">
-        <span class="gal__spin" aria-hidden="true"></span>
-      </div>
-      <div class="gal__meta">
-        <h3>${spec.title}</h3>
-        <p>${spec.blurb}</p>
-        <div class="gal__row">
-          <button class="gal__btn" type="button" data-act="focus">Isolate</button>
-          <span class="gal__id">case ${spec.id}</span>
+  if (grid) {
+    for (const spec of CASES) {
+      const card = document.createElement("article");
+      card.className = "gal__case reveal";
+      card.innerHTML = `
+        <div class="gal__stage is-loading" data-case="${spec.id}">
+          <span class="gal__spin" aria-hidden="true"></span>
         </div>
-      </div>`;
-    grid.appendChild(card);
+        <div class="gal__meta">
+          <h3>${spec.title}</h3>
+          <p>${spec.blurb}</p>
+          <div class="gal__row">
+            <span class="gal__hint">drag to turn</span>
+            <span class="gal__id">case ${spec.id}</span>
+          </div>
+        </div>`;
+      grid.appendChild(card);
 
-    const stage = card.querySelector(".gal__stage");
-    const v = makeViewer(stage, spec);
-    const btn = card.querySelector('[data-act="focus"]');
-    let on = false;
-    btn.addEventListener("click", () => {
-      on = !on;
-      v.highlight(on);
-      btn.textContent = on ? "Show all" : "Isolate";
-      btn.classList.toggle("is-on", on);
-    });
+      const stage = card.querySelector(".gal__stage");
+      const tt = makeTurntable(stage, spec);
+      // idle spin only while on screen: five cards cycling images off-screen is
+      // bandwidth and battery spent on nothing
+      new IntersectionObserver((es) => tt.spin(es[0].isIntersecting),
+                               { threshold: 0.25 }).observe(stage);
+    }
   }
 
   const dist = document.getElementById("gal-dist");
@@ -413,7 +373,7 @@ try {
 } catch (err) {
   const g = document.getElementById("gal-cases");
   if (g) {
-    g.innerHTML = `<p class="gal__err">The 3-D viewer failed to start: ${err.message}. ` +
+    g.innerHTML = `<p class="gal__err">The gallery failed to start: ${err.message}. ` +
                   `The published labels are unaffected.</p>`;
   }
   console.error("[gallery]", err);
