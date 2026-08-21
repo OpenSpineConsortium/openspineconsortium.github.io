@@ -524,12 +524,71 @@ function drawGrouped(host, p) {
   wrapPanel(host, p, svg, "", true);
 }
 
+/* A trend across ordered bins: median with an interquartile band, several measures at
+   once. Bands rather than error bars, because the point of this panel is which lines
+   MOVE and which one does not, and overlapping bands say that better than whiskers. */
+function drawTrend(host, p) {
+  const W = 760, H = 450, L = 96, R = 30, T = 34, B = 96;
+  const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
+  const bins = p.bins;
+  const all = p.series.flatMap((s) => s.q3.concat(s.q1));
+  const lo = Math.min(...all), hi = Math.max(...all);
+  const pad = (hi - lo) * 0.08;
+  const y0 = lo - pad, y1 = hi + pad;
+  const px = (i) => L + (bins.length === 1 ? pw / 2 : (i / (bins.length - 1)) * pw);
+  const py = (v) => T + ph - ((v - y0) / (y1 - y0)) * ph;
+
+  for (const v of niceTicks(y0, y1, 5)) {
+    svg.appendChild(el("line", { x1: L, x2: L + pw, y1: py(v), y2: py(v), class: "gal__grid" }));
+    svg.appendChild(el("text", { x: L - 14, y: py(v) + 7, class: "gal__tick",
+                                 "text-anchor": "end" }, v));
+  }
+  p.series.forEach((s, k) => {
+    let band = `M ${px(0)} ${py(s.q3[0])}`;
+    for (let i = 1; i < bins.length; i++) band += ` L ${px(i)} ${py(s.q3[i])}`;
+    for (let i = bins.length - 1; i >= 0; i--) band += ` L ${px(i)} ${py(s.q1[i])}`;
+    svg.appendChild(el("path", { d: band + " Z", class: `gal__s${k % 6}-fill` }));
+    let line = `M ${px(0)} ${py(s.med[0])}`;
+    for (let i = 1; i < bins.length; i++) line += ` L ${px(i)} ${py(s.med[i])}`;
+    svg.appendChild(el("path", { d: line, class: `gal__s${k % 6}-line` }));
+    for (let i = 0; i < bins.length; i++) {
+      const c = el("circle", { cx: px(i), cy: py(s.med[i]), r: 4,
+                               class: `gal__s${k % 6}-line`, fill: "currentColor" });
+      c.appendChild(el("title", null,
+        `${s.label}, ${bins[i]}: median ${s.med[i].toFixed(1)} (n = ${s.n[i]})`));
+      svg.appendChild(c);
+    }
+  });
+  svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
+  bins.forEach((b, i) => {
+    svg.appendChild(el("text", { x: px(i), y: T + ph + 32, class: "gal__tick",
+                                 "text-anchor": "middle" }, b));
+  });
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 22, class: "gal__axtitle",
+                               "text-anchor": "middle" }, p.xlabel || ""));
+  svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
+                               "text-anchor": "middle",
+                               transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel || ""));
+  const lg = el("g", { transform: `translate(${L + 14} ${T + 14})` });
+  p.series.forEach((s, k) => {
+    lg.appendChild(el("rect", { x: 0, y: k * 22 - 11, width: 18, height: 11,
+                                class: `gal__s${k % 6}-fill` }));
+    lg.appendChild(el("rect", { x: 0, y: k * 22 - 6, width: 18, height: 2.4,
+                                class: `gal__s${k % 6}-line`, fill: "currentColor" }));
+    lg.appendChild(el("text", { x: 26, y: k * 22 - 1, class: "gal__tick" }, s.label));
+  });
+  svg.appendChild(lg);
+  wrapPanel(host, p, svg, "", true);
+}
+
 function drawPanel(host, p) {
   if (p.type === "scatter") return drawScatter(host, p);
   if (p.type === "density") return drawDensity(host, p);
   if (p.type === "split") return drawSplit(host, p);
   if (p.type === "categorical") return drawCategorical(host, p);
   if (p.type === "grouped") return drawGrouped(host, p);
+  if (p.type === "trend") return drawTrend(host, p);
 }
 
 /* ---------------------------------------------------------- boot */
