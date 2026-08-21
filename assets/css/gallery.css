@@ -251,11 +251,14 @@
   font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600;
   color: var(--ink-faint); letter-spacing: 0.06em;
 }
-.gal__gizmo .gz { position: absolute; opacity: 0.75; }
-.gz--s { top: 10px; left: 50%; transform: translateX(-50%); }
-.gz--i { bottom: 10px; left: 50%; transform: translateX(-50%); }
-.gz--l { left: 10px; top: 50%; transform: translateY(-50%); }
-.gz--r { right: 10px; top: 50%; transform: translateY(-50%); }
+/* Each label is placed from the CENTRE by the transform the viewer computes, so the
+   letters track the specimen as it turns. Fixed corners would be lying the moment the
+   camera moved off the one view they were written for. */
+.gal__gizmo .gz {
+  position: absolute; top: 50%; left: 50%;
+  margin: -0.4em 0 0 -0.35em;
+  will-change: transform;
+}
 
 /* scale bar: recomputed every frame, because it is only true for one camera distance */
 .gal__scale {
