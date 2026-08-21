@@ -1,0 +1,29 @@
+{
+ "cases": [
+  {
+   "case": "0431",
+   "structures": 28,
+   "kB": 848
+  },
+  {
+   "case": "0033",
+   "structures": 34,
+   "kB": 975
+  },
+  {
+   "case": "0631",
+   "structures": 27,
+   "kB": 699
+  },
+  {
+   "case": "1035",
+   "structures": 30,
+   "kB": 1144
+  },
+  {
+   "case": "0004",
+   "structures": 37,
+   "kB": 1215
+  }
+ ]
+}
