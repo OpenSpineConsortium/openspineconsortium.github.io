@@ -470,11 +470,66 @@ function drawSplit(host, p) {
   wrapPanel(host, p, svg, "");
 }
 
+/* Grouped bars: the same categories measured in two or three populations. Percentages
+   rather than counts, because the groups differ in size by more than twenty to one and
+   raw counts would say nothing except that most people are typical. */
+function drawGrouped(host, p) {
+  const W = 760, H = 440, L = 96, R = 30, T = 34, B = 100;
+  const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
+  const cats = p.categories, ser = p.series;
+  const max = Math.max(...ser.flatMap((s) => s.pct), 1);
+  const gw = pw / cats.length;
+  const bw = Math.min(30, (gw - 10) / ser.length);
+
+  for (const v of niceTicks(0, max, 4)) {
+    const y = T + ph - (v / max) * ph;
+    svg.appendChild(el("line", { x1: L, x2: L + pw, y1: y, y2: y, class: "gal__grid" }));
+    svg.appendChild(el("text", { x: L - 14, y: y + 7, class: "gal__tick",
+                                 "text-anchor": "end" }, `${v}%`));
+  }
+  cats.forEach((c, i) => {
+    ser.forEach((s, k) => {
+      const pctv = s.pct[i] || 0;
+      const h = (pctv / max) * ph;
+      const x = L + i * gw + gw / 2 - (ser.length * bw) / 2 + k * bw;
+      const r = el("rect", { x: x + 1, y: T + ph - h, width: bw - 2, height: h,
+                             class: `gal__s${k % 6}-fill` });
+      r.appendChild(el("title", null, `${s.label}, ${c}: ${pctv.toFixed(0)}% (${s.counts[i]} cases)`));
+      svg.appendChild(r);
+      svg.appendChild(el("rect", { x: x + 1, y: T + ph - h, width: bw - 2, height: 2.5,
+                                   class: `gal__s${k % 6}-line`, fill: "currentColor" }));
+      if (pctv >= 4) {
+        svg.appendChild(el("text", { x: x + bw / 2, y: T + ph - h - 7, class: "gal__val",
+                                     "text-anchor": "middle" }, Math.round(pctv)));
+      }
+    });
+    svg.appendChild(el("text", { x: L + i * gw + gw / 2, y: T + ph + 30,
+                                 class: "gal__tick", "text-anchor": "middle" }, c));
+  });
+  svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 24, class: "gal__axtitle",
+                               "text-anchor": "middle" }, p.xlabel || p.title));
+  svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
+                               "text-anchor": "middle",
+                               transform: `rotate(-90 30 ${T + ph / 2})` }, "% of group"));
+  const lg = el("g", { transform: `translate(${L + pw - 250} ${T + 12})` });
+  ser.forEach((s, k) => {
+    lg.appendChild(el("rect", { x: 0, y: k * 22 - 11, width: 18, height: 11,
+                                class: `gal__s${k % 6}-fill` }));
+    lg.appendChild(el("text", { x: 26, y: k * 22 - 1, class: "gal__tick" },
+                    `${s.label} (n = ${s.n})`));
+  });
+  svg.appendChild(lg);
+  wrapPanel(host, p, svg, "", true);
+}
+
 function drawPanel(host, p) {
   if (p.type === "scatter") return drawScatter(host, p);
   if (p.type === "density") return drawDensity(host, p);
   if (p.type === "split") return drawSplit(host, p);
   if (p.type === "categorical") return drawCategorical(host, p);
+  if (p.type === "grouped") return drawGrouped(host, p);
 }
 
 /* ---------------------------------------------------------- boot */
