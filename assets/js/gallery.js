@@ -17,18 +17,30 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=09a8ffe3";
+import { createViewer } from "./viewer.js?v=51570501";
 
 const DATA = "assets/gallery/";
 const STILLS = DATA + "stills/";
 
 const CASES = [
-  { id: "0431", title: "A rib on a lumbar body", tag: "lumbar rib",
-    blurb: "An extra rib pair below the last thoracic one. It gets its own class in the " +
-           "release rather than being forced to be a twelfth rib, so the count stays " +
-           "honest whichever way you read it.",
+  { id: "0231", title: "A lumbar rib as long as the one above it", tag: "lumbar rib",
+    blurb: "Most extra ribs on a lumbar body are stubs. This one measures 99.6% the " +
+           "length of the rib above — a full rib on a body that should not have one. " +
+           "It gets its own class in the release rather than being forced to be a " +
+           "twelfth rib, so the count stays honest whichever way you read it.",
     focus: (s) => /lumbar/.test(s.name || "") },
-  { id: "0033", title: "A part-fused transitional vertebra", tag: "transitional",
+  { id: "0268", title: "Six rib-free bodies, and a process at the ala", tag: "transitional",
+    blurb: "Six vertebrae between the lowest rib and the sacrum instead of five, and " +
+           "the lowest one reaches out 106 mm to come within 1.3 mm of the sacral " +
+           "ala — close enough to articulate. Whether that is a lumbarised segment or " +
+           "an accessory joint depends on where the count starts.",
+    focus: (s) => s.name === "L6" || s.name === "sacrum" },
+  { id: "0349", title: "The widest transverse span in the cohort", tag: "near-contact",
+    blurb: "118 mm across the lowest lumbar transverse processes, with 1.3 mm left " +
+           "to the ala. This is the geometry Castellvi grades, shown without naming " +
+           "the level it happens at.",
+    focus: (s) => s.name === "L5" || s.name === "L6" || s.name === "sacrum" },
+  { id: "0033", title: "A part-fused transitional vertebra", tag: "part-fused",
     blurb: "Six rib-free bodies above the sacrum, the lowest incompletely fused on the " +
            "left. Whether that is a sacralised or a lumbarised segment depends entirely " +
            "on where the count starts — the fusion itself does not.",
@@ -47,17 +59,6 @@ const CASES = [
            "than as a mislabelled fragment is the difference between a phenotype and a " +
            "segmentation error.",
     focus: (s) => /rib_(left|right)_11$/.test(s.name || "") },
-  // NO INSTRUMENTATION CARD YET. The hardware classes (76-79) exist in the label scheme
-  // and are reserved, but no case in the release carries them: the first, an interbody
-  // cage bridging a lumbar interspace, needs hand annotation because dense metal leaves
-  // no image gradient where the boundary between the two bodies belongs. A card here
-  // would be claiming something the data does not contain.
-  { id: "1035", title: "A spine that carries hardware", tag: "pending annotation",
-    blurb: "Metal is present in this scan and detectable by density, but it is not yet " +
-           "segmented — so what you see is the bone alone. Instrumentation matters " +
-           "beyond completeness: metal bridging an interspace reads as fusion to any " +
-           "distance measurement that does not know it is there.",
-    focus: null },
   { id: "0004", title: "Unremarkable, for reference", tag: "reference",
     blurb: "Five rib-free bodies above the sacrum, twelve rib pairs, nothing " +
            "transitional. Most of the cohort looks like this.",

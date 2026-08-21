@@ -153,7 +153,23 @@ export function createViewer(host, opts) {
     if (opts.onFrame) opts.onFrame(cam, controls);
   }
 
-  /* ---- payload ---- */
+  /* ---- payload ----
+     LOADED ON APPROACH, NOT ON PAGE LOAD. Eight specimens is twenty-five megabytes of
+     geometry. Fetching all of it because the page was opened would cost a phone on
+     cellular most of that before it had scrolled to the gallery at all, so the fetch
+     waits until the card is within a screen height of the viewport. rootMargin, not
+     visibility: by the time a card is actually on screen it is too late to start. */
+  let started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    load();
+  }
+  new IntersectionObserver((e, obs) => {
+    if (e[0].isIntersecting) { obs.disconnect(); start(); }
+  }, { rootMargin: "100% 0px" }).observe(host);
+
+  function load() {
   fetch(`${dataUrl}${caseId}.json`)
     .then((r) => { if (!r.ok) throw new Error(`${caseId}.json ${r.status}`); return r.json(); })
     .then(async (head) => {
@@ -233,6 +249,7 @@ export function createViewer(host, opts) {
       onReady && onReady(api);
     })
     .catch((err) => { onFail && onFail(err); });
+  }
 
   /* ---- camera presets ---- */
   let anim = null;
