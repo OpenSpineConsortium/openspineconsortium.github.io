@@ -17,7 +17,7 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=51570501";
+import { createViewer } from "./viewer.js?v=9ffbdb78";
 
 const DATA = "assets/gallery/";
 const STILLS = DATA + "stills/";
@@ -81,6 +81,7 @@ function mountCase(grid, spec) {
   card.innerHTML = `
     <div class="gal__stage is-loading" data-case="${spec.id}">
       <span class="gal__spin" aria-hidden="true"></span>
+      <span class="gal__pct" aria-hidden="true"></span>
       <div class="gal__gizmo" aria-hidden="true"></div>
       <div class="gal__scale" aria-hidden="true"><i></i><b></b></div>
       <span class="gal__tag">${spec.tag}</span>
@@ -96,7 +97,9 @@ function mountCase(grid, spec) {
       <p>${spec.blurb}</p>
       <div class="gal__groups"></div>
       <ul class="gal__keys" aria-label="Viewer controls">
-        <li><b>Rotate</b> drag</li><li><b>Zoom</b> scroll</li><li><b>Pan</b> right-drag</li>
+        <li><b>Rotate</b> drag <span class="gal__touch">&middot; two fingers</span></li>
+        <li><b>Zoom</b> scroll <span class="gal__touch">&middot; pinch</span></li>
+        <li><b>Pan</b> right-drag</li>
       </ul>
       <div class="gal__row"><span class="gal__id">case ${spec.id}</span></div>
     </div>`;
@@ -106,6 +109,7 @@ function mountCase(grid, spec) {
   const bar = card.querySelector(".gal__bar");
   const groupBox = card.querySelector(".gal__groups");
   const gizmo = card.querySelector(".gal__gizmo");
+  const pct = card.querySelector(".gal__pct");
   const scaleEl = card.querySelector(".gal__scale");
   const scaleBar = scaleEl.querySelector("i");
   const scaleTxt = scaleEl.querySelector("b");
@@ -123,7 +127,9 @@ function mountCase(grid, spec) {
         "<li><b>Rotate</b> drag</li>" +
         "<li class='gal__degraded'>3-D unavailable here — showing rendered frames</li>";
     },
+    onProgress(f) { pct.textContent = `${Math.round(f * 100)}%`; },
     onReady(api) {
+      pct.remove();
       for (const g of api.groups()) {
         const lab = document.createElement("label");
         lab.className = "gal__grp";
