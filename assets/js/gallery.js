@@ -255,6 +255,73 @@ function drawPanel(host, p) {
   host.appendChild(wrap);
 }
 
+/* A fitted density curve, not bars. Bins put edges in the reader's eye that are not in
+   the data — the rib ratio drew two fat bars and the gap between the modes looked like an
+   artefact of where the cuts fell. The curve comes precomputed from the build step; the
+   ticks along the axis are the cases themselves, so the model never stands alone. */
+function drawDensity(host, p) {
+  const W = 760, H = 430, L = 96, R = 30, T = 34, B = 96;
+  const pw = W - L - R, ph = H - T - B;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "gal__svg",
+                          role: "img", "aria-label": p.title });
+
+  const xs = p.x, ys = p.y;
+  if (!xs || xs.length < 2) {
+    host.appendChild(el2("p", "Not enough cases to fit a curve.", "gal__err"));
+    return;
+  }
+  const x0 = xs[0], x1 = xs[xs.length - 1];
+  const ymax = Math.max(...ys) || 1;
+  const px = (v) => L + ((v - x0) / (x1 - x0)) * pw;
+  const py = (v) => T + ph - (v / ymax) * ph;
+
+  for (const v of niceTicks(0, ymax, 4)) {
+    svg.appendChild(el("line", { x1: L, x2: L + pw, y1: py(v), y2: py(v), class: "gal__grid" }));
+    svg.appendChild(el("text", { x: L - 14, y: py(v) + 7, class: "gal__tick",
+                                 "text-anchor": "end" }, v.toFixed(2)));
+  }
+
+  let d = `M ${px(xs[0]).toFixed(1)} ${py(ys[0]).toFixed(1)}`;
+  for (let i = 1; i < xs.length; i++) d += ` L ${px(xs[i]).toFixed(1)} ${py(ys[i]).toFixed(1)}`;
+  svg.appendChild(el("path", {
+    d: `${d} L ${px(x1).toFixed(1)} ${(T + ph).toFixed(1)} L ${px(x0).toFixed(1)} ${(T + ph).toFixed(1)} Z`,
+    class: "gal__dens-fill" }));
+  svg.appendChild(el("path", { d, class: "gal__dens-line" }));
+
+  // the observations under the model
+  if (p.rug) {
+    for (const v of p.rug) {
+      if (v < x0 || v > x1) continue;
+      svg.appendChild(el("line", { x1: px(v), x2: px(v), y1: T + ph + 3, y2: T + ph + 12,
+                                   class: "gal__rug" }));
+    }
+  }
+
+  svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
+  svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
+  for (const v of niceTicks(x0, x1, 5)) {
+    svg.appendChild(el("line", { x1: px(v), x2: px(v), y1: T + ph + 14, y2: T + ph + 20,
+                                 class: "gal__axis" }));
+    svg.appendChild(el("text", { x: px(v), y: T + ph + 40, class: "gal__tick",
+                                 "text-anchor": "middle" }, v));
+  }
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 18, class: "gal__axtitle",
+                               "text-anchor": "middle" }, p.xlabel || p.title));
+  svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
+                               "text-anchor": "middle",
+                               transform: `rotate(-90 30 ${T + ph / 2})` }, "density"));
+
+  const wrap = document.createElement("figure");
+  wrap.className = "gal__panel";
+  wrap.appendChild(el2("h4", p.title));
+  wrap.appendChild(el2("p", p.subtitle, "gal__sub"));
+  wrap.appendChild(svg);
+  const cap = document.createElement("figcaption");
+  cap.textContent = `${p.caption}  n = ${p.n}${p.bandwidth ? `, bandwidth ${p.bandwidth}` : ""}.`;
+  wrap.appendChild(cap);
+  host.appendChild(wrap);
+}
+
 function drawScatter(host, p) {
   const W = 760, H = 470, L = 96, R = 30, T = 30, B = 92;
   const pw = W - L - R, ph = H - T - B;
@@ -322,7 +389,12 @@ function initGallery() {
   if (grid) {
     for (const spec of CASES) {
       const card = document.createElement("article");
-      card.className = "gal__case reveal";
+      // NOT "reveal". That class sets opacity:0 and waits for the observer in main.js,
+      // which collects .reveal elements ONCE at load -- these cards are created after
+      // that, so nothing ever observes them and they stay invisible for good. This is
+      // why the meshes "never rendered": the canvas was fine, the card around it was
+      // transparent. A module must not depend on another module having already run.
+      card.className = "gal__case";
       card.innerHTML = `
         <div class="gal__stage is-loading" data-case="${spec.id}">
           <span class="gal__spin" aria-hidden="true"></span>
@@ -358,6 +430,7 @@ function initGallery() {
       }
       for (const p of d.panels) {
         if (p.type === "scatter") drawScatter(dist, p);
+        else if (p.type === "density") drawDensity(dist, p);
         else drawPanel(dist, p);
       }
     })
