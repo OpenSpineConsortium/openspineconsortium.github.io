@@ -1,0 +1,110 @@
+/* ============================================================
+   deck.css — presented-slide viewer and image lightbox.
+   Inherits the site tokens; adds only what these two need.
+   ============================================================ */
+
+.deck {
+  background: var(--paper-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.deck:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
+
+.deck__stage {
+  position: relative;
+  background: #14161a;              /* slides are designed on a dark stage; keep it */
+  /* a 16:9 box holds its shape while the image loads, so the page does not jump */
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.deck__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto; height: auto;
+  cursor: zoom-in;
+}
+.deck__err { padding: 1rem; color: var(--ochre); font-size: 0.9rem; }
+
+/* Navigation sits ON the stage. Large enough to hit with a thumb — the WCAG floor is
+   44px and a slide control that misses is worse than no control. */
+.deck__nav, .deck__full {
+  position: absolute;
+  border: 0;
+  background: rgba(20, 22, 26, 0.55);
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s var(--ease);
+}
+.deck__nav {
+  top: 50%; transform: translateY(-50%);
+  width: 46px; height: 64px;
+  font-size: 1.9rem;
+}
+.deck__nav--prev { left: 0; border-radius: 0 3px 3px 0; }
+.deck__nav--next { right: 0; border-radius: 3px 0 0 3px; }
+.deck__full {
+  right: 8px; bottom: 8px;
+  width: 40px; height: 40px;
+  font-size: 1.05rem; border-radius: 3px;
+}
+.deck__nav:hover, .deck__full:hover { background: rgba(20, 22, 26, 0.85); }
+.deck__nav:focus-visible, .deck__full:focus-visible {
+  outline: 2px solid var(--ochre); outline-offset: -2px;
+}
+
+.deck__bar {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid var(--line-soft);
+}
+.deck__count {
+  font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-faint);
+  min-width: 4.5em; font-variant-numeric: tabular-nums;
+}
+.deck__range { flex: 1; accent-color: var(--teal-deep); }
+
+/* ---------------------------------------------------------- lightbox */
+.lb {
+  position: fixed; inset: 0; z-index: 200;
+  display: none;
+  align-items: center; justify-content: center;
+  background: rgba(12, 13, 15, 0.93);
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  cursor: zoom-out;
+}
+.lb.is-open { display: flex; }
+.lb__img {
+  max-width: 100%;
+  /* dvh, not vh: the mobile URL bar makes vh overshoot and pushes the bottom of the
+     picture behind the browser chrome */
+  max-height: 92dvh;
+  object-fit: contain;
+  cursor: default;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+.lb__close {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px;
+  width: 44px; height: 44px;          /* thumb-sized, per WCAG target guidance */
+  border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: #fff;
+  font-size: 1.7rem; line-height: 1; cursor: pointer;
+}
+.lb__close:hover { background: rgba(255, 255, 255, 0.26); }
+.lb__close:focus-visible { outline: 2px solid var(--ochre); outline-offset: 2px; }
+
+/* a photograph that enlarges has to look like it will */
+.is-zoomable { cursor: zoom-in; transition: filter 0.18s var(--ease); }
+.is-zoomable:hover { filter: brightness(1.05); }
+.is-zoomable:focus-visible { outline: 2px solid var(--ochre); outline-offset: 3px; }
+
+@media (max-width: 640px) {
+  .deck__nav { width: 40px; height: 56px; font-size: 1.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deck__nav, .deck__full, .is-zoomable { transition: none; }
+}

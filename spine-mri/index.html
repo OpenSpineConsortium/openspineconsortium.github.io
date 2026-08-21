@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="series.css?v=20260801e">
+<link rel="stylesheet" href="../assets/css/deck.css?v=1">
 </head>
 <body class="sm-hub">
 
@@ -59,6 +60,22 @@
       Association of Neurosurgeons summer meeting. Read in order if the material is new to you; each
       part also stands on its own.
     </p>
+
+    <!-- The talk itself. Exported to images rather than embedded as a .pptx: an Office
+         Online embed needs a Microsoft server to fetch the file, renders in a
+         third-party iframe, and on a phone gives you a shrunken desktop UI. Images
+         lazy-load, pinch-zoom natively, and need nothing outside this domain. -->
+    <section class="smh__deck">
+      <h2 class="smh__h2">The talk</h2>
+      <p class="smh__d">
+        The slides as presented at the Michigan Association of Neurosurgeons summer
+        meeting. Swipe or use the arrows; tap a slide to see it full screen.
+      </p>
+      <div class="deck" id="deck" data-slides="slides/"></div>
+      <p class="smh__dl">
+        <a href="../MANS_Schwing.pptx" download>Download the original slides (.pptx, 12&nbsp;MB)</a>
+      </p>
+    </section>
 
     <ol class="smh__list">
 
@@ -160,5 +177,6 @@
   });
 })();
 </script>
+  <script type="module" src="../assets/js/deck.js?v=1"></script>
 </body>
 </html>
