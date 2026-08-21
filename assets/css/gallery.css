@@ -327,11 +327,22 @@
 .gal__ref { stroke: var(--ochre); stroke-width: 2; stroke-dasharray: 6 5; opacity: 0.85; }
 .gal__reftxt { font-family: var(--font-mono); font-size: 15px; fill: var(--ochre); }
 
-/* paired densities */
-.gal__s0-fill { fill: var(--teal); fill-opacity: 0.20; }
-.gal__s0-line { fill: none; stroke: var(--teal-deep); stroke-width: 2.2; }
-.gal__s1-fill { fill: var(--ochre); fill-opacity: 0.18; }
-.gal__s1-line { fill: none; stroke: var(--ochre); stroke-width: 2.2; }
+/* Overlaid densities. Two series is a comparison (female against male); five or six is
+   a GRADIENT down the spine, and the ramp has to read in order at a glance -- so it runs
+   cool to warm rather than through arbitrary hues. Fills stay light because six stacked
+   translucent areas otherwise turn to mud. */
+.gal__s0-fill { fill: #1c6b73; fill-opacity: 0.17; }
+.gal__s0-line { fill: none; stroke: #1c6b73; stroke-width: 2.2; }
+.gal__s1-fill { fill: #c98a1e; fill-opacity: 0.15; }
+.gal__s1-line { fill: none; stroke: #c98a1e; stroke-width: 2.2; }
+.gal__s2-fill { fill: #4b8f3f; fill-opacity: 0.14; }
+.gal__s2-line { fill: none; stroke: #4b8f3f; stroke-width: 2.2; }
+.gal__s3-fill { fill: #8c5bb0; fill-opacity: 0.14; }
+.gal__s3-line { fill: none; stroke: #8c5bb0; stroke-width: 2.2; }
+.gal__s4-fill { fill: #c1502e; fill-opacity: 0.14; }
+.gal__s4-line { fill: none; stroke: #c1502e; stroke-width: 2.2; }
+.gal__s5-fill { fill: #2f6fae; fill-opacity: 0.14; }
+.gal__s5-line { fill: none; stroke: #2f6fae; stroke-width: 2.2; }
 
 /* download progress: a few megabytes with no signal reads as a dead page */
 .gal__pct {

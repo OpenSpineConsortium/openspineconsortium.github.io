@@ -438,8 +438,8 @@ function drawSplit(host, p) {
     }
     svg.appendChild(el("path", {
       d: `${d} L ${px(x1).toFixed(1)} ${(T + ph).toFixed(1)} L ${px(x0).toFixed(1)} ${(T + ph).toFixed(1)} Z`,
-      class: `gal__s${i}-fill` }));
-    svg.appendChild(el("path", { d, class: `gal__s${i}-line` }));
+      class: `gal__s${i % 6}-fill` }));
+    svg.appendChild(el("path", { d, class: `gal__s${i % 6}-line` }));
   });
   svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
   svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
@@ -449,11 +449,16 @@ function drawSplit(host, p) {
     svg.appendChild(el("text", { x: px(v), y: T + ph + 34, class: "gal__tick",
                                  "text-anchor": "middle" }, v));
   }
+  // the legend has to fit however many series there are: two for a sex comparison,
+  // six for a gradient down the spine
   const lg = el("g", { transform: `translate(${L + pw - 215} ${T + 14})` });
+  const rowH = p.series.length > 3 ? 20 : 26;
   p.series.forEach((s, i) => {
-    lg.appendChild(el("rect", { x: 0, y: i * 26 - 12, width: 18, height: 12,
-                                class: `gal__s${i}-fill` }));
-    lg.appendChild(el("text", { x: 26, y: i * 26 - 2, class: "gal__tick" },
+    lg.appendChild(el("rect", { x: 0, y: i * rowH - 12, width: 18, height: 12,
+                                class: `gal__s${i % 6}-fill` }));
+    lg.appendChild(el("rect", { x: 0, y: i * rowH - 6, width: 18, height: 2,
+                                class: `gal__s${i % 6}-line`, fill: "currentColor" }));
+    lg.appendChild(el("text", { x: 26, y: i * rowH - 2, class: "gal__tick" },
                     `${s.label} (n = ${s.n})`));
   });
   svg.appendChild(lg);
