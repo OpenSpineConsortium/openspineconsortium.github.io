@@ -16530,6 +16530,304 @@
    "caption": "Median 55.1 degrees in women against 54.7 in men, a difference of 0.4. Pelvic dimorphism is strong in shape -- subpubic angle, inlet proportions, the sciatic notch -- and pelvic incidence is not one of those measures, so a null here agrees with the series that report no sex difference in it."
   },
   {
+   "key": "aging",
+   "section": "What changes with age, and what does not",
+   "section_note": "Adult spinal deformity is usually described in patients who already have it. These are people who came in for a colon screening, so what follows is the same mechanism seen before anyone complained of anything.",
+   "title": "Pelvic incidence holds still while the spine compensates around it",
+   "subtitle": "median and interquartile range, by decade",
+   "type": "trend",
+   "bins": [
+    "50s",
+    "60s",
+    "70s",
+    "80s"
+   ],
+   "series": [
+    {
+     "label": "pelvic incidence",
+     "med": [
+      55.0,
+      54.2,
+      53.8,
+      52.6
+     ],
+     "q1": [
+      47.6,
+      46.8,
+      49.1,
+      46.5
+     ],
+     "q3": [
+      62.9,
+      62.4,
+      64.4,
+      66.0
+     ],
+     "n": [
+      357,
+      229,
+      82,
+      40
+     ]
+    },
+    {
+     "label": "lumbar lordosis",
+     "med": [
+      52.2,
+      53.4,
+      52.9,
+      51.8
+     ],
+     "q1": [
+      44.0,
+      42.0,
+      44.7,
+      39.4
+     ],
+     "q3": [
+      62.6,
+      60.7,
+      63.7,
+      59.4
+     ],
+     "n": [
+      357,
+      229,
+      82,
+      40
+     ]
+    },
+    {
+     "label": "sacral slope",
+     "med": [
+      37.0,
+      36.7,
+      37.3,
+      35.4
+     ],
+     "q1": [
+      29.5,
+      29.6,
+      32.1,
+      28.2
+     ],
+     "q3": [
+      46.2,
+      45.4,
+      44.3,
+      43.4
+     ],
+     "n": [
+      357,
+      229,
+      82,
+      40
+     ]
+    },
+    {
+     "label": "pelvic tilt",
+     "med": [
+      17.0,
+      17.5,
+      17.2,
+      19.2
+     ],
+     "q1": [
+      12.2,
+      12.5,
+      12.9,
+      14.2
+     ],
+     "q3": [
+      22.2,
+      22.6,
+      23.5,
+      25.1
+     ],
+     "n": [
+      357,
+      229,
+      82,
+      40
+     ]
+    }
+   ],
+   "xlabel": "age",
+   "ylabel": "degrees",
+   "caption": "Pelvic incidence is a morphological property of the pelvis, fixed once the sacroiliac joints mature, and it moves -2.4 degrees across these decades. That flatness is a negative control: a cohort cannot fake it. Everything around it moves -- the pelvis retroverts, lordosis is lost, and the sacral slope follows because it is pelvic incidence less tilt. The lordosis a spine NEEDS is set by a number that never changes; what it HAS declines."
+  },
+  {
+   "key": "mismatch_age",
+   "section": "What changes with age, and what does not",
+   "title": "The gap between the lordosis a spine needs and the lordosis it has",
+   "subtitle": "PI-LL mismatch, median and interquartile range, by decade",
+   "type": "trend",
+   "bins": [
+    "50s",
+    "60s",
+    "70s",
+    "80s"
+   ],
+   "series": [
+    {
+     "label": "PI-LL mismatch",
+     "med": [
+      2.3,
+      2.5,
+      1.6,
+      7.8
+     ],
+     "q1": [
+      -4.3,
+      -4.2,
+      -4.7,
+      -1.3
+     ],
+     "q3": [
+      9.4,
+      9.6,
+      8.5,
+      13.9
+     ],
+     "n": [
+      357,
+      229,
+      82,
+      40
+     ]
+    }
+   ],
+   "xlabel": "age",
+   "ylabel": "degrees",
+   "caption": "Median 2.3 degrees in the youngest decade here and 7.8 in the oldest, against a threshold near 10 beyond which residual pain after fusion becomes likely. This is the same quantity surgeons plan a correction around, measured in people who were not being assessed for anything spinal."
+  },
+  {
+   "key": "agesex_pelvic_tilt_deg",
+   "section": "What changes with age, and what does not",
+   "title": "Pelvic tilt, by age and sex",
+   "subtitle": "median and interquartile range, women against men",
+   "type": "trend",
+   "bins": [
+    "50s",
+    "60s",
+    "70s"
+   ],
+   "series": [
+    {
+     "label": "female",
+     "med": [
+      17.0,
+      19.1,
+      16.9
+     ],
+     "q1": [
+      12.0,
+      13.7,
+      13.4
+     ],
+     "q3": [
+      23.4,
+      23.9,
+      21.8
+     ],
+     "n": [
+      196,
+      117,
+      51
+     ]
+    },
+    {
+     "label": "male",
+     "med": [
+      17.0,
+      16.3,
+      17.8
+     ],
+     "q1": [
+      13.0,
+      12.0,
+      11.6
+     ],
+     "q3": [
+      21.1,
+      22.2,
+      25.8
+     ],
+     "n": [
+      160,
+      112,
+      31
+     ]
+    }
+   ],
+   "xlabel": "age",
+   "ylabel": "degrees",
+   "caption": "The two bands sit on top of each other: the median difference between women and men across these decades is 1.2 degrees, on a measure whose interquartile range is several times that. Pelvic SHAPE is strongly dimorphic in this same cohort -- see the relative width panels -- but how the spine sits on that pelvis is not. Shape answers to obstetric constraint; alignment answers to balance, and balance does not care which pelvis it is on."
+  },
+  {
+   "key": "agesex_ll_supine_deg",
+   "section": "What changes with age, and what does not",
+   "title": "Lumbar lordosis, by age and sex",
+   "subtitle": "median and interquartile range, women against men",
+   "type": "trend",
+   "bins": [
+    "50s",
+    "60s",
+    "70s"
+   ],
+   "series": [
+    {
+     "label": "female",
+     "med": [
+      52.7,
+      51.4,
+      55.5
+     ],
+     "q1": [
+      44.5,
+      42.8,
+      46.0
+     ],
+     "q3": [
+      64.0,
+      59.2,
+      67.8
+     ],
+     "n": [
+      196,
+      117,
+      51
+     ]
+    },
+    {
+     "label": "male",
+     "med": [
+      51.1,
+      54.2,
+      50.3
+     ],
+     "q1": [
+      43.9,
+      42.0,
+      43.9
+     ],
+     "q3": [
+      61.5,
+      61.6,
+      54.8
+     ],
+     "n": [
+      160,
+      112,
+      31
+     ]
+    }
+   ],
+   "xlabel": "age",
+   "ylabel": "degrees",
+   "caption": "The two bands sit on top of each other: the median difference between women and men across these decades is 3.2 degrees, on a measure whose interquartile range is several times that. Pelvic SHAPE is strongly dimorphic in this same cohort -- see the relative width panels -- but how the spine sits on that pelvis is not. Shape answers to obstetric constraint; alignment answers to balance, and balance does not care which pelvis it is on."
+  },
+  {
    "key": "shape_bi_iliac_width_mm",
    "section": "Pelvic shape, by sex",
    "type": "split",
