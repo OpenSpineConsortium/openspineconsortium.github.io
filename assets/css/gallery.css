@@ -45,9 +45,10 @@
   background:
     radial-gradient(120% 90% at 50% 0%, #ffffff 0%, var(--paper-deep) 100%);
   display: block;
-  cursor: grab;
-  /* let a vertical swipe scroll the page; the handler claims the horizontal axis */
-  touch-action: pan-y;
+  /* the orbit controller claims both axes inside the stage; the page still scrolls
+     everywhere else on the card */
+  touch-action: none;
+  overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -206,3 +207,124 @@
 .gal__dens-fill { fill: var(--teal); fill-opacity: 0.16; stroke: none; }
 .gal__dens-line { fill: none; stroke: var(--teal-deep); stroke-width: 2.4; stroke-linejoin: round; }
 .gal__rug { stroke: var(--ink-faint); stroke-width: 1; opacity: 0.5; }
+
+/* Control legend. An orbit viewer has no chrome that announces what it does, and the
+   previous version answered that by spinning on its own -- which took control away from
+   the reader instead of handing it to them. Naming the gestures does the job without
+   moving anything. */
+.gal__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.01em;
+}
+.gal__keys b {
+  font-weight: 600;
+  color: var(--teal-deep);
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  margin-right: 0.28rem;
+}
+/* the fallback can only rotate, so it says only that */
+.gal__keys--limited { color: var(--ochre); }
+
+.gal__stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.gal__stage canvas:active { cursor: grabbing; }
+
+/* ============================================================
+   Viewer chrome. A bone render with no frame of reference is a picture; with axis
+   labels, named standard views and a scale bar it is something a reader can check a
+   claim against. All of it sits OVER the canvas so none of it costs layout height.
+   ============================================================ */
+
+.gal__stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.gal__stage canvas:active { cursor: grabbing; }
+
+/* anatomical axes. S/I/L/R rather than an XYZ triad: nobody reads a spine in x. */
+.gal__gizmo {
+  position: absolute; inset: 0; pointer-events: none;
+  font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600;
+  color: var(--ink-faint); letter-spacing: 0.06em;
+}
+.gal__gizmo .gz { position: absolute; opacity: 0.75; }
+.gz--s { top: 10px; left: 50%; transform: translateX(-50%); }
+.gz--i { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.gz--l { left: 10px; top: 50%; transform: translateY(-50%); }
+.gz--r { right: 10px; top: 50%; transform: translateY(-50%); }
+
+/* scale bar: recomputed every frame, because it is only true for one camera distance */
+.gal__scale {
+  position: absolute; left: 14px; bottom: 14px; pointer-events: none;
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft);
+}
+.gal__scale i {
+  display: block; height: 6px; width: 0;
+  border: 1px solid var(--ink-soft); border-top: 0;
+  transition: width 0.05s linear;
+}
+
+/* the case's phenotype, said once, where the eye lands first */
+.gal__tag {
+  position: absolute; top: 12px; right: 12px;
+  font-family: var(--font-body); font-size: 0.68rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--paper-card);
+  background: var(--teal-deep); padding: 0.22rem 0.5rem; border-radius: 2px;
+  opacity: 0.92;
+}
+
+/* standard views, named as a radiologist would ask for them */
+.gal__bar {
+  display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;
+  padding: 0.5rem 0.7rem;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--paper-deep);
+}
+.gal__vb {
+  font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.02em;
+  padding: 0.28rem 0.5rem; border: 1px solid transparent; border-radius: 2px;
+  background: transparent; color: var(--ink-soft); cursor: pointer;
+  transition: background 0.14s var(--ease), color 0.14s var(--ease);
+}
+.gal__vb:hover { background: var(--paper-card); color: var(--ink); }
+.gal__vb.is-on { background: var(--teal-deep); color: var(--paper-card); }
+.gal__vb:focus-visible { outline: 2px solid var(--ochre); outline-offset: 1px; }
+.gal__vb--wide { margin-left: auto; font-family: var(--font-body); font-size: 0.74rem; }
+.gal__bar-sep { flex: 1 1 auto; }
+
+/* group toggles: any spine hides its own posterior elements from most angles, so
+   controlling occlusion is not decoration */
+.gal__groups { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; margin: 0.2rem 0 0.1rem; }
+.gal__grp {
+  display: inline-flex; align-items: center; gap: 0.32rem;
+  font-size: 0.76rem; color: var(--ink-soft); cursor: pointer; user-select: none;
+}
+.gal__grp input { accent-color: var(--teal-deep); width: 13px; height: 13px; }
+.gal__grp em { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-faint); font-style: normal; }
+
+.gal__degraded { color: var(--ochre); }
+
+/* section headings inside the distributions block */
+.gal__secttl {
+  font-family: var(--font-display); font-size: 1.3rem; color: var(--ink);
+  margin: 2.4rem 0 0.2rem; padding-top: 1.4rem; border-top: 1px solid var(--line-soft);
+}
+.gal__secttl:first-child { margin-top: 0.6rem; border-top: 0; padding-top: 0; }
+.gal__secnote { max-width: 64ch; color: var(--ink-soft); font-size: 0.9rem; margin-bottom: 0.9rem; }
+
+/* a published reference value drawn on the axis, so a distribution can be read against
+   what is known rather than only against itself */
+.gal__ref { stroke: var(--ochre); stroke-width: 2; stroke-dasharray: 6 5; opacity: 0.85; }
+.gal__reftxt { font-family: var(--font-mono); font-size: 15px; fill: var(--ochre); }
+
+/* paired densities */
+.gal__s0-fill { fill: var(--teal); fill-opacity: 0.20; }
+.gal__s0-line { fill: none; stroke: var(--teal-deep); stroke-width: 2.2; }
+.gal__s1-fill { fill: var(--ochre); fill-opacity: 0.18; }
+.gal__s1-line { fill: none; stroke: var(--ochre); stroke-width: 2.2; }
