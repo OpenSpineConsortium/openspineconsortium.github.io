@@ -45,9 +45,10 @@
   background:
     radial-gradient(120% 90% at 50% 0%, #ffffff 0%, var(--paper-deep) 100%);
   display: block;
-  /* the orbit controller claims both axes inside the stage; the page still scrolls
-     everywhere else on the card */
-  touch-action: none;
+  /* ONE FINGER SCROLLS THE PAGE, two fingers turn the specimen. touch-action:none
+     here made the viewer swallow every vertical swipe that began on it, so the only way
+     past the gallery on a phone was to find a gap between cards. */
+  touch-action: pan-y;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
@@ -331,3 +332,19 @@
 .gal__s0-line { fill: none; stroke: var(--teal-deep); stroke-width: 2.2; }
 .gal__s1-fill { fill: var(--ochre); fill-opacity: 0.18; }
 .gal__s1-line { fill: none; stroke: var(--ochre); stroke-width: 2.2; }
+
+/* download progress: a few megabytes with no signal reads as a dead page */
+.gal__pct {
+  position: absolute; inset: 0; margin: auto;
+  width: 4em; height: 1.2em; top: calc(50% + 26px);
+  text-align: center;
+  font-family: var(--font-mono); font-size: 0.74rem; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.gal__stage:not(.is-loading) .gal__pct { display: none; }
+
+/* the touch equivalents, shown only where there is a touch screen */
+.gal__touch { display: none; color: var(--ink-faint); }
+@media (hover: none) and (pointer: coarse) {
+  .gal__touch { display: inline; }
+}

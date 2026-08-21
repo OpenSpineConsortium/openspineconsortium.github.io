@@ -111,7 +111,15 @@ export function createViewer(host, opts) {
   controls.enablePan = true;
   controls.screenSpacePanning = true;
   controls.autoRotate = false;              // it holds still until it is asked to move
-  renderer.domElement.style.touchAction = "none";
+
+  // ONE FINGER SCROLLS THE PAGE. TWO FINGERS TURN THE SPECIMEN.
+  // touch-action:none plus single-finger rotate meant the viewer swallowed every
+  // vertical swipe that started on it, so on a phone the only way past the gallery was
+  // to find a gap between cards. That is a trap, and it is the same one every embedded
+  // map used to set. OrbitControls treats an unrecognised touches.ONE as "do nothing",
+  // which combined with pan-y hands single-finger gestures back to the browser.
+  controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  renderer.domElement.style.touchAction = "pan-y";
 
   const root = new THREE.Group();
   scene.add(root);
@@ -173,8 +181,26 @@ export function createViewer(host, opts) {
   fetch(`${dataUrl}${caseId}.json`)
     .then((r) => { if (!r.ok) throw new Error(`${caseId}.json ${r.status}`); return r.json(); })
     .then(async (head) => {
-      const buf = await fetch(`${dataUrl}${caseId}.bin`)
-        .then((r) => { if (!r.ok) throw new Error(`${caseId}.bin ${r.status}`); return r.arrayBuffer(); });
+      // Stream the payload so the card can show real progress. A few megabytes with no
+      // signal at all reads as a broken page, and the reader gives up before it arrives.
+      const resp = await fetch(`${dataUrl}${caseId}.bin`);
+      if (!resp.ok) throw new Error(`${caseId}.bin ${resp.status}`);
+      const total = +(resp.headers.get("content-length") || 0);
+      let buf;
+      if (resp.body && total && opts.onProgress) {
+        const reader = resp.body.getReader();
+        const chunks = [];
+        let got = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          got += value.length;
+          opts.onProgress(got / total);
+        }
+        buf = new Blob(chunks).arrayBuffer ? await new Blob(chunks).arrayBuffer() : null;
+      }
+      if (!buf) buf = await (await fetch(`${dataUrl}${caseId}.bin`)).arrayBuffer();
       const lo = new THREE.Vector3(...head.bbox_lo);
       const hi = new THREE.Vector3(...head.bbox_hi);
       const span = new THREE.Vector3().subVectors(hi, lo);
