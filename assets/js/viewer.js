@@ -23,8 +23,8 @@
    segmentation tool never disagree about which vertebra is which.
    ============================================================ */
 
-import * as THREE from "./vendor/three.module.js";
-import { OrbitControls } from "./vendor/OrbitControls.js";
+import * as THREE from "./vendor/three.module.js?v=23f5aba7";
+import { OrbitControls } from "./vendor/OrbitControls.js?v=9cf437f1";
 
 const GROUPS = [
   { key: "vertebra", label: "Vertebrae" },
@@ -34,17 +34,42 @@ const GROUPS = [
   { key: "other", label: "Other" },
 ];
 
-// Standard radiographic views, named as a radiologist would ask for them. Each is a
-// direction the camera sits in, expressed in the patient frame (x right, y anterior,
-// z superior) so they stay correct whatever the volume's own axes were.
+// Standard radiographic views, named as a radiologist would ask for them. Each vector
+// is WHERE THE CAMERA SITS, in the patient frame: +x the patient's right, +y anterior,
+// +z superior. An anterior view therefore puts the camera in FRONT of the patient, at
+// +y — the first version had this inverted and every named view looked at the opposite
+// face.
 const VIEWS = {
-  anterior:  [0, -1, 0],
-  posterior: [0, 1, 0],
+  anterior:  [0, 1, 0],
+  posterior: [0, -1, 0],
   left:      [-1, 0, 0],
   right:     [1, 0, 0],
   superior:  [0, 0, 1],
-  oblique:   [0.75, -0.75, 0.28],
+  inferior:  [0, 0, -1],
+  oblique:   [0.7, 0.7, 0.25],
 };
+
+// Mesh vertices arrive in the LABEL ARRAY's axes, not in a patient frame — these
+// volumes are ('P','I','R'), so the first mesh axis runs posterior and the third runs
+// right. This builds the rotation from the file's own axis codes into (R, A, S), so the
+// views above mean what they say. Reading the codes rather than assuming a frame is the
+// same lesson that the sidedness check and the 0179 write both taught.
+const AXIS_DIR = { R: [1, 0, 0], L: [-1, 0, 0], A: [0, 1, 0], P: [0, -1, 0],
+                   S: [0, 0, 1], I: [0, 0, -1] };
+
+function patientBasis(axcodes) {
+  // default to RAS if a mesh predates the header carrying its codes
+  const codes = (axcodes && axcodes.length === 3) ? axcodes : ["R", "A", "S"];
+  const m = new THREE.Matrix4();
+  const c = [];
+  for (const k of codes) c.push(AXIS_DIR[k] || [0, 0, 0]);
+  // columns are where each mesh axis points in patient space
+  m.set(c[0][0], c[1][0], c[2][0], 0,
+        c[0][1], c[1][1], c[2][1], 0,
+        c[0][2], c[1][2], c[2][2], 0,
+        0, 0, 0, 1);
+  return m;
+}
 
 export function createViewer(host, opts) {
   const { dataUrl, caseId, onFail, onReady } = opts;
@@ -187,6 +212,10 @@ export function createViewer(host, opts) {
         parts.push({ mesh, meta: st, base: 1 });
       }
 
+      // rotate the specimen into the patient frame before anything measures or frames it
+      root.applyMatrix4(patientBasis(head.axcodes));
+      root.updateMatrixWorld(true);
+
       const box = new THREE.Box3().setFromObject(root);
       const mid = box.getCenter(new THREE.Vector3());
       root.position.sub(mid);
@@ -194,7 +223,7 @@ export function createViewer(host, opts) {
       radius = size.length() / 2;
       mmPerUnit = head.mm_per_unit || 1;
 
-      setView("oblique", false);
+      setView("anterior", false);
       controls.minDistance = radius * 0.35;
       controls.maxDistance = radius * 8;
       resize();
@@ -237,7 +266,7 @@ export function createViewer(host, opts) {
 
   const api = {
     setView,
-    reset() { setView("oblique"); controls.target.set(0, 0, 0); },
+    reset() { setView("anterior"); controls.target.set(0, 0, 0); },
     groups() {
       const seen = new Map();
       for (const p of parts) {
@@ -265,6 +294,32 @@ export function createViewer(host, opts) {
         p.mesh.position.copy(c.sub(root.position).multiplyScalar(amount * 0.35));
       }
     },
+    // WHERE EACH ANATOMICAL DIRECTION IS ON SCREEN, right now. Static S/I/L/R labels are
+    // only correct for one camera: in an anterior view the patient's left sits on the
+    // viewer's RIGHT, which is the radiographic convention and the opposite of what a
+    // fixed label would claim. So the gizmo is recomputed per frame, and only the four
+    // directions most in the plane of the screen are shown — a label for an axis
+    // pointing at the viewer means nothing.
+    axisScreen() {
+      const fwd = new THREE.Vector3().subVectors(controls.target, cam.position).normalize();
+      const up = cam.up.clone().normalize();
+      const right = new THREE.Vector3().crossVectors(fwd, up).normalize();
+      const dirs = {
+        R: [1, 0, 0], L: [-1, 0, 0], A: [0, 1, 0],
+        P: [0, -1, 0], S: [0, 0, 1], I: [0, 0, -1],
+      };
+      const out = [];
+      for (const k in dirs) {
+        const v = new THREE.Vector3(...dirs[k]);
+        const x = v.dot(right), y = v.dot(up), z = v.dot(fwd);
+        // in-plane length; an axis pointing down the barrel has almost none
+        const inPlane = Math.hypot(x, y);
+        if (inPlane > 0.34) out.push({ k, x, y: -y, depth: z, inPlane });
+      }
+      out.sort((a, b) => b.inPlane - a.inPlane);
+      return out.slice(0, 4);
+    },
+
     // pixels per millimetre at the target plane, for the scale bar
     pxPerMm() {
       const d = cam.position.distanceTo(controls.target);

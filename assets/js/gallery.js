@@ -17,7 +17,7 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js";
+import { createViewer } from "./viewer.js?v=09a8ffe3";
 
 const DATA = "assets/gallery/";
 const STILLS = DATA + "stills/";
@@ -80,10 +80,7 @@ function mountCase(grid, spec) {
   card.innerHTML = `
     <div class="gal__stage is-loading" data-case="${spec.id}">
       <span class="gal__spin" aria-hidden="true"></span>
-      <div class="gal__gizmo" aria-hidden="true">
-        <span class="gz gz--s">S</span><span class="gz gz--i">I</span>
-        <span class="gz gz--l">L</span><span class="gz gz--r">R</span>
-      </div>
+      <div class="gal__gizmo" aria-hidden="true"></div>
       <div class="gal__scale" aria-hidden="true"><i></i><b></b></div>
       <span class="gal__tag">${spec.tag}</span>
     </div>
@@ -107,6 +104,7 @@ function mountCase(grid, spec) {
   const stage = card.querySelector(".gal__stage");
   const bar = card.querySelector(".gal__bar");
   const groupBox = card.querySelector(".gal__groups");
+  const gizmo = card.querySelector(".gal__gizmo");
   const scaleEl = card.querySelector(".gal__scale");
   const scaleBar = scaleEl.querySelector("i");
   const scaleTxt = scaleEl.querySelector("b");
@@ -142,6 +140,15 @@ function mountCase(grid, spec) {
     // every frame rather than written once
     onFrame() {
       if (!v) return;
+      // anatomical axes, placed where they actually point on screen this frame
+      const ax = v.axisScreen();
+      if (ax.length) {
+        const w = stage.clientWidth / 2 - 20, h = stage.clientHeight / 2 - 20;
+        gizmo.innerHTML = ax.map((a) =>
+          `<span class="gz" style="transform:translate(${(a.x * w).toFixed(0)}px,` +
+          `${(a.y * h).toFixed(0)}px);opacity:${(0.45 + 0.5 * a.inPlane).toFixed(2)}">` +
+          `${a.k}</span>`).join("");
+      }
       const ppm = v.pxPerMm();
       if (!isFinite(ppm) || ppm <= 0) return;
       const want = 90 / ppm;
