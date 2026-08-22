@@ -362,3 +362,8 @@
 
 /* the reference band sits under the ridges as ground, not as another series */
 .gal__refband { fill: var(--ochre); fill-opacity: 0.10; }
+
+/* Uncertainty. Drawn UNDER the estimate it belongs to, in the same hue but lighter, so
+   it reads as the estimate being uncertain rather than as a second series. */
+.gal__ci-band { fill: var(--teal-deep); fill-opacity: 0.16; stroke: none; }
+.gal__whisk { stroke: var(--ink); stroke-width: 1.4; opacity: 0.65; }

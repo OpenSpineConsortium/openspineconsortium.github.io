@@ -279,6 +279,15 @@ function drawDensity(host, p) {
     svg.appendChild(el("text", { x: L - 14, y: py(v) + 7, class: "gal__tick",
                                  "text-anchor": "end" }, v.toFixed(2)));
   }
+  // POINTWISE 95% BAND, from the closed-form KDE variance rather than a bootstrap.
+  // It widens where the density is low, which is exactly where the curve is least
+  // supported by data — the honest place for a curve to look uncertain.
+  if (p.ylo && p.yhi) {
+    let b = `M ${px(xs[0]).toFixed(1)} ${py(p.yhi[0]).toFixed(1)}`;
+    for (let i = 1; i < xs.length; i++) b += ` L ${px(xs[i]).toFixed(1)} ${py(p.yhi[i]).toFixed(1)}`;
+    for (let i = xs.length - 1; i >= 0; i--) b += ` L ${px(xs[i]).toFixed(1)} ${py(p.ylo[i]).toFixed(1)}`;
+    svg.appendChild(el("path", { d: b + " Z", class: "gal__ci-band" }));
+  }
   let d = `M ${px(xs[0]).toFixed(1)} ${py(ys[0]).toFixed(1)}`;
   for (let i = 1; i < xs.length; i++) d += ` L ${px(xs[i]).toFixed(1)} ${py(ys[i]).toFixed(1)}`;
   svg.appendChild(el("path", {
@@ -340,6 +349,18 @@ function drawCategorical(host, p) {
                            width: Math.max(2, bw - 4), height: h, class: "gal__bar" });
     r.appendChild(el("title", null, `${p.categories[i]}: ${c} cases`));
     svg.appendChild(r);
+    // Wilson interval on the proportion, converted back to counts so it lives on the
+    // same axis as the bar it belongs to
+    if (p.ci_lo && p.total) {
+      const cl = (p.ci_lo[i] / 100) * p.total, ch = (p.ci_hi[i] / 100) * p.total;
+      const cx = L + i * bw + bw / 2;
+      svg.appendChild(el("line", { x1: cx, x2: cx, y1: T + ph - scale(cl),
+                                   y2: T + ph - scale(ch), class: "gal__whisk" }));
+      for (const b of [cl, ch]) {
+        svg.appendChild(el("line", { x1: cx - 5, x2: cx + 5, y1: T + ph - scale(b),
+                                     y2: T + ph - scale(b), class: "gal__whisk" }));
+      }
+    }
     if (c > 0) {
       svg.appendChild(el("text", { x: L + i * bw + bw / 2, y: T + ph - h - 9,
                                    class: "gal__val", "text-anchor": "middle" }, c));
@@ -498,6 +519,15 @@ function drawGrouped(host, p) {
       svg.appendChild(r);
       svg.appendChild(el("rect", { x: x + 1, y: T + ph - h, width: bw - 2, height: 2.5,
                                    class: `gal__s${k % 6}-line`, fill: "currentColor" }));
+      if (s.lo && s.hi) {
+        const cx = x + bw / 2;
+        const yl = T + ph - (s.lo[i] / max) * ph, yh = T + ph - (s.hi[i] / max) * ph;
+        svg.appendChild(el("line", { x1: cx, x2: cx, y1: yl, y2: yh, class: "gal__whisk" }));
+        for (const yy of [yl, yh]) {
+          svg.appendChild(el("line", { x1: cx - 4, x2: cx + 4, y1: yy, y2: yy,
+                                       class: "gal__whisk" }));
+        }
+      }
       if (pctv >= 4) {
         svg.appendChild(el("text", { x: x + bw / 2, y: T + ph - h - 7, class: "gal__val",
                                      "text-anchor": "middle" }, Math.round(pctv)));
@@ -624,8 +654,18 @@ function drawRidge(host, p) {
     svg.appendChild(el("path", { d, class: `gal__s${i % 6}-line`, fill: "none" }));
     // the median, marked on its own ridge
     if (s.med != null) {
-      svg.appendChild(el("line", { x1: px(s.med), x2: px(s.med), y1: base - 3,
-                                   y2: base + 3, class: "gal__axis" }));
+      // the median and its distribution-free interval (the notched-boxplot bound),
+      // which assumes nothing about shape — several of these are skewed or bimodal
+      if (s.med_lo != null && s.med_hi != null) {
+        svg.appendChild(el("line", { x1: px(s.med_lo), x2: px(s.med_hi),
+                                     y1: base + 1.5, y2: base + 1.5, class: "gal__whisk" }));
+        for (const b of [s.med_lo, s.med_hi]) {
+          svg.appendChild(el("line", { x1: px(b), x2: px(b), y1: base - 1.5,
+                                       y2: base + 4.5, class: "gal__whisk" }));
+        }
+      }
+      svg.appendChild(el("line", { x1: px(s.med), x2: px(s.med), y1: base - 5,
+                                   y2: base + 5, class: "gal__axis" }));
     }
     svg.appendChild(el("text", { x: L - 12, y: base - 3, class: "gal__tick",
                                  "text-anchor": "end" }, s.label));
