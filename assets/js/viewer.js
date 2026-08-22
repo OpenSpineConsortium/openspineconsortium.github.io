@@ -71,6 +71,10 @@ function patientBasis(axcodes) {
   return m;
 }
 
+// Shared across every viewer instance on the page: two cases showing the same structure
+// should compile that shader once, not twice. Keyed by appearance, so it is safe to share.
+const matCache = new Map();
+
 export function createViewer(host, opts) {
   const { dataUrl, caseId, onFail, onReady } = opts;
 
@@ -84,7 +88,10 @@ export function createViewer(host, opts) {
   }
   if (!renderer.getContext()) { onFail && onFail(new Error("no WebGL context")); return null; }
 
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // 2x device pixel ratio is FOUR TIMES the fragments shaded. On a mesh this
+  // smooth the difference is not visible and the cost is the whole frame budget
+  // on an integrated GPU.
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   // saturated label colours under three lights clip to white without this, and the
   // highlight that was carrying the curvature is the first thing lost
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -245,23 +252,42 @@ export function createViewer(host, opts) {
 
         const col = new THREE.Color(st.color[0] / 255, st.color[1] / 255, st.color[2] / 255);
         col.convertSRGBToLinear();
-        const mat = new THREE.MeshPhysicalMaterial({
-          color: col,
-          roughness: st.kind === "hardware" ? 0.22 : 0.52,
-          metalness: st.kind === "hardware" ? 0.85 : 0.0,
-          // a trace of sheen reads as the slight translucency of cortical bone; without
-          // it the surface looks like painted plastic
-          sheen: st.kind === "hardware" ? 0 : 0.25,
-          sheenRoughness: 0.8,
-          sheenColor: new THREE.Color(0xfff1e2),
-          clearcoat: st.kind === "hardware" ? 0.6 : 0,
-          transparent: true,
-          opacity: 1,
-          // DOUBLE SIDED. A rib is a thin shell; marching cubes on a two-voxel-thick mask
-          // leaves facets whose winding faces away, and back-face culling turns those
-          // into holes that open and close as the specimen turns.
-          side: THREE.DoubleSide,
-        });
+
+        // WHY NOT MeshPhysicalMaterial ANY MORE. It was one physical material PER
+        // STRUCTURE -- 37 of them -- each carrying sheen and clearcoat, each marked
+        // transparent, each double-sided, under four lights. Every one of those is a
+        // multiplier on fragment cost, and they compound:
+        //
+        //   sheen + clearcoat  two extra BRDF lobes evaluated per fragment
+        //   transparent:true   forces the alpha pipeline, so no early-z rejection and a
+        //                      depth sort every frame -- and opacity was 1, so it bought
+        //                      exactly nothing
+        //   DoubleSide         doubles the fragment work and disables backface culling
+        //   37 materials       37 distinct shader programs to compile before first paint,
+        //                      which is why it took so long to appear
+        //
+        // Phong with the same colour and lights is visually near-identical on opaque
+        // bone -- this is roughly what ITK-SNAP itself draws -- and costs a small
+        // fraction. Materials are cached by appearance so structures that look alike
+        // share one shader program and one upload.
+        const thin = st.kind === "rib" || st.kind === "hardware";
+        const key = st.color.join(",") + "|" + (st.kind === "hardware" ? "h" : "b")
+                    + "|" + (thin ? "d" : "f");
+        let mat = matCache.get(key);
+        if (!mat) {
+          mat = new THREE.MeshPhongMaterial({
+            color: col,
+            specular: st.kind === "hardware" ? 0x8a8a8a : 0x2a2622,
+            shininess: st.kind === "hardware" ? 90 : 18,
+            // DOUBLE SIDED ONLY WHERE IT IS EARNED. A rib is a thin shell and marching
+            // cubes on a two-voxel-thick mask leaves facets wound away from the camera;
+            // culling those opens holes that flicker as the specimen turns. A vertebral
+            // body is a closed solid and has no such facets, so it is culled normally
+            // and costs half as much to shade.
+            side: thin ? THREE.DoubleSide : THREE.FrontSide,
+          });
+          matCache.set(key, mat);
+        }
         const mesh = new THREE.Mesh(g, mat);
         mesh.userData = st;
         root.add(mesh);
