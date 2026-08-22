@@ -359,3 +359,6 @@
 @media (hover: none) and (pointer: coarse) {
   .gal__touch { display: inline; }
 }
+
+/* the reference band sits under the ridges as ground, not as another series */
+.gal__refband { fill: var(--ochre); fill-opacity: 0.10; }
