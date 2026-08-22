@@ -17,7 +17,7 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=9ffbdb78";
+import { createViewer } from "./viewer.js?v=e23dece8";
 
 const DATA = "assets/gallery/";
 const STILLS = DATA + "stills/";
