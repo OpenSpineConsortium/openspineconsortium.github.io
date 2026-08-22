@@ -105,8 +105,15 @@ export function createViewer(host, opts) {
 
   const controls = new OrbitControls(cam, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.085;
-  controls.rotateSpeed = 0.85;
+  controls.dampingFactor = 0.16;   // 0.085 lagged behind the pointer badly
+  controls.rotateSpeed = 1.0;
+  // KEEP THE ORBIT OFF THE POLES. Without this, dragging up carries the camera over the
+  // top, where azimuth degenerates and a small horizontal movement spins the specimen
+  // wildly -- which is what "the rotation is bad" feels like from the other side of the
+  // screen. Six degrees of margin is enough to stay out of the singularity while still
+  // allowing a near-superior view.
+  controls.minPolarAngle = 0.10;
+  controls.maxPolarAngle = Math.PI - 0.10;
   controls.zoomSpeed = 0.9;
   controls.enablePan = true;
   controls.screenSpacePanning = true;
@@ -138,14 +145,21 @@ export function createViewer(host, opts) {
   new IntersectionObserver((e) => { visible = e[0].isIntersecting; },
                            { threshold: 0.02 }).observe(host);
 
-  // lights ride with the camera so the specimen is lit from where it is being looked
-  // at; a fixed rig leaves half the orbit in shadow
+  // PART FIXED, PART FOLLOWING. Lights locked to the camera mean the shading never
+  // changes as the specimen turns, so it reads as sliding rather than rotating -- the
+  // motion cue that tells you it is a solid object disappears. A fully fixed rig has the
+  // opposite problem and leaves half the orbit in shadow. So the key light trails the
+  // camera by a fixed angle in world space, which keeps every side lit while letting the
+  // highlight travel across the surface as it turns.
+  const KEY_LAG = 0.55;      // radians the key light trails the camera azimuth
   function placeLights() {
     const d = cam.position.clone().sub(controls.target);
     const up = new THREE.Vector3(0, 0, 1);
     const side = new THREE.Vector3().crossVectors(d, up).normalize();
-    key.position.copy(controls.target).add(d).addScaledVector(side, d.length() * 0.55)
-       .addScaledVector(up, d.length() * 0.35);
+    // rotate the key direction about the world up by a fixed lag, so the highlight
+    // sweeps across the specimen instead of staying pinned to the viewer
+    const kd = d.clone().applyAxisAngle(up, KEY_LAG);
+    key.position.copy(controls.target).add(kd).addScaledVector(up, d.length() * 0.42);
     fill.position.copy(controls.target).add(d).addScaledVector(side, -d.length() * 0.7)
         .addScaledVector(up, -d.length() * 0.15);
     rim.position.copy(controls.target).addScaledVector(d, -0.9)
@@ -284,14 +298,20 @@ export function createViewer(host, opts) {
     const dir = new THREE.Vector3(v[0], v[1], v[2]).normalize();
     const dist = radius * 2.6;
     const to = dir.multiplyScalar(dist);
-    // superior looks straight down the up-axis, so the camera needs a different up or
-    // the orientation is undefined and three.js flips it arbitrarily
-    cam.up.set(0, 0, name === "superior" || name === "inferior" ? 0 : 1);
-    if (name === "superior") cam.up.set(0, 1, 0);
+    // UP IS NEVER ZERO. This line used to evaluate to (0,0,0) for the inferior view --
+    // a degenerate camera basis, and OrbitControls builds its whole orbit frame from
+    // object.up, so the rotation became undefined the moment that view was selected.
+    // Looking straight down the up-axis needs a DIFFERENT up, not an absent one.
+    if (name === "superior" || name === "inferior") {
+      cam.up.set(0, 1, 0);          // looking along z: anterior becomes screen-up
+    } else {
+      cam.up.set(0, 0, 1);          // everything else: superior is up, as it should be
+    }
     if (!animate) {
       cam.position.copy(to);
       controls.target.set(0, 0, 0);
       cam.lookAt(0, 0, 0);
+      controls.update();
       return;
     }
     const from = cam.position.clone();
@@ -303,6 +323,10 @@ export function createViewer(host, opts) {
       const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       cam.position.lerpVectors(from, to, e);
       cam.lookAt(0, 0, 0);
+      // OrbitControls re-derives its spherical frame from the camera position on every
+      // update, so telling it now keeps the preset move and the controller in step
+      // instead of letting them argue for a frame
+      controls.update();
       if (t < 1) anim = requestAnimationFrame(step);
     })();
   }
