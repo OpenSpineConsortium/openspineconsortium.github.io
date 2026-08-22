@@ -1,29 +1,44 @@
 {
  "cases": [
   {
-   "case": "0431",
-   "structures": 28,
-   "kB": 848
+   "case": "0231",
+   "structures": 23,
+   "kB": 843
+  },
+  {
+   "case": "0268",
+   "structures": 32,
+   "kB": 1122
+  },
+  {
+   "case": "0349",
+   "structures": 31,
+   "kB": 1105
   },
   {
    "case": "0033",
    "structures": 34,
-   "kB": 975
+   "kB": 1183
+  },
+  {
+   "case": "0378",
+   "structures": 26,
+   "kB": 942
+  },
+  {
+   "case": "1153",
+   "structures": 32,
+   "kB": 1147
   },
   {
    "case": "0631",
    "structures": 27,
-   "kB": 699
-  },
-  {
-   "case": "1035",
-   "structures": 30,
-   "kB": 1144
+   "kB": 948
   },
   {
    "case": "0004",
    "structures": 37,
-   "kB": 1215
+   "kB": 1291
   }
  ]
 }
