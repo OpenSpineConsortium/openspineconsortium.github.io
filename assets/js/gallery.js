@@ -582,6 +582,69 @@ function drawTrend(host, p) {
   wrapPanel(host, p, svg, "", true);
 }
 
+/* RIDGELINE: one density per age decade, stacked and overlapped.
+   A median-and-band line chart compresses each decade to three numbers and throws the
+   shape away, so a distribution that is shifting, spreading and skewing all at once
+   looks like a line that moves slightly. Stacked densities show the whole thing: where
+   the mass goes, whether a tail grows, whether a second mode appears. That is the
+   difference between "the median fell 4 units" and seeing a population slide. */
+function drawRidge(host, p) {
+  const rows = p.series.length;
+  const W = 760, L = 104, R = 34, T = 30, B = 76;
+  const RH = 46;                       // vertical pitch between ridges
+  const OVER = 2.05;                   // how far a ridge may rise into the one above
+  const H = T + rows * RH + B;
+  const { svg, pw } = frame(p, W, H, L, R, T, B);
+  const ph = rows * RH;
+
+  const x0 = p.x[0], x1 = p.x[p.x.length - 1];
+  const px = (v) => L + ((v - x0) / (x1 - x0)) * pw;
+  const gmax = Math.max(...p.series.flatMap((s) => s.y)) || 1;
+
+  // reference band, drawn under everything so it reads as ground rather than as a series
+  if (p.ref != null && p.ref_sd != null) {
+    svg.appendChild(el("rect", { x: px(p.ref - p.ref_sd), y: T,
+                                 width: px(p.ref + p.ref_sd) - px(p.ref - p.ref_sd),
+                                 height: ph, class: "gal__refband" }));
+    svg.appendChild(el("line", { x1: px(p.ref), x2: px(p.ref), y1: T, y2: T + ph,
+                                 class: "gal__ref" }));
+  }
+
+  // draw from the BACK so nearer ridges overlap the ones behind, as a range of hills does
+  for (let i = rows - 1; i >= 0; i--) {
+    const s = p.series[i];
+    const base = T + (i + 1) * RH;
+    const sc = (RH * OVER) / gmax;
+    let d = `M ${px(s.x[0]).toFixed(1)} ${base.toFixed(1)}`;
+    for (let k = 0; k < s.x.length; k++) {
+      d += ` L ${px(s.x[k]).toFixed(1)} ${(base - s.y[k] * sc).toFixed(1)}`;
+    }
+    d += ` L ${px(s.x[s.x.length - 1]).toFixed(1)} ${base.toFixed(1)} Z`;
+    svg.appendChild(el("path", { d, class: `gal__s${i % 6}-fill`, "fill-opacity": 0.82 }));
+    svg.appendChild(el("path", { d, class: `gal__s${i % 6}-line`, fill: "none" }));
+    // the median, marked on its own ridge
+    if (s.med != null) {
+      svg.appendChild(el("line", { x1: px(s.med), x2: px(s.med), y1: base - 3,
+                                   y2: base + 3, class: "gal__axis" }));
+    }
+    svg.appendChild(el("text", { x: L - 12, y: base - 3, class: "gal__tick",
+                                 "text-anchor": "end" }, s.label));
+    svg.appendChild(el("text", { x: L + pw + 6, y: base - 3, class: "gal__tick" },
+                    s.med != null ? s.med.toFixed(1) : ""));
+  }
+
+  svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
+  for (const v of niceTicks(x0, x1, 5)) {
+    svg.appendChild(el("line", { x1: px(v), x2: px(v), y1: T + ph, y2: T + ph + 7,
+                                 class: "gal__axis" }));
+    svg.appendChild(el("text", { x: px(v), y: T + ph + 30, class: "gal__tick",
+                                 "text-anchor": "middle" }, v));
+  }
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - 22, class: "gal__axtitle",
+                               "text-anchor": "middle" }, p.xlabel || ""));
+  wrapPanel(host, p, svg, "", true);
+}
+
 function drawPanel(host, p) {
   if (p.type === "scatter") return drawScatter(host, p);
   if (p.type === "density") return drawDensity(host, p);
@@ -589,6 +652,7 @@ function drawPanel(host, p) {
   if (p.type === "categorical") return drawCategorical(host, p);
   if (p.type === "grouped") return drawGrouped(host, p);
   if (p.type === "trend") return drawTrend(host, p);
+  if (p.type === "ridge") return drawRidge(host, p);
 }
 
 /* ---------------------------------------------------------- boot */
