@@ -111,6 +111,12 @@ export function createViewer(host, opts) {
   scene.add(key, fill, rim, amb);
 
   const controls = new OrbitControls(cam, renderer.domElement);
+  // declared here, before anything can ask for a frame: `let` is not hoisted,
+  // so a resize firing during setup would otherwise hit the temporal dead zone
+  let needsRender = true;
+  function invalidate() { needsRender = true; }
+  controls.addEventListener("change", invalidate);
+
   controls.enableDamping = true;
   controls.dampingFactor = 0.16;   // 0.085 lagged behind the pointer badly
   controls.rotateSpeed = 1.0;
@@ -145,6 +151,7 @@ export function createViewer(host, opts) {
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
+    invalidate();   // resize changes the projection
     cam.aspect = w / h;
     cam.updateProjectionMatrix();
   }
@@ -173,10 +180,26 @@ export function createViewer(host, opts) {
        .addScaledVector(up, d.length() * 0.5);
   }
 
+  // RENDER ON DEMAND, NOT EVERY FRAME.
+  //
+  // This drew a full frame sixty times a second whether or not anything had moved --
+  // recomputing four light positions, re-shading every triangle, and handing the GPU a
+  // fresh frame of identical pixels. On a desktop that is merely wasteful. On a laptop or
+  // a phone it saturates the GPU, heats the device, and the browser responds by throttling
+  // the whole tab, which is felt as exactly the sluggishness this was meant to avoid.
+  //
+  // A viewer only needs a frame when something changed: the pointer moved the camera,
+  // damping is still coasting, an animation is running, or the canvas resized. OrbitControls
+  // reports the first two through its change event and by returning true from update()
+  // while damping is still settling.
   function tick() {
     raf = requestAnimationFrame(tick);
     if (!visible || !ready) return;
-    controls.update();
+    // update() returns true while damping is still moving the camera; that is the signal
+    // to keep drawing until it settles, and to stop when it has
+    const moving = controls.update();
+    if (!moving && !needsRender) return;
+    needsRender = false;
     placeLights();
     renderer.render(scene, cam);
     if (opts.onFrame) opts.onFrame(cam, controls);
@@ -354,6 +377,7 @@ export function createViewer(host, opts) {
       // instead of letting them argue for a frame
       controls.update();
       if (t < 1) anim = requestAnimationFrame(step);
+    invalidate();   // the fly-to animation
     })();
   }
 
