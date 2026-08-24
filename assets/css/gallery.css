@@ -375,6 +375,23 @@
   border-top: 1px solid rgba(26, 28, 24, .12);
   padding-top: .5rem;
 }
+
+/* The construction diagram, shown under the plots it explains. */
+.gal__howto {
+  margin-top: .9rem;
+  border-top: 1px solid rgba(26, 28, 24, .12);
+  padding-top: .7rem;
+}
+.gal__howto > figcaption {
+  font-size: .8rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .6;
+  margin-bottom: .5rem;
+}
+.gal__howto img { display: block; width: 100%; height: auto; border-radius: 4px; }
+
+/* superseded by the rules above; kept harmless for any cached markup */
 .gal__howto > summary {
   cursor: pointer;
   font-size: .84rem;
