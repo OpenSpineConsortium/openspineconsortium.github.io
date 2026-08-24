@@ -101,6 +101,13 @@ export function createViewer(host, opts) {
 
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(35, 1, 0.5, 20000);
+  // THE PATIENT'S SUPERIOR AXIS IS +Z HERE, NOT +Y. patientBasis maps S to [0,0,1], and
+  // three.js defaults camera.up to +Y, which in this frame is ANTERIOR -- so OrbitControls
+  // built its azimuth around an axis running out through the specimen's belly and a
+  // sideways drag rolled it through a U rather than turning it. It was also degenerate at
+  // the opening view, since VIEWS.anterior puts the camera on +Y while up was +Y: looking
+  // along your own up vector, where orientation is undefined.
+  cam.up.set(0, 0, 1);
 
   // three-point lighting: key for form, fill to keep the shadow side readable, rim to
   // separate the specimen from the ground it sits on
@@ -136,8 +143,12 @@ export function createViewer(host, opts) {
   // long axis, tilt a little to see over the iliac crest or under the sacral promontory,
   // and never end up looking down the axis of rotation. Azimuth stays unlimited; polar is
   // held to roughly 40 degrees either side of the equator.
-  controls.minPolarAngle = Math.PI * 0.28;
-  controls.maxPolarAngle = Math.PI * 0.72;
+  // With up on the superior axis, polar is a tilt toward the superior or inferior view and
+  // 55 degrees either side of the equator is a proper look down onto the promontory or up
+  // under it, while stopping short of the pole. The previous 40 was compensating for a
+  // rotation that felt wrong for an entirely different reason.
+  controls.minPolarAngle = Math.PI * 0.19;
+  controls.maxPolarAngle = Math.PI * 0.81;
   controls.zoomSpeed = 0.9;
   controls.enablePan = true;
   controls.screenSpacePanning = true;
@@ -453,6 +464,9 @@ export function createViewer(host, opts) {
     },
     setGroupVisible(kind, on) {
       for (const p of parts) if ((p.meta.kind || "other") === kind) p.mesh.visible = on;
+      // CHANGING THE SCENE IS A REASON TO DRAW. Render-on-demand only hears about camera
+      // movement, so without this the checkbox appeared to do nothing until the next drag.
+      invalidate();
     },
     // isolate does not HIDE the rest: a structure with no surroundings loses the very
     // relationship the case is an example of. It fades them to a ghost instead.
@@ -462,12 +476,14 @@ export function createViewer(host, opts) {
         p.mesh.material.opacity = pred ? (hit ? 1 : 0.07) : 1;
         p.mesh.material.depthWrite = !pred || hit;
       }
+      invalidate();
     },
     explode(amount) {
       for (const p of parts) {
         const c = new THREE.Box3().setFromObject(p.mesh).getCenter(new THREE.Vector3());
         p.mesh.position.copy(c.sub(root.position).multiplyScalar(amount * 0.35));
       }
+      invalidate();
     },
     // WHERE EACH ANATOMICAL DIRECTION IS ON SCREEN, right now. Static S/I/L/R labels are
     // only correct for one camera: in an anterior view the patient's left sits on the
