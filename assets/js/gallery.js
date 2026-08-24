@@ -294,7 +294,66 @@ function niceTicks(lo, hi, want) {
 function frame(p, W, H, L, R, T, B) {
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "gal__svg",
                           role: "img", "aria-label": p.title });
+  // wrapPanel receives only the finished element, so anything wanting to place content in
+  // plot coordinates -- the measurement inset -- needs the axes recorded here.
+  svg.__plot = { L, R, T, B, W, H, pw: W - L - R, ph: H - T - B };
   return { svg, pw: W - L - R, ph: H - T - B };
+}
+
+/* A coarse left-to-right profile of however this panel carries its data, normalised to
+   [0,1]. Used only to decide which half of the plot has more ink in it. */
+function inkProfile(p) {
+  const cand = [];
+  if (Array.isArray(p.y)) cand.push(p.y);
+  if (Array.isArray(p.values)) cand.push(p.values);
+  for (const s2 of p.series || []) {
+    if (Array.isArray(s2.y)) cand.push(s2.y);
+    else if (Array.isArray(s2.med)) cand.push(s2.med);
+  }
+  if (!cand.length) return null;
+  const n = Math.max(...cand.map((a) => a.length));
+  if (n < 2) return null;
+  const out = new Array(n).fill(0);
+  for (const a of cand) {
+    for (let i = 0; i < n; i++) {
+      const v = +a[Math.min(a.length - 1, Math.round(i * (a.length - 1) / (n - 1)))];
+      if (isFinite(v)) out[i] = Math.max(out[i], v);
+    }
+  }
+  const hi = Math.max(...out) || 1;
+  return out.map((v) => v / hi);
+}
+
+/* Add the construction diagram as an inset in the emptiest top corner of the plot. */
+function addInset(svg, p, href) {
+  const g = svg.__plot;
+  if (!g) return false;
+  const size = Math.min(g.pw * 0.34, g.ph * 0.62);
+  if (size < 90) return false;
+  const prof = inkProfile(p);
+  let right = true;
+  if (prof) {
+    const half = Math.floor(prof.length / 2);
+    const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+    right = mean(prof.slice(half)) < mean(prof.slice(0, half));
+  }
+  const x = right ? g.L + g.pw - size - 6 : g.L + 6;
+  const y = g.T + 6;
+  const box = el("g", { class: "gal__inset" });
+  box.appendChild(el("rect", { x: x - 5, y: y - 5, width: size + 10, height: size + 10,
+                               rx: 6, class: "gal__inset-bg" }));
+  const im = document.createElementNS(NS, "image");
+  im.setAttribute("x", x); im.setAttribute("y", y);
+  im.setAttribute("width", size); im.setAttribute("height", size);
+  im.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  im.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
+  im.setAttribute("href", href);
+  box.appendChild(im);
+  const cap = el("text", { x: x + size / 2, y: y + size + 14, class: "gal__inset-cap",
+                           "text-anchor": "middle" }, "what is measured");
+  box.appendChild(cap);
+  svg.appendChild(box);
+  return true;
 }
 
 /* .gal__tick is monospace and reaches 19px at the widest breakpoint, so a character is
@@ -369,22 +428,7 @@ function wrapPanel(host, p, svg, extra, wide) {
   // the FIRST panel in each section that uses it. Sections group measures that share a
   // construction, so in practice that is once per section, next to the plots it explains.
   const measure = MEASURES[p.key];
-  const seenKey = `${p.section || ""}::${measure}`;
-  if (measure && !SHOWN_MEASURES.has(seenKey)) {
-    SHOWN_MEASURES.add(seenKey);
-    const box = document.createElement("figure");
-    box.className = "gal__howto";
-    const img = document.createElement("img");
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.src = `${DATA}measures/${measure}`;
-    img.alt = `The construction behind ${p.title}`;
-    const cap2 = document.createElement("figcaption");
-    cap2.textContent = "How this is measured";
-    box.appendChild(cap2);
-    box.appendChild(img);
-    fig.appendChild(box);
-  }
+  if (measure) addInset(svg, p, `${DATA}measures/${measure}`);
 
   host.appendChild(fig);
 }

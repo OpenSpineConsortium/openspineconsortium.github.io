@@ -18,6 +18,12 @@
   "disc_height": "disc_height.svg",
   "disc_ratio": "disc_height.svg",
   "disc_by_group": "disc_height.svg",
-  "vacuum": "disc_height.svg"
+  "vacuum": "disc_height.svg",
+  "agesex_ll_supine_deg": "pelvic_incidence.svg",
+  "ll_supine_deg": "pelvic_incidence.svg",
+  "ridge_ll_supine_deg": "pelvic_incidence.svg",
+  "grad_tp_span": "endplate_flare.svg",
+  "grad_canal_width": "endplate_flare.svg",
+  "wedge": "endplate_flare.svg"
  }
 }
