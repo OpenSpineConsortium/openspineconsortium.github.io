@@ -295,6 +295,30 @@ function frame(p, W, H, L, R, T, B) {
   return { svg, pw: W - L - R, ph: H - T - B };
 }
 
+/* .gal__tick is monospace and reaches 19px at the widest breakpoint, so a character is
+   about this many user units wide. Measuring properly would need the text in the document
+   already; this errs high, which is the safe direction for a box that must not overflow. */
+const CH_W = 11.8;
+
+/* Trend series carry one count per age band. Printing the array was both wrong for the
+   reader and four times too wide for the legend it sat in. */
+function nText(n) {
+  if (n == null) return "";
+  const total = Array.isArray(n) ? n.reduce((a, b) => a + (+b || 0), 0) : n;
+  return ` (n = ${total})`;
+}
+
+/* A legend sized to its contents and kept inside the plot. Returns the <g> to append. */
+function legendAt(L, pw, T, dy, labels, side) {
+  const widest = labels.reduce((m, t) => Math.max(m, String(t).length), 0);
+  const boxW = 26 + widest * CH_W + 8;
+  const x = side === "left"
+    ? L + 14
+    : Math.max(L + 8, L + pw - boxW);
+  return el("g", { transform: `translate(${x} ${T + dy})` });
+}
+
+
 function wrapPanel(host, p, svg, extra, wide) {
   const fig = document.createElement("figure");
   fig.className = "gal__panel" + (wide ? " gal__panel--wide" : "");
@@ -495,7 +519,9 @@ function drawScatter(host, p) {
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel));
   if (p.legend !== false) {
-    const lg = el("g", { transform: `translate(${L + pw - 250} ${T + 10})` });
+    const lg = legendAt(L, pw, T, 10,
+                        [p.legend_a || "no source LSTV label",
+                         p.legend_b || "carries an LSTV label"]);
     lg.appendChild(el("circle", { cx: 8, cy: -5, r: 2.8, class: "gal__dot" }));
     lg.appendChild(el("text", { x: 24, y: 1, class: "gal__tick" },
                     p.legend_a || "no source LSTV label"));
@@ -542,7 +568,7 @@ function drawSplit(host, p) {
   }
   // the legend has to fit however many series there are: two for a sex comparison,
   // six for a gradient down the spine
-  const lg = el("g", { transform: `translate(${L + pw - 215} ${T + 14})` });
+  const lg = legendAt(L, pw, T, 14, p.series.map((s) => `${s.label}${nText(s.n)}`));
   const rowH = p.series.length > 3 ? 20 : 26;
   p.series.forEach((s, i) => {
     lg.appendChild(el("rect", { x: 0, y: i * rowH - 12, width: 18, height: 12,
@@ -550,7 +576,7 @@ function drawSplit(host, p) {
     lg.appendChild(el("rect", { x: 0, y: i * rowH - 6, width: 18, height: 2,
                                 class: `gal__s${i % 6}-line`, fill: "currentColor" }));
     lg.appendChild(el("text", { x: 26, y: i * rowH - 2, class: "gal__tick" },
-                    `${s.label} (n = ${s.n})`));
+                    `${s.label}${nText(s.n)}`));
   });
   svg.appendChild(lg);
   svg.appendChild(el("text", { x: L + pw / 2, y: H - 18, class: "gal__axtitle",
@@ -613,12 +639,12 @@ function drawGrouped(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, "% of group"));
-  const lg = el("g", { transform: `translate(${L + pw - 250} ${T + 12})` });
+  const lg = legendAt(L, pw, T, 12, p.series.map((s) => `${s.label}${nText(s.n)}`));
   ser.forEach((s, k) => {
     lg.appendChild(el("rect", { x: 0, y: k * 22 - 11, width: 18, height: 11,
                                 class: `gal__s${k % 6}-fill` }));
     lg.appendChild(el("text", { x: 26, y: k * 22 - 1, class: "gal__tick" },
-                    `${s.label} (n = ${s.n})`));
+                    `${s.label}${nText(s.n)}`));
   });
   svg.appendChild(lg);
   wrapPanel(host, p, svg, "", true);
@@ -670,7 +696,7 @@ function drawTrend(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel || ""));
-  const lg = el("g", { transform: `translate(${L + 14} ${T + 14})` });
+  const lg = legendAt(L, pw, T, 14, p.series.map((s) => s.label), "left");
   p.series.forEach((s, k) => {
     lg.appendChild(el("rect", { x: 0, y: k * 22 - 11, width: 18, height: 11,
                                 class: `gal__s${k % 6}-fill` }));
@@ -690,7 +716,9 @@ function drawTrend(host, p) {
    difference between "the median fell 4 units" and seeing a population slide. */
 function drawRidge(host, p) {
   const rows = p.series.length;
-  const W = 760, L = 104, R = 34, T = 30, B = 76;
+  // R holds the per-ridge median, drawn six units past the plot edge in a five-character
+  // monospace face -- about 60 units of text. At 34 it ran off the viewBox.
+  const W = 760, L = 104, R = 62, T = 30, B = 76;
   const RH = 46;                       // vertical pitch between ridges
   const OVER = 2.05;                   // how far a ridge may rise into the one above
   const H = T + rows * RH + B;
