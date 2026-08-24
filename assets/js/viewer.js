@@ -44,8 +44,18 @@ const VIEWS = {
   posterior: [0, -1, 0],
   left:      [-1, 0, 0],
   right:     [1, 0, 0],
-  superior:  [0, 0, 1],
-  inferior:  [0, 0, -1],
+  // AS FAR OVERHEAD AS A TURNTABLE ALLOWS, WHICH IS NOT THE POLE. Straight up +z is the
+  // camera's own up vector, where the basis is degenerate and orientation is undefined.
+  // The old workaround swapped camera.up for these two views, which silently
+  // desynchronised the controller (see the note by cam.up).
+  //
+  // The tilt is not a free choice: minPolarAngle is 0.19pi, so anything nearer the pole
+  // than that gets clamped on the first update and the preset visibly snaps somewhere
+  // else. A first attempt at fifteen degrees did exactly that. These sit at 0.21pi --
+  // 37.8 degrees off vertical, just inside the clamp -- so the button gives the most
+  // superior view the turntable permits and holds it.
+  superior:  [0, 0.613, 0.790],
+  inferior:  [0, 0.613, -0.790],
   oblique:   [0.7, 0.7, 0.25],
 };
 
@@ -416,15 +426,12 @@ export function createViewer(host, opts) {
     const dir = new THREE.Vector3(v[0], v[1], v[2]).normalize();
     const dist = radius * 2.6;
     const to = dir.multiplyScalar(dist);
-    // UP IS NEVER ZERO. This line used to evaluate to (0,0,0) for the inferior view --
-    // a degenerate camera basis, and OrbitControls builds its whole orbit frame from
-    // object.up, so the rotation became undefined the moment that view was selected.
-    // Looking straight down the up-axis needs a DIFFERENT up, not an absent one.
-    if (name === "superior" || name === "inferior") {
-      cam.up.set(0, 1, 0);          // looking along z: anterior becomes screen-up
-    } else {
-      cam.up.set(0, 0, 1);          // everything else: superior is up, as it should be
-    }
+    // UP IS NOT TOUCHED HERE, EVER. OrbitControls captures its orbit axis from camera.up
+    // in its constructor and never re-reads it, so changing up now moves only the roll
+    // that lookAt applies -- the controller keeps orbiting about the axis it was born
+    // with. The two then disagree and a sideways drag sweeps the specimen through a U.
+    // The superior and inferior presets are tilted off the pole instead, so no view needs
+    // a different up and the turntable stays a turntable.
     if (!animate) {
       cam.position.copy(to);
       controls.target.set(0, 0, 0);

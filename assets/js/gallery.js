@@ -90,6 +90,22 @@ const VIEW_BUTTONS = [
 ];
 
 /* ---------------------------------------------------------- a case card */
+/* ONE OBSERVER FOR THE WHOLE DECK. A per-card observer would work and would also mean
+   ten observers watching ten elements; this watches all of them and disconnects each entry
+   as it fires, so a card is never started twice. Browsers without IntersectionObserver get
+   the old behaviour -- everything at once -- which is slow but not broken. */
+const nearViewport = ("IntersectionObserver" in window)
+  ? new IntersectionObserver((entries, obs) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        obs.unobserve(e.target);
+        const go = e.target.__start;
+        if (go) { delete e.target.__start; go(); }
+      }
+    }, { rootMargin: "150% 0px" })
+  : null;
+
+
 function mountCase(grid, spec) {
   const card = document.createElement("article");
   // NOT "reveal": that class sets opacity:0 and waits for an observer in main.js which
@@ -134,6 +150,9 @@ function mountCase(grid, spec) {
   const scaleTxt = scaleEl.querySelector("b");
   let isolated = false;
 
+  // everything below this point is the expensive half: it fetches the mesh, builds the
+  // geometry and starts a render loop. It runs when the card approaches the viewport.
+  function start() {
   const v = createViewer(stage, {
     dataUrl: DATA,
     caseId: spec.id,
@@ -200,6 +219,14 @@ function mountCase(grid, spec) {
       b.classList.toggle("is-on", isolated);
     }
   });
+  }
+
+  if (nearViewport) {
+    card.__start = start;
+    nearViewport.observe(card);
+  } else {
+    start();
+  }
 }
 
 /* stills fallback — only reached when WebGL is genuinely unavailable */
