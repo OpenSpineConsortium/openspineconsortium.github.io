@@ -20,6 +20,9 @@
 import { createViewer } from "./viewer.js?v=e23dece8";
 
 const DATA = "assets/gallery/";
+/* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
+   panel with no entry simply gets no explainer rather than a broken control. */
+let MEASURES = {};
 const STILLS = DATA + "stills/";
 
 const CASES = [
@@ -274,6 +277,30 @@ function wrapPanel(host, p, svg, extra, wide) {
   const cap = document.createElement("figcaption");
   cap.textContent = (p.caption || "") + (extra || "");
   fig.appendChild(cap);
+
+  // WHAT THE NUMBER IS, not just how it is distributed. The diagram is drawn from real
+  // released labels using the extractor's own geometry, so it explains this exact
+  // measurement rather than a textbook version of it.
+  const measure = MEASURES[p.key];
+  if (measure) {
+    const det = document.createElement("details");
+    det.className = "gal__howto";
+    const sum = document.createElement("summary");
+    sum.textContent = "How this is measured";
+    det.appendChild(sum);
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.alt = `The construction behind ${p.title}`;
+    // src is set on first open: an <img> inside a closed <details> is still fetched by
+    // most browsers, and forty-seven of them at load is the whole point of collapsing.
+    det.addEventListener("toggle", () => {
+      if (det.open && !img.src) img.src = `${DATA}measures/${measure}`;
+    }, { once: false });
+    det.appendChild(img);
+    fig.appendChild(det);
+  }
+
   host.appendChild(fig);
 }
 
@@ -718,7 +745,13 @@ function initGallery() {
 
   const dist = document.getElementById("gal-dist");
   if (!dist) return;
-  fetch(`${DATA}distributions.json`)
+  // the measure index is optional: if it is missing the panels still draw, without
+  // explainers, which is strictly better than the section failing to render
+  fetch(`${DATA}measures/index.json`)
+    .then((r) => (r.ok ? r.json() : { panels: {} }))
+    .catch(() => ({ panels: {} }))
+    .then((mi) => { MEASURES = (mi && mi.panels) || {}; })
+    .then(() => fetch(`${DATA}distributions.json`))
     .then((r) => r.json())
     .then((d) => {
       const n = document.getElementById("gal-n");

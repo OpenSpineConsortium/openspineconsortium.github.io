@@ -1,0 +1,23 @@
+{
+ "panels": {
+  "pelvic_incidence_deg": "pelvic_incidence.svg",
+  "sacral_slope_deg": "pelvic_incidence.svg",
+  "pelvic_tilt_deg": "pelvic_incidence.svg",
+  "pi_ll_mismatch_deg": "pelvic_incidence.svg",
+  "pi_vs_ll": "pelvic_incidence.svg",
+  "pi_by_sex": "pelvic_incidence.svg",
+  "aging": "pelvic_incidence.svg",
+  "mismatch_age": "pelvic_incidence.svg",
+  "agesex_pelvic_tilt_deg": "pelvic_incidence.svg",
+  "ridge_pelvic_incidence_deg": "pelvic_incidence.svg",
+  "ridge_pelvic_tilt_deg": "pelvic_incidence.svg",
+  "grad_endplate_width": "endplate_flare.svg",
+  "vertebral_size_sex": "endplate_flare.svg",
+  "osteophyte": "endplate_flare.svg",
+  "grad_body_height": "endplate_flare.svg",
+  "disc_height": "disc_height.svg",
+  "disc_ratio": "disc_height.svg",
+  "disc_by_group": "disc_height.svg",
+  "vacuum": "disc_height.svg"
+ }
+}
