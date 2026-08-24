@@ -376,20 +376,18 @@
   padding-top: .5rem;
 }
 
-/* The construction diagram, shown under the plots it explains. */
-.gal__howto {
-  margin-top: .9rem;
-  border-top: 1px solid rgba(26, 28, 24, .12);
-  padding-top: .7rem;
+/* The construction diagram, inset in the plot it explains. */
+.gal__inset-bg {
+  fill: var(--paper, #f4f2ec);
+  stroke: var(--line-soft, rgba(26, 28, 24, .16));
+  stroke-width: 1;
 }
-.gal__howto > figcaption {
-  font-size: .8rem;
+.gal__inset-cap {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  fill: var(--ink-faint);
   letter-spacing: .04em;
-  text-transform: uppercase;
-  opacity: .6;
-  margin-bottom: .5rem;
 }
-.gal__howto img { display: block; width: 100%; height: auto; border-radius: 4px; }
 
 /* superseded by the rules above; kept harmless for any cached markup */
 .gal__howto > summary {
