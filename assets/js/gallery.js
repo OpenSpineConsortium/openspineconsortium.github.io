@@ -23,15 +23,16 @@ const DATA = "assets/gallery/";
 const STILLS = DATA + "stills/";
 
 const CASES = [
-  { id: "1090", title: "A full extra pair of ribs, on a lumbar vertebra", tag: "lumbar rib",
-    blurb: "117 mm of rib on both sides of a vertebra that should carry none — four times " +
-           "the bone of a typical lumbar rib, and long enough to be mistaken for the " +
-           "twelfth pair on any scan that cannot see the thoracic spine above it. That " +
-           "mistake moves every level below it by one. Here it takes its own class rather " +
-           "than being forced to be rib 12, so the count stays honest whichever way you " +
-           "read the junction. Elsewhere in the cohort the same phenotype appears as a " +
-           "stub a few millimetres long; case 0231 carries one measuring 99.6% the length " +
-           "of the rib above it, proportionally complete but a quarter the size of this.",
+  { id: "1090", title: "A thirteenth rib-bearing level", tag: "lumbar rib",
+    blurb: "Below twelve ordinary rib pairs, one more: 120 mm on the left and 114 mm on " +
+           "the right, articulating with the body at 0.8 mm — about seventy per cent the " +
+           "length of the twelfth pair, and nothing like the stub the term “lumbar rib” " +
+           "usually calls to mind. Four bodies below it are rib-free instead of the usual " +
+           "five. Whether to call this a lumbar vertebra bearing ribs or a thirteenth " +
+           "thoracic vertebra cannot be settled from this scan, which begins at T8 and so " +
+           "offers no C2 to count down from; the two readings differ only in the number " +
+           "assigned. The separate class is what lets the file decline to guess. Forcing " +
+           "it to be rib 12 would shift every level beneath it by one.",
     focus: (s) => /lumbar/.test(s.name || "") },
   { id: "0268", title: "Six rib-free bodies, and a process at the ala", tag: "transitional",
     blurb: "Six vertebrae between the lowest rib and the sacrum instead of five, and " +
@@ -49,20 +50,31 @@ const CASES = [
            "left. Whether that is a sacralised or a lumbarised segment depends entirely " +
            "on where the count starts — the fusion itself does not.",
     focus: (s) => s.name === "L6" || s.name === "sacrum" },
-  { id: "0631", title: "A hypoplastic twelfth rib", tag: "hypoplastic",
-    blurb: "The lowest rib is a fraction of the one above it. Measured across the whole " +
-           "cohort this is not one distribution with a long tail but two populations.",
-    focus: (s) => /rib_(left|right)_12$/.test(s.name || "") },
+  { id: "0631", title: "A hypoplastic twelfth rib, and a gap that is ours", tag: "hypoplastic",
+    blurb: "On the right, 45 mm of rib against 120 mm above it, articulating at 1.5 mm: " +
+           "hypoplastic, and measured as such. On the left the label holds 12 mm of bone " +
+           "sitting 5.3 mm clear of the vertebra. A costovertebral joint measures one to " +
+           "two millimetres, so that separation is not anatomy — it is the segmentation " +
+           "stopping short of bone that is present on the CT, and it is queued for " +
+           "correction. Across the cohort the lowest-rib ratio is not one distribution " +
+           "with a long tail but two populations.",
+    focus: (s) => /rib_(left|right)_1[12]$/.test(s.name || "") },
   { id: "0378", title: "Aplastic on one side only", tag: "asymmetric",
     blurb: "A small twelfth rib on one side and none on the other. What the segmentation " +
            "first carried on the absent side was 428 fragments of stray label averaging " +
            "under two voxels each — not a rib, and now recorded as an absence.",
     focus: (s) => /rib_(left|right)_1[12]$/.test(s.name || "") },
-  { id: "1153", title: "Aplastic twelfth ribs", tag: "aplastic",
-    blurb: "The count ends at eleven on both sides. Recording that as an absence rather " +
-           "than as a mislabelled fragment is the difference between a phenotype and a " +
-           "segmentation error.",
-    focus: (s) => /rib_(left|right)_11$/.test(s.name || "") },
+  { id: "1153", title: "Eleven rib pairs, and two readings of why", tag: "aplastic",
+    blurb: "One long rib on each side reaches T11 and nothing articulates below it. That " +
+           "is either a twelfth pair that never formed, or a twelfth thoracic vertebra " +
+           "behaving as a lumbar one — six rib-free presacral bodies instead of five. " +
+           "Nothing in a field of view starting at T6 decides between them, because both " +
+           "readings need a count from C2. Morphology is the better hint than counting " +
+           "here: a body that is shaped like a lumbar vertebra is evidence about what it " +
+           "is, and that evidence is local. This case also carries the failure it " +
+           "illustrates — 1,211 stray fragments, none above 36 voxels, sit in two rib " +
+           "classes and are queued for removal.",
+    focus: (s) => /rib_(left|right)_1[12]$/.test(s.name || "") },
   { id: "0004", title: "Unremarkable, for reference", tag: "reference",
     blurb: "Five rib-free bodies above the sacrum, twelve rib pairs, nothing " +
            "transitional. Most of the cohort looks like this.",
