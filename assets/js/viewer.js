@@ -120,13 +120,24 @@ export function createViewer(host, opts) {
   controls.enableDamping = true;
   controls.dampingFactor = 0.16;   // 0.085 lagged behind the pointer badly
   controls.rotateSpeed = 1.0;
-  // KEEP THE ORBIT OFF THE POLES. Without this, dragging up carries the camera over the
-  // top, where azimuth degenerates and a small horizontal movement spins the specimen
-  // wildly -- which is what "the rotation is bad" feels like from the other side of the
-  // screen. Six degrees of margin is enough to stay out of the singularity while still
-  // allowing a near-superior view.
-  controls.minPolarAngle = 0.10;
-  controls.maxPolarAngle = Math.PI - 0.10;
+  // and damp the vertical component so a diagonal drag reads as the horizontal spin it
+  // was almost certainly meant to be. OrbitControls has no per-axis speed, so the polar
+  // step is scaled by intercepting its rotateUp.
+  if (typeof controls.rotateUp === "function") {
+    const rotateUp = controls.rotateUp.bind(controls);
+    controls.rotateUp = (angle) => rotateUp(angle * 0.45);
+  }
+  // A TURNTABLE, NOT A FREE ORBIT. Six degrees off the poles kept the camera out of the
+  // singularity but still allowed it most of the sphere, so a drag that was meant to spin
+  // the specimen left-right also swung it overhead, and near the top a small horizontal
+  // movement moves it enormously. That is what a "combined AP and LR swivel" feels like.
+  //
+  // What a reader wants from an anatomical specimen is a turntable: spin it about its own
+  // long axis, tilt a little to see over the iliac crest or under the sacral promontory,
+  // and never end up looking down the axis of rotation. Azimuth stays unlimited; polar is
+  // held to roughly 40 degrees either side of the equator.
+  controls.minPolarAngle = Math.PI * 0.28;
+  controls.maxPolarAngle = Math.PI * 0.72;
   controls.zoomSpeed = 0.9;
   controls.enablePan = true;
   controls.screenSpacePanning = true;
@@ -333,7 +344,14 @@ export function createViewer(host, opts) {
         // bone -- this is roughly what ITK-SNAP itself draws -- and costs a small
         // fraction. Materials are cached by appearance so structures that look alike
         // share one shader program and one upload.
-        const thin = st.kind === "rib" || st.kind === "hardware";
+        // EVERYTHING IS DOUBLE SIDED. This was limited to ribs and hardware on the
+        // grounds that a vertebral body is a closed solid and costs half as much to shade
+        // when culled -- true, but the iliac wing is thin bone, often one or two voxels
+        // through, and so are the sacral ala and a vertebral lamina. Culling a surface
+        // whose facets are wound away from the camera is exactly how a hip ends up with
+        // holes in it. The shading cost predates render-on-demand: frames are drawn only
+        // while the pointer moves, so it is paid during a drag rather than at rest.
+        const thin = true;
         const key = st.color.join(",") + "|" + (st.kind === "hardware" ? "h" : "b")
                     + "|" + (thin ? "d" : "f");
         let mat = matCache.get(key);
