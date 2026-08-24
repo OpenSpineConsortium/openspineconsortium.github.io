@@ -22,7 +22,7 @@
 /* ---------------------------------------------------------- cases */
 .gal__cases {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr));
   gap: 1.6rem;
   margin-bottom: 3.2rem;
 }
@@ -141,7 +141,7 @@
   /* WIDE panels. A 760-unit viewBox squeezed into a 330px card scales the type down to
      about 8px; at 560px+ the scale factor is near 1 and the labels read at their design
      size. This is the fix for "the axis titles are unreadable" -- not a bigger font. */
-  grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(560px, 100%), 1fr));
   gap: 1.6rem 1.8rem;
 }
 
