@@ -55,14 +55,15 @@ const CASES = [
            "left. Whether that is a sacralised or a lumbarised segment depends entirely " +
            "on where the count starts — the fusion itself does not.",
     focus: (s) => s.name === "L6" || s.name === "sacrum" },
-  { id: "0631", title: "A hypoplastic twelfth rib, and a gap that is ours", tag: "hypoplastic",
+  { id: "0631", title: "A hypoplastic twelfth rib", tag: "hypoplastic",
     blurb: "On the right, 45 mm of rib against 120 mm above it, articulating at 1.5 mm: " +
-           "hypoplastic, and measured as such. On the left the label holds 12 mm of bone " +
-           "sitting 5.3 mm clear of the vertebra. A costovertebral joint measures one to " +
-           "two millimetres, so that separation is not anatomy — it is the segmentation " +
-           "stopping short of bone that is present on the CT, and it is queued for " +
-           "correction. Across the cohort the lowest-rib ratio is not one distribution " +
-           "with a long tail but two populations.",
+           "hypoplastic, and measured as such. The left side was carrying a segmentation " +
+           "error rather than a phenotype — 12 mm of bone sitting 5.3 mm clear of the " +
+           "vertebra, where a costovertebral joint measures one to two. It was painted " +
+           "back onto the bone that was always there on the CT and now reaches 18.7 mm, " +
+           "articulating at 0.9 mm. The lowest-rib ratio moved from 0.10 to 0.16 for this " +
+           "record. Across the cohort that ratio is not one distribution with a long tail " +
+           "but two populations.",
     focus: (s) => /rib_(left|right)_1[12]$/.test(s.name || "") },
   { id: "0378", title: "Aplastic on one side only", tag: "asymmetric",
     blurb: "A small twelfth rib on one side and none on the other. What the segmentation " +
@@ -595,13 +596,13 @@ function drawScatter(host, p) {
   }
   svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
   svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
-  svg.appendChild(el("text", { x: L + pw / 2, y: H - 22, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - legH - 22, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel));
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel));
   if (legLabels.length) {
-    legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+    legendBelow(svg, legLabels, L, pw, H - legH + 20, (g, i) => {
       g.appendChild(el("circle", { cx: 9, cy: 0, r: i ? 4.4 : 2.8,
                                    class: i ? "gal__dot gal__dot--flag" : "gal__dot" }));
     });
@@ -645,13 +646,13 @@ function drawSplit(host, p) {
     svg.appendChild(el("text", { x: px(v), y: T + ph + 34, class: "gal__tick",
                                  "text-anchor": "middle" }, v));
   }
-  legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+  legendBelow(svg, legLabels, L, pw, H - legH + 20, (g, i) => {
     g.appendChild(el("rect", { x: 0, y: -9, width: 18, height: 12,
                                class: `gal__s${i % 6}-fill` }));
     g.appendChild(el("rect", { x: 0, y: -3, width: 18, height: 2,
                                class: `gal__s${i % 6}-line`, fill: "currentColor" }));
   });
-  svg.appendChild(el("text", { x: L + pw / 2, y: H - 18, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - legH - 18, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel || p.title));
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
@@ -709,13 +710,13 @@ function drawGrouped(host, p) {
   });
   svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
   svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
-  svg.appendChild(el("text", { x: L + pw / 2, y: H - 24, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - legH - 24, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel || p.title));
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, "% of group"));
   if (legLabels.length) {
-    legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+    legendBelow(svg, legLabels, L, pw, H - legH + 20, (g, i) => {
       g.appendChild(el("rect", { x: 0, y: -8, width: 18, height: 11,
                                  class: `gal__s${i % 6}-fill` }));
     });
@@ -767,12 +768,12 @@ function drawTrend(host, p) {
     svg.appendChild(el("text", { x: px(i), y: T + ph + 32, class: "gal__tick",
                                  "text-anchor": "middle" }, b));
   });
-  svg.appendChild(el("text", { x: L + pw / 2, y: H - 22, class: "gal__axtitle",
+  svg.appendChild(el("text", { x: L + pw / 2, y: H - legH - 22, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel || ""));
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel || ""));
-  legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+  legendBelow(svg, legLabels, L, pw, H - legH + 20, (g, i) => {
     g.appendChild(el("rect", { x: 0, y: -8, width: 18, height: 11,
                                class: `gal__s${i % 6}-fill` }));
     g.appendChild(el("rect", { x: 0, y: -3, width: 18, height: 2.4,
