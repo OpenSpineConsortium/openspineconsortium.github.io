@@ -23,6 +23,8 @@ const DATA = "assets/gallery/";
 /* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
    panel with no entry simply gets no explainer rather than a broken control. */
 let MEASURES = {};
+/* one diagram per (section, construction) -- see the note in wrapPanel */
+const SHOWN_MEASURES = new Set();
 const STILLS = DATA + "stills/";
 
 const CASES = [
@@ -308,14 +310,41 @@ function nText(n) {
   return ` (n = ${total})`;
 }
 
-/* A legend sized to its contents and kept inside the plot. Returns the <g> to append. */
-function legendAt(L, pw, T, dy, labels, side) {
-  const widest = labels.reduce((m, t) => Math.max(m, String(t).length), 0);
-  const boxW = 26 + widest * CH_W + 8;
-  const x = side === "left"
-    ? L + 14
-    : Math.max(L + 8, L + pw - boxW);
-  return el("g", { transform: `translate(${x} ${T + dy})` });
+const LEG_ROW_H = 26;        // vertical pitch of a legend row
+const LEG_SWATCH = 30;      // swatch plus the gap before its label
+
+/* How the entries pack into rows of width pw, and therefore how much room the legend needs
+   below the plot. Called BEFORE the frame is built, because the chart's height depends on
+   it. */
+function legendLayout(labels, pw) {
+  const widths = labels.map((t) => LEG_SWATCH + String(t).length * CH_W + 22);
+  const rows = [];
+  let cur = [], curW = 0;
+  labels.forEach((t, i) => {
+    if (cur.length && curW + widths[i] > pw) { rows.push(cur); cur = []; curW = 0; }
+    cur.push(i); curW += widths[i];
+  });
+  if (cur.length) rows.push(cur);
+  return { rows, widths, height: rows.length * LEG_ROW_H };
+}
+
+/* A legend under the plot. Not in it -- a legend placed among the data is one dataset away
+   from sitting on top of it, which is exactly what happened on the vacuum panel when its
+   two tallest bars turned out to be its two rightmost. `draw` receives (g, index, x) and
+   adds the swatch for that series at that offset. */
+function legendBelow(svg, labels, L, pw, y, draw) {
+  const { rows, widths } = legendLayout(labels, pw);
+  rows.forEach((row, r) => {
+    const rowW = row.reduce((a, i) => a + widths[i], 0);
+    let x = L + Math.max(0, (pw - rowW) / 2);
+    for (const i of row) {
+      const g = el("g", { transform: `translate(${x} ${y + r * LEG_ROW_H})` });
+      draw(g, i);
+      g.appendChild(el("text", { x: LEG_SWATCH, y: 4, class: "gal__tick" }, labels[i]));
+      svg.appendChild(g);
+      x += widths[i];
+    }
+  });
 }
 
 
@@ -329,27 +358,32 @@ function wrapPanel(host, p, svg, extra, wide) {
   cap.textContent = (p.caption || "") + (extra || "");
   fig.appendChild(cap);
 
-  // WHAT THE NUMBER IS, not just how it is distributed. The diagram is drawn from real
-  // released labels using the extractor's own geometry, so it explains this exact
-  // measurement rather than a textbook version of it.
+  // WHAT THE NUMBER IS, not just how it is distributed. Drawn from real released labels
+  // using the extractor's own geometry, so it explains this exact measurement rather than
+  // a textbook version of it.
+  //
+  // SHOWN, NOT HIDDEN BEHIND A DISCLOSURE. A reader who does not already know what pelvic
+  // incidence is will not open a control to find out; they will read the plot as if they
+  // did. But eleven panels share the pelvic-incidence construction, and repeating one
+  // identical figure eleven times down a page is its own kind of noise, so it appears on
+  // the FIRST panel in each section that uses it. Sections group measures that share a
+  // construction, so in practice that is once per section, next to the plots it explains.
   const measure = MEASURES[p.key];
-  if (measure) {
-    const det = document.createElement("details");
-    det.className = "gal__howto";
-    const sum = document.createElement("summary");
-    sum.textContent = "How this is measured";
-    det.appendChild(sum);
+  const seenKey = `${p.section || ""}::${measure}`;
+  if (measure && !SHOWN_MEASURES.has(seenKey)) {
+    SHOWN_MEASURES.add(seenKey);
+    const box = document.createElement("figure");
+    box.className = "gal__howto";
     const img = document.createElement("img");
     img.loading = "lazy";
     img.decoding = "async";
+    img.src = `${DATA}measures/${measure}`;
     img.alt = `The construction behind ${p.title}`;
-    // src is set on first open: an <img> inside a closed <details> is still fetched by
-    // most browsers, and forty-seven of them at load is the whole point of collapsing.
-    det.addEventListener("toggle", () => {
-      if (det.open && !img.src) img.src = `${DATA}measures/${measure}`;
-    }, { once: false });
-    det.appendChild(img);
-    fig.appendChild(det);
+    const cap2 = document.createElement("figcaption");
+    cap2.textContent = "How this is measured";
+    box.appendChild(cap2);
+    box.appendChild(img);
+    fig.appendChild(box);
   }
 
   host.appendChild(fig);
@@ -479,7 +513,11 @@ function drawCategorical(host, p) {
 }
 
 function drawScatter(host, p) {
-  const W = 760, H = 470, L = 96, R = 30, T = 30, B = 92;
+  const W = 760, L = 96, R = 30, T = 30;
+  const legLabels = p.legend === false ? [] :
+    [p.legend_a || "no source LSTV label", p.legend_b || "carries an LSTV label"];
+  const legH = legLabels.length ? legendLayout(legLabels, W - L - R).height + 10 : 0;
+  const B = 92 + legH, H = 470 + legH;
   const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
   const xs = p.points.map((q) => q.x), ys = p.points.map((q) => q.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
@@ -518,24 +556,21 @@ function drawScatter(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel));
-  if (p.legend !== false) {
-    const lg = legendAt(L, pw, T, 10,
-                        [p.legend_a || "no source LSTV label",
-                         p.legend_b || "carries an LSTV label"]);
-    lg.appendChild(el("circle", { cx: 8, cy: -5, r: 2.8, class: "gal__dot" }));
-    lg.appendChild(el("text", { x: 24, y: 1, class: "gal__tick" },
-                    p.legend_a || "no source LSTV label"));
-    lg.appendChild(el("circle", { cx: 8, cy: 22, r: 4.4, class: "gal__dot gal__dot--flag" }));
-    lg.appendChild(el("text", { x: 24, y: 28, class: "gal__tick" },
-                    p.legend_b || "carries an LSTV label"));
-    svg.appendChild(lg);
+  if (legLabels.length) {
+    legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+      g.appendChild(el("circle", { cx: 9, cy: 0, r: i ? 4.4 : 2.8,
+                                   class: i ? "gal__dot gal__dot--flag" : "gal__dot" }));
+    });
   }
   wrapPanel(host, p, svg, "", true);
 }
 
 /* paired densities — for a measure split by sex, the separation IS the finding */
 function drawSplit(host, p) {
-  const W = 760, H = 430, L = 96, R = 30, T = 34, B = 96;
+  const W = 760, L = 96, R = 30, T = 34;
+  const legLabels = p.series.map((s) => `${s.label}${nText(s.n)}`);
+  const legH = legendLayout(legLabels, W - L - R).height + 10;
+  const B = 96 + legH, H = 430 + legH;
   const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
   const ymax = Math.max(...p.series.flatMap((s) => s.y)) || 1;
   const xr = p.series[0].x;
@@ -566,19 +601,12 @@ function drawSplit(host, p) {
     svg.appendChild(el("text", { x: px(v), y: T + ph + 34, class: "gal__tick",
                                  "text-anchor": "middle" }, v));
   }
-  // the legend has to fit however many series there are: two for a sex comparison,
-  // six for a gradient down the spine
-  const lg = legendAt(L, pw, T, 14, p.series.map((s) => `${s.label}${nText(s.n)}`));
-  const rowH = p.series.length > 3 ? 20 : 26;
-  p.series.forEach((s, i) => {
-    lg.appendChild(el("rect", { x: 0, y: i * rowH - 12, width: 18, height: 12,
-                                class: `gal__s${i % 6}-fill` }));
-    lg.appendChild(el("rect", { x: 0, y: i * rowH - 6, width: 18, height: 2,
-                                class: `gal__s${i % 6}-line`, fill: "currentColor" }));
-    lg.appendChild(el("text", { x: 26, y: i * rowH - 2, class: "gal__tick" },
-                    `${s.label}${nText(s.n)}`));
+  legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+    g.appendChild(el("rect", { x: 0, y: -9, width: 18, height: 12,
+                               class: `gal__s${i % 6}-fill` }));
+    g.appendChild(el("rect", { x: 0, y: -3, width: 18, height: 2,
+                               class: `gal__s${i % 6}-line`, fill: "currentColor" }));
   });
-  svg.appendChild(lg);
   svg.appendChild(el("text", { x: L + pw / 2, y: H - 18, class: "gal__axtitle",
                                "text-anchor": "middle" }, p.xlabel || p.title));
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
@@ -591,7 +619,10 @@ function drawSplit(host, p) {
    rather than counts, because the groups differ in size by more than twenty to one and
    raw counts would say nothing except that most people are typical. */
 function drawGrouped(host, p) {
-  const W = 760, H = 440, L = 96, R = 30, T = 34, B = 100;
+  const W = 760, L = 96, R = 30, T = 34;
+  const legLabels = (p.series || []).map((s) => `${s.label}${nText(s.n)}`);
+  const legH = legLabels.length ? legendLayout(legLabels, W - L - R).height + 10 : 0;
+  const B = 100 + legH, H = 440 + legH;
   const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
   const cats = p.categories, ser = p.series;
   const max = Math.max(...ser.flatMap((s) => s.pct), 1);
@@ -639,14 +670,12 @@ function drawGrouped(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, "% of group"));
-  const lg = legendAt(L, pw, T, 12, p.series.map((s) => `${s.label}${nText(s.n)}`));
-  ser.forEach((s, k) => {
-    lg.appendChild(el("rect", { x: 0, y: k * 22 - 11, width: 18, height: 11,
-                                class: `gal__s${k % 6}-fill` }));
-    lg.appendChild(el("text", { x: 26, y: k * 22 - 1, class: "gal__tick" },
-                    `${s.label}${nText(s.n)}`));
-  });
-  svg.appendChild(lg);
+  if (legLabels.length) {
+    legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+      g.appendChild(el("rect", { x: 0, y: -8, width: 18, height: 11,
+                                 class: `gal__s${i % 6}-fill` }));
+    });
+  }
   wrapPanel(host, p, svg, "", true);
 }
 
@@ -654,7 +683,10 @@ function drawGrouped(host, p) {
    once. Bands rather than error bars, because the point of this panel is which lines
    MOVE and which one does not, and overlapping bands say that better than whiskers. */
 function drawTrend(host, p) {
-  const W = 760, H = 450, L = 96, R = 30, T = 34, B = 96;
+  const W = 760, L = 96, R = 30, T = 34;
+  const legLabels = p.series.map((s) => s.label);
+  const legH = legendLayout(legLabels, W - L - R).height + 10;
+  const B = 96 + legH, H = 450 + legH;
   const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
   const bins = p.bins;
   const all = p.series.flatMap((s) => s.q3.concat(s.q1));
@@ -696,15 +728,12 @@ function drawTrend(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel || ""));
-  const lg = legendAt(L, pw, T, 14, p.series.map((s) => s.label), "left");
-  p.series.forEach((s, k) => {
-    lg.appendChild(el("rect", { x: 0, y: k * 22 - 11, width: 18, height: 11,
-                                class: `gal__s${k % 6}-fill` }));
-    lg.appendChild(el("rect", { x: 0, y: k * 22 - 6, width: 18, height: 2.4,
-                                class: `gal__s${k % 6}-line`, fill: "currentColor" }));
-    lg.appendChild(el("text", { x: 26, y: k * 22 - 1, class: "gal__tick" }, s.label));
+  legendBelow(svg, legLabels, L, pw, H - legH + 4, (g, i) => {
+    g.appendChild(el("rect", { x: 0, y: -8, width: 18, height: 11,
+                               class: `gal__s${i % 6}-fill` }));
+    g.appendChild(el("rect", { x: 0, y: -3, width: 18, height: 2.4,
+                               class: `gal__s${i % 6}-line`, fill: "currentColor" }));
   });
-  svg.appendChild(lg);
   wrapPanel(host, p, svg, "", true);
 }
 
