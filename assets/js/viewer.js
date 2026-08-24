@@ -227,7 +227,27 @@ export function createViewer(host, opts) {
     .then(async (head) => {
       // Stream the payload so the card can show real progress. A few megabytes with no
       // signal at all reads as a broken page, and the reader gives up before it arrives.
-      const resp = await fetch(`${dataUrl}${caseId}.bin`);
+      // ASK FOR THE GZIPPED COPY FIRST. The payload is quantised integers so gzip only
+      // returns about a quarter -- there is little redundancy left in it -- but a quarter
+      // off the wire is free here: DecompressionStream is native in every current browser
+      // and needs no library. If the .gz is absent, or the browser is old enough to lack
+      // DecompressionStream, the plain .bin is fetched instead and nothing else changes.
+      const canGunzip = typeof DecompressionStream === "function";
+      let resp = null;
+      if (canGunzip) {
+        try {
+          const g = await fetch(`${dataUrl}${caseId}.bin.gz`);
+          if (g.ok && g.body) {
+            resp = new Response(g.body.pipeThrough(new DecompressionStream("gzip")), {
+              // content-length on the compressed response describes the COMPRESSED bytes,
+              // so it is deliberately not carried over -- progress falls back to
+              // indeterminate rather than reporting a percentage that would exceed 100
+              headers: {},
+            });
+          }
+        } catch (_) { /* fall through to the plain file */ }
+      }
+      if (!resp) resp = await fetch(`${dataUrl}${caseId}.bin`);
       if (!resp.ok) throw new Error(`${caseId}.bin ${resp.status}`);
       const total = +(resp.headers.get("content-length") || 0);
       let buf;
@@ -243,7 +263,18 @@ export function createViewer(host, opts) {
           opts.onProgress(got / total);
         }
         buf = new Blob(chunks).arrayBuffer ? await new Blob(chunks).arrayBuffer() : null;
+      } else if (resp.body) {
+        // NO LENGTH MEANS THE GZIP PATH, AND THIS RESPONSE STILL HAS TO BE CONSUMED.
+        // It previously fell straight through to the .bin fetch below, so every card
+        // downloaded the compressed copy, discarded it, and then downloaded the
+        // uncompressed one -- about 2.3x MORE on the wire than before compression was
+        // added, and on a slow link the cards still in flight read as models that never
+        // render. Progress is indeterminate here on purpose: the only length the server
+        // offered describes the compressed bytes and would exceed 100%.
+        if (opts.onProgress) opts.onProgress(-1);
+        buf = await resp.arrayBuffer();
       }
+      // last resort only: a browser without DecompressionStream, or a body-less response
       if (!buf) buf = await (await fetch(`${dataUrl}${caseId}.bin`)).arrayBuffer();
       const lo = new THREE.Vector3(...head.bbox_lo);
       const hi = new THREE.Vector3(...head.bbox_hi);
@@ -254,7 +285,6 @@ export function createViewer(host, opts) {
         // element size, and an int8 normal run of odd length pushes the next array onto
         // an odd offset. slice() copies into a buffer starting at zero.
         const pos = new Uint16Array(buf.slice(st.pos[0], st.pos[0] + st.pos[1]));
-        const nrm = new Int8Array(buf.slice(st.nrm[0], st.nrm[0] + st.nrm[1]));
         const idx = st.idx_bytes === 4
           ? new Uint32Array(buf.slice(st.idx[0], st.idx[0] + st.idx[1]))
           : new Uint16Array(buf.slice(st.idx[0], st.idx[0] + st.idx[1]));
@@ -265,13 +295,23 @@ export function createViewer(host, opts) {
           pf[k + 1] = lo.y + (pos[k + 1] / head.quant) * span.y;
           pf[k + 2] = lo.z + (pos[k + 2] / head.quant) * span.z;
         }
-        const nf = new Float32Array(nrm.length);
-        for (let k = 0; k < nrm.length; k++) nf[k] = nrm[k] / 127;
-
         const g = new THREE.BufferGeometry();
         g.setAttribute("position", new THREE.BufferAttribute(pf, 3));
-        g.setAttribute("normal", new THREE.BufferAttribute(nf, 3));
         g.setIndex(new THREE.BufferAttribute(idx, 1));
+
+        // NORMALS ARE RECONSTRUCTED, NOT DOWNLOADED. The exporter computed them as face
+        // normals averaged per vertex -- which is exactly what computeVertexNormals()
+        // does, from data already present here. Shipping them spent 14% of the payload on
+        // something the client can rebuild. Files written before this change still carry
+        // the stream and are used as they are.
+        if (head.normals === false || !st.nrm) {
+          g.computeVertexNormals();
+        } else {
+          const nrm = new Int8Array(buf.slice(st.nrm[0], st.nrm[0] + st.nrm[1]));
+          const nf = new Float32Array(nrm.length);
+          for (let k = 0; k < nrm.length; k++) nf[k] = nrm[k] / 127;
+          g.setAttribute("normal", new THREE.BufferAttribute(nf, 3));
+        }
 
         const col = new THREE.Color(st.color[0] / 255, st.color[1] / 255, st.color[2] / 255);
         col.convertSRGBToLinear();
