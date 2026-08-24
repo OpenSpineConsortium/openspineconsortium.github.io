@@ -17,7 +17,7 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=e23dece8";
+import { createViewer } from "./viewer.js?v=8020222e";
 
 const DATA = "assets/gallery/";
 /* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
