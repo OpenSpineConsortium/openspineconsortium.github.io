@@ -367,3 +367,38 @@
    it reads as the estimate being uncertain rather than as a second series. */
 .gal__ci-band { fill: var(--teal-deep); fill-opacity: 0.16; stroke: none; }
 .gal__whisk { stroke: var(--ink); stroke-width: 1.4; opacity: 0.65; }
+
+/* The construction diagram under a panel. Collapsed by default -- forty-seven open
+   diagrams would bury the plots they explain. */
+.gal__howto {
+  margin-top: .7rem;
+  border-top: 1px solid rgba(26, 28, 24, .12);
+  padding-top: .5rem;
+}
+.gal__howto > summary {
+  cursor: pointer;
+  font-size: .84rem;
+  letter-spacing: .01em;
+  opacity: .78;
+  list-style: none;
+}
+.gal__howto > summary::-webkit-details-marker { display: none; }
+.gal__howto > summary::before {
+  content: "\25B8";
+  display: inline-block;
+  margin-right: .45rem;
+  transition: transform .15s ease;
+}
+.gal__howto[open] > summary::before { transform: rotate(90deg); }
+.gal__howto > summary:hover { opacity: 1; }
+.gal__howto > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.gal__howto img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: .6rem;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gal__howto > summary::before { transition: none; }
+}
