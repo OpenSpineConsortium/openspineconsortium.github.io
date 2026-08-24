@@ -23,11 +23,15 @@ const DATA = "assets/gallery/";
 const STILLS = DATA + "stills/";
 
 const CASES = [
-  { id: "0231", title: "A lumbar rib as long as the one above it", tag: "lumbar rib",
-    blurb: "Most extra ribs on a lumbar body are stubs. This one measures 99.6% the " +
-           "length of the rib above — a full rib on a body that should not have one. " +
-           "It gets its own class in the release rather than being forced to be a " +
-           "twelfth rib, so the count stays honest whichever way you read it.",
+  { id: "1090", title: "A full extra pair of ribs, on a lumbar vertebra", tag: "lumbar rib",
+    blurb: "117 mm of rib on both sides of a vertebra that should carry none — four times " +
+           "the bone of a typical lumbar rib, and long enough to be mistaken for the " +
+           "twelfth pair on any scan that cannot see the thoracic spine above it. That " +
+           "mistake moves every level below it by one. Here it takes its own class rather " +
+           "than being forced to be rib 12, so the count stays honest whichever way you " +
+           "read the junction. Elsewhere in the cohort the same phenotype appears as a " +
+           "stub a few millimetres long; case 0231 carries one measuring 99.6% the length " +
+           "of the rib above it, proportionally complete but a quarter the size of this.",
     focus: (s) => /lumbar/.test(s.name || "") },
   { id: "0268", title: "Six rib-free bodies, and a process at the ala", tag: "transitional",
     blurb: "Six vertebrae between the lowest rib and the sacrum instead of five, and " +
