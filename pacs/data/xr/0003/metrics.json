@@ -1,952 +1,1106 @@
 {
+ "case_id": "0003",
+ "title": "Case 0003 — DRR (same scan as the CT tab)",
+ "image": "image.png",
+ "summary": {
   "case_id": "0003",
-  "title": "Case 0003 \u2014 DRR (same scan as the CT tab)",
-  "image": "image.png",
-  "summary": {
-    "case_id": "0003",
-    "supine_ct": true,
-    "PI": 55.531,
-    "SS": 32.314,
-    "PT": 23.218,
-    "LL": 45.7,
-    "PI-LL": {
-      "pi_minus_ll": 9.826,
-      "abs_pi_minus_ll": 9.826,
-      "ll_target_deg": [
-        46.5,
-        64.5
-      ],
-      "within_target_9deg": false,
-      "surgical_target": true,
-      "schwab_modifier": "0",
-      "ll_shortfall_deg": 0.826
-    },
-    "schwab": {
-      "PI-LL": "0",
-      "PT": "+",
-      "SVA": "out_of_scope",
-      "objectives": {
-        "LL=PI\u00b19\u00b0": false,
-        "PT<20\u00b0": false,
-        "SVA<5cm": null
-      },
-      "ll_increase_needed_deg": 4.044
-    },
-    "qc_flags": [
-      "ok"
-    ],
-    "method_version": "pi-v1+ll-v1",
-    "pi_category": "average",
-    "roussouly": "1-2",
-    "surgery": {
-      "ll_to_restore_deg": 4.044,
-      "severity": "mild",
-      "primary": "anterior/interbody fusion \u2014 single- or two-level ALIF (\u22486\u00b0, best at L5\u2013S1) \u00b1 LLIF",
-      "osteotomy": null,
-      "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
-      "objectives": {
-        "LL=PI\u00b19\u00b0": false,
-        "PT<20\u00b0": false
-      },
-      "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 4.0\u00b0 (Eq. 73.1); |PI\u2212LL| 9.8\u00b0, PT 23.2\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0\u00b0."
-    },
-    "modality": "XR (DRR)"
+  "supine_ct": true,
+  "PI": 55.531,
+  "SS": 32.314,
+  "PT": 23.218,
+  "LL": 45.7,
+  "PI-LL": {
+   "pi_minus_ll": 9.826,
+   "abs_pi_minus_ll": 9.826,
+   "ll_target_deg": [
+    46.5,
+    64.5
+   ],
+   "within_target_9deg": false,
+   "surgical_target": true,
+   "schwab_modifier": "0",
+   "ll_shortfall_deg": 0.826
   },
-  "geometry": {
-    "space": "image_px",
-    "drr": {
-      "pixel_spacing_mm": 0.35,
-      "origin_world_mm": [
-        -8.421778414103215,
-        187.5030897371824,
-        -488.04531743710766
-      ],
-      "axes": {
-        "anterior": [
-          0.02757745439221419,
-          0.999619669679046,
-          -0.0
-        ],
-        "cranial": [
-          0.014085325684238044,
-          -0.00038858521739700827,
-          0.9999007213728259
-        ],
-        "lr": [
-          0.9995204288105443,
-          -0.027574716540401178,
-          -0.014090684798910073
-        ]
-      },
-      "shape": [
-        1200,
-        743
-      ],
-      "fov_mm": [
-        260.0,
-        420.0
-      ],
-      "method_version": "ostk-drr-v1"
-    },
-    "angles": [
-      {
-        "id": "SS",
-        "label": "Sacral Slope",
-        "value": 32.3,
-        "units": "\u00b0",
-        "color": "#60a5fa",
-        "segments": [
-          [
-            [
-              298.67,
-              651.64
-            ],
-            [
-              387.76,
-              595.29
-            ]
-          ],
-          [
-            [
-              343.21,
-              623.46
-            ],
-            [
-              606.08,
-              623.45
-            ]
-          ]
-        ],
-        "dashed": [
-          [
-            [
-              387.76,
-              595.29
-            ],
-            [
-              556.79,
-              488.38
-            ]
-          ]
-        ],
-        "arc": [
-          [
-            444.63,
-            559.31
-          ],
-          [
-            445.78,
-            561.17
-          ],
-          [
-            446.89,
-            563.04
-          ],
-          [
-            447.98,
-            564.94
-          ],
-          [
-            449.02,
-            566.86
-          ],
-          [
-            450.04,
-            568.79
-          ],
-          [
-            451.01,
-            570.74
-          ],
-          [
-            451.95,
-            572.71
-          ],
-          [
-            452.86,
-            574.7
-          ],
-          [
-            453.73,
-            576.7
-          ],
-          [
-            454.56,
-            578.72
-          ],
-          [
-            455.36,
-            580.75
-          ],
-          [
-            456.11,
-            582.8
-          ],
-          [
-            456.84,
-            584.86
-          ],
-          [
-            457.52,
-            586.93
-          ],
-          [
-            458.16,
-            589.02
-          ],
-          [
-            458.77,
-            591.12
-          ],
-          [
-            459.34,
-            593.22
-          ],
-          [
-            459.87,
-            595.34
-          ],
-          [
-            460.36,
-            597.47
-          ],
-          [
-            460.82,
-            599.6
-          ],
-          [
-            461.23,
-            601.75
-          ],
-          [
-            461.61,
-            603.9
-          ],
-          [
-            461.94,
-            606.05
-          ],
-          [
-            462.24,
-            608.22
-          ],
-          [
-            462.5,
-            610.38
-          ],
-          [
-            462.72,
-            612.56
-          ],
-          [
-            462.9,
-            614.73
-          ],
-          [
-            463.04,
-            616.91
-          ],
-          [
-            463.13,
-            619.09
-          ],
-          [
-            463.19,
-            621.27
-          ],
-          [
-            463.21,
-            623.46
-          ]
-        ],
-        "label_at": [
-          566.08,
-          577.73
-        ]
-      },
-      {
-        "id": "PI",
-        "label": "Pelvic Incidence",
-        "value": 55.5,
-        "units": "\u00b0",
-        "color": "#36d399",
-        "segments": [
-          [
-            [
-              298.67,
-              651.64
-            ],
-            [
-              387.76,
-              595.29
-            ]
-          ]
-        ],
-        "dashed": [
-          [
-            [
-              343.21,
-              623.46
-            ],
-            [
-              465.41,
-              816.62
-            ]
-          ],
-          [
-            [
-              343.21,
-              623.46
-            ],
-            [
-              225.58,
-              897.76
-            ]
-          ]
-        ],
-        "arc": [
-          [
-            389.04,
-            695.9
-          ],
-          [
-            386.75,
-            697.3
-          ],
-          [
-            384.42,
-            698.62
-          ],
-          [
-            382.06,
-            699.87
-          ],
-          [
-            379.65,
-            701.05
-          ],
-          [
-            377.21,
-            702.15
-          ],
-          [
-            374.73,
-            703.17
-          ],
-          [
-            372.22,
-            704.12
-          ],
-          [
-            369.69,
-            704.99
-          ],
-          [
-            367.13,
-            705.77
-          ],
-          [
-            364.54,
-            706.48
-          ],
-          [
-            361.94,
-            707.11
-          ],
-          [
-            359.31,
-            707.65
-          ],
-          [
-            356.67,
-            708.11
-          ],
-          [
-            354.02,
-            708.49
-          ],
-          [
-            351.36,
-            708.79
-          ],
-          [
-            348.69,
-            709.0
-          ],
-          [
-            346.01,
-            709.13
-          ],
-          [
-            343.33,
-            709.18
-          ],
-          [
-            340.65,
-            709.14
-          ],
-          [
-            337.97,
-            709.02
-          ],
-          [
-            335.3,
-            708.81
-          ],
-          [
-            332.64,
-            708.52
-          ],
-          [
-            329.98,
-            708.15
-          ],
-          [
-            327.34,
-            707.7
-          ],
-          [
-            324.72,
-            707.16
-          ],
-          [
-            322.11,
-            706.54
-          ],
-          [
-            319.53,
-            705.84
-          ],
-          [
-            316.96,
-            705.06
-          ],
-          [
-            314.42,
-            704.2
-          ],
-          [
-            311.91,
-            703.26
-          ],
-          [
-            309.44,
-            702.24
-          ]
-        ],
-        "label_at": [
-          355.91,
-          782.97
-        ]
-      },
-      {
-        "id": "PT",
-        "label": "Pelvic Tilt",
-        "value": 23.2,
-        "units": "\u00b0",
-        "color": "#fbbf24",
-        "segments": [
-          [
-            [
-              225.58,
-              897.76
-            ],
-            [
-              225.55,
-              623.47
-            ]
-          ]
-        ],
-        "dashed": [
-          [
-            [
-              225.58,
-              897.76
-            ],
-            [
-              343.21,
-              623.46
-            ]
-          ]
-        ],
-        "arc": [
-          [
-            225.58,
-            800.62
-          ],
-          [
-            226.85,
-            800.62
-          ],
-          [
-            228.12,
-            800.65
-          ],
-          [
-            229.39,
-            800.69
-          ],
-          [
-            230.66,
-            800.75
-          ],
-          [
-            231.93,
-            800.82
-          ],
-          [
-            233.19,
-            800.91
-          ],
-          [
-            234.46,
-            801.02
-          ],
-          [
-            235.72,
-            801.15
-          ],
-          [
-            236.98,
-            801.29
-          ],
-          [
-            238.24,
-            801.44
-          ],
-          [
-            239.5,
-            801.62
-          ],
-          [
-            240.75,
-            801.81
-          ],
-          [
-            242.01,
-            802.01
-          ],
-          [
-            243.26,
-            802.24
-          ],
-          [
-            244.5,
-            802.48
-          ],
-          [
-            245.75,
-            802.73
-          ],
-          [
-            246.99,
-            803.0
-          ],
-          [
-            248.22,
-            803.29
-          ],
-          [
-            249.45,
-            803.59
-          ],
-          [
-            250.68,
-            803.91
-          ],
-          [
-            251.91,
-            804.25
-          ],
-          [
-            253.13,
-            804.6
-          ],
-          [
-            254.34,
-            804.97
-          ],
-          [
-            255.55,
-            805.35
-          ],
-          [
-            256.76,
-            805.75
-          ],
-          [
-            257.96,
-            806.17
-          ],
-          [
-            259.15,
-            806.6
-          ],
-          [
-            260.34,
-            807.05
-          ],
-          [
-            261.52,
-            807.51
-          ],
-          [
-            262.7,
-            807.98
-          ],
-          [
-            263.87,
-            808.48
-          ]
-        ],
-        "label_at": [
-          128.44,
-          754.89
-        ]
-      },
-      {
-        "id": "LL",
-        "label": "Lumbar Lordosis",
-        "value": 45.7,
-        "units": "\u00b0",
-        "color": "#f472b6",
-        "segments": [
-          [
-            [
-              486.37,
-              155.57
-            ],
-            [
-              312.34,
-              114.15
-            ]
-          ],
-          [
-            [
-              387.76,
-              595.29
-            ],
-            [
-              264.87,
-              673.02
-            ]
-          ]
-        ],
-        "dashed": [
-          [
-            [
-              312.34,
-              114.15
-            ],
-            [
-              202.73,
-              574.75
-            ]
-          ],
-          [
-            [
-              264.87,
-              673.02
-            ],
-            [
-              114.13,
-              434.71
-            ]
-          ]
-        ],
-        "arc": [
-          [
-            229.19,
-            463.57
-          ],
-          [
-            226.32,
-            462.93
-          ],
-          [
-            223.43,
-            462.36
-          ],
-          [
-            220.53,
-            461.86
-          ],
-          [
-            217.62,
-            461.44
-          ],
-          [
-            214.7,
-            461.09
-          ],
-          [
-            211.77,
-            460.82
-          ],
-          [
-            208.84,
-            460.63
-          ],
-          [
-            205.9,
-            460.51
-          ],
-          [
-            202.96,
-            460.47
-          ],
-          [
-            200.02,
-            460.5
-          ],
-          [
-            197.08,
-            460.61
-          ],
-          [
-            194.15,
-            460.79
-          ],
-          [
-            191.22,
-            461.05
-          ],
-          [
-            188.29,
-            461.38
-          ],
-          [
-            185.38,
-            461.79
-          ],
-          [
-            182.48,
-            462.27
-          ],
-          [
-            179.59,
-            462.83
-          ],
-          [
-            176.72,
-            463.46
-          ],
-          [
-            173.87,
-            464.17
-          ],
-          [
-            171.03,
-            464.95
-          ],
-          [
-            168.22,
-            465.8
-          ],
-          [
-            165.43,
-            466.72
-          ],
-          [
-            162.66,
-            467.72
-          ],
-          [
-            159.92,
-            468.79
-          ],
-          [
-            157.21,
-            469.92
-          ],
-          [
-            154.52,
-            471.13
-          ],
-          [
-            151.87,
-            472.4
-          ],
-          [
-            149.26,
-            473.75
-          ],
-          [
-            146.68,
-            475.16
-          ],
-          [
-            144.13,
-            476.63
-          ],
-          [
-            141.63,
-            478.17
-          ]
-        ],
-        "label_at": [
-          177.34,
-          422.56
-        ]
-      }
+  "schwab": {
+   "PI-LL": "0",
+   "PT": "+",
+   "SVA": "out_of_scope",
+   "objectives": {
+    "LL=PI±9°": false,
+    "PT<20°": false,
+    "SVA<5cm": null
+   },
+   "ll_increase_needed_deg": 4.044
+  },
+  "qc_flags": [
+   "ok"
+  ],
+  "method_version": "pi-v1+ll-v1",
+  "pi_category": "average",
+  "roussouly": "1-2",
+  "surgery": {
+   "ll_to_restore_deg": 4.044,
+   "severity": "mild",
+   "primary": "anterior/interbody fusion — single- or two-level ALIF (≈6°, best at L5–S1) ± LLIF",
+   "osteotomy": null,
+   "fixation": "percutaneous posterior fixation (PT≥20°)",
+   "objectives": {
+    "LL=PI±9°": false,
+    "PT<20°": false
+   },
+   "rationale": "Correction need ΔLL = (PI−LL−9) + (PT−20) = 4.0° (Eq. 73.1); |PI−LL| 9.8°, PT 23.2° → mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0°."
+  },
+  "modality": "XR (DRR)"
+ },
+ "geometry": {
+  "space": "image_px",
+  "drr": {
+   "pixel_spacing_mm": 0.35,
+   "origin_world_mm": [
+    -8.421778414103215,
+    187.5030897371824,
+    -488.04531743710766
+   ],
+   "axes": {
+    "anterior": [
+     0.02757745439221419,
+     0.999619669679046,
+     0
     ],
-    "landmarks": [
-      {
-        "id": "L1_sup_ant",
-        "level": "L1",
-        "cls": "sup_ant",
-        "label": "L1 superior endplate, anterior",
-        "xy": [
-          365.53,
-          128.66
-        ],
-        "color": "#f8fafc",
-        "desc": "L1 superior endplate \u2014 cranial end of the lumbar lordosis Cobb construction."
-      },
-      {
-        "id": "L1_sup_post",
-        "level": "L1",
-        "cls": "sup_post",
-        "label": "L1 superior endplate, posterior",
-        "xy": [
-          548.99,
-          168.2
-        ],
-        "color": "#f8fafc",
-        "desc": "L1 superior endplate \u2014 cranial end of the lumbar lordosis Cobb construction."
-      },
-      {
-        "id": "L2_sup_ant",
-        "level": "L2",
-        "cls": "sup_ant",
-        "label": "L2 superior endplate, anterior",
-        "xy": [
-          334.19,
-          231.61
-        ],
-        "color": "#f8fafc",
-        "desc": "L2 superior endplate."
-      },
-      {
-        "id": "L2_sup_post",
-        "level": "L2",
-        "cls": "sup_post",
-        "label": "L2 superior endplate, posterior",
-        "xy": [
-          534.42,
-          251.13
-        ],
-        "color": "#f8fafc",
-        "desc": "L2 superior endplate."
-      },
-      {
-        "id": "L3_sup_ant",
-        "level": "L3",
-        "cls": "sup_ant",
-        "label": "L3 superior endplate, anterior",
-        "xy": [
-          301.43,
-          315.26
-        ],
-        "color": "#f8fafc",
-        "desc": "L3 superior endplate \u2014 the apex level in most Roussouly types."
-      },
-      {
-        "id": "L3_sup_post",
-        "level": "L3",
-        "cls": "sup_post",
-        "label": "L3 superior endplate, posterior",
-        "xy": [
-          508.09,
-          353.72
-        ],
-        "color": "#f8fafc",
-        "desc": "L3 superior endplate \u2014 the apex level in most Roussouly types."
-      },
-      {
-        "id": "L4_sup_ant",
-        "level": "L4",
-        "cls": "sup_ant",
-        "label": "L4 superior endplate, anterior",
-        "xy": [
-          272.79,
-          416.91
-        ],
-        "color": "#f8fafc",
-        "desc": "L4 superior endplate."
-      },
-      {
-        "id": "L4_sup_post",
-        "level": "L4",
-        "cls": "sup_post",
-        "label": "L4 superior endplate, posterior",
-        "xy": [
-          471.57,
-          440.38
-        ],
-        "color": "#f8fafc",
-        "desc": "L4 superior endplate."
-      },
-      {
-        "id": "L5_sup_ant",
-        "level": "L5",
-        "cls": "sup_ant",
-        "label": "L5 superior endplate, anterior",
-        "xy": [
-          275.33,
-          531.3
-        ],
-        "color": "#f8fafc",
-        "desc": "L5 superior endplate."
-      },
-      {
-        "id": "L5_sup_post",
-        "level": "L5",
-        "cls": "sup_post",
-        "label": "L5 superior endplate, posterior",
-        "xy": [
-          459.08,
-          523.47
-        ],
-        "color": "#f8fafc",
-        "desc": "L5 superior endplate."
-      },
-      {
-        "id": "S1_sup_ant",
-        "level": "S1",
-        "cls": "sup_ant",
-        "label": "S1 superior endplate, anterior",
-        "xy": [
-          300.17,
-          653.69
-        ],
-        "color": "#f8fafc",
-        "desc": "S1 superior endplate \u2014 the sacral plate. Sacral slope is its angle to the horizontal; it is also the caudal end of the lordosis."
-      },
-      {
-        "id": "S1_sup_post",
-        "level": "S1",
-        "cls": "sup_post",
-        "label": "S1 superior endplate, posterior",
-        "xy": [
-          432.97,
-          567.81
-        ],
-        "color": "#f8fafc",
-        "desc": "S1 superior endplate \u2014 the sacral plate. Sacral slope is its angle to the horizontal; it is also the caudal end of the lordosis."
-      },
-      {
-        "id": "bicox",
-        "level": "pelvis",
-        "cls": "hip_axis",
-        "label": "Bicoxofemoral axis (femoral head centre)",
-        "xy": [
-          226.09,
-          897.85
-        ],
-        "color": "#f472b6",
-        "desc": "Midpoint of the two femoral head centres (Legaye & Duval-Beaup\u00e8re 1998). On a lateral film the two heads superimpose, so this is a single point. PI and PT are undefined without it \u2014 which is why a coned lumbar lateral yields only SS and LL."
-      }
+    "cranial": [
+     0.014085325684238044,
+     -0.00038858521739700827,
+     0.9999007213728259
+    ],
+    "lr": [
+     0.9995204288105443,
+     -0.027574716540401178,
+     -0.014090684798910073
     ]
+   },
+   "shape": [
+    1200,
+    743
+   ],
+   "fov_mm": [
+    260,
+    420
+   ],
+   "method_version": "ostk-drr-v1"
+  },
+  "angles": [
+   {
+    "id": "SS",
+    "label": "Sacral Slope",
+    "value": 32.3,
+    "units": "°",
+    "color": "#60a5fa",
+    "segments": [
+     [
+      [
+       298.67,
+       651.64
+      ],
+      [
+       387.76,
+       595.29
+      ]
+     ],
+     [
+      [
+       343.21,
+       623.46
+      ],
+      [
+       606.08,
+       623.45
+      ]
+     ]
+    ],
+    "dashed": [
+     [
+      [
+       387.76,
+       595.29
+      ],
+      [
+       556.79,
+       488.38
+      ]
+     ]
+    ],
+    "arc": [
+     [
+      444.63,
+      559.31
+     ],
+     [
+      445.78,
+      561.17
+     ],
+     [
+      446.89,
+      563.04
+     ],
+     [
+      447.98,
+      564.94
+     ],
+     [
+      449.02,
+      566.86
+     ],
+     [
+      450.04,
+      568.79
+     ],
+     [
+      451.01,
+      570.74
+     ],
+     [
+      451.95,
+      572.71
+     ],
+     [
+      452.86,
+      574.7
+     ],
+     [
+      453.73,
+      576.7
+     ],
+     [
+      454.56,
+      578.72
+     ],
+     [
+      455.36,
+      580.75
+     ],
+     [
+      456.11,
+      582.8
+     ],
+     [
+      456.84,
+      584.86
+     ],
+     [
+      457.52,
+      586.93
+     ],
+     [
+      458.16,
+      589.02
+     ],
+     [
+      458.77,
+      591.12
+     ],
+     [
+      459.34,
+      593.22
+     ],
+     [
+      459.87,
+      595.34
+     ],
+     [
+      460.36,
+      597.47
+     ],
+     [
+      460.82,
+      599.6
+     ],
+     [
+      461.23,
+      601.75
+     ],
+     [
+      461.61,
+      603.9
+     ],
+     [
+      461.94,
+      606.05
+     ],
+     [
+      462.24,
+      608.22
+     ],
+     [
+      462.5,
+      610.38
+     ],
+     [
+      462.72,
+      612.56
+     ],
+     [
+      462.9,
+      614.73
+     ],
+     [
+      463.04,
+      616.91
+     ],
+     [
+      463.13,
+      619.09
+     ],
+     [
+      463.19,
+      621.27
+     ],
+     [
+      463.21,
+      623.46
+     ]
+    ],
+    "label_at": [
+     566.08,
+     577.73
+    ]
+   },
+   {
+    "id": "PI",
+    "label": "Pelvic Incidence",
+    "value": 55.5,
+    "units": "°",
+    "color": "#36d399",
+    "segments": [
+     [
+      [
+       298.67,
+       651.64
+      ],
+      [
+       387.76,
+       595.29
+      ]
+     ]
+    ],
+    "dashed": [
+     [
+      [
+       343.21,
+       623.46
+      ],
+      [
+       465.41,
+       816.62
+      ]
+     ],
+     [
+      [
+       343.21,
+       623.46
+      ],
+      [
+       225.58,
+       897.76
+      ]
+     ]
+    ],
+    "arc": [
+     [
+      389.04,
+      695.9
+     ],
+     [
+      386.75,
+      697.3
+     ],
+     [
+      384.42,
+      698.62
+     ],
+     [
+      382.06,
+      699.87
+     ],
+     [
+      379.65,
+      701.05
+     ],
+     [
+      377.21,
+      702.15
+     ],
+     [
+      374.73,
+      703.17
+     ],
+     [
+      372.22,
+      704.12
+     ],
+     [
+      369.69,
+      704.99
+     ],
+     [
+      367.13,
+      705.77
+     ],
+     [
+      364.54,
+      706.48
+     ],
+     [
+      361.94,
+      707.11
+     ],
+     [
+      359.31,
+      707.65
+     ],
+     [
+      356.67,
+      708.11
+     ],
+     [
+      354.02,
+      708.49
+     ],
+     [
+      351.36,
+      708.79
+     ],
+     [
+      348.69,
+      709
+     ],
+     [
+      346.01,
+      709.13
+     ],
+     [
+      343.33,
+      709.18
+     ],
+     [
+      340.65,
+      709.14
+     ],
+     [
+      337.97,
+      709.02
+     ],
+     [
+      335.3,
+      708.81
+     ],
+     [
+      332.64,
+      708.52
+     ],
+     [
+      329.98,
+      708.15
+     ],
+     [
+      327.34,
+      707.7
+     ],
+     [
+      324.72,
+      707.16
+     ],
+     [
+      322.11,
+      706.54
+     ],
+     [
+      319.53,
+      705.84
+     ],
+     [
+      316.96,
+      705.06
+     ],
+     [
+      314.42,
+      704.2
+     ],
+     [
+      311.91,
+      703.26
+     ],
+     [
+      309.44,
+      702.24
+     ]
+    ],
+    "label_at": [
+     355.91,
+     782.97
+    ]
+   },
+   {
+    "id": "PT",
+    "label": "Pelvic Tilt",
+    "value": 23.2,
+    "units": "°",
+    "color": "#fbbf24",
+    "segments": [
+     [
+      [
+       225.58,
+       897.76
+      ],
+      [
+       225.55,
+       623.47
+      ]
+     ]
+    ],
+    "dashed": [
+     [
+      [
+       225.58,
+       897.76
+      ],
+      [
+       343.21,
+       623.46
+      ]
+     ]
+    ],
+    "arc": [
+     [
+      225.58,
+      800.62
+     ],
+     [
+      226.85,
+      800.62
+     ],
+     [
+      228.12,
+      800.65
+     ],
+     [
+      229.39,
+      800.69
+     ],
+     [
+      230.66,
+      800.75
+     ],
+     [
+      231.93,
+      800.82
+     ],
+     [
+      233.19,
+      800.91
+     ],
+     [
+      234.46,
+      801.02
+     ],
+     [
+      235.72,
+      801.15
+     ],
+     [
+      236.98,
+      801.29
+     ],
+     [
+      238.24,
+      801.44
+     ],
+     [
+      239.5,
+      801.62
+     ],
+     [
+      240.75,
+      801.81
+     ],
+     [
+      242.01,
+      802.01
+     ],
+     [
+      243.26,
+      802.24
+     ],
+     [
+      244.5,
+      802.48
+     ],
+     [
+      245.75,
+      802.73
+     ],
+     [
+      246.99,
+      803
+     ],
+     [
+      248.22,
+      803.29
+     ],
+     [
+      249.45,
+      803.59
+     ],
+     [
+      250.68,
+      803.91
+     ],
+     [
+      251.91,
+      804.25
+     ],
+     [
+      253.13,
+      804.6
+     ],
+     [
+      254.34,
+      804.97
+     ],
+     [
+      255.55,
+      805.35
+     ],
+     [
+      256.76,
+      805.75
+     ],
+     [
+      257.96,
+      806.17
+     ],
+     [
+      259.15,
+      806.6
+     ],
+     [
+      260.34,
+      807.05
+     ],
+     [
+      261.52,
+      807.51
+     ],
+     [
+      262.7,
+      807.98
+     ],
+     [
+      263.87,
+      808.48
+     ]
+    ],
+    "label_at": [
+     128.44,
+     754.89
+    ]
+   },
+   {
+    "id": "LL",
+    "label": "Lumbar Lordosis",
+    "value": 45.7,
+    "units": "°",
+    "color": "#f472b6",
+    "segments": [
+     [
+      [
+       486.37,
+       155.57
+      ],
+      [
+       312.34,
+       114.15
+      ]
+     ],
+     [
+      [
+       387.76,
+       595.29
+      ],
+      [
+       264.87,
+       673.02
+      ]
+     ]
+    ],
+    "dashed": [
+     [
+      [
+       312.34,
+       114.15
+      ],
+      [
+       202.73,
+       574.75
+      ]
+     ],
+     [
+      [
+       264.87,
+       673.02
+      ],
+      [
+       114.13,
+       434.71
+      ]
+     ]
+    ],
+    "arc": [
+     [
+      229.19,
+      463.57
+     ],
+     [
+      226.32,
+      462.93
+     ],
+     [
+      223.43,
+      462.36
+     ],
+     [
+      220.53,
+      461.86
+     ],
+     [
+      217.62,
+      461.44
+     ],
+     [
+      214.7,
+      461.09
+     ],
+     [
+      211.77,
+      460.82
+     ],
+     [
+      208.84,
+      460.63
+     ],
+     [
+      205.9,
+      460.51
+     ],
+     [
+      202.96,
+      460.47
+     ],
+     [
+      200.02,
+      460.5
+     ],
+     [
+      197.08,
+      460.61
+     ],
+     [
+      194.15,
+      460.79
+     ],
+     [
+      191.22,
+      461.05
+     ],
+     [
+      188.29,
+      461.38
+     ],
+     [
+      185.38,
+      461.79
+     ],
+     [
+      182.48,
+      462.27
+     ],
+     [
+      179.59,
+      462.83
+     ],
+     [
+      176.72,
+      463.46
+     ],
+     [
+      173.87,
+      464.17
+     ],
+     [
+      171.03,
+      464.95
+     ],
+     [
+      168.22,
+      465.8
+     ],
+     [
+      165.43,
+      466.72
+     ],
+     [
+      162.66,
+      467.72
+     ],
+     [
+      159.92,
+      468.79
+     ],
+     [
+      157.21,
+      469.92
+     ],
+     [
+      154.52,
+      471.13
+     ],
+     [
+      151.87,
+      472.4
+     ],
+     [
+      149.26,
+      473.75
+     ],
+     [
+      146.68,
+      475.16
+     ],
+     [
+      144.13,
+      476.63
+     ],
+     [
+      141.63,
+      478.17
+     ]
+    ],
+    "label_at": [
+     177.34,
+     422.56
+    ]
+   }
+  ],
+  "landmarks": [
+   {
+    "id": "L1_sup_ant",
+    "level": "L1",
+    "cls": "sup_ant",
+    "label": "L1 superior endplate, anterior",
+    "xy": [
+     364.2,
+     130.8
+    ],
+    "color": "#34d399",
+    "conf": 1,
+    "desc": "L1 superior endplate, anterior — cranial end of the lumbar lordosis Cobb construction."
+   },
+   {
+    "id": "L1_sup_post",
+    "level": "L1",
+    "cls": "sup_post",
+    "label": "L1 superior endplate, posterior",
+    "xy": [
+     469.23,
+     150.76
+    ],
+    "color": "#60a5fa",
+    "conf": 1,
+    "desc": "L1 superior endplate, posterior — cranial end of the lumbar lordosis Cobb construction."
+   },
+   {
+    "id": "L1_inf_ant",
+    "level": "L1",
+    "cls": "inf_ant",
+    "label": "L1 inferior endplate, anterior",
+    "xy": [
+     342.19,
+     207.95
+    ],
+    "color": "#fbbf24",
+    "conf": 1,
+    "desc": "L1 inferior endplate, anterior — cranial end of the lumbar lordosis Cobb construction."
+   },
+   {
+    "id": "L1_inf_post",
+    "level": "L1",
+    "cls": "inf_post",
+    "label": "L1 inferior endplate, posterior",
+    "xy": [
+     446.59,
+     237.42
+    ],
+    "color": "#f472b6",
+    "conf": 1,
+    "desc": "L1 inferior endplate, posterior — cranial end of the lumbar lordosis Cobb construction."
+   },
+   {
+    "id": "L2_sup_ant",
+    "level": "L2",
+    "cls": "sup_ant",
+    "label": "L2 superior endplate, anterior",
+    "xy": [
+     340.99,
+     232.89
+    ],
+    "color": "#34d399",
+    "conf": 1,
+    "desc": "L2 superior endplate, anterior."
+   },
+   {
+    "id": "L2_sup_post",
+    "level": "L2",
+    "cls": "sup_post",
+    "label": "L2 superior endplate, posterior",
+    "xy": [
+     447.36,
+     246.54
+    ],
+    "color": "#60a5fa",
+    "conf": 1,
+    "desc": "L2 superior endplate, posterior."
+   },
+   {
+    "id": "L2_inf_ant",
+    "level": "L2",
+    "cls": "inf_ant",
+    "label": "L2 inferior endplate, anterior",
+    "xy": [
+     323.79,
+     304.95
+    ],
+    "color": "#fbbf24",
+    "conf": 1,
+    "desc": "L2 inferior endplate, anterior."
+   },
+   {
+    "id": "L2_inf_post",
+    "level": "L2",
+    "cls": "inf_post",
+    "label": "L2 inferior endplate, posterior",
+    "xy": [
+     429.11,
+     332.22
+    ],
+    "color": "#f472b6",
+    "conf": 1,
+    "desc": "L2 inferior endplate, posterior."
+   },
+   {
+    "id": "L3_sup_ant",
+    "level": "L3",
+    "cls": "sup_ant",
+    "label": "L3 superior endplate, anterior",
+    "xy": [
+     312.59,
+     321.79
+    ],
+    "color": "#34d399",
+    "conf": 1,
+    "desc": "L3 superior endplate, anterior — the apex level in most Roussouly types."
+   },
+   {
+    "id": "L3_sup_post",
+    "level": "L3",
+    "cls": "sup_post",
+    "label": "L3 superior endplate, posterior",
+    "xy": [
+     420.9,
+     340.45
+    ],
+    "color": "#60a5fa",
+    "conf": 1,
+    "desc": "L3 superior endplate, posterior — the apex level in most Roussouly types."
+   },
+   {
+    "id": "L3_inf_ant",
+    "level": "L3",
+    "cls": "inf_ant",
+    "label": "L3 inferior endplate, anterior",
+    "xy": [
+     292.18,
+     399.53
+    ],
+    "color": "#fbbf24",
+    "conf": 1,
+    "desc": "L3 inferior endplate, anterior — the apex level in most Roussouly types."
+   },
+   {
+    "id": "L3_inf_post",
+    "level": "L3",
+    "cls": "inf_post",
+    "label": "L3 inferior endplate, posterior",
+    "xy": [
+     400.75,
+     421.84
+    ],
+    "color": "#f472b6",
+    "conf": 1,
+    "desc": "L3 inferior endplate, posterior — the apex level in most Roussouly types."
+   },
+   {
+    "id": "L4_sup_ant",
+    "level": "L4",
+    "cls": "sup_ant",
+    "label": "L4 superior endplate, anterior",
+    "xy": [
+     283.91,
+     427.06
+    ],
+    "color": "#34d399",
+    "conf": 1,
+    "desc": "L4 superior endplate, anterior."
+   },
+   {
+    "id": "L4_sup_post",
+    "level": "L4",
+    "cls": "sup_post",
+    "label": "L4 superior endplate, posterior",
+    "xy": [
+     395.15,
+     430.94
+    ],
+    "color": "#60a5fa",
+    "conf": 1,
+    "desc": "L4 superior endplate, posterior."
+   },
+   {
+    "id": "L4_inf_ant",
+    "level": "L4",
+    "cls": "inf_ant",
+    "label": "L4 inferior endplate, anterior",
+    "xy": [
+     274.98,
+     504.93
+    ],
+    "color": "#fbbf24",
+    "conf": 1,
+    "desc": "L4 inferior endplate, anterior."
+   },
+   {
+    "id": "L4_inf_post",
+    "level": "L4",
+    "cls": "inf_post",
+    "label": "L4 inferior endplate, posterior",
+    "xy": [
+     385.88,
+     509.68
+    ],
+    "color": "#f472b6",
+    "conf": 1,
+    "desc": "L4 inferior endplate, posterior."
+   },
+   {
+    "id": "L5_sup_ant",
+    "level": "L5",
+    "cls": "sup_ant",
+    "label": "L5 superior endplate, anterior",
+    "xy": [
+     278.44,
+     538.55
+    ],
+    "color": "#34d399",
+    "conf": 1,
+    "desc": "L5 superior endplate, anterior."
+   },
+   {
+    "id": "L5_sup_post",
+    "level": "L5",
+    "cls": "sup_post",
+    "label": "L5 superior endplate, posterior",
+    "xy": [
+     378.83,
+     522.25
+    ],
+    "color": "#60a5fa",
+    "conf": 1,
+    "desc": "L5 superior endplate, posterior."
+   },
+   {
+    "id": "L5_inf_ant",
+    "level": "L5",
+    "cls": "inf_ant",
+    "label": "L5 inferior endplate, anterior",
+    "xy": [
+     286.71,
+     623.81
+    ],
+    "color": "#fbbf24",
+    "conf": 1,
+    "desc": "L5 inferior endplate, anterior."
+   },
+   {
+    "id": "L5_inf_post",
+    "level": "L5",
+    "cls": "inf_post",
+    "label": "L5 inferior endplate, posterior",
+    "xy": [
+     382.45,
+     596.99
+    ],
+    "color": "#f472b6",
+    "conf": 1,
+    "desc": "L5 inferior endplate, posterior."
+   },
+   {
+    "id": "S1_sup_ant",
+    "level": "S1",
+    "cls": "sup_ant",
+    "label": "S1 superior endplate, anterior",
+    "xy": [
+     304.78,
+     662.09
+    ],
+    "color": "#34d399",
+    "conf": 1,
+    "desc": "S1 superior endplate, anterior — the sacral plate. Sacral slope is its angle to the horizontal, and it is the caudal end of the lordosis."
+   },
+   {
+    "id": "S1_sup_post",
+    "level": "S1",
+    "cls": "sup_post",
+    "label": "S1 superior endplate, posterior",
+    "xy": [
+     389.45,
+     604.59
+    ],
+    "color": "#60a5fa",
+    "conf": 1,
+    "desc": "S1 superior endplate, posterior — the sacral plate. Sacral slope is its angle to the horizontal, and it is the caudal end of the lordosis."
+   },
+   {
+    "id": "bicox",
+    "level": "pelvis",
+    "cls": "hip_axis",
+    "label": "Bicoxofemoral axis (femoral head centre)",
+    "xy": [
+     226.09,
+     897.85
+    ],
+    "color": "#f472b6",
+    "desc": "Midpoint of the two femoral head centres (Legaye & Duval-Beaupère 1998). On a lateral film the two heads superimpose, so this is a single point. PI and PT are undefined without it — which is why a coned lumbar lateral yields only SS and LL."
+   }
+  ],
+  "net": {
+   "model": "v11n_1024.onnx",
+   "imgsz": 1024,
+   "conf": 0.5,
+   "detections": 6,
+   "precomputed": true,
+   "angles_from_net": {
+    "SS": 34.2,
+    "LL": 44.9
+   },
+   "note": "Corners predicted by the same network the user pane runs, on this DRR. The bicoxofemoral point is a 3-D construction from ostk and is not predicted."
   }
+ }
 }

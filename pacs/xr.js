@@ -19,7 +19,7 @@
 import { SpineDetector, KPT_LABEL, assignLevels, computeAngles, angleToHorizontal }
   from "./infer.js";
 
-const XR_BUILD = "20260809a";
+const XR_BUILD = "20260825a";
 const MODEL_URL = { 640: "models/v11n_640.onnx", 1024: "models/v11n_1024.onnx" };
 
 const $ = id => document.getElementById(id);
@@ -244,13 +244,25 @@ async function loadCase(dir) {
     if (!m.geometry || m.geometry.space !== "image_px")
       throw new Error(`geometry.space must be "image_px"`);
     await showImage(els.img, `data/xr/${dir}/${m.image || "image.png"}?v=${XR_BUILD}`);
+    const net = m.geometry.net || null;
     view.ref = {
       shape: m.geometry.drr.shape,
       angles: m.geometry.angles,
       landmarks: m.geometry.landmarks || [],
-      lmNote: "Derived in 3-D from the segmentation and projected — not read off the "
-            + "2-D silhouette. Hover a marker for its definition.",
+      net,
+      imageUrl: `data/xr/${dir}/${m.image || "image.png"}?v=${XR_BUILD}`,
+      lmNote: net
+        ? `Corners predicted by ${net.model} on this synthetic radiograph, precomputed. `
+          + `The angles beside them are ostk's, measured in the CT itself — on this case `
+          + `the network reads SS ${net.angles_from_net?.SS ?? "?"}° against the volume's `
+          + `${(m.geometry.angles.find(a => a.id === "SS") || {}).value ?? "?"}°. The `
+          + `bicoxofemoral point is a 3-D construction and is not predicted. Change the `
+          + `model above to re-run the network here.`
+        : "Derived in 3-D from the segmentation and projected — not read off the "
+          + "2-D silhouette. Hover a marker for its definition.",
     };
+    /* kept so a re-infer can be reverted without another fetch */
+    view.refBundle = { landmarks: view.ref.landmarks, lmNote: view.ref.lmNote };
     view.ref.angles.forEach(a => active.ref.set(a.id, true));
     els.hudCase.textContent = m.title || m.case_id || dir;
     els.empty.hidden = true;
@@ -404,6 +416,65 @@ function buildUserView(dets, W, H) {
   return { shape: [H, W], angles, landmarks, unavailable, levelled, lmNote: note };
 }
 
+/** Run the current model over the reference DRR and replace its corner markers.
+ *
+ *  The default overlay is precomputed, because the DRR never changes and the opening view
+ *  should not wait on a network. This exists for the moment a reader picks a different
+ *  model: the pane whose truth is known is exactly where a model comparison belongs.
+ */
+async function reinferReference() {
+  if (!view.ref || !view.ref.imageUrl) return;
+  const keep = (view.ref.landmarks || []).filter(l => l.cls === "hip_axis");
+  els.loading.hidden = false;
+  try {
+    const det = await ensureDetector();
+    const bmp = await createImageBitmap(await (await fetch(view.ref.imageUrl)).blob());
+    const cv = sourceCanvas(bmp, false);
+    const conf = Number(els.confRange.value);
+    const { dets, ms, backend } =
+      await det.infer(cv, bmp.width, bmp.height, conf, els.modeSel.value);
+    if (!dets.length) {
+      view.ref.lmNote = "No vertebra passed the confidence threshold on the synthetic "
+                      + "radiograph at this setting.";
+      view.ref.landmarks = keep;
+    } else {
+      const levelled = assignLevels(dets);
+      const lm = [];
+      for (const d of levelled)
+        for (const k of d.kpts) {
+          if (k.v < 0.5) continue;
+          lm.push({
+            id: `${d.level}_${k.name}`, level: d.level, cls: k.name,
+            label: `${d.level} ${KPT_LABEL[k.name] || k.name}`,
+            xy: [k.x, k.y], color: LM_COLOR[k.name], conf: d.conf,
+            desc: `Predicted here and now on the synthetic radiograph. Box confidence `
+                + `${d.conf.toFixed(2)}.`,
+          });
+        }
+      // the bicoxofemoral point is not predicted by any lateral model; it stays
+      view.ref.landmarks = lm.concat(keep);
+      const a = computeAngles(levelled);
+      const refSS = (view.ref.angles.find(q => q.id === "SS") || {}).value;
+      view.ref.lmNote =
+        `Re-inferred in this browser with ${detImgsz}px weights at confidence `
+        + `${conf.toFixed(2)} — ${levelled.length} vertebrae, ${ms.toFixed(0)} ms on `
+        + `${backend === "webgpu" ? "the GPU" : "the CPU"}. `
+        + (a.SS != null && refSS != null
+            ? `The network reads SS ${a.SS.toFixed(1)}° against the volume's ${refSS}°. `
+            : "")
+        + `The angles drawn are still ostk's, measured in the CT. The bicoxofemoral point `
+        + `is a 3-D construction and is not predicted.`;
+    }
+    if (panelSrc === "ref") renderPanel();
+    draw("ref");
+  } catch (e) {
+    view.ref.lmNote = `Could not re-run the model on the synthetic radiograph: ${e.message}`;
+    if (panelSrc === "ref") renderPanel();
+  } finally {
+    els.loading.hidden = true;
+  }
+}
+
 /* ── user pane : plumbing ────────────────────────────────────────────────── */
 
 let detector = null, detImgsz = null;
@@ -546,12 +617,18 @@ els.flipBtn.addEventListener("click", () => {
   els.flipBtn.classList.toggle("ctl--on", flipped);
   analyse();
 });
-els.modelSel.addEventListener("change", () => { detector = null; analyse(); });
-els.modeSel.addEventListener("change", analyse);
+els.modelSel.addEventListener("change", () => {
+  detector = null;
+  // both panes, because the reference is the one with a known answer to compare against
+  analyse();
+  reinferReference();
+});
+els.modeSel.addEventListener("change", () => { analyse(); reinferReference(); });
 els.confRange.addEventListener("input", () => {
   els.confVal.textContent = Number(els.confRange.value).toFixed(2);
 });
-els.confRange.addEventListener("change", analyse);
+// on "change", not "input": a re-infer per slider pixel would be unusable
+els.confRange.addEventListener("change", () => { analyse(); reinferReference(); });
 
 /* Drag and drop is bound to the WHOLE window: a dropzone you have to hit is a worse
    target than the page, and the browser's default action for a missed drop is to
