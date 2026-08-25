@@ -17,7 +17,7 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=8020222e";
+import { createViewer } from "./viewer.js?v=bad28eaf";
 
 const DATA = "assets/gallery/";
 /* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
@@ -26,6 +26,8 @@ let MEASURES = {};
 /* the figures are plain URLs, so they carry the build stamp from measures/index.json --
    without it a rebuilt diagram is served from cache and the change reaches nobody */
 let MEASURE_BUILD = "";
+/* the same for the meshes, from assets/gallery/index.json */
+let MESH_BUILD = "";
 /* one diagram per (section, construction) -- see the note in wrapPanel */
 const SHOWN_MEASURES = new Set();
 const STILLS = DATA + "stills/";
@@ -161,6 +163,7 @@ function mountCase(grid, spec) {
   function start() {
   const v = createViewer(stage, {
     dataUrl: DATA,
+    bust: MESH_BUILD,
     caseId: spec.id,
     onFail(err) {
       console.error("[gallery]", spec.id, err);
@@ -1015,7 +1018,11 @@ function initGallery() {
   if (!dist) return;
   // the measure index is optional: if it is missing the panels still draw, without
   // explainers, which is strictly better than the section failing to render
-  fetch(`${DATA}measures/index.json`)
+  fetch(`${DATA}index.json`)
+    .then((r) => (r.ok ? r.json() : {}))
+    .catch(() => ({}))
+    .then((ix) => { MESH_BUILD = (ix && ix.build) ? `?v=${ix.build}` : ""; })
+    .then(() => fetch(`${DATA}measures/index.json`))
     .then((r) => (r.ok ? r.json() : { panels: {} }))
     .catch(() => ({ panels: {} }))
     .then((mi) => {
