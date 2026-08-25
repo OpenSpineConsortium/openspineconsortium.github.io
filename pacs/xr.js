@@ -19,7 +19,7 @@
 import { SpineDetector, KPT_LABEL, assignLevels, computeAngles, angleToHorizontal }
   from "./infer.js";
 
-const XR_BUILD = "20260825b";
+const XR_BUILD = "20260825c";
 const MODEL_URL = { 640: "models/v11n_640.onnx", 1024: "models/v11n_1024.onnx" };
 
 const $ = id => document.getElementById(id);
@@ -35,6 +35,7 @@ const els = {
   engine: $("engineBadge"), timing: $("timing"),
   modelSel: $("modelSel"), confRange: $("confRange"), confVal: $("confVal"),
   modeSel: $("modeSel"),
+  truthBtn: $("truthBtn"),
   flipBtn: $("flipBtn"), paneRef: $("paneRef"), paneUser: $("paneUser"), tip: $("tip"),
 };
 
@@ -44,6 +45,8 @@ const els = {
 const view = { ref: null, user: null };
 const active = { ref: new Map(), user: new Map() };
 let panelSrc = "ref";
+/* the 3-D fitted corners are a comparison overlay, and start hidden */
+let showTruth = false;
 
 /* ── svg ─────────────────────────────────────────────────────────────────────
    The svg's viewBox IS the image's pixel grid and it shares the image's box, so a
@@ -104,11 +107,24 @@ function drawLandmarks(svg, v, which) {
   const k = kOf(v);
   const g = el("g", { class: "lmk" });
   for (const L of v.landmarks || []) {
+    // the 3-D fit is a second opinion, off unless the reader asks for it
+    if (L.kind === "truth" && !showTruth) continue;
     const [x, y] = L.xy;
     const c = L.color || LM_COLOR[L.cls] || "#e6edf5";
-    g.appendChild(el("circle", { cx: x, cy: y, r: 5.2 * k, class: "lm__ring",
-                                 stroke: c, "stroke-width": 2 * k }));
-    g.appendChild(el("circle", { cx: x, cy: y, r: 1.3 * k, fill: c }));
+    if (L.kind === "truth") {
+      // A CROSS, NOT A RING. Two ring markers on nearly the same point read as one blurred
+      // marker; the reader needs to see at a glance which is the prediction and which is
+      // the fit.
+      const r = 6.5 * k;
+      g.appendChild(el("line", { x1: x - r, y1: y - r, x2: x + r, y2: y + r,
+                                 stroke: c, "stroke-width": 1.8 * k, class: "lm__x" }));
+      g.appendChild(el("line", { x1: x - r, y1: y + r, x2: x + r, y2: y - r,
+                                 stroke: c, "stroke-width": 1.8 * k, class: "lm__x" }));
+    } else {
+      g.appendChild(el("circle", { cx: x, cy: y, r: 5.2 * k, class: "lm__ring",
+                                   stroke: c, "stroke-width": 2 * k }));
+      g.appendChild(el("circle", { cx: x, cy: y, r: 1.3 * k, fill: c }));
+    }
     // A generous transparent hit target: the visible ring is deliberately small so it
     // does not hide the corner it is marking, which makes it a poor thing to aim at.
     const hit = el("circle", { cx: x, cy: y, r: 13 * k, fill: "transparent",
@@ -632,6 +648,14 @@ function clearUser() {
 /* ── events ──────────────────────────────────────────────────────────────── */
 
 els.caseSel.addEventListener("change", e => loadCase(e.target.value));
+els.truthBtn?.addEventListener("click", () => {
+  showTruth = !showTruth;
+  els.truthBtn.classList.toggle("is-on", showTruth);
+  els.truthBtn.setAttribute("aria-pressed", String(showTruth));
+  draw("ref");
+  if (panelSrc === "ref") renderPanel();
+});
+
 els.clear.addEventListener("click", () => {
   active[panelSrc].clear();
   draw(panelSrc);

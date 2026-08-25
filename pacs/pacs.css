@@ -292,3 +292,10 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
               background:#06090d;cursor:zoom-in}
 .teachfig img:hover{border-color:var(--teal)}
 .teachfig figcaption{font-size:.7rem;color:var(--ink-faint);line-height:1.5;margin-top:6px}
+
+
+/* The 3-D fitted corners: a second opinion, drawn as crosses so they cannot be mistaken
+   for the network's rings, and off until asked for. */
+.lm__x { opacity: .9; pointer-events: none; }
+#truthBtn.is-on { border-color: currentColor; opacity: 1; }
+#truthBtn.is-on::before { content: "¹5  "; letter-spacing: .06em; }
