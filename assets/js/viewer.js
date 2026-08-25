@@ -87,6 +87,10 @@ const matCache = new Map();
 
 export function createViewer(host, opts) {
   const { dataUrl, caseId, onFail, onReady } = opts;
+  /* THE MESH FILES ARE FETCHED BY PLAIN URL, and their names never change -- so a browser
+     holding 0004.bin keeps it however many times the mesh is rebuilt, and a rebuilt gallery
+     reaches nobody. `bust` is a build hash from the caller, appended to every data URL. */
+  const bust = opts.bust || "";
 
   let renderer;
   try {
@@ -254,7 +258,7 @@ export function createViewer(host, opts) {
   }, { rootMargin: "100% 0px" }).observe(host);
 
   function load() {
-  fetch(`${dataUrl}${caseId}.json`)
+  fetch(`${dataUrl}${caseId}.json${bust}`)
     .then((r) => { if (!r.ok) throw new Error(`${caseId}.json ${r.status}`); return r.json(); })
     .then(async (head) => {
       // Stream the payload so the card can show real progress. A few megabytes with no
@@ -268,7 +272,7 @@ export function createViewer(host, opts) {
       let resp = null;
       if (canGunzip) {
         try {
-          const g = await fetch(`${dataUrl}${caseId}.bin.gz`);
+          const g = await fetch(`${dataUrl}${caseId}.bin.gz${bust}`);
           if (g.ok && g.body) {
             resp = new Response(g.body.pipeThrough(new DecompressionStream("gzip")), {
               // content-length on the compressed response describes the COMPRESSED bytes,
@@ -279,7 +283,7 @@ export function createViewer(host, opts) {
           }
         } catch (_) { /* fall through to the plain file */ }
       }
-      if (!resp) resp = await fetch(`${dataUrl}${caseId}.bin`);
+      if (!resp) resp = await fetch(`${dataUrl}${caseId}.bin${bust}`);
       if (!resp.ok) throw new Error(`${caseId}.bin ${resp.status}`);
       const total = +(resp.headers.get("content-length") || 0);
       let buf;
@@ -307,7 +311,7 @@ export function createViewer(host, opts) {
         buf = await resp.arrayBuffer();
       }
       // last resort only: a browser without DecompressionStream, or a body-less response
-      if (!buf) buf = await (await fetch(`${dataUrl}${caseId}.bin`)).arrayBuffer();
+      if (!buf) buf = await (await fetch(`${dataUrl}${caseId}.bin${bust}`)).arrayBuffer();
       const lo = new THREE.Vector3(...head.bbox_lo);
       const hi = new THREE.Vector3(...head.bbox_hi);
       const span = new THREE.Vector3().subVectors(hi, lo);
