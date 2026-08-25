@@ -308,8 +308,35 @@ function inkProfile(p) {
   if (Array.isArray(p.y)) cand.push(p.y);
   if (Array.isArray(p.values)) cand.push(p.values);
   for (const s2 of p.series || []) {
+    // EVERY SHAPE A PANEL STORES ITS HEIGHTS IN. Reading only `y` meant a grouped bar
+    // chart, which keeps them in `pct`, profiled as empty -- so the inset was told the
+    // whole plot was free and placed itself on the tallest bars. That is precisely the
+    // overlap this function exists to prevent.
     if (Array.isArray(s2.y)) cand.push(s2.y);
+    else if (Array.isArray(s2.pct)) cand.push(s2.pct);
     else if (Array.isArray(s2.med)) cand.push(s2.med);
+    else if (Array.isArray(s2.counts)) cand.push(s2.counts);
+  }
+  // a scatter has no series at all: bin its points across x and take the tallest in each
+  if (!cand.length && Array.isArray(p.points) && p.points.length) {
+    // points come as {x, y} objects here, and as [x, y] pairs elsewhere; reading only the
+    // array form left every scatter with no profile at all, which the placer then treats
+    // as an empty plot -- the one assumption it must never make.
+    const pts = p.points
+      .map((q) => (Array.isArray(q) ? q : (q && isFinite(q.x) && isFinite(q.y)
+                                           ? [q.x, q.y] : null)))
+      .filter((q) => q && isFinite(q[0]) && isFinite(q[1]));
+    if (pts.length > 8) {
+      const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs);
+      const y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const NB = 40, prof = new Array(NB).fill(0);
+      for (const [qx, qy] of pts) {
+        const b = Math.min(NB - 1, Math.floor((qx - x0) / Math.max(1e-9, x1 - x0) * NB));
+        prof[b] = Math.max(prof[b], (qy - y0) / Math.max(1e-9, y1 - y0));
+      }
+      return prof;
+    }
   }
   if (!cand.length) return null;
   const n = Math.max(...cand.map((a) => a.length));
@@ -325,21 +352,55 @@ function inkProfile(p) {
   return out.map((v) => v / hi);
 }
 
-/* Add the construction diagram as an inset in the emptiest top corner of the plot. */
+/* The largest square that fits above the data in one of the top corners.
+   Returns null when nothing worth drawing fits. */
+function fitInset(g, prof) {
+  const PAD = 10;                       // clearance between the box and the curve
+  const MAX = Math.min(g.pw * 0.32, g.ph * 0.52);
+  const MIN = 96;
+  let best = null;
+  for (const right of [true, false]) {
+    for (let size = MAX; size >= MIN; size -= 8) {
+      // the x-range this box would occupy, as a fraction of the plot width
+      const x0f = right ? (g.pw - size - PAD) / g.pw : PAD / g.pw;
+      const x1f = x0f + size / g.pw;
+      let peak = 0;
+      if (prof) {
+        const i0 = Math.max(0, Math.floor(x0f * (prof.length - 1)));
+        const i1 = Math.min(prof.length - 1, Math.ceil(x1f * (prof.length - 1)));
+        for (let i = i0; i <= i1; i++) peak = Math.max(peak, prof[i]);
+      }
+      // data occupies the bottom `peak` fraction of the plot; the box needs the rest
+      const room = g.ph * (1 - peak) - PAD * 2;
+      if (room >= size) {
+        const cand = { size, right, x: g.L + (right ? g.pw - size - PAD : PAD),
+                       y: g.T + PAD, outside: false };
+        if (!best || cand.size > best.size) best = cand;
+        break;                          // largest size for this corner; try the other
+      }
+    }
+  }
+  return best;
+}
+
+/* Add the construction diagram as an inset, above the data or beside it. */
 function addInset(svg, p, href) {
   const g = svg.__plot;
   if (!g) return false;
-  const size = Math.min(g.pw * 0.34, g.ph * 0.62);
-  if (size < 90) return false;
   const prof = inkProfile(p);
-  let right = true;
-  if (prof) {
-    const half = Math.floor(prof.length / 2);
-    const mean = (a) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
-    right = mean(prof.slice(half)) < mean(prof.slice(0, half));
+  let spot = fitInset(g, prof);
+  if (!spot) {
+    // NOTHING FITS OVER THE DATA, so the chart grows instead of the picture landing on the
+    // curve. Widening the viewBox keeps the inset beside the plot it belongs to without
+    // ever covering it.
+    const extra = Math.min(200, g.pw * 0.34);
+    const vb = svg.getAttribute("viewBox").split(/\s+/).map(Number);
+    svg.setAttribute("viewBox", `0 0 ${vb[2] + extra + 16} ${vb[3]}`);
+    spot = { size: extra, right: true, x: vb[2] + 8, y: g.T, outside: true };
   }
-  const x = right ? g.L + g.pw - size - 6 : g.L + 6;
-  const y = g.T + 6;
+  const size = spot.size;
+  const x = spot.x;
+  const y = spot.y;
   const box = el("g", { class: "gal__inset" });
   box.appendChild(el("rect", { x: x - 5, y: y - 5, width: size + 10, height: size + 10,
                                rx: 6, class: "gal__inset-bg" }));
@@ -352,6 +413,7 @@ function addInset(svg, p, href) {
   box.appendChild(im);
   const cap = el("text", { x: x + size / 2, y: y + size + 14, class: "gal__inset-cap",
                            "text-anchor": "middle" }, "what is measured");
+  box.setAttribute("data-placement", spot.outside ? "beside" : "over");
   box.appendChild(cap);
   svg.appendChild(box);
   return true;
@@ -617,7 +679,7 @@ function drawSplit(host, p) {
   const legH = legendLayout(legLabels, W - L - R).height + 10;
   const B = 96 + legH, H = 430 + legH;
   const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
-  const ymax = Math.max(...p.series.flatMap((s) => s.y)) || 1;
+  const ymax = Math.max(...p.series.flatMap((s) => s.yhi || s.y)) || 1;
   const xr = p.series[0].x;
   const x0 = xr[0], x1 = xr[xr.length - 1];
   const px = (v) => L + ((v - x0) / (x1 - x0)) * pw;
@@ -670,7 +732,10 @@ function drawGrouped(host, p) {
   const B = 100 + legH, H = 440 + legH;
   const { svg, pw, ph } = frame(p, W, H, L, R, T, B);
   const cats = p.categories, ser = p.series;
-  const max = Math.max(...ser.flatMap((s) => s.pct), 1);
+  // THE SCALE HAS TO COVER THE WHISKERS, NOT JUST THE BARS. Taking the maximum from `pct`
+  // alone put the osteoporosis panel's top confidence bound at 45% on an axis that stopped
+  // at 31%, so the bar ran off the top of the plot with nothing to say it had.
+  const max = Math.max(...ser.flatMap((s) => (s.hi || s.pct)), ...ser.flatMap((s) => s.pct), 1);
   const gw = pw / cats.length;
   const bw = Math.min(30, (gw - 10) / ser.length);
 
@@ -801,7 +866,7 @@ function drawRidge(host, p) {
 
   const x0 = p.x[0], x1 = p.x[p.x.length - 1];
   const px = (v) => L + ((v - x0) / (x1 - x0)) * pw;
-  const gmax = Math.max(...p.series.flatMap((s) => s.y)) || 1;
+  const gmax = Math.max(...p.series.flatMap((s) => s.yhi || s.y)) || 1;
 
   // reference band, drawn under everything so it reads as ground rather than as a series
   if (p.ref != null && p.ref_sd != null) {
