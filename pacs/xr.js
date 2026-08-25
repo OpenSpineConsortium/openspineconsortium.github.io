@@ -19,7 +19,7 @@
 import { SpineDetector, KPT_LABEL, assignLevels, computeAngles, angleToHorizontal }
   from "./infer.js";
 
-const XR_BUILD = "20260825a";
+const XR_BUILD = "20260825b";
 const MODEL_URL = { 640: "models/v11n_640.onnx", 1024: "models/v11n_1024.onnx" };
 
 const $ = id => document.getElementById(id);
@@ -252,12 +252,12 @@ async function loadCase(dir) {
       net,
       imageUrl: `data/xr/${dir}/${m.image || "image.png"}?v=${XR_BUILD}`,
       lmNote: net
-        ? `Corners predicted by ${net.model} on this synthetic radiograph, precomputed. `
-          + `The angles beside them are ostk's, measured in the CT itself — on this case `
-          + `the network reads SS ${net.angles_from_net?.SS ?? "?"}° against the volume's `
-          + `${(m.geometry.angles.find(a => a.id === "SS") || {}).value ?? "?"}°. The `
-          + `bicoxofemoral point is a 3-D construction and is not predicted. Change the `
-          + `model above to re-run the network here.`
+        ? `Corners predicted by ${net.model} on this synthetic radiograph, and every angle `
+          + `measured from those corners by ostk — one chain, so the endplate drawn is the `
+          + `line the angle was taken from. The femoral head is the exception: a sphere `
+          + `fitted in the CT, which no lateral model predicts, and which is why this pane `
+          + `can show PI and PT where a dropped film cannot. Precomputed for speed; change `
+          + `the model, confidence or mode above to re-run the network here.`
         : "Derived in 3-D from the segmentation and projected — not read off the "
           + "2-D silhouette. Hover a marker for its definition.",
     };
@@ -328,7 +328,7 @@ function intersect(p1, p2, p3, p4) {
 }
 
 /** Detections -> the same {shape, angles, landmarks} a reference bundle carries. */
-function buildUserView(dets, W, H) {
+function buildUserView(dets, W, H, femoral) {
   const levelled = assignLevels(dets);
   const ang = computeAngles(levelled);
   const byLevel = Object.fromEntries(levelled.map(d => [d.level, d]));
@@ -353,6 +353,45 @@ function buildUserView(dets, W, H) {
       label_anchor: dir < 0 ? "end" : "start",
       leader: [[dir < 0 ? -0.012 * W : 1.012 * W, mid[1]], mid],
     });
+  }
+
+  /* PI AND PT NEED A FEMORAL HEAD, which only the reference film has. The definitions
+     are ostk.metrics2d's, on the same corners: PT at the head between the vertical and the
+     line to the S1 endplate midpoint, PI at that midpoint between the plate's perpendicular
+     and the line to the head. Image pixels run downward, so cranial is -y. */
+  if (s1 && femoral) {
+    const a = kpOf(s1, "sup_ant"), p = kpOf(s1, "sup_post");
+    if (a && p) {
+      const A = [a.x, a.y], P = [p.x, p.y];
+      const mid = [(A[0] + P[0]) / 2, (A[1] + P[1]) / 2];
+      const len = Math.hypot(P[0] - A[0], P[1] - A[1]) || 1;
+      const F = [femoral[0], femoral[1]];
+      const toMid = [mid[0] - F[0], mid[1] - F[1]];
+      const up = [0, -1];
+      const acute = (ux, uy, vx, vy) => {
+        const d = (ux * vx + uy * vy) /
+                  (Math.hypot(ux, uy) * Math.hypot(vx, vy) || 1);
+        let t = Math.acos(Math.max(-1, Math.min(1, d))) * 180 / Math.PI;
+        return t > 90 ? 180 - t : t;
+      };
+      const PT = acute(toMid[0], toMid[1], up[0], up[1]);
+      // the plate's perpendicular, pointed cranially
+      let n = [-(P[1] - A[1]) / len, (P[0] - A[0]) / len];
+      if (n[1] > 0) n = [-n[0], -n[1]];
+      const PI = acute(n[0], n[1], -toMid[0], -toMid[1]);
+      const vtip = [F[0], F[1] - len * 1.6];
+      angles.push({
+        id: "PT", value: PT.toFixed(1), units: "\u00b0", color: COLORS.PT || "#f472b6",
+        segments: [[F, mid]], dashed: [[F, vtip]],
+        arc: arcPts(F, mid, vtip, len * 0.5),
+      });
+      const ntip = [mid[0] + n[0] * len * 1.1, mid[1] + n[1] * len * 1.1];
+      angles.push({
+        id: "PI", value: PI.toFixed(1), units: "\u00b0", color: COLORS.PI || "#34d399",
+        segments: [[mid, F]], dashed: [[mid, ntip]],
+        arc: arcPts(mid, ntip, F, len * 0.62),
+      });
+    }
   }
 
   const l1 = byLevel.L1;
@@ -401,7 +440,7 @@ function buildUserView(dets, W, H) {
   // PI and PT are always unavailable -- no hip landmark survives on a real film. SS and
   // LL go on the list too when their endplates were not found, so a missing parameter
   // is stated rather than silently absent from the panel.
-  const unavailable = ["PI", "PT"];
+  const unavailable = femoral ? [] : ["PI", "PT"];
   if (ang.SS == null) unavailable.unshift("SS");
   if (ang.LL == null) unavailable.unshift("LL");
 
@@ -437,33 +476,27 @@ async function reinferReference() {
       view.ref.lmNote = "No vertebra passed the confidence threshold on the synthetic "
                       + "radiograph at this setting.";
       view.ref.landmarks = keep;
+      view.ref.angles = [];
     } else {
-      const levelled = assignLevels(dets);
-      const lm = [];
-      for (const d of levelled)
-        for (const k of d.kpts) {
-          if (k.v < 0.5) continue;
-          lm.push({
-            id: `${d.level}_${k.name}`, level: d.level, cls: k.name,
-            label: `${d.level} ${KPT_LABEL[k.name] || k.name}`,
-            xy: [k.x, k.y], color: LM_COLOR[k.name], conf: d.conf,
-            desc: `Predicted here and now on the synthetic radiograph. Box confidence `
-                + `${d.conf.toFixed(2)}.`,
-          });
-        }
-      // the bicoxofemoral point is not predicted by any lateral model; it stays
-      view.ref.landmarks = lm.concat(keep);
-      const a = computeAngles(levelled);
-      const refSS = (view.ref.angles.find(q => q.id === "SS") || {}).value;
+      // SAME BUILDER AS A DROPPED FILM, with the one thing a dropped film never has: the
+      // femoral head, so this pane gets PI and PT as well.
+      const femoral = keep.length ? keep[0].xy : null;
+      const built = buildUserView(dets, bmp.width, bmp.height, femoral);
+      view.ref.angles = built.angles;
+      view.ref.landmarks = built.landmarks.concat(keep);
+      view.ref.shape = built.shape;
+      const got = Object.fromEntries(built.angles.map(q => [q.id, q.value]));
       view.ref.lmNote =
         `Re-inferred in this browser with ${detImgsz}px weights at confidence `
-        + `${conf.toFixed(2)} — ${levelled.length} vertebrae, ${ms.toFixed(0)} ms on `
-        + `${backend === "webgpu" ? "the GPU" : "the CPU"}. `
-        + (a.SS != null && refSS != null
-            ? `The network reads SS ${a.SS.toFixed(1)}° against the volume's ${refSS}°. `
-            : "")
-        + `The angles drawn are still ostk's, measured in the CT. The bicoxofemoral point `
-        + `is a 3-D construction and is not predicted.`;
+        + `${conf.toFixed(2)} — ${built.levelled.length} vertebrae, ${ms.toFixed(0)} ms on `
+        + `${backend === "webgpu" ? "the GPU" : "the CPU"}. Every angle here is measured `
+        + `from these corners, by the same construction ostk uses. `
+        + (got.PI ? `PI ${got.PI}°, ` : "")
+        + (got.SS ? `SS ${got.SS}°. ` : "")
+        + `The femoral head is a 3-D fit from the CT and is not predicted — it is why this `
+        + `pane can show PI and PT and a dropped film cannot.`;
+      active.ref.clear();
+      view.ref.angles.forEach(q => active.ref.set(q.id, true));
     }
     if (panelSrc === "ref") renderPanel();
     draw("ref");
@@ -541,7 +574,7 @@ async function analyse() {
                           + "only ever seen lateral views." };
       els.hudUser.textContent = "no detections";
     } else {
-      view.user = buildUserView(dets, W, H);
+      view.user = buildUserView(dets, W, H, null);
       els.hudUser.textContent =
         `${W}×${H} · ${view.user.levelled.length} vertebrae`;
     }

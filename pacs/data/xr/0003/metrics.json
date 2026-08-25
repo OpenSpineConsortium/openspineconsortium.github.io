@@ -1,14 +1,14 @@
 {
  "case_id": "0003",
- "title": "Case 0003 — DRR (same scan as the CT tab)",
+ "title": "Case 0003 \u2014 DRR (same scan as the CT tab)",
  "image": "image.png",
  "summary": {
   "case_id": "0003",
   "supine_ct": true,
-  "PI": 55.531,
-  "SS": 32.314,
-  "PT": 23.218,
-  "LL": 45.7,
+  "PI": 58.767,
+  "SS": 34.181,
+  "PT": 24.586,
+  "LL": 44.941,
   "PI-LL": {
    "pi_minus_ll": 9.826,
    "abs_pi_minus_ll": 9.826,
@@ -26,8 +26,8 @@
    "PT": "+",
    "SVA": "out_of_scope",
    "objectives": {
-    "LL=PI±9°": false,
-    "PT<20°": false,
+    "LL=PI\u00b19\u00b0": false,
+    "PT<20\u00b0": false,
     "SVA<5cm": null
    },
    "ll_increase_needed_deg": 4.044
@@ -41,16 +41,17 @@
   "surgery": {
    "ll_to_restore_deg": 4.044,
    "severity": "mild",
-   "primary": "anterior/interbody fusion — single- or two-level ALIF (≈6°, best at L5–S1) ± LLIF",
+   "primary": "anterior/interbody fusion \u2014 single- or two-level ALIF (\u22486\u00b0, best at L5\u2013S1) \u00b1 LLIF",
    "osteotomy": null,
-   "fixation": "percutaneous posterior fixation (PT≥20°)",
+   "fixation": "percutaneous posterior fixation (PT\u226520\u00b0)",
    "objectives": {
-    "LL=PI±9°": false,
-    "PT<20°": false
+    "LL=PI\u00b19\u00b0": false,
+    "PT<20\u00b0": false
    },
-   "rationale": "Correction need ΔLL = (PI−LL−9) + (PT−20) = 4.0° (Eq. 73.1); |PI−LL| 9.8°, PT 23.2° → mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0°."
+   "rationale": "Correction need \u0394LL = (PI\u2212LL\u22129) + (PT\u221220) = 4.0\u00b0 (Eq. 73.1); |PI\u2212LL| 9.8\u00b0, PT 23.2\u00b0 \u2192 mild deformity (Table 73.3). Matched to the least-invasive technique whose Table 73.2 lordosis ceiling covers 4.0\u00b0."
   },
-  "modality": "XR (DRR)"
+  "modality": "radiograph_2d",
+  "note": "Corners predicted by the network on this synthetic radiograph; angles measured from those corners by ostk.metrics2d. The femoral head is a 3-D fit and is not predicted."
  },
  "geometry": {
   "space": "image_px",
@@ -92,701 +93,477 @@
    {
     "id": "SS",
     "label": "Sacral Slope",
-    "value": 32.3,
-    "units": "°",
+    "value": 34.2,
+    "units": "\u00b0",
     "color": "#60a5fa",
     "segments": [
      [
       [
-       298.67,
-       651.64
+       266.67849999999993,
+       687.965
       ],
       [
-       387.76,
-       595.29
-      ]
-     ],
-     [
-      [
-       343.21,
-       623.46
-      ],
-      [
-       606.08,
-       623.45
+       427.5515,
+       578.715
       ]
      ]
     ],
     "dashed": [
      [
       [
-       387.76,
-       595.29
+       347.115,
+       633.34
       ],
       [
-       556.79,
-       488.38
+       249.88372335894175,
+       633.34
       ]
      ]
     ],
     "arc": [
      [
-      444.63,
-      559.31
+      300.5465,
+      664.965
      ],
      [
-      445.78,
-      561.17
+      299.88332046497624,
+      663.9657124905009
      ],
      [
-      446.89,
-      563.04
+      299.24158057900956,
+      662.9525231986729
      ],
      [
-      447.98,
-      564.94
+      298.621571643999,
+      661.9258920366568
      ],
      [
-      449.02,
-      566.86
+      298.0235750976174,
+      660.8862850181969
      ],
      [
-      450.04,
-      568.79
+      297.44786238556026,
+      659.8341740471053
      ],
      [
-      451.01,
-      570.74
+      296.8946948383291,
+      658.7700367030535
      ],
      [
-      451.95,
-      572.71
+      296.3643235526072,
+      657.6943560247864
      ],
      [
-      452.86,
-      574.7
+      295.8569892772808,
+      656.6076202908592
      ],
      [
-      453.73,
-      576.7
+      295.37292230415653,
+      655.5103227979952
      ],
      [
-      454.56,
-      578.72
+      294.9123423634268,
+      654.4029616371661
      ],
      [
-      455.36,
-      580.75
+      294.4754585239281,
+      653.286039467496
      ],
      [
-      456.11,
-      582.8
+      294.0624690982399,
+      652.1600632880921
      ],
      [
-      456.84,
-      584.86
+      293.67356155266526,
+      651.0255442079042
      ],
      [
-      457.52,
-      586.93
+      293.3089124221352,
+      649.88299721372
      ],
      [
-      458.16,
-      589.02
+      292.9686872300754,
+      648.7329409364
      ],
      [
-      458.77,
-      591.12
+      292.6530404132702,
+      647.575897415457
      ],
      [
-      459.34,
-      593.22
+      292.36211525176077,
+      646.41239186209
      ],
      [
-      459.87,
-      595.34
+      292.0960438038059,
+      645.2429524207769
      ],
      [
-      460.36,
-      597.47
+      291.85494684593795,
+      644.0681099295372
      ],
      [
-      460.82,
-      599.6
+      291.638933818139,
+      642.8883976789708
      ],
      [
-      461.23,
-      601.75
+      291.4481027741635,
+      641.7043511701838
      ],
      [
-      461.61,
-      603.9
+      291.28254033702916,
+      640.5165078717115
      ],
      [
-      461.94,
-      606.05
+      291.1423216596966,
+      639.3254069755476
      ],
      [
-      462.24,
-      608.22
+      291.0275103909554,
+      638.1315891523914
      ],
      [
-      462.5,
-      610.38
+      290.9381586465324,
+      636.9355963062238
      ],
      [
-      462.72,
-      612.56
+      290.874306985435,
+      635.7379713283236
      ],
      [
-      462.9,
-      614.73
+      290.83598439154065,
+      634.539257850835
      ],
      [
-      463.04,
-      616.91
-     ],
-     [
-      463.13,
-      619.09
-     ],
-     [
-      463.19,
-      621.27
-     ],
-     [
-      463.21,
-      623.46
+      290.82320826043997,
+      633.34
      ]
-    ],
-    "label_at": [
-     566.08,
-     577.73
-    ]
-   },
-   {
-    "id": "PI",
-    "label": "Pelvic Incidence",
-    "value": 55.5,
-    "units": "°",
-    "color": "#36d399",
-    "segments": [
-     [
-      [
-       298.67,
-       651.64
-      ],
-      [
-       387.76,
-       595.29
-      ]
-     ]
-    ],
-    "dashed": [
-     [
-      [
-       343.21,
-       623.46
-      ],
-      [
-       465.41,
-       816.62
-      ]
-     ],
-     [
-      [
-       343.21,
-       623.46
-      ],
-      [
-       225.58,
-       897.76
-      ]
-     ]
-    ],
-    "arc": [
-     [
-      389.04,
-      695.9
-     ],
-     [
-      386.75,
-      697.3
-     ],
-     [
-      384.42,
-      698.62
-     ],
-     [
-      382.06,
-      699.87
-     ],
-     [
-      379.65,
-      701.05
-     ],
-     [
-      377.21,
-      702.15
-     ],
-     [
-      374.73,
-      703.17
-     ],
-     [
-      372.22,
-      704.12
-     ],
-     [
-      369.69,
-      704.99
-     ],
-     [
-      367.13,
-      705.77
-     ],
-     [
-      364.54,
-      706.48
-     ],
-     [
-      361.94,
-      707.11
-     ],
-     [
-      359.31,
-      707.65
-     ],
-     [
-      356.67,
-      708.11
-     ],
-     [
-      354.02,
-      708.49
-     ],
-     [
-      351.36,
-      708.79
-     ],
-     [
-      348.69,
-      709
-     ],
-     [
-      346.01,
-      709.13
-     ],
-     [
-      343.33,
-      709.18
-     ],
-     [
-      340.65,
-      709.14
-     ],
-     [
-      337.97,
-      709.02
-     ],
-     [
-      335.3,
-      708.81
-     ],
-     [
-      332.64,
-      708.52
-     ],
-     [
-      329.98,
-      708.15
-     ],
-     [
-      327.34,
-      707.7
-     ],
-     [
-      324.72,
-      707.16
-     ],
-     [
-      322.11,
-      706.54
-     ],
-     [
-      319.53,
-      705.84
-     ],
-     [
-      316.96,
-      705.06
-     ],
-     [
-      314.42,
-      704.2
-     ],
-     [
-      311.91,
-      703.26
-     ],
-     [
-      309.44,
-      702.24
-     ]
-    ],
-    "label_at": [
-     355.91,
-     782.97
     ]
    },
    {
     "id": "PT",
     "label": "Pelvic Tilt",
-    "value": 23.2,
-    "units": "°",
-    "color": "#fbbf24",
+    "value": 24.6,
+    "units": "\u00b0",
+    "color": "#f59e0b",
     "segments": [
      [
       [
-       225.58,
-       897.76
+       226.09,
+       897.85
       ],
       [
-       225.55,
-       623.47
+       347.115,
+       633.34
       ]
      ]
     ],
     "dashed": [
      [
       [
-       225.58,
-       897.76
+       226.09,
+       897.85
       ],
       [
-       343.21,
-       623.46
+       226.09,
+       734.0920603940071
       ]
      ]
     ],
     "arc": [
      [
-      225.58,
-      800.62
+      247.38168253149877,
+      851.3152927378084
      ],
      [
-      226.85,
-      800.62
+      246.66604931279664,
+      850.9944675659601
      ],
      [
-      228.12,
-      800.65
+      245.9455835649027,
+      850.6846469715622
      ],
      [
-      229.39,
-      800.69
+      245.22045449774188,
+      850.3859037196554
      ],
      [
-      230.66,
-      800.75
+      244.49083241647483,
+      850.098307973635
      ],
      [
-      231.93,
-      800.82
+      243.75688868149993,
+      849.8219272787728
      ],
      [
-      233.19,
-      800.91
+      243.01879566820713,
+      849.5568265463525
      ],
      [
-      234.46,
-      801.02
+      242.27672672649365,
+      849.3030680384247
      ],
      [
-      235.72,
-      801.15
+      241.53085614005062,
+      849.0607113531847
      ],
      [
-      236.98,
-      801.29
+      240.7813590854305,
+      848.8298134109739
      ],
      [
-      238.24,
-      801.44
+      240.02841159090482,
+      848.6104284409122
      ],
      [
-      239.5,
-      801.62
+      239.27219049512186,
+      848.4026079681615
      ],
      [
-      240.75,
-      801.81
+      238.512873405574,
+      848.2064008018247
      ],
      [
-      242.01,
-      802.01
+      237.7506386568844,
+      848.0218530234811
      ],
      [
-      243.26,
-      802.24
+      236.9856652689231,
+      847.8490079763653
      ],
      [
-      244.5,
-      802.48
+      236.21813290476206,
+      847.6879062551864
      ],
      [
-      245.75,
-      802.73
+      235.44822182847915,
+      847.5385856965939
      ],
      [
-      246.99,
-      803
+      234.67611286282101,
+      847.401081370292
      ],
      [
-      248.22,
-      803.29
+      233.90198734673461,
+      847.2754255708023
      ],
      [
-      249.45,
-      803.59
+      233.12602709277772,
+      847.1616478098795
      ],
      [
-      250.68,
-      803.91
+      232.3484143444181,
+      847.05977480958
      ],
      [
-      251.91,
-      804.25
+      231.56933173323137,
+      846.9698304959859
      ],
      [
-      253.13,
-      804.6
+      230.78896223600788,
+      846.8918359935861
      ],
      [
-      254.34,
-      804.97
+      230.0074891317784,
+      846.8258096203144
      ],
      [
-      255.55,
-      805.35
+      229.22509595876897,
+      846.7717668832476
      ],
      [
-      256.76,
-      805.75
+      228.44196647129462,
+      846.7297204749631
      ],
      [
-      257.96,
-      806.17
+      227.65828459660264,
+      846.6996802705588
      ],
      [
-      259.15,
-      806.6
+      226.87423439167486,
+      846.681653325333
      ],
      [
-      260.34,
-      807.05
-     ],
+      226.09,
+      846.6756438731272
+     ]
+    ]
+   },
+   {
+    "id": "PI",
+    "label": "Pelvic Incidence",
+    "value": 58.8,
+    "units": "\u00b0",
+    "color": "#a78bfa",
+    "segments": [
      [
-      261.52,
-      807.51
-     ],
-     [
-      262.7,
-      807.98
-     ],
-     [
-      263.87,
-      808.48
+      [
+       347.115,
+       633.34
+      ],
+      [
+       226.09,
+       897.85
+      ]
      ]
     ],
-    "label_at": [
-     128.44,
-     754.89
+    "dashed": [
+     [
+      [
+       347.115,
+       633.34
+      ],
+      [
+       283.865,
+       540.203
+      ]
+     ]
+    ],
+    "arc": [
+     [
+      311.46500000000003,
+      580.8446
+     ],
+     [
+      307.60352085443844,
+      583.6858708978815
+     ],
+     [
+      303.9675683032684,
+      586.8105613709355
+     ],
+     [
+      300.5778959101115,
+      590.2008360757086
+     ],
+     [
+      297.45385150216794,
+      593.8373437470811
+     ],
+     [
+      294.61326673523206,
+      597.6993276528744
+     ],
+     [
+      292.0723553128256,
+      601.7647440706894
+     ],
+     [
+      289.84562044040007,
+      606.0103881107236
+     ],
+     [
+      287.9457720428495,
+      610.4120261663888
+     ],
+     [
+      286.3836542178444,
+      614.9445342367133
+     ],
+     [
+      285.168183339075,
+      619.5820413310063
+     ],
+     [
+      284.30629716270204,
+      624.2980771372456
+     ],
+     [
+      283.8029152275107,
+      629.0657231113169
+     ],
+     [
+      283.6609107747963,
+      633.8577661247052
+     ],
+     [
+      283.8810943482617,
+      638.6468537936387
+     ],
+     [
+      284.46220916753464,
+      643.4056506030828
+     ],
+     [
+      285.40093830171367,
+      648.1069939344508
+     ],
+     [
+      286.6919236019958,
+      652.724049106442
+     ],
+     [
+      288.3277962853217,
+      657.2304625440554
+     ],
+     [
+      290.2992189944698,
+      661.6005122015089
+     ],
+     [
+      292.5949390945271,
+      665.8092543804678
+     ],
+     [
+      295.20185290152534,
+      669.8326661055634
+     ],
+     [
+      298.10508047663467,
+      673.64778224454
+     ],
+     [
+      301.2880505589982,
+      677.2328265903652
+     ],
+     [
+      304.73259515242233,
+      680.5673361571032
+     ],
+     [
+      308.4190532260323,
+      683.6322779800862
+     ],
+     [
+      312.3263829369844,
+      686.4101577537024
+     ],
+     [
+      316.43228173467975,
+      688.8851196867105
+     ],
+     [
+      320.7133136609415,
+      691.0430370051176
+     ]
     ]
    },
    {
     "id": "LL",
     "label": "Lumbar Lordosis",
-    "value": 45.7,
-    "units": "°",
-    "color": "#f472b6",
+    "value": 44.9,
+    "units": "\u00b0",
+    "color": "#34d399",
     "segments": [
      [
       [
-       486.37,
-       155.57
+       332.691,
+       124.81200000000001
       ],
       [
-       312.34,
-       114.15
+       500.73900000000003,
+       156.748
       ]
      ],
      [
       [
-       387.76,
-       595.29
+       279.37899999999996,
+       679.34
       ],
       [
-       264.87,
-       673.02
-      ]
-     ]
-    ],
-    "dashed": [
-     [
-      [
-       312.34,
-       114.15
-      ],
-      [
-       202.73,
-       574.75
-      ]
-     ],
-     [
-      [
-       264.87,
-       673.02
-      ],
-      [
-       114.13,
-       434.71
+       414.851,
+       587.34
       ]
      ]
-    ],
-    "arc": [
-     [
-      229.19,
-      463.57
-     ],
-     [
-      226.32,
-      462.93
-     ],
-     [
-      223.43,
-      462.36
-     ],
-     [
-      220.53,
-      461.86
-     ],
-     [
-      217.62,
-      461.44
-     ],
-     [
-      214.7,
-      461.09
-     ],
-     [
-      211.77,
-      460.82
-     ],
-     [
-      208.84,
-      460.63
-     ],
-     [
-      205.9,
-      460.51
-     ],
-     [
-      202.96,
-      460.47
-     ],
-     [
-      200.02,
-      460.5
-     ],
-     [
-      197.08,
-      460.61
-     ],
-     [
-      194.15,
-      460.79
-     ],
-     [
-      191.22,
-      461.05
-     ],
-     [
-      188.29,
-      461.38
-     ],
-     [
-      185.38,
-      461.79
-     ],
-     [
-      182.48,
-      462.27
-     ],
-     [
-      179.59,
-      462.83
-     ],
-     [
-      176.72,
-      463.46
-     ],
-     [
-      173.87,
-      464.17
-     ],
-     [
-      171.03,
-      464.95
-     ],
-     [
-      168.22,
-      465.8
-     ],
-     [
-      165.43,
-      466.72
-     ],
-     [
-      162.66,
-      467.72
-     ],
-     [
-      159.92,
-      468.79
-     ],
-     [
-      157.21,
-      469.92
-     ],
-     [
-      154.52,
-      471.13
-     ],
-     [
-      151.87,
-      472.4
-     ],
-     [
-      149.26,
-      473.75
-     ],
-     [
-      146.68,
-      475.16
-     ],
-     [
-      144.13,
-      476.63
-     ],
-     [
-      141.63,
-      478.17
-     ]
-    ],
-    "label_at": [
-     177.34,
-     422.56
     ]
    }
   ],
@@ -802,7 +579,7 @@
     ],
     "color": "#34d399",
     "conf": 1,
-    "desc": "L1 superior endplate, anterior — cranial end of the lumbar lordosis Cobb construction."
+    "desc": "L1 superior endplate, anterior \u2014 cranial end of the lumbar lordosis Cobb construction."
    },
    {
     "id": "L1_sup_post",
@@ -815,7 +592,7 @@
     ],
     "color": "#60a5fa",
     "conf": 1,
-    "desc": "L1 superior endplate, posterior — cranial end of the lumbar lordosis Cobb construction."
+    "desc": "L1 superior endplate, posterior \u2014 cranial end of the lumbar lordosis Cobb construction."
    },
    {
     "id": "L1_inf_ant",
@@ -828,7 +605,7 @@
     ],
     "color": "#fbbf24",
     "conf": 1,
-    "desc": "L1 inferior endplate, anterior — cranial end of the lumbar lordosis Cobb construction."
+    "desc": "L1 inferior endplate, anterior \u2014 cranial end of the lumbar lordosis Cobb construction."
    },
    {
     "id": "L1_inf_post",
@@ -841,7 +618,7 @@
     ],
     "color": "#f472b6",
     "conf": 1,
-    "desc": "L1 inferior endplate, posterior — cranial end of the lumbar lordosis Cobb construction."
+    "desc": "L1 inferior endplate, posterior \u2014 cranial end of the lumbar lordosis Cobb construction."
    },
    {
     "id": "L2_sup_ant",
@@ -906,7 +683,7 @@
     ],
     "color": "#34d399",
     "conf": 1,
-    "desc": "L3 superior endplate, anterior — the apex level in most Roussouly types."
+    "desc": "L3 superior endplate, anterior \u2014 the apex level in most Roussouly types."
    },
    {
     "id": "L3_sup_post",
@@ -919,7 +696,7 @@
     ],
     "color": "#60a5fa",
     "conf": 1,
-    "desc": "L3 superior endplate, posterior — the apex level in most Roussouly types."
+    "desc": "L3 superior endplate, posterior \u2014 the apex level in most Roussouly types."
    },
    {
     "id": "L3_inf_ant",
@@ -932,7 +709,7 @@
     ],
     "color": "#fbbf24",
     "conf": 1,
-    "desc": "L3 inferior endplate, anterior — the apex level in most Roussouly types."
+    "desc": "L3 inferior endplate, anterior \u2014 the apex level in most Roussouly types."
    },
    {
     "id": "L3_inf_post",
@@ -945,7 +722,7 @@
     ],
     "color": "#f472b6",
     "conf": 1,
-    "desc": "L3 inferior endplate, posterior — the apex level in most Roussouly types."
+    "desc": "L3 inferior endplate, posterior \u2014 the apex level in most Roussouly types."
    },
    {
     "id": "L4_sup_ant",
@@ -1062,7 +839,7 @@
     ],
     "color": "#34d399",
     "conf": 1,
-    "desc": "S1 superior endplate, anterior — the sacral plate. Sacral slope is its angle to the horizontal, and it is the caudal end of the lordosis."
+    "desc": "S1 superior endplate, anterior \u2014 the sacral plate. Sacral slope is its angle to the horizontal, and it is the caudal end of the lordosis."
    },
    {
     "id": "S1_sup_post",
@@ -1075,7 +852,7 @@
     ],
     "color": "#60a5fa",
     "conf": 1,
-    "desc": "S1 superior endplate, posterior — the sacral plate. Sacral slope is its angle to the horizontal, and it is the caudal end of the lordosis."
+    "desc": "S1 superior endplate, posterior \u2014 the sacral plate. Sacral slope is its angle to the horizontal, and it is the caudal end of the lordosis."
    },
    {
     "id": "bicox",
@@ -1087,7 +864,7 @@
      897.85
     ],
     "color": "#f472b6",
-    "desc": "Midpoint of the two femoral head centres (Legaye & Duval-Beaupère 1998). On a lateral film the two heads superimpose, so this is a single point. PI and PT are undefined without it — which is why a coned lumbar lateral yields only SS and LL."
+    "desc": "Midpoint of the two femoral head centres (Legaye & Duval-Beaup\u00e8re 1998). On a lateral film the two heads superimpose, so this is a single point. PI and PT are undefined without it \u2014 which is why a coned lumbar lateral yields only SS and LL."
    }
   ],
   "net": {
@@ -1100,7 +877,14 @@
     "SS": 34.2,
     "LL": 44.9
    },
-   "note": "Corners predicted by the same network the user pane runs, on this DRR. The bicoxofemoral point is a 3-D construction from ostk and is not predicted."
+   "note": "Corners predicted by the same network the user pane runs, on this DRR. The bicoxofemoral point is a 3-D construction from ostk and is not predicted.",
+   "angles_from_ostk_on_net_corners": {
+    "PI": 58.767,
+    "SS": 34.181,
+    "PT": 24.586,
+    "LL": 44.941
+   },
+   "measured_by": "ostk.metrics2d on the network's corners"
   }
  }
 }
