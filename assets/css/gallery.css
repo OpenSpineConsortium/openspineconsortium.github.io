@@ -418,61 +418,20 @@
   .gal__howto > summary::before { transition: none; }
 }
 
-/* An inset opens to full size: at inset scale the labels read but the bone does not. */
+/* The inset grows where it sits. No modal, no second surface. */
 .gal__inset.is-clickable { cursor: zoom-in; }
 .gal__inset.is-clickable:hover .gal__inset-bg,
 .gal__inset.is-clickable:focus-visible .gal__inset-bg {
   stroke: currentColor;
   stroke-width: 1.6;
 }
+.gal__inset.is-zoomed { cursor: zoom-out; }
+.gal__inset.is-zoomed .gal__inset-bg {
+  stroke: currentColor;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 6px 18px rgba(20, 22, 18, .30));
+}
 .gal__inset.is-clickable:focus-visible { outline: none; }
-
-.gal__lb {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(1rem, 4vw, 3rem);
-  background: rgba(18, 19, 16, .78);
+@media (prefers-reduced-motion: reduce) {
+  .gal__inset { transition: none !important; }
 }
-.gal__lb.is-on { display: flex; }
-.gal__lb figure {
-  margin: 0;
-  max-width: min(900px, 92vw);
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
-}
-.gal__lb img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 80vh;
-  object-fit: contain;
-  border-radius: 6px;
-  background: var(--paper, #f4f2ec);
-}
-.gal__lb figcaption {
-  color: #f1efe8;
-  font-size: .92rem;
-  text-align: center;
-  opacity: .85;
-}
-.gal__lb-x {
-  position: absolute;
-  top: 1rem;
-  right: 1.2rem;
-  width: 2.4rem;
-  height: 2.4rem;
-  border: 0;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  line-height: 1;
-  color: #f1efe8;
-  background: rgba(255, 255, 255, .14);
-  cursor: pointer;
-}
-.gal__lb-x:hover { background: rgba(255, 255, 255, .24); }

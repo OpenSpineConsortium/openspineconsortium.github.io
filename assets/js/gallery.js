@@ -353,74 +353,81 @@ function inkProfile(p) {
 }
 
 
-/* A dialog holding one construction at full size. Built once and reused: forty-eight
-   panels each carrying their own copy of this would be forty-eight listeners on Escape. */
-let LIGHTBOX = null;
-function openLightbox(href, title) {
-  if (!LIGHTBOX) {
-    const back = document.createElement("div");
-    back.className = "gal__lb";
-    back.setAttribute("role", "dialog");
-    back.setAttribute("aria-modal", "true");
-    const fig = document.createElement("figure");
-    const img = document.createElement("img");
-    const cap = document.createElement("figcaption");
-    const close = document.createElement("button");
-    close.type = "button";
-    close.className = "gal__lb-x";
-    close.setAttribute("aria-label", "Close");
-    close.textContent = "×";
-    fig.appendChild(img); fig.appendChild(cap);
-    back.appendChild(close); back.appendChild(fig);
-    document.body.appendChild(back);
-    const hide = () => {
-      back.classList.remove("is-on");
-      if (LIGHTBOX && LIGHTBOX.opener && LIGHTBOX.opener.focus) LIGHTBOX.opener.focus();
-    };
-    back.addEventListener("click", (e) => { if (e.target === back) hide(); });
-    close.addEventListener("click", hide);
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && back.classList.contains("is-on")) hide();
-    });
-    LIGHTBOX = { back, img, cap, close, opener: null };
-  }
-  LIGHTBOX.opener = document.activeElement;
-  LIGHTBOX.img.src = href;
-  LIGHTBOX.img.alt = `The construction behind ${title}`;
-  LIGHTBOX.cap.textContent = title;
-  LIGHTBOX.back.classList.add("is-on");
-  LIGHTBOX.close.focus();
+/* The inset grows in place rather than opening somewhere else.
+
+   A modal reads as leaving the page; Greg wanted the figure to expand where it already is.
+   The <g> is scaled about its own centre with a CSS transform on the SVG element, so the
+   anatomy enlarges over the chart it belongs to and shrinks back to exactly where it was.
+   Nothing is added to the DOM and nothing is fetched again.
+
+   Touch is the reason for the pointer handlers rather than :hover -- a phone has no hover
+   state, so an inset that only enlarged on hover would be unopenable on the device where
+   it is smallest and most needed. */
+function makeZoomable(box, cx, cy, factor) {
+  let open = false;
+  const apply = () => {
+    box.style.transformOrigin = `${cx}px ${cy}px`;
+    box.style.transform = open ? `scale(${factor})` : "scale(1)";
+    box.style.transition = "transform .28s cubic-bezier(.22,.61,.36,1)";
+    box.classList.toggle("is-zoomed", open);
+    // a zoomed inset has to paint over the plot and over its neighbours
+    if (open) box.parentNode.appendChild(box);
+  };
+  const toggle = (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    open = !open;
+    apply();
+  };
+  box.addEventListener("click", toggle);
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") toggle(e);
+    if (e.key === "Escape" && open) toggle(e);
+  });
+  // tapping anywhere else closes it, which is the gesture a phone user expects
+  document.addEventListener("click", () => { if (open) { open = false; apply(); } });
+  return () => { if (open) { open = false; apply(); } };
 }
 
-/* The largest square that fits above the data in one of the top corners.
-   Returns null when nothing worth drawing fits. */
+/* The largest square that fits clear of the data, trying all four corners.
+
+   An earlier version only considered the two TOP corners and, when neither fitted, widened
+   the chart and hung the figure outside it -- which on two panels meant no visible inset at
+   all. A histogram that fills its top corners usually leaves a bottom one empty, so the
+   search now covers all four and the outside path is gone. */
 function fitInset(g, prof) {
-  const PAD = 10;                       // clearance between the box and the curve
+  const PAD = 10;
   const MAX = Math.min(g.pw * 0.32, g.ph * 0.52);
-  const MIN = 96;
+  const MIN = 88;
+  const at = (x0f, x1f) => {
+    if (!prof) return 0;
+    const i0 = Math.max(0, Math.floor(x0f * (prof.length - 1)));
+    const i1 = Math.min(prof.length - 1, Math.ceil(x1f * (prof.length - 1)));
+    let peak = 0;
+    for (let i = i0; i <= i1; i++) peak = Math.max(peak, prof[i]);
+    return peak;
+  };
   let best = null;
-  for (const right of [true, false]) {
-    for (let size = MAX; size >= MIN; size -= 8) {
-      // the x-range this box would occupy, as a fraction of the plot width
-      const x0f = right ? (g.pw - size - PAD) / g.pw : PAD / g.pw;
-      const x1f = x0f + size / g.pw;
-      let peak = 0;
-      if (prof) {
-        const i0 = Math.max(0, Math.floor(x0f * (prof.length - 1)));
-        const i1 = Math.min(prof.length - 1, Math.ceil(x1f * (prof.length - 1)));
-        for (let i = i0; i <= i1; i++) peak = Math.max(peak, prof[i]);
+  for (let size = MAX; size >= MIN; size -= 6) {
+    for (const right of [true, false]) {
+      const x = right ? g.L + g.pw - size - PAD : g.L + PAD;
+      const x0f = (x - g.L) / g.pw, x1f = x0f + size / g.pw;
+      const peak = at(x0f, x1f);
+      // above the curve: the data occupies the bottom `peak` of the plot
+      if (g.ph * (1 - peak) - PAD * 2 >= size) {
+        return { size, x, y: g.T + PAD, peak, corner: right ? "top-right" : "top-left" };
       }
-      // data occupies the bottom `peak` fraction of the plot; the box needs the rest
-      const room = g.ph * (1 - peak) - PAD * 2;
-      if (room >= size) {
-        const cand = { size, right, x: g.L + (right ? g.pw - size - PAD : PAD),
-                       y: g.T + PAD, outside: false };
-        if (!best || cand.size > best.size) best = cand;
-        break;                          // largest size for this corner; try the other
+      // below it: only where the data in this column is a low, flat tail
+      if (peak * g.ph <= PAD && g.ph - PAD * 2 >= size) {
+        return { size, x, y: g.T + g.ph - size - PAD, peak,
+                 corner: right ? "bottom-right" : "bottom-left" };
       }
+      if (!best || size > best.size) best = { size, x, y: g.T + PAD, peak, corner: "fallback" };
     }
   }
-  return best;
+  // NOTHING CLEARS THE DATA. A bar chart whose bars fill the plot at every x has no free
+  // corner, and putting the figure on top of the bars is the fault this function exists to
+  // prevent. Signal that the caller should grow the chart and put it underneath instead.
+  return { size: Math.max(MIN, Math.min(g.pw * 0.26, g.ph * 0.5)), below: true };
 }
 
 /* Add the construction diagram as an inset, above the data or beside it. */
@@ -428,19 +435,19 @@ function addInset(svg, p, href) {
   const g = svg.__plot;
   if (!g) return false;
   const prof = inkProfile(p);
-  let spot = fitInset(g, prof);
-  if (!spot) {
-    // NOTHING FITS OVER THE DATA, so the chart grows instead of the picture landing on the
-    // curve. Widening the viewBox keeps the inset beside the plot it belongs to without
-    // ever covering it.
-    const extra = Math.min(200, g.pw * 0.34);
-    const vb = svg.getAttribute("viewBox").split(/\s+/).map(Number);
-    svg.setAttribute("viewBox", `0 0 ${vb[2] + extra + 16} ${vb[3]}`);
-    spot = { size: extra, right: true, x: vb[2] + 8, y: g.T, outside: true };
-  }
+  const spot = fitInset(g, prof);
+  if (!spot) return false;
   const size = spot.size;
-  const x = spot.x;
-  const y = spot.y;
+  let x = spot.x;
+  let y = spot.y;
+  if (spot.below) {
+    // grow the frame and sit the figure in a band of its own, centred under the plot
+    const vb = svg.getAttribute("viewBox").split(/\s+/).map(Number);
+    const band = size + 34;
+    svg.setAttribute("viewBox", `0 0 ${vb[2]} ${vb[3] + band}`);
+    x = g.L + (g.pw - size) / 2;
+    y = vb[3] + 6;
+  }
   const box = el("g", { class: "gal__inset" });
   box.appendChild(el("rect", { x: x - 5, y: y - 5, width: size + 10, height: size + 10,
                                rx: 6, class: "gal__inset-bg" }));
@@ -462,11 +469,9 @@ function addInset(svg, p, href) {
   box.setAttribute("tabindex", "0");
   box.setAttribute("role", "button");
   box.setAttribute("aria-label", `Enlarge: the construction behind ${p.title}`);
-  const open = () => openLightbox(href, p.title);
-  box.addEventListener("click", open);
-  box.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
-  });
+  // grow about the inset's own centre, to about the height of the plot
+  const factor = Math.max(1.6, Math.min(2.9, (g.ph * 0.92) / size));
+  makeZoomable(box, x + size / 2, y + size / 2, factor);
   box.appendChild(cap);
   svg.appendChild(box);
   return true;
