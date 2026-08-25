@@ -352,6 +352,46 @@ function inkProfile(p) {
   return out.map((v) => v / hi);
 }
 
+
+/* A dialog holding one construction at full size. Built once and reused: forty-eight
+   panels each carrying their own copy of this would be forty-eight listeners on Escape. */
+let LIGHTBOX = null;
+function openLightbox(href, title) {
+  if (!LIGHTBOX) {
+    const back = document.createElement("div");
+    back.className = "gal__lb";
+    back.setAttribute("role", "dialog");
+    back.setAttribute("aria-modal", "true");
+    const fig = document.createElement("figure");
+    const img = document.createElement("img");
+    const cap = document.createElement("figcaption");
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "gal__lb-x";
+    close.setAttribute("aria-label", "Close");
+    close.textContent = "×";
+    fig.appendChild(img); fig.appendChild(cap);
+    back.appendChild(close); back.appendChild(fig);
+    document.body.appendChild(back);
+    const hide = () => {
+      back.classList.remove("is-on");
+      if (LIGHTBOX && LIGHTBOX.opener && LIGHTBOX.opener.focus) LIGHTBOX.opener.focus();
+    };
+    back.addEventListener("click", (e) => { if (e.target === back) hide(); });
+    close.addEventListener("click", hide);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && back.classList.contains("is-on")) hide();
+    });
+    LIGHTBOX = { back, img, cap, close, opener: null };
+  }
+  LIGHTBOX.opener = document.activeElement;
+  LIGHTBOX.img.src = href;
+  LIGHTBOX.img.alt = `The construction behind ${title}`;
+  LIGHTBOX.cap.textContent = title;
+  LIGHTBOX.back.classList.add("is-on");
+  LIGHTBOX.close.focus();
+}
+
 /* The largest square that fits above the data in one of the top corners.
    Returns null when nothing worth drawing fits. */
 function fitInset(g, prof) {
@@ -412,8 +452,21 @@ function addInset(svg, p, href) {
   im.setAttribute("href", href);
   box.appendChild(im);
   const cap = el("text", { x: x + size / 2, y: y + size + 14, class: "gal__inset-cap",
-                           "text-anchor": "middle" }, "what is measured");
+                           "text-anchor": "middle" }, "what is measured ↗");
   box.setAttribute("data-placement", spot.outside ? "beside" : "over");
+
+  // AN INSET IS SMALL BY NECESSITY, so it opens. At 156 units square the labels on a
+  // construction are legible but the anatomy is not, and the whole point of drawing on real
+  // bone is that the reader can look at the bone.
+  box.classList.add("is-clickable");
+  box.setAttribute("tabindex", "0");
+  box.setAttribute("role", "button");
+  box.setAttribute("aria-label", `Enlarge: the construction behind ${p.title}`);
+  const open = () => openLightbox(href, p.title);
+  box.addEventListener("click", open);
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+  });
   box.appendChild(cap);
   svg.appendChild(box);
   return true;

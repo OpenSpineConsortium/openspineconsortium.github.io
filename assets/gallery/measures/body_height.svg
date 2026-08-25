@@ -7,11 +7,11 @@
 <line x1="87.0" y1="203.2" x2="113.0" y2="203.2" stroke="#c8452c" stroke-width="3.2" stroke-linecap="round" opacity="1.0"/>
 <text x="100.0" y="297.9" font-size="20" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="700" text-anchor="middle" fill="none" stroke="#f4f2ec" stroke-width="5" stroke-opacity="0.95" stroke-linejoin="round">anterior 33 mm</text>
 <text x="100.0" y="297.9" font-size="20" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="700" text-anchor="middle" fill="#c8452c">anterior 33 mm</text>
-<line x1="223.5" y1="357.3" x2="223.5" y2="189.6" stroke="#2f6fb0" stroke-width="4.0" stroke-linecap="round" opacity="1.0"/>
-<line x1="210.5" y1="357.3" x2="236.5" y2="357.3" stroke="#2f6fb0" stroke-width="3.2" stroke-linecap="round" opacity="1.0"/>
-<line x1="210.5" y1="189.6" x2="236.5" y2="189.6" stroke="#2f6fb0" stroke-width="3.2" stroke-linecap="round" opacity="1.0"/>
-<text x="223.5" y="277.5" font-size="20" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="700" text-anchor="middle" fill="none" stroke="#f4f2ec" stroke-width="5" stroke-opacity="0.95" stroke-linejoin="round">posterior 30 mm</text>
-<text x="223.5" y="277.5" font-size="20" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="700" text-anchor="middle" fill="#2f6fb0">posterior 30 mm</text>
+<line x1="223.5" y1="234.9" x2="223.5" y2="230.4" stroke="#2f6fb0" stroke-width="4.0" stroke-linecap="round" opacity="1.0"/>
+<line x1="210.5" y1="234.9" x2="236.5" y2="234.9" stroke="#2f6fb0" stroke-width="3.2" stroke-linecap="round" opacity="1.0"/>
+<line x1="210.5" y1="230.4" x2="236.5" y2="230.4" stroke="#2f6fb0" stroke-width="3.2" stroke-linecap="round" opacity="1.0"/>
+<text x="223.5" y="236.7" font-size="20" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="700" text-anchor="middle" fill="none" stroke="#f4f2ec" stroke-width="5" stroke-opacity="0.95" stroke-linejoin="round">posterior 2 mm</text>
+<text x="223.5" y="236.7" font-size="20" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="700" text-anchor="middle" fill="#2f6fb0">posterior 2 mm</text>
 <text x="280.0" y="544.0" font-size="17" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="600" text-anchor="middle" fill="none" stroke="#f4f2ec" stroke-width="5" stroke-opacity="0.95" stroke-linejoin="round">tallest column in each half of the body</text>
 <text x="280.0" y="544.0" font-size="17" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-weight="600" text-anchor="middle" fill="#1A1C18">tallest column in each half of the body</text>
 </svg>
