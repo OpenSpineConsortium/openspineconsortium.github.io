@@ -435,3 +435,11 @@
 @media (prefers-reduced-motion: reduce) {
   .gal__inset { transition: none !important; }
 }
+
+/* A threshold that is part of a definition, not decoration. */
+.gal__thresh {
+  stroke: var(--ochre, #b8860b);
+  stroke-width: 1.6;
+  stroke-dasharray: 7 5;
+  opacity: .85;
+}

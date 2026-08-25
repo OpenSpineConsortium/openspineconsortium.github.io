@@ -1,4 +1,5 @@
 {
+ "build": "0e1543f8",
  "panels": {
   "pelvic_incidence_deg": "pelvic_incidence.svg",
   "sacral_slope_deg": "sacral_slope.svg",

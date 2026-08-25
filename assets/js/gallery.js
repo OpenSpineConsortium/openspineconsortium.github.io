@@ -23,6 +23,9 @@ const DATA = "assets/gallery/";
 /* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
    panel with no entry simply gets no explainer rather than a broken control. */
 let MEASURES = {};
+/* the figures are plain URLs, so they carry the build stamp from measures/index.json --
+   without it a rebuilt diagram is served from cache and the change reaches nobody */
+let MEASURE_BUILD = "";
 /* one diagram per (section, construction) -- see the note in wrapPanel */
 const SHOWN_MEASURES = new Set();
 const STILLS = DATA + "stills/";
@@ -549,7 +552,7 @@ function wrapPanel(host, p, svg, extra, wide) {
   // the FIRST panel in each section that uses it. Sections group measures that share a
   // construction, so in practice that is once per section, next to the plots it explains.
   const measure = MEASURES[p.key];
-  if (measure) addInset(svg, p, `${DATA}measures/${measure}`);
+  if (measure) addInset(svg, p, `${DATA}measures/${measure}${MEASURE_BUILD}`);
 
   host.appendChild(fig);
 }
@@ -721,6 +724,19 @@ function drawScatter(host, p) {
   svg.appendChild(el("text", { x: 30, y: T + ph / 2, class: "gal__axtitle",
                                "text-anchor": "middle",
                                transform: `rotate(-90 30 ${T + ph / 2})` }, p.ylabel));
+  // A DECLARED THRESHOLD IS PART OF THE MEASUREMENT, not an annotation. Castellvi type I
+  // is defined at nineteen millimetres of transverse-process height, and a scatter of
+  // heights without that line asks the reader to hold the number in their head.
+  if (typeof p.vline === "number" && isFinite(p.vline)) {
+    const vx = L + ((p.vline - x0) / Math.max(1e-9, x1 - x0)) * pw;
+    if (vx > L && vx < L + pw) {
+      svg.appendChild(el("line", { x1: vx, x2: vx, y1: T, y2: T + ph,
+                                   class: "gal__thresh" }));
+      svg.appendChild(el("text", { x: vx + 6, y: T + 14, class: "gal__tick" },
+                        p.vline_label || ""));
+    }
+  }
+
   if (legLabels.length) {
     legendBelow(svg, legLabels, L, pw, H - legH + 20, (g, i) => {
       g.appendChild(el("circle", { cx: 9, cy: 0, r: i ? 4.4 : 2.8,
@@ -1002,7 +1018,10 @@ function initGallery() {
   fetch(`${DATA}measures/index.json`)
     .then((r) => (r.ok ? r.json() : { panels: {} }))
     .catch(() => ({ panels: {} }))
-    .then((mi) => { MEASURES = (mi && mi.panels) || {}; })
+    .then((mi) => {
+      MEASURES = (mi && mi.panels) || {};
+      MEASURE_BUILD = (mi && mi.build) ? `?v=${mi.build}` : "";
+    })
     .then(() => fetch(`${DATA}distributions.json`))
     .then((r) => r.json())
     .then((d) => {
