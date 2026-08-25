@@ -1,9 +1,6 @@
 {
  "panels": {
   "pelvic_incidence_deg": "pelvic_incidence.svg",
-  "pi_by_sex": "pelvic_incidence.svg",
-  "pi_vs_ll": "pelvic_incidence.svg",
-  "pi_ll_mismatch_deg": "pelvic_incidence.svg",
   "sacral_slope_deg": "sacral_slope.svg",
   "pelvic_tilt_deg": "pelvic_tilt.svg",
   "ll_supine_deg": "lumbar_lordosis.svg",
@@ -14,11 +11,18 @@
   "vacuum": "disc_height.svg",
   "rib_ratio": "rib_ratio.svg",
   "shape_bi_iliac_width_mm": "bi_iliac.svg",
-  "rel_bi_iliac_width_mm": "bi_iliac.svg",
   "sacral_base": "sacral_base.svg",
-  "sacral_base_rel": "sacral_base.svg",
   "grad_tp_span": "tp_span.svg",
   "grad_body_height": "body_height.svg",
-  "wedge": "body_height.svg"
+  "wedge": "body_height.svg",
+  "pedicle_min_mm": "pedicle_width.svg",
+  "shape_bi_acetabular_mm": "hip_width.svg",
+  "rib12_to_crest_mm": "rib_to_crest.svg",
+  "crest_above_l45_mm": "crest_above_l45.svg",
+  "crest_landmark": "crest_above_l45.svg",
+  "grad_canal_width": "canal_width.svg",
+  "grad_endplate_width": "endplate_width.svg",
+  "vertebral_size_sex": "endplate_width.svg",
+  "castellvi": "ala_reach.svg"
  }
 }
