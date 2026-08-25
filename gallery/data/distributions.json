@@ -44554,10 +44554,10 @@
      "n": 790
     }
    ],
-   "title": "The transverse processes peak at L3, not L5",
-   "subtitle": "tip to tip across the transverse processes",
+   "title": "Transverse process span, level by level",
+   "subtitle": "widest left-right extent of the vertebra, tip to tip",
    "xlabel": "tip to tip across the transverse processes (mm)",
-   "caption": "Measured at 72.7, 80.9, 89.8, 86.6 and 92.5 mm. The dip at L4 is not an error: L3 carries the longest transverse processes in a normal lumbar spine, which is textbook anatomy and the one place in this figure where the caudal gradient is SUPPOSED to break. Reproducing a known exception is a better check than reproducing a trend, because a measurement error would smooth it away rather than invent it. Median 72.7 to 92.5mm across 5 levels.",
+   "caption": "Measured as the left-right extent of the vertebra at each level. Read with care: against published tip-to-tip figures this runs high, by about 5 mm at L1 and 30 mm at L5, and the published series peak at L3 and fall to L5 where these rise. At the lower levels the extent includes the lateral mass and pars, not the process tip alone, so the level-to-level trend here should not be read as anatomy until the measurement is put on identified landmarks.",
    "section_note": "Almost every dimension of a lumbar vertebra grows from L1 downward, because each level carries everything above it. That makes the gradient a stronger check than any single measurement: it either reproduces the published trend or it does not. Two of the four measured here reproduce and are shown; anterior body height and the wedge ratio do not, and are not."
   },
   {
