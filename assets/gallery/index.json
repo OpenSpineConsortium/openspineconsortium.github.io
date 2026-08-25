@@ -13,47 +13,47 @@
   {
    "case": "0231",
    "structures": 23,
-   "kB": 843
+   "kB": 854
   },
   {
    "case": "0268",
    "structures": 32,
-   "kB": 1122
+   "kB": 1137
   },
   {
    "case": "0349",
    "structures": 31,
-   "kB": 1105
+   "kB": 1104
   },
   {
    "case": "0378",
-   "structures": 26,
-   "kB": 942
+   "structures": 27,
+   "kB": 972
   },
   {
    "case": "0431",
    "structures": 28,
-   "kB": 848
+   "kB": 983
   },
   {
    "case": "0631",
    "structures": 27,
-   "kB": 948
+   "kB": 960
   },
   {
    "case": "1035",
    "structures": 30,
-   "kB": 1144
+   "kB": 1091
   },
   {
    "case": "1090",
    "structures": 30,
-   "kB": 1054
+   "kB": 1065
   },
   {
    "case": "1153",
-   "structures": 32,
-   "kB": 1147
+   "structures": 34,
+   "kB": 1166
   }
  ]
 }
