@@ -802,6 +802,39 @@ function drawSplit(host, p) {
 /* Grouped bars: the same categories measured in two or three populations. Percentages
    rather than counts, because the groups differ in size by more than twenty to one and
    raw counts would say nothing except that most people are typical. */
+/* WHICH CATEGORIES GET A TICK LABEL when there are more of them than there is room for.
+   A plain every-nth stride is legible but arbitrary -- it can label 51, 58, 65. When the
+   categories are consecutive integers (years, levels, counts) round multiples read far
+   better, and on the age panel they land exactly on the decade spikes the panel is about.
+   Falls back to a stride for anything non-numeric. */
+function catTicks(cats, gw) {
+  const need = Math.max(...cats.map((c) => String(c).length)) * 6.6 + 8;
+  const keep = new Set();
+  if (gw >= need) {
+    cats.forEach((_, i) => keep.add(i));
+    return keep;
+  }
+  const nums = cats.map((c) => Number(c));
+  const consecutive = nums.every((v, i) => Number.isFinite(v) &&
+                                 (i === 0 || v - nums[i - 1] === 1));
+  if (consecutive) {
+    // TENS FIRST, then fives. Ordering these by SIZE picks the smallest step that fits,
+    // which on the age panel is 2 -- twenty labels reading 50, 52, 54, legible and
+    // meaningless. Ordering them by how a reader thinks about numbers gives 50, 60, 70, 80,
+    // and on this panel the decade labels land exactly under the decade spikes the figure
+    // is about. Three labels is the floor; below that the axis has no scale.
+    for (const step of [10, 5, 20, 25, 50, 100, 2]) {
+      if (step * gw < need) continue;
+      cats.forEach((_, i) => { if (nums[i] % step === 0) keep.add(i); });
+      if (keep.size >= 3) return keep;
+      keep.clear();
+    }
+  }
+  const stride = Math.max(1, Math.ceil(need / gw));
+  cats.forEach((_, i) => { if (i % stride === 0) keep.add(i); });
+  return keep;
+}
+
 function drawGrouped(host, p) {
   const W = 760, L = 96, R = 30, T = 34;
   const legLabels = (p.series || []).map((s) => `${s.label}${nText(s.n)}`);
@@ -814,7 +847,12 @@ function drawGrouped(host, p) {
   // at 31%, so the bar ran off the top of the plot with nothing to say it had.
   const max = Math.max(...ser.flatMap((s) => (s.hi || s.pct)), ...ser.flatMap((s) => s.pct), 1);
   const gw = pw / cats.length;
-  const bw = Math.min(30, (gw - 10) / ser.length);
+  // THE GUTTER SCALES WITH THE SLOT. A flat 10 px is a good gutter beside a 158 px
+  // category and most of the slot beside a 16 px one, which is what left the age panel
+  // drawing 3.8 px bars in 15.8 px of space.
+  const gap = Math.min(10, gw * 0.3);
+  const bw = Math.max(1.5, Math.min(30, (gw - gap) / ser.length));
+  const ticks = catTicks(cats, gw);
 
   for (const v of niceTicks(0, max, 4)) {
     const y = T + ph - (v / max) * ph;
@@ -827,11 +865,12 @@ function drawGrouped(host, p) {
       const pctv = s.pct[i] || 0;
       const h = (pctv / max) * ph;
       const x = L + i * gw + gw / 2 - (ser.length * bw) / 2 + k * bw;
-      const r = el("rect", { x: x + 1, y: T + ph - h, width: bw - 2, height: h,
+      const rw = Math.max(1, bw - (bw > 6 ? 2 : 0.8));
+      const r = el("rect", { x: x + 1, y: T + ph - h, width: rw, height: h,
                              class: `gal__s${k % 6}-fill` });
       r.appendChild(el("title", null, `${s.label}, ${c}: ${pctv.toFixed(0)}% (${s.counts[i]} cases)`));
       svg.appendChild(r);
-      svg.appendChild(el("rect", { x: x + 1, y: T + ph - h, width: bw - 2, height: 2.5,
+      svg.appendChild(el("rect", { x: x + 1, y: T + ph - h, width: rw, height: 2.5,
                                    class: `gal__s${k % 6}-line`, fill: "currentColor" }));
       if (s.lo && s.hi) {
         const cx = x + bw / 2;
@@ -842,13 +881,17 @@ function drawGrouped(host, p) {
                                        class: "gal__whisk" }));
         }
       }
-      if (pctv >= 4) {
+      if (pctv >= 4 && bw >= 13) {
         svg.appendChild(el("text", { x: x + bw / 2, y: T + ph - h - 7, class: "gal__val",
                                      "text-anchor": "middle" }, Math.round(pctv)));
       }
     });
-    svg.appendChild(el("text", { x: L + i * gw + gw / 2, y: T + ph + 30,
-                                 class: "gal__tick", "text-anchor": "middle" }, c));
+    if (ticks.has(i)) {
+      svg.appendChild(el("text", { x: L + i * gw + gw / 2, y: T + ph + 30,
+                                   class: "gal__tick", "text-anchor": "middle" }, c));
+      svg.appendChild(el("line", { x1: L + i * gw + gw / 2, x2: L + i * gw + gw / 2,
+                                   y1: T + ph, y2: T + ph + 5, class: "gal__axis" }));
+    }
   });
   svg.appendChild(el("line", { x1: L, x2: L + pw, y1: T + ph, y2: T + ph, class: "gal__axis" }));
   svg.appendChild(el("line", { x1: L, x2: L, y1: T, y2: T + ph, class: "gal__axis" }));
