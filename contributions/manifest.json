@@ -129,6 +129,19 @@
       ]
     },
     {
+      "id": "schwiebert-loren",
+      "first": "Loren",
+      "last": "Schwiebert",
+      "mi": "",
+      "suffix": "PhD",
+      "role": "Faculty Advisor",
+      "affiliation": "Wayne State University · Department of Computer Science",
+      "headshot": "Schwiebert,Loren",
+      "advisor": true,
+      "bio": "Professor of Computer Science at Wayne State University, and chair of the department from 2014 to 2022. Works in high-performance computing, accelerating scientific applications on GPUs and multicore CPUs, with contributions to the GOMC molecular simulation and JETSCAPE physics frameworks. PhD, Ohio State University.",
+      "contributions": []
+    },
+    {
       "id": "akhtar-muaaz",
       "first": "Muaaz",
       "last": "Akhtar",

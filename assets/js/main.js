@@ -126,7 +126,9 @@
     grid.innerHTML = "";
 
     people.forEach(function (p, i) {
-      var card = el("article", "person reveal" + (p.lead ? " person--lead" : ""));
+      var card = el("article", "person reveal"
+        + (p.lead ? " person--lead" : "")
+        + (p.advisor ? " person--advisor" : ""));
       card.style.setProperty("--d", String(i % 3));
 
       /* portrait: initials avatar, upgraded to a headshot if one exists */
