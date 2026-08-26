@@ -1466,22 +1466,32 @@ em { font-style: italic; }
    who runs the thing. Spanning both columns gives the portrait
    room to be a photograph rather than a 60px token.
    ============================================================ */
-.person--lead {
+/* THE TWO PRINCIPALS SHARE THE TOP ROW. The lead card used to span both columns, which
+   gave the portrait room to be a photograph and also meant nothing could sit beside it --
+   the next card began on the row below. With an advisor to place next to the lead they take
+   one column each, keep the enlarged portrait, and the students carry on underneath in the
+   same grid. */
+.person--lead,
+.person--advisor {
   border-color: var(--teal);
-  grid-column: 1 / -1;
-  gap: 28px;
+  gap: 24px;
   align-items: flex-start;
 }
-.person--lead .person__portrait {
-  width: 190px;
-  height: 190px;
+.person--lead .person__portrait,
+.person--advisor .person__portrait {
+  width: 150px;
+  height: 150px;
   border-radius: 10px;              /* a portrait, not an avatar chip */
-  font-size: 3rem;
+  font-size: 2.6rem;
+  object-fit: cover;
 }
-.person--lead .person__body h3 { font-size: 1.6rem; }
-.person--lead .person__bio { font-size: 1rem; max-width: 62ch; }
+.person--lead .person__body h3,
+.person--advisor .person__body h3 { font-size: 1.45rem; }
+.person--lead .person__bio,
+.person--advisor .person__bio { font-size: 0.98rem; max-width: 46ch; }
 
 @media (max-width: 720px) {
-  .person--lead { flex-direction: column; gap: 18px; }
-  .person--lead .person__portrait { width: 150px; height: 150px; }
+  .person--lead, .person--advisor { flex-direction: column; gap: 18px; }
+  .person--lead .person__portrait,
+  .person--advisor .person__portrait { width: 150px; height: 150px; }
 }
