@@ -19,7 +19,7 @@
 import { SpineDetector, KPT_LABEL, assignLevels, computeAngles, angleToHorizontal }
   from "./infer.js";
 
-const XR_BUILD = "20260825e";
+const XR_BUILD = "20260826a";
 const MODEL_URL = { 640: "models/v11n_640.onnx", 1024: "models/v11n_1024.onnx" };
 
 const $ = id => document.getElementById(id);
@@ -120,6 +120,41 @@ function drawLandmarks(svg, v, which) {
   svg.appendChild(g);
 }
 
+/* KEEP THE NUMBERS ON THE FILM. The viewBox is the image's pixel grid, so anything drawn
+   outside it is cut off by the edge of the pane -- and the angle labels were placed just
+   beyond the film on purpose, to keep the value off the anatomy it measures. Off the film
+   turns out to mean off the screen.
+
+   Clamping needs the text's own width, because a label anchored "end" grows leftward from
+   its x and one anchored "start" grows rightward; clamping the anchor point alone moves the
+   wrong edge. 0.62em per character is the usual average for a proportional face and is
+   close enough for a five-character number.
+
+   The leader is then re-aimed from whichever edge of the text faces the construction, or it
+   is drawn straight through the number it points from. */
+function clampLabels(v, k) {
+  const W = v.shape[1], H = v.shape[0], pad = 4 * k;
+  return (v.angles || []).map((a) => {
+    if (!a.label_at) return a;
+    const anchor = a.label_anchor || "start";
+    const tw = 0.62 * 13 * k * `${a.id} ${a.value}${a.units || "°"}`.length;
+    let [x, y] = a.label_at;
+    const edges = () => (anchor === "end" ? [x - tw, x] : [x, x + tw]);
+    let [l, r] = edges();
+    if (l < pad) x += pad - l;
+    else if (r > W - pad) x += W - pad - r;
+    y = Math.min(Math.max(y, 10 * k), H - 8 * k);
+    if (x === a.label_at[0] && y === a.label_at[1]) return a;
+    [l, r] = edges();
+    const out = { ...a, label_at: [x, y] };
+    if (Array.isArray(a.leader) && a.leader.length === 2) {
+      const to = a.leader[1];
+      out.leader = [to[0] >= r ? [r + pad, y] : [l - pad, y], to];
+    }
+    return out;
+  });
+}
+
 function draw(which) {
   const v = view[which];
   const svg = which === "ref" ? els.overlay : els.uoverlay;
@@ -127,7 +162,7 @@ function draw(which) {
   if (!v) return;
   svg.setAttribute("viewBox", `0 0 ${v.shape[1]} ${v.shape[0]}`);
   const k = kOf(v);
-  for (const a of v.angles || []) {
+  for (const a of clampLabels(v, k)) {
     if (!active[which].has(a.id)) continue;
     const g = el("g", {});
     drawAngle(a, g, k);
