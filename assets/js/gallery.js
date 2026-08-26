@@ -60,6 +60,22 @@ const CASES = [
            "left. Whether that is a sacralised or a lumbarised segment depends entirely " +
            "on where the count starts — the fusion itself does not.",
     focus: (s) => s.name === "L6" || s.name === "sacrum" },
+  { id: "0068", title: "A fusion that surgery made", tag: "instrumented",
+    blurb: "Six rib-free bodies above the sacrum, and the lowest interspace bridged by " +
+           "two threaded cages screwed in side by side — 27 mm long and 14 mm across, " +
+           "hollow, with no screws or rods anywhere in the volume. The reason it belongs " +
+           "beside the transitional cases is that a distance measurement cannot tell " +
+           "these apart: a cage-bridged interspace reads as “no gap” exactly like a " +
+           "congenitally fused transitional vertebra, so an unrecorded instrumented case " +
+           "can contribute a false positive to a result about congenital anatomy. " +
+           "The count came from the twelfth rib rather than from the top of the spine. " +
+           "The shipped labels had five lumbar bodies where the scan has six — the " +
+           "pseudolabel had merged the top two under one label, so every level below it " +
+           "was named one too high and the cage appeared to sit a level higher than it " +
+           "does. 84 of the 802 records carry metal and 18 have six lumbar bodies; this " +
+           "is one of the three with both, and the only one whose hardware is labelled " +
+           "rather than absorbed into the bone around it.",
+    focus: (s) => s.kind === "hardware" || s.name === "L5" || s.name === "L6" },
   { id: "0631", title: "A hypoplastic twelfth rib", tag: "hypoplastic",
     blurb: "On the right, 45 mm of rib against 120 mm above it, articulating at 1.5 mm: " +
            "hypoplastic, and measured as such. The left side was carrying a segmentation " +
