@@ -1,4 +1,5 @@
 {
+ "build": "b08d5b0e",
  "cases": [
   {
    "case": "0004",
@@ -9,6 +10,11 @@
    "case": "0033",
    "structures": 34,
    "kB": 1197
+  },
+  {
+   "case": "0068",
+   "structures": 29,
+   "kB": 1040
   },
   {
    "case": "0231",
