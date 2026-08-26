@@ -1,17 +1,37 @@
-"""pacs/tools/truth_corners.py — 3-D endplate corners that stop at the vertebral BODY.
+"""pacs/tools/truth_corners.py — 3-D endplate corners. NOT SHIPPED; kept as the record.
 
-WHAT WAS WRONG WITH THE OLD ONES. export_xr_demo_case.endplate_corners took every voxel of
-the vertebra label, kept the ones within 3 mm of the fitted endplate PLANE, and returned the
-two extremes along the plate. But that plane, extended backwards, runs straight through the
-pedicles and the superior articular processes -- they sit at exactly that height. So the
-posterior extreme was the back of the ARCH, not the back of the body, and the drawn endplate
-came out 64 to 74 mm long on a patient whose vertebral bodies are 38 to 44 mm deep. Measured
-against the network's corners it was 76 px too far posterior, while its anterior corner was
-right to within 6 px.
+WITHDRAWN FROM THE DEMO. This fitter was built to give the X-ray tab a second opinion on the
+network's corners, and measured against them it is not good enough to show: across L1-L5 the
+posterior corner lands 1.8 to 6.8 mm from the prediction, and at S1 it is 14.7 mm out. On a
+film where the network's corners are the ones every angle is taken from, a second marker a
+finger's breadth away is not a comparison, it is noise.
 
-So the body is carved first, the way the rest of this codebase already carves it: everything
-anterior to the anterior wall of the spinal canal, found as the largest enclosed hole in the
-ring. Then the plane band and the extremes mean what they say.
+The file stays because the analysis is worth keeping, and because the next attempt should
+start from what was already learned rather than rediscovering it:
+
+  THE ORIGINAL FITTER NEVER CARVED THE BODY. It kept every voxel of the vertebra within 3 mm
+  of the endplate plane -- and that plane, extended backwards, runs through the pedicles and
+  superior articular processes. The posterior corner was the back of the ARCH: a 64-74 mm
+  plate on a patient whose bodies are 38-44 mm deep, 76 px behind the network while its
+  anterior corner was right to within 6 px.
+
+  THE AXIS DIRECTION DECIDES WHICH HALF TO KEEP. These volumes are ('P','I','R'), so index 0
+  increases POSTERIORLY and the body is BELOW the cut. Keeping the wrong half gave 20 mm
+  plates on 40 mm bodies.
+
+  THE CANAL'S ANTERIOR WALL IS NOT THE BODY'S POSTERIOR CORTEX, quite. Cortex has thickness
+  and the ring is widest below the plate; a 3 mm posterior offset measured best, 0 mm left
+  the plate short and 6 mm ran past the body.
+
+  BAND WIDTH AND EROSION DO NOT HELP. 2 mm to 8 mm moved the posterior error 7.6 to 7.1 mm;
+  eroding the band to snap the pedicles made it worse, because in 3-D the band is thin.
+
+  S1 IS DIFFERENT ANATOMY. The sacral canal is not a lumbar canal and this carve does not
+  transfer. A midline slab, tried because the promontory is midline and the alae are not,
+  moved it 1.7 mm.
+
+What would probably work: fit the plate to the CORTICAL SURFACE rather than to the extremes
+of a voxel band, and treat S1 separately rather than as a sixth lumbar vertebra.
 
     python pacs/tools/truth_corners.py --case data/0003 --xr data/xr/0003 --check
 """
