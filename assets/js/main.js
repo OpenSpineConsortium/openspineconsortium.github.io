@@ -106,6 +106,13 @@
 
   /* Probe headshots/<base>.<ext> across extensions; swap the image
      in on the first hit, otherwise leave the initials avatar. */
+  /* PORTRAITS NEED A VERSION TOO. Everything else on the page has one -- the stylesheet
+     and this file by date, the gallery by content hash, the manifest by no-cache -- and the
+     headshots did not. That is harmless while photographs are only added and wrong as soon
+     as one is replaced, because a repeat visitor keeps the old crop forever. Bump this when
+     a portrait changes. */
+  var HEADSHOT_V = "20260826b";
+
   function loadHeadshot(portrait, base) {
     if (!base) return;
     var idx = 0;
@@ -114,7 +121,8 @@
     img.onload = function () { portrait.appendChild(img); };
     img.onerror = function () {
       if (idx < HEADSHOT_EXTS.length) {
-        img.src = "headshots/" + encodeURIComponent(base) + "." + HEADSHOT_EXTS[idx++];
+        img.src = "headshots/" + encodeURIComponent(base) + "."
+          + HEADSHOT_EXTS[idx++] + "?v=" + HEADSHOT_V;
       }
     };
     img.onerror(); /* kick off the first attempt */
