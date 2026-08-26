@@ -40,11 +40,37 @@ LABELS = {"SS": "Sacral Slope", "PT": "Pelvic Tilt",
           "PI": "Pelvic Incidence", "LL": "Lumbar Lordosis"}
 
 
+def intersect(p1, p2, p3, p4):
+    """Where two lines cross, or None if they are parallel."""
+    d = (p1[0] - p2[0]) * (p3[1] - p4[1]) - (p1[1] - p2[1]) * (p3[0] - p4[0])
+    if abs(d) < 1e-9:
+        return None
+    a = p1[0] * p2[1] - p1[1] * p2[0]
+    b = p3[0] * p4[1] - p3[1] * p4[0]
+    return [(a * (p3[0] - p4[0]) - (p1[0] - p2[0]) * b) / d,
+            (a * (p3[1] - p4[1]) - (p1[1] - p2[1]) * b) / d]
+
+
 def extend(a, b, k):
     """The segment a-b lengthened about its midpoint by k, for drawing."""
     mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
     return ([mx + (a[0] - mx) * k, my + (a[1] - my) * k],
             [mx + (b[0] - mx) * k, my + (b[1] - my) * k])
+
+
+def label_out(mid, W, side, dy=0.0):
+    """A label just outside the film, with a leader back to the construction.
+
+    drawAngle only writes the number when `label_at` is present -- without it the segments
+    and the wedge still draw, so the figure looks complete and every value has silently
+    disappeared. That is what happened when these angles were rebuilt from the corners.
+    Placed off the image edge for the same reason buildUserView does it: over the film the
+    number sits on the anatomy it is measuring.
+    """
+    x = -0.015 * W if side < 0 else 1.015 * W
+    lx = -0.012 * W if side < 0 else 1.012 * W
+    return ([x, mid[1] + dy], "end" if side < 0 else "start",
+            [[lx, mid[1] + dy], list(mid)])
 
 
 def arc_pts(c, p, q, r, n=28):
@@ -107,18 +133,22 @@ def main() -> int:
         ln = math.hypot(P[0] - A[0], P[1] - A[1])
         dr = -1 if A[0] <= P[0] else 1
         hz = [mid[0] + dr * ln * 0.95, mid[1]]
+        lab, anch, lead = label_out(mid, W, dr)
         angles.append({"id": "SS", "label": LABELS["SS"], "value": round(s["SS"], 1),
                        "units": "°", "color": COLORS["SS"],
                        "segments": [[e0, e1]], "dashed": [[mid, hz]],
-                       "arc": arc_pts(mid, e0 if dr < 0 else e1, hz, ln * 0.55)})
+                       "arc": arc_pts(mid, e0 if dr < 0 else e1, hz, ln * 0.55),
+                       "label_at": lab, "label_anchor": anch, "leader": lead})
         if femoral is not None and s["PT"] is not None:
             vert = [mid[0], mid[1] - ln * 1.2]
+            lab, anch, lead = label_out(list(femoral), W, dr)
             angles.append({"id": "PT", "label": LABELS["PT"], "value": round(s["PT"], 1),
                            "units": "°", "color": COLORS["PT"],
                            "segments": [[list(femoral), mid]],
                            "dashed": [[list(femoral), [femoral[0], femoral[1] - ln * 1.6]]],
                            "arc": arc_pts(list(femoral), mid,
-                                          [femoral[0], femoral[1] - ln * 1.6], ln * 0.5)})
+                                          [femoral[0], femoral[1] - ln * 1.6], ln * 0.5),
+                           "label_at": lab, "label_anchor": anch, "leader": lead})
         if femoral is not None and s["PI"] is not None:
             # PI is the angle at the endplate midpoint between its perpendicular and the
             # line to the femoral head -- the same construction the 3-D code uses
@@ -127,16 +157,34 @@ def main() -> int:
             if n[1] > 0:
                 n = [-n[0], -n[1]]                       # point it cranially
             tip = [mid[0] + n[0] * ln * 1.1, mid[1] + n[1] * ln * 1.1]
+            # nudged clear of SS, which is labelled at the same midpoint
+            lab, anch, lead = label_out(mid, W, dr, dy=-2.2 * ln)
             angles.append({"id": "PI", "label": LABELS["PI"], "value": round(s["PI"], 1),
                            "units": "°", "color": COLORS["PI"],
                            "segments": [[mid, list(femoral)]], "dashed": [[mid, tip]],
-                           "arc": arc_pts(mid, tip, list(femoral), ln * 0.62)})
+                           "arc": arc_pts(mid, tip, list(femoral), ln * 0.62),
+                           "label_at": lab, "label_anchor": anch, "leader": lead})
     l1 = endplates.get("L1")
     if l1 is not None and s1 is not None and s["LL"] is not None:
-        angles.append({"id": "LL", "label": LABELS["LL"], "value": round(s["LL"], 1),
-                       "units": "°", "color": COLORS["LL"],
-                       "segments": [list(extend(list(l1[0]), list(l1[1]), 1.6)),
-                                    list(extend(list(s1[0]), list(s1[1]), 1.6))]})
+        A1, P1 = list(l1[0]), list(l1[1])
+        A2, P2 = list(s1[0]), list(s1[1])
+        l1mid = [(A1[0] + P1[0]) / 2, (A1[1] + P1[1]) / 2]
+        side = -1 if A1[0] <= P1[0] else 1
+        lab, anch, lead = label_out(l1mid, W, side)
+        a = {"id": "LL", "label": LABELS["LL"], "value": round(s["LL"], 1),
+             "units": "°", "color": COLORS["LL"],
+             "segments": [list(extend(A1, P1, 1.6)), list(extend(A2, P2, 1.6))],
+             "label_at": lab, "label_anchor": anch, "leader": lead}
+        # THE COBB LINES MEET ANTERIORLY IN A LORDOSIS, usually off the film. Draw the wedge
+        # only where the vertex is somewhere a reader can see it, which is the same rule the
+        # user pane applies.
+        X = intersect(A1, P1, A2, P2)
+        H = g["drr"]["shape"][0]
+        if X and -0.35 * W < X[0] < 1.35 * W and -0.35 * H < X[1] < 1.35 * H:
+            r = 0.55 * min(math.hypot(X[0] - A1[0], X[1] - A1[1]),
+                           math.hypot(X[0] - A2[0], X[1] - A2[1]))
+            a["arc"] = arc_pts(X, A1, A2, r)
+        angles.append(a)
 
     g["angles"] = angles
     g.setdefault("net", {})["angles_from_ostk_on_net_corners"] = {

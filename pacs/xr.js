@@ -19,7 +19,7 @@
 import { SpineDetector, KPT_LABEL, assignLevels, computeAngles, angleToHorizontal }
   from "./infer.js";
 
-const XR_BUILD = "20260825d";
+const XR_BUILD = "20260825e";
 const MODEL_URL = { 640: "models/v11n_640.onnx", 1024: "models/v11n_1024.onnx" };
 
 const $ = id => document.getElementById(id);
