@@ -323,6 +323,9 @@ export function createViewer(host, opts) {
       const hi = new THREE.Vector3(...head.bbox_hi);
       const span = new THREE.Vector3().subVectors(hi, lo);
 
+      // does this case carry an implant at all? materials are decided per
+      // structure but the answer is a property of the whole case
+      const hasHardware = head.structures.some((x) => x.kind === "hardware");
       for (const st of head.structures) {
         // slice(), not a view: a typed-array VIEW must begin on a multiple of its
         // element size, and an int8 normal run of odd length pushes the next array onto
@@ -384,14 +387,26 @@ export function createViewer(host, opts) {
         // holes in it. The shading cost predates render-on-demand: frames are drawn only
         // while the pointer moves, so it is paid during a drag rather than at rest.
         const thin = true;
-        const key = st.color.join(",") + "|" + (st.kind === "hardware" ? "h" : "b")
-                    + "|" + (thin ? "d" : "f");
+        // BONE GOES TRANSPARENT WHERE THERE IS HARDWARE TO SEE. A cage in a disc
+        // space and a cup inside a hip are wholly enclosed by bone, so on an
+        // instrumented case the one structure worth showing is the one structure
+        // that cannot be seen from any angle. Only such cases are affected.
+        const isHw = st.kind === "hardware";
+        const ghost = hasHardware && !isHw;
+        const key = st.color.join(",") + "|" + (isHw ? "h" : "b")
+                    + "|" + (thin ? "d" : "f") + (ghost ? "|g" : "");
         let mat = matCache.get(key);
         if (!mat) {
           mat = new THREE.MeshPhongMaterial({
             color: col,
-            specular: st.kind === "hardware" ? 0x8a8a8a : 0x2a2622,
-            shininess: st.kind === "hardware" ? 90 : 18,
+            specular: isHw ? 0x8a8a8a : 0x2a2622,
+            shininess: isHw ? 90 : 18,
+            transparent: ghost,
+            opacity: ghost ? 0.26 : 1,
+            // depthWrite MUST go off with transparency. Left on, the near face of
+            // a translucent vertebra writes depth and rejects its own far face,
+            // so the body renders hollow instead of see-through.
+            depthWrite: !ghost,
             // DOUBLE SIDED ONLY WHERE IT IS EARNED. A rib is a thin shell and marching
             // cubes on a two-voxel-thick mask leaves facets wound away from the camera;
             // culling those opens holes that flicker as the specimen turns. A vertebral
@@ -402,6 +417,9 @@ export function createViewer(host, opts) {
           matCache.set(key, mat);
         }
         const mesh = new THREE.Mesh(g, mat);
+        // opaque metal before translucent bone, or the implant is blended
+        // against whatever was already in the buffer
+        mesh.renderOrder = isHw ? 0 : 1;
         mesh.userData = st;
         root.add(mesh);
         parts.push({ mesh, meta: st, base: 1 });
