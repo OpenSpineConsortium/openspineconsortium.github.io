@@ -1510,64 +1510,62 @@ em { font-style: italic; }
 
 /* ============================================================
    SURGICAL HARDWARE
-   A methods result rather than a census, so it reads as four
-   claims side by side with the figure underneath rather than as
-   a run of prose. Same card grammar as the rest of the page.
+   Four implants, each shown rather than described. The render is
+   the content, so it gets the room and the caption stays short.
    ============================================================ */
-.hw__grid {
+.hwg__grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  gap: 22px;
   margin-top: 8px;
 }
-.hw__card {
+.hwg__card {
+  margin: 0;
   background: var(--paper-card);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 26px 28px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-.hw__card h3 { margin: 0 0 10px; font-size: 1.05rem; }
-.hw__card p { margin: 0 0 12px; }
-.hw__card p:last-child { margin-bottom: 0; }
-.hw__stat { font-size: 1rem; }
-.hw__stat b { font-size: 1.25rem; color: var(--teal); }
-.hw__list { list-style: none; margin: 0; padding: 0; }
-.hw__list li {
-  display: grid;
-  grid-template-columns: 2.4rem 1fr;
-  gap: 2px 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  align-items: baseline;
-}
-.hw__list li:last-child { border-bottom: 0; }
-.hw__list b {
-  font-size: 1.3rem;
-  color: var(--teal);
-  font-variant-numeric: tabular-nums;
-}
-.hw__list span {
-  grid-column: 2;
-  font-size: 0.9rem;
-  opacity: 0.72;
-}
-.hw__note { font-size: 0.88rem; opacity: 0.72; margin-top: 14px; }
-.hw__fig { margin: 26px 0 0; }
-.hw__fig img {
+.hwg__card img {
   width: 100%;
-  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
   display: block;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--paper-card);
+  background: #f7f5ef;
+  border-bottom: 1px solid var(--line);
 }
-.hw__fig figcaption {
-  margin-top: 10px;
-  font-size: 0.9rem;
-  opacity: 0.72;
-  max-width: 78ch;
+.hwg__card figcaption { padding: 20px 24px 24px; position: relative; }
+.hwg__card h3 { margin: 0 0 2px; font-size: 1.08rem; }
+.hwg__card p { margin: 0; }
+.hwg__id {
+  position: absolute;
+  top: 18px; right: 22px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  color: var(--teal);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.hwg__n {
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 10px !important;
+}
+.hwg__card figcaption p:last-child { font-size: 0.93rem; opacity: 0.78; }
+.hwg__foot { margin-top: 24px; max-width: 78ch; font-size: 0.95rem; opacity: 0.82; }
+.hwg__foot code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.88em;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 5px;
 }
 @media (max-width: 860px) {
-  .hw__grid { grid-template-columns: 1fr; }
-  .hw__card { padding: 22px 20px; }
+  .hwg__grid { grid-template-columns: 1fr; }
 }
