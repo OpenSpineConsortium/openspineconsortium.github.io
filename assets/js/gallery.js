@@ -17,7 +17,7 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=bad28eaf";
+import { createViewer } from "./viewer.js?v=a187d396";
 
 const DATA = "assets/gallery/";
 /* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
@@ -156,7 +156,7 @@ function mountCase(grid, spec) {
       <p>${spec.blurb}</p>
       <div class="gal__groups"></div>
       <ul class="gal__keys" aria-label="Viewer controls">
-        <li><b>Rotate</b> drag <span class="gal__touch">&middot; two fingers</span></li>
+        <li><b>Rotate</b> drag <span class="gal__touch">&middot; swipe sideways</span></li>
         <li><b>Zoom</b> scroll <span class="gal__touch">&middot; pinch</span></li>
         <li><b>Pan</b> right-drag</li>
       </ul>
