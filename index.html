@@ -48,6 +48,7 @@
       <a href="#conferences">Conferences</a>
       <a href="#outside">Outside</a>
       <a href="#gallery">Gallery</a>
+      <a href="#hardware">Hardware</a>
       <a href="spine-mri/">Spine MRI</a>
       <a href="pacs/ct.html">CT</a>
       <a href="pacs/">X-ray</a>
@@ -718,6 +719,104 @@
     </p>
   </section>
 
+
+  <section class="section" id="hardware">
+    <div class="section__head reveal">
+      <span class="section__num">10</span>
+      <h2 class="section__title">Surgical hardware</h2>
+    </div>
+
+    <p class="section__intro reveal">
+      11 of the 802 records carry surgical instrumentation, and
+      every one of them had that metal absorbed into the bone label beside it &mdash; a
+      segmenter handed a bright object against a cortical surface takes it for bone. v6 is
+      the release where the hardware identifiers stop being declared and start being
+      populated.
+    </p>
+
+    <div class="hw__grid">
+      <article class="hw__card reveal">
+        <h3>Why it matters</h3>
+        <p>
+          An iatrogenic fusion is indistinguishable from a congenital one to a distance
+          measurement. A cage-bridged interspace reads as &ldquo;no gap&rdquo; exactly as a
+          congenitally fused transitional vertebra does, so an unrecorded instrumented case
+          can contribute a false positive to a result about congenital anatomy.
+        </p>
+        <p>
+          Pelvic incidence and pelvic tilt are measured from the femoral head centre. In
+          9 of these cases that head is an implant.
+        </p>
+      </article>
+
+      <article class="hw__card reveal">
+        <h3>A threshold over-counts sevenfold</h3>
+        <p>
+          At 1800&nbsp;HU, 84 records flag. At 2500&nbsp;HU &mdash; the
+          lower value validated in the metal-segmentation literature &mdash;
+          52 keep a component above the floor. A radiologist read
+          all 52 and confirmed 11, rejecting
+          41 (79%) as contrast,
+          calcification and reconstruction artefact.
+        </p>
+        <p class="hw__stat">
+          <b>1.4%</b> true prevalence, against
+          <b>10.5%</b> from an unreviewed
+          threshold.
+        </p>
+      </article>
+
+      <article class="hw__card reveal">
+        <h3>Saturation cannot sort them</h3>
+        <p>
+          The obvious test fails. These scanners clip at 3071&nbsp;HU and both groups reach
+          the ceiling; 4 of the rejected proposals
+          <em>exceed</em> it, peaking at 11,798&nbsp;HU. A value
+          above the ceiling is reconstruction overshoot around something dense, not denser
+          metal.
+        </p>
+        <p>
+          What separates them is a real surgical site <em>and</em> volume: every confirmed
+          implant is 2,586&nbsp;mm&sup3; or larger, every
+          rejection 1,768&nbsp;mm&sup3; or smaller.
+        </p>
+      </article>
+
+      <article class="hw__card reveal">
+        <h3>What is in the cohort</h3>
+        <ul class="hw__list">
+          <li><b>8</b> hip arthroplasty
+              <span>seven total, one hemiarthroplasty; one with the cup anchored by
+              transacetabular screws</span></li>
+          <li><b>1</b> osteosynthesis
+              <span>three parallel cannulated screws, inverted triangle, femoral neck</span></li>
+          <li><b>1</b> sacroiliac screws
+              <span>crossing the joint</span></li>
+          <li><b>1</b> interbody cages
+              <span>paired threaded cylinders, 27&nbsp;&times;&nbsp;14&nbsp;mm, L5&ndash;L6</span></li>
+        </ul>
+        <p class="hw__note">
+          Identifiers 76&ndash;79 were written for spinal instrumentation and could not name
+          an arthroplasty or an iliosacral screw, so 80&ndash;82 were added. Osteosynthesis
+          holds parts of the same bone together; arthroplasty replaces a joint. Naming one as
+          the other inverts what the femoral head is.
+        </p>
+      </article>
+    </div>
+
+    <figure class="hw__fig reveal">
+      <img src="assets/img/fig_hardware.png"
+           alt="Four panels: threshold attrition, peak attenuation by group, volume against
+                surgical site, and voxels reclaimed from bone per case."
+           loading="lazy" />
+      <figcaption>
+        Metal is easy to detect and hard to interpret. Every confirmed implant was already
+        labelled as bone, so naming it reclaims voxels rather than adding them &mdash;
+        1,538,852 across the eleven records.
+      </figcaption>
+    </figure>
+  </section>
+
   <section class="section section--alt" id="outside">
     <div class="section__head reveal">
       <span class="section__num">09</span>
@@ -873,6 +972,7 @@
         <a href="#conferences">Conferences</a>
         <a href="#outside">Outside</a>
       <a href="#gallery">Gallery</a>
+      <a href="#hardware">Hardware</a>
         <a href="spine-mri/">Spine MRI</a>
         <a href="pacs/ct.html">CT</a>
         <a href="pacs/">X-ray</a>
@@ -887,8 +987,8 @@
 
   <!-- Bump ?v= whenever you change style.css or main.js, so browsers and the
        GitHub Pages CDN fetch the new file instead of a cached copy. -->
-  <script src="assets/js/main.js?v=20260826b"></script>
+  <script src="assets/js/main.js?v=20260827a"></script>
   <script type="module" src="assets/js/deck.js?v=96fe0ecf"></script>
-  <script type="module" src="assets/js/gallery.js?v=ba2ba1ca"></script>
+  <script type="module" src="assets/js/gallery.js?v=6257ff91"></script>
 </body>
 </html>

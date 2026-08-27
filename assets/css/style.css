@@ -1085,6 +1085,13 @@ em { font-style: italic; }
   body { font-size: 16px; }
   .section { padding: 84px 22px; }
   .hero { padding: 150px 22px 90px; min-height: auto; }
+  /* THE DECORATIVE SPINE MADE THE WHOLE PAGE SCROLL SIDEWAYS. Its right edge lands at
+     450px in a 390px viewport, which widens the document, and a document wider than the
+     viewport scrolls horizontally in every section -- it is also why the fixed nav drawer
+     measured 450px wide despite left:0 and right:0, since it sizes to a layout viewport the
+     hero had stretched. `clip` rather than `hidden`: hidden would make the hero a scroll
+     container and break sticky positioning inside it. */
+  .hero { overflow-x: clip; }
   .nav { padding: 14px 22px; }
   .nav__links {
     position: fixed;
@@ -1494,4 +1501,68 @@ em { font-style: italic; }
   .person--lead, .person--advisor { flex-direction: column; gap: 18px; }
   .person--lead .person__portrait,
   .person--advisor .person__portrait { width: 150px; height: 150px; }
+}
+
+/* ============================================================
+   SURGICAL HARDWARE
+   A methods result rather than a census, so it reads as four
+   claims side by side with the figure underneath rather than as
+   a run of prose. Same card grammar as the rest of the page.
+   ============================================================ */
+.hw__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 8px;
+}
+.hw__card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 26px 28px;
+}
+.hw__card h3 { margin: 0 0 10px; font-size: 1.05rem; }
+.hw__card p { margin: 0 0 12px; }
+.hw__card p:last-child { margin-bottom: 0; }
+.hw__stat { font-size: 1rem; }
+.hw__stat b { font-size: 1.25rem; color: var(--teal); }
+.hw__list { list-style: none; margin: 0; padding: 0; }
+.hw__list li {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  gap: 2px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+.hw__list li:last-child { border-bottom: 0; }
+.hw__list b {
+  font-size: 1.3rem;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
+}
+.hw__list span {
+  grid-column: 2;
+  font-size: 0.9rem;
+  opacity: 0.72;
+}
+.hw__note { font-size: 0.88rem; opacity: 0.72; margin-top: 14px; }
+.hw__fig { margin: 26px 0 0; }
+.hw__fig img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper-card);
+}
+.hw__fig figcaption {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  opacity: 0.72;
+  max-width: 78ch;
+}
+@media (max-width: 860px) {
+  .hw__grid { grid-template-columns: 1fr; }
+  .hw__card { padding: 22px 20px; }
 }

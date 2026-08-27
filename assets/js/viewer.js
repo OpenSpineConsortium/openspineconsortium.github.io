@@ -168,13 +168,20 @@ export function createViewer(host, opts) {
   controls.screenSpacePanning = true;
   controls.autoRotate = false;              // it holds still until it is asked to move
 
-  // ONE FINGER SCROLLS THE PAGE. TWO FINGERS TURN THE SPECIMEN.
-  // touch-action:none plus single-finger rotate meant the viewer swallowed every
-  // vertical swipe that started on it, so on a phone the only way past the gallery was
-  // to find a gap between cards. That is a trap, and it is the same one every embedded
-  // map used to set. OrbitControls treats an unrecognised touches.ONE as "do nothing",
-  // which combined with pan-y hands single-finger gestures back to the browser.
-  controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  // ONE FINGER TURNS THE SPECIMEN SIDEWAYS. ONE FINGER SCROLLS THE PAGE UP AND DOWN.
+  // The browser arbitrates, and touch-action is how it is told to: pan-y means vertical
+  // gestures belong to the page and horizontal ones belong to this element. So a sideways
+  // drag reaches OrbitControls and spins the specimen, while a scroll gesture is taken by
+  // the browser before the canvas ever sees it -- no swallowed swipes, and no two-finger
+  // requirement to do the one thing everybody wants to do.
+  //
+  // The previous setting refused single-finger input entirely (touches.ONE = null) to
+  // avoid that swallowed-scroll trap. It avoided the trap by making the viewer look
+  // broken on a phone: two fingers, and DOLLY_ROTATE zooms while it turns, so the model
+  // lurches instead of spinning.
+  //
+  // Azimuth is the axis worth having. Tilt and zoom stay on two fingers.
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
   renderer.domElement.style.touchAction = "pan-y";
 
   const root = new THREE.Group();
