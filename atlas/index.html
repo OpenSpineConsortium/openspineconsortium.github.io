@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumbar Reference Atlas &middot; OpenSpineConsortium</title>
+<meta name="description" content="Lumbar and lower thoracic morphometry by level from 802 CT records, with the distribution attached: median, interquartile range and 5th-95th percentile for body height, endplate width, canal dimensions, pedicle width, disc height and trabecular attenuation.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<style>
+  /* Page-local only. Everything structural comes from the site stylesheet; this adds the
+     table and the figure frame, which no other page needs. */
+  .atlas__wrap{max-width:1100px;margin:0 auto;padding:0 1.25rem 5rem}
+  .atlas__fig{margin:2rem 0 1rem;border:1px solid var(--rule,#dcdcd6);border-radius:4px;
+              background:#fff;padding:.75rem}
+  .atlas__fig img{width:100%;height:auto;display:block}
+  .atlas__cap{font-size:.86rem;line-height:1.5;color:#4a4a44;margin:.75rem .25rem 0}
+  .atlas__dl{display:flex;flex-wrap:wrap;gap:.6rem;margin:1.25rem 0 2.5rem}
+  .atlas__dl a{font:500 .82rem/1 "IBM Plex Sans",system-ui,sans-serif;
+               text-decoration:none;border:1px solid var(--rule,#dcdcd6);border-radius:3px;
+               padding:.55rem .8rem;color:inherit}
+  .atlas__dl a:hover{border-color:#999}
+  .atlas__mname{font:600 1rem/1.3 "IBM Plex Sans",system-ui,sans-serif;
+                margin:2rem 0 .5rem}
+  .atlas__unit{font-weight:400;color:#77776f}
+  /* A wide table must scroll inside its own box rather than push the page sideways. */
+  .atlas__scroll{overflow-x:auto}
+  .atlas__table{border-collapse:collapse;width:100%;
+                font:400 .84rem/1.45 "IBM Plex Mono","SFMono-Regular",monospace}
+  .atlas__table th,.atlas__table td{padding:.35rem .7rem;text-align:right;
+                                    border-bottom:1px solid #ececE6;white-space:nowrap}
+  .atlas__table thead th{text-align:right;font-weight:500;color:#55554e;
+                         border-bottom:1.5px solid #c9c9c2}
+  .atlas__table tbody th{text-align:left;font-weight:500}
+  .atlas__note{font-size:.85rem;line-height:1.6;color:#4a4a44;
+               border-left:2px solid var(--rule,#dcdcd6);padding-left:1rem;margin:2.5rem 0}
+</style>
+</head>
+<body class="sm-hub">
+
+  <header class="nav" id="nav">
+    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
+      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="../index.html#project">Project</a>
+      <a href="../index.html#datasets">Datasets</a>
+      <a href="../index.html#people">People</a>
+      <a href="../index.html#organization">Organization</a>
+      <a href="../index.html#education">Education</a>
+      <a href="index.html" class="is-active">Atlas</a>
+      <a href="../spine-mri/">Spine MRI</a>
+      <a href="../pacs/">Demo</a>
+      <a href="../index.html#join" class="nav__cta">Get Involved</a>
+    </nav>
+
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <div class="atlas__wrap">
+
+    <p style="margin:6.5rem 0 .35rem;font:500 .78rem/1 'IBM Plex Mono',monospace;
+              letter-spacing:.08em;text-transform:uppercase;color:#77776f">
+      Reference resource</p>
+    <h1 style="font:600 2.1rem/1.2 Newsreader,Georgia,serif;margin:0 0 1rem">
+      Lumbar reference atlas, with the spread</h1>
+
+    <p style="font-size:1.02rem;line-height:1.65;max-width:70ch">
+      The figures a surgeon consults for vertebral body height, canal dimensions and pedicle
+      width come from cadaveric series of a few dozen specimens, plotted as a single line
+      per measurement with no indication of spread. They are good numbers. What they cannot
+      tell you is whether the patient in front of you is unusual, because they never show
+      what usual looks like.
+    </p>
+    <p style="font-size:1.02rem;line-height:1.65;max-width:70ch">
+      These are the same measurements from <strong>802 CT records</strong>, in the same
+      axes &mdash; level on the vertical, measurement on the horizontal &mdash; so the two
+      can be laid side by side. Every row carries its median, its interquartile range, its
+      5th&ndash;95th percentile, and its own <em>n</em>.
+    </p>
+
+    <figure class="atlas__fig">
+      <img src="level_atlas.png"
+           alt="Six panels of lumbar and lower thoracic morphometry against vertebral level, each row showing a median marker, an interquartile bar and a 5th to 95th percentile line: body height ventral and dorsal, superior endplate width, canal width and depth, transverse pedicle width, disc height by interspace, and trabecular attenuation.">
+      <figcaption class="atlas__cap">
+        Marker, median; bar, interquartile range; line, 5th&ndash;95th percentile; the
+        number at the right of a row is its <em>n</em>. Coverage is not uniform and is drawn
+        rather than assumed: canal depth and pedicle width rest on 330&ndash;656 records
+        because they need an axial extent many field-limited series do not carry, while the
+        remaining measures rest on 720&ndash;784.
+      </figcaption>
+    </figure>
+
+    <div class="atlas__dl">
+      <a href="level_atlas.csv" download>Download the values (CSV)</a>
+      <a href="level_atlas.pdf">Figure as vector PDF</a>
+      <a href="../index.html#datasets">About CTSpinoPelvic1K</a>
+    </div>
+
+    <p class="atlas__note">
+      <strong>What these numbers are, and what they are not.</strong>
+      This is a screening cohort aged 50 and over, scanned supine, measured automatically
+      from segmentations. Posture matters for anything postural, age matters for bone, and
+      an automatic measurement is not a radiologist. So this describes that population. It
+      is <em>not</em> a normative atlas of the healthy adult spine, and it should not be
+      used as one. No comparison between levels is tested here and none is implied &mdash;
+      the intervals are dispersion, not inference.
+    </p>
+
+    <h2 style="font:600 1.35rem/1.3 Newsreader,Georgia,serif;margin:3rem 0 .5rem">
+      The values</h2>
+    <p style="font-size:.95rem;color:#4a4a44;max-width:70ch;margin:0 0 1rem">
+      Generated from the same file the figure is drawn from, so the table and the plot
+      cannot disagree.
+    </p>
+
+    <!-- TABLE:BEGIN generated by build_table.py -- do not hand-edit -->
+<h3 class="atlas__mname">Vertebral body height, ventral <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">T11</th><td>731</td><td>25.60</td><td>24.00&ndash;27.00</td><td>21.60&ndash;29.00</td><td>25.30 &plusmn; 2.48</td></tr>
+<tr><th scope="row">T12</th><td>744</td><td>27.20</td><td>25.60&ndash;28.80</td><td>24.00&ndash;30.40</td><td>27.16 &plusmn; 2.25</td></tr>
+<tr><th scope="row">L1</th><td>740</td><td>28.80</td><td>28.00&ndash;30.40</td><td>25.60&ndash;32.80</td><td>29.18 &plusmn; 2.80</td></tr>
+<tr><th scope="row">L2</th><td>722</td><td>30.40</td><td>28.80&ndash;31.20</td><td>27.20&ndash;33.60</td><td>30.19 &plusmn; 2.40</td></tr>
+<tr><th scope="row">L3</th><td>757</td><td>30.40</td><td>29.60&ndash;32.00</td><td>28.00&ndash;34.40</td><td>30.85 &plusmn; 2.12</td></tr>
+<tr><th scope="row">L4</th><td>772</td><td>31.20</td><td>29.60&ndash;32.00</td><td>28.00&ndash;34.40</td><td>30.95 &plusmn; 2.20</td></tr>
+<tr><th scope="row">L5</th><td>764</td><td>32.00</td><td>30.40&ndash;33.60</td><td>28.80&ndash;36.00</td><td>32.00 &plusmn; 2.64</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Vertebral body height, dorsal <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">T11</th><td>731</td><td>26.40</td><td>25.60&ndash;28.00</td><td>23.20&ndash;30.40</td><td>26.82 &plusmn; 2.41</td></tr>
+<tr><th scope="row">T12</th><td>744</td><td>28.80</td><td>27.20&ndash;30.40</td><td>24.80&ndash;32.80</td><td>28.65 &plusmn; 2.35</td></tr>
+<tr><th scope="row">L1</th><td>739</td><td>30.40</td><td>28.80&ndash;31.20</td><td>26.40&ndash;33.60</td><td>30.14 &plusmn; 2.52</td></tr>
+<tr><th scope="row">L2</th><td>721</td><td>30.40</td><td>28.80&ndash;32.00</td><td>27.20&ndash;33.60</td><td>30.31 &plusmn; 2.07</td></tr>
+<tr><th scope="row">L3</th><td>757</td><td>30.40</td><td>28.80&ndash;31.20</td><td>27.20&ndash;33.60</td><td>30.09 &plusmn; 2.04</td></tr>
+<tr><th scope="row">L4</th><td>771</td><td>29.60</td><td>28.00&ndash;30.40</td><td>26.40&ndash;33.60</td><td>29.46 &plusmn; 2.14</td></tr>
+<tr><th scope="row">L5</th><td>763</td><td>30.40</td><td>28.00&ndash;32.00</td><td>25.64&ndash;36.00</td><td>30.38 &plusmn; 3.29</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Superior endplate width <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">T11</th><td>730</td><td>37.60</td><td>34.50&ndash;40.90</td><td>30.55&ndash;45.31</td><td>37.75 &plusmn; 4.67</td></tr>
+<tr><th scope="row">T12</th><td>743</td><td>39.90</td><td>36.80&ndash;43.70</td><td>33.00&ndash;48.70</td><td>40.27 &plusmn; 4.97</td></tr>
+<tr><th scope="row">L1</th><td>740</td><td>40.70</td><td>37.60&ndash;44.30</td><td>34.50&ndash;49.10</td><td>40.96 &plusmn; 4.72</td></tr>
+<tr><th scope="row">L2</th><td>723</td><td>42.20</td><td>38.90&ndash;45.60</td><td>36.10&ndash;50.30</td><td>42.39 &plusmn; 4.58</td></tr>
+<tr><th scope="row">L3</th><td>757</td><td>44.10</td><td>40.80&ndash;48.30</td><td>37.20&ndash;53.10</td><td>44.61 &plusmn; 5.19</td></tr>
+<tr><th scope="row">L4</th><td>768</td><td>47.00</td><td>43.70&ndash;50.60</td><td>39.10&ndash;56.00</td><td>47.05 &plusmn; 5.61</td></tr>
+<tr><th scope="row">L5</th><td>753</td><td>51.00</td><td>46.50&ndash;56.00</td><td>40.36&ndash;64.80</td><td>51.42 &plusmn; 8.13</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Spinal canal width <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">T11</th><td>737</td><td>20.30</td><td>18.80&ndash;21.90</td><td>16.40&ndash;24.42</td><td>20.36 &plusmn; 2.46</td></tr>
+<tr><th scope="row">T12</th><td>742</td><td>23.15</td><td>21.80&ndash;24.98</td><td>19.40&ndash;27.40</td><td>23.28 &plusmn; 2.47</td></tr>
+<tr><th scope="row">L1</th><td>741</td><td>23.90</td><td>22.50&ndash;25.60</td><td>20.30&ndash;28.10</td><td>24.11 &plusmn; 2.46</td></tr>
+<tr><th scope="row">L2</th><td>730</td><td>24.20</td><td>22.70&ndash;25.88</td><td>20.70&ndash;28.35</td><td>24.36 &plusmn; 2.40</td></tr>
+<tr><th scope="row">L3</th><td>771</td><td>25.00</td><td>23.60&ndash;26.70</td><td>21.30&ndash;29.30</td><td>25.19 &plusmn; 2.61</td></tr>
+<tr><th scope="row">L4</th><td>784</td><td>26.20</td><td>24.60&ndash;28.10</td><td>22.10&ndash;31.58</td><td>26.44 &plusmn; 3.02</td></tr>
+<tr><th scope="row">L5</th><td>761</td><td>30.00</td><td>27.90&ndash;32.40</td><td>24.60&ndash;36.50</td><td>30.27 &plusmn; 3.75</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Spinal canal depth (AP) <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">L1</th><td>324</td><td>18.60</td><td>17.38&ndash;19.70</td><td>15.70&ndash;21.48</td><td>18.54 &plusmn; 1.75</td></tr>
+<tr><th scope="row">L2</th><td>421</td><td>17.80</td><td>16.50&ndash;18.80</td><td>15.00&ndash;21.10</td><td>17.85 &plusmn; 1.79</td></tr>
+<tr><th scope="row">L3</th><td>612</td><td>17.10</td><td>15.80&ndash;18.40</td><td>14.55&ndash;20.30</td><td>17.13 &plusmn; 1.79</td></tr>
+<tr><th scope="row">L4</th><td>651</td><td>17.50</td><td>16.20&ndash;18.80</td><td>14.65&ndash;21.50</td><td>17.60 &plusmn; 2.20</td></tr>
+<tr><th scope="row">L5</th><td>517</td><td>19.90</td><td>18.00&ndash;21.80</td><td>15.98&ndash;24.62</td><td>20.03 &plusmn; 2.78</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Transverse pedicle width <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">L1</th><td>330</td><td>7.00</td><td>5.70&ndash;8.57</td><td>4.25&ndash;10.50</td><td>7.18 &plusmn; 1.97</td></tr>
+<tr><th scope="row">L2</th><td>421</td><td>6.60</td><td>5.50&ndash;7.90</td><td>4.10&ndash;9.80</td><td>6.81 &plusmn; 1.88</td></tr>
+<tr><th scope="row">L3</th><td>615</td><td>8.60</td><td>7.00&ndash;10.35</td><td>5.30&ndash;12.93</td><td>8.76 &plusmn; 2.39</td></tr>
+<tr><th scope="row">L4</th><td>656</td><td>11.30</td><td>9.57&ndash;13.20</td><td>7.35&ndash;15.60</td><td>11.44 &plusmn; 2.63</td></tr>
+<tr><th scope="row">L5</th><td>530</td><td>18.60</td><td>15.60&ndash;21.90</td><td>11.25&ndash;26.60</td><td>18.82 &plusmn; 4.68</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Disc height <span class="atlas__unit">(mm)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">L1–L2</th><td>798</td><td>8.80</td><td>8.00&ndash;9.60</td><td>6.40&ndash;11.20</td><td>8.88 &plusmn; 1.62</td></tr>
+<tr><th scope="row">L2–L3</th><td>793</td><td>9.60</td><td>8.80&ndash;11.20</td><td>5.60&ndash;12.80</td><td>9.74 &plusmn; 2.14</td></tr>
+<tr><th scope="row">L3–L4</th><td>797</td><td>10.40</td><td>8.80&ndash;11.20</td><td>6.40&ndash;13.60</td><td>10.19 &plusmn; 2.11</td></tr>
+<tr><th scope="row">L4–L5</th><td>786</td><td>10.40</td><td>8.80&ndash;12.00</td><td>4.80&ndash;13.95</td><td>10.20 &plusmn; 2.57</td></tr>
+<tr><th scope="row">L5–S1</th><td>747</td><td>9.60</td><td>7.20&ndash;12.00</td><td>4.00&ndash;14.40</td><td>9.53 &plusmn; 3.33</td></tr>
+</tbody></table></div>
+<h3 class="atlas__mname">Trabecular attenuation <span class="atlas__unit">(HU)</span></h3>
+<div class="atlas__scroll"><table class="atlas__table">
+<thead><tr><th>Level</th><th>n</th><th>Median</th><th>IQR</th><th>5th–95th</th><th>Mean ± SD</th></tr></thead><tbody>
+<tr><th scope="row">L1</th><td>800</td><td>157.20</td><td>130.47&ndash;186.10</td><td>98.52&ndash;235.11</td><td>160.47 &plusmn; 42.47</td></tr>
+<tr><th scope="row">L2</th><td>802</td><td>157.30</td><td>129.50&ndash;189.10</td><td>95.91&ndash;237.57</td><td>161.00 &plusmn; 43.33</td></tr>
+<tr><th scope="row">L3</th><td>801</td><td>154.40</td><td>125.20&ndash;185.70</td><td>92.20&ndash;236.90</td><td>157.92 &plusmn; 44.11</td></tr>
+<tr><th scope="row">L4</th><td>800</td><td>158.40</td><td>132.20&ndash;189.80</td><td>97.18&ndash;241.05</td><td>163.50 &plusmn; 44.98</td></tr>
+</tbody></table></div>
+<!-- TABLE:END -->
+
+    <p class="atlas__note">
+      <strong>Two checks worth noting.</strong>
+      Body height crosses over &mdash; dorsal exceeds ventral at T11&ndash;T12 and the
+      order reverses by L4&ndash;L5 &mdash; and pedicle width widens steeply into the lower
+      lumbar spine. Both are properties the classical figures report, recovered here
+      independently from CT. Panel (f) is a substitution rather than a reproduction: the
+      textbook plots vertebral compression strength measured by loading cadaveric specimens
+      to failure, and trabecular attenuation is a different quantity that stands in for it
+      in living patients.
+    </p>
+
+  </div>
+
+<script>
+(function(){
+  var nav=document.getElementById('nav');
+  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
+  window.addEventListener('scroll', s, {passive:true}); s();
+  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
+  t.addEventListener('click', function(){
+    var o=l.classList.toggle('is-open');
+    t.classList.toggle('is-open', o);
+    t.setAttribute('aria-expanded', o?'true':'false');
+  });
+})();
+</script>
+</body>
+</html>
