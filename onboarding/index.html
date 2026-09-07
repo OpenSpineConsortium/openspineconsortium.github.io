@@ -128,8 +128,10 @@ ssh youraccessid@grid.wayne.edu</code></pre>
     User youraccessid
     IdentityFile ~/.ssh/id_ed25519</code></pre>
 
-<h3>2.4 Open the grid in VS Code</h3>
-<p>Press <kbd>F1</kbd>, choose <em>Remote-SSH: Connect to Host</em>, pick <code>grid</code>. A new VS Code window opens whose files and terminal live on the grid. Open your home folder there. Everything from here on happens in that window, including Claude Code, which you install on the grid the same way as on your laptop (Section 1.4, the macOS/Linux command).</p>
+<h3>2.4 Two ways to work, and the one we use</h3>
+<p><strong>The lab's setup, and the one this primer assumes:</strong> Claude Code runs on your laptop, in VS Code, and drives the grid over SSH. Code moves through git (commit locally, push, pull on the grid), jobs are submitted with a short <code>ssh grid "cd ~/Student_Projects &amp;&amp; sbatch ..."</code>, a background loop polls the queue, and results come back with <code>rsync</code>. Your editor, your files and your assistant stay in one place; only the computing happens remotely. On Windows, Claude runs those network commands through WSL, which is why Section 1.2 installs it.</p>
+<p><strong>The alternative</strong> is to work on the grid directly: press <kbd>F1</kbd>, choose <em>Remote-SSH: Connect to Host</em>, pick <code>grid</code>, and a VS Code window opens whose files and terminal live there; install Claude Code on the grid with the Linux command from Section 1.4. This is fine for editing and for quick looks at data, but the login node is shared and small, so heavy work is still a SLURM job.</p>
+<p>Both ways depend on the SSH key and the <code>grid</code> alias from 2.2 and 2.3. Test them now: <code>ssh -o BatchMode=yes grid hostname</code> must print <code>warrior</code> without asking for anything.</p>
 
 <h3>2.5 SLURM in five commands</h3>
 <table>
@@ -142,6 +144,18 @@ ssh youraccessid@grid.wayne.edu</code></pre>
 </table>
 <p><a href="../tutorials/05_training_on_the_grid.html">Workshop Tutorial 5</a> walks through a job script line by line. The <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/templates/slurm_job.sh" target="_blank" rel="noopener">template job script</a> in Student_Projects is the one you will actually use.</p>
 <div class="ob__note ob__note--warn"><p><strong>Where files live.</strong> Your home directory is small and backed up; put code and results there. Large data lives in the shared dataset folder your mentor names. Never put CT volumes in git, and never run a long script on the login node.</p></div>
+<h3>2.6 Three rules the lab learned the hard way</h3>
+<ul>
+  <li><strong>Job scripts are files, never heredocs.</strong> Every attempt to push a script through <code>ssh</code> inline, or to pass a multi-part command through <code>sbatch --wrap</code>, was mangled by quoting: variables expanded on the wrong machine, backslashes eaten, commands split. Write the job script into the repository, commit it, pull it on the grid, submit it there.</li>
+  <li><strong>Anything longer than a minute is a batch job</strong>, even if it is light. The login node is shared, and an SSH session that runs long gets cut.</li>
+  <li><strong>Poll in the background.</strong> A job that takes twenty minutes is checked by a loop that asks <code>squeue</code> every thirty seconds and prints the log when the job is gone. Neither you nor Claude should sit in the foreground waiting.</li>
+</ul>
+<p>These rules are written into the CLAUDE.md you will copy in Section 3, and into <code>tools/grid.sh</code> in Student_Projects, which wraps the five remote calls a project needs:</p>
+<pre><code>tools/grid.sh run "squeue -u \$USER"                       # a short command on the login node
+tools/grid.sh sync                                          # git pull the grid clone
+tools/grid.sh submit templates/slurm_job.sh projects/me/measure.py --data ~/data/CTSpinoPelvic1K --out projects/me/results
+tools/grid.sh wait 40056610                                 # poll every 30 s, then print the logs
+tools/grid.sh pull projects/me/results projects/me/results  # rsync a results folder back</code></pre>
 
 <h2 id="claude"><span class="ob__num">Section 3</span>Teaching Claude to work on the grid</h2>
 <p>Claude Code reads a file called <code>CLAUDE.md</code> in your project folder at the start of every session. That file is where you tell it, once, how the grid works, where the data is, and which rules never bend. Student_Projects ships a <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/templates/CLAUDE.md" target="_blank" rel="noopener">template</a>; copy it into your project folder and edit the three lines marked <code>EDIT</code>.</p>
@@ -155,7 +169,27 @@ Do not submit it; show it to me and explain each #SBATCH line.
 
 My job 123456 failed. Here is the tail of logs/osc_measure_123456.err:
 &lt;paste&gt;   What went wrong and what do I change?</code></pre>
-<p>Two habits keep you in charge. <strong>Claude drafts, you submit:</strong> read the job script, then run <code>sbatch</code> yourself. <strong>Claude explains, you decide:</strong> when it proposes a measurement, ask it which label identifiers it is using and why, and check them against <code>dataset_labels.json</code>. The template CLAUDE.md already tells it to work this way.</p>
+<p>Two habits keep you in charge. <strong>Claude drafts, you submit:</strong> read the job script, then run <code>sbatch</code> yourself, or say "submit it" and let Claude run exactly the one command. <strong>Claude explains, you decide:</strong> when it proposes a measurement, ask it which label identifiers it is using and why, and check them against <code>dataset_labels.json</code>. The template CLAUDE.md already tells it to work this way.</p>
+<h3>3.1 What the template CLAUDE.md carries</h3>
+<p>It is the lab's working knowledge written down, so that a new project starts where the last one left off rather than from zero:</p>
+<ul>
+  <li>the two machines and how they talk (laptop, WSL on Windows, the <code>grid</code> alias, the login node <code>warrior</code>, where the repository and the data live on each);</li>
+  <li>the seven rules that never bend (login node, scripts as files, Claude drafts and you submit, never reorient a volume, never assume an axis, never commit data, never edit a result by hand);</li>
+  <li>the remote workflow step by step, from commit to <code>rsync</code>, with the exact commands;</li>
+  <li>SLURM defaults for this grid: the <code>primary</code> and <code>gpu</code> queues, the H200 GPU request, memory and time to ask for, node-local scratch, how long an 802-record pass takes;</li>
+  <li>the laptop pitfalls that cost afternoons (heredoc backslashes, files locked by a viewer, spaces in OneDrive paths, PowerShell without <code>&amp;&amp;</code>);</li>
+  <li>how you want to work (one script per output, ten records before 802, a journal line per decision) and what Claude should do at the start of every session.</li>
+</ul>
+<h3>3.2 Slash commands and permissions</h3>
+<p>Student_Projects also ships a <code>.claude/</code> folder that Claude Code reads automatically from the repository:</p>
+<table>
+  <tr><th>command</th><th>what it does</th></tr>
+  <tr><td><code>/grid-status</code></td><td>checks the grid answers, lists your jobs, shows the last job's log tail</td></tr>
+  <tr><td><code>/grid-submit &lt;what&gt;</code></td><td>writes the job script as a file, commits, syncs the grid, shows you the submit command, waits for your word, then submits and starts the background wait</td></tr>
+  <tr><td><code>/grid-pull &lt;folder&gt;</code></td><td>rsyncs a results folder back, opens every figure, checks a report number against its CSV</td></tr>
+  <tr><td><code>/new-project &lt;topic&gt;</code></td><td>creates your project folder and branch, then interviews you section by section to write the proposal</td></tr>
+</table>
+<p><code>.claude/settings.json</code> pre-approves the routine commands (git, python, ssh to <code>grid</code>, rsync, the helper script) so you are not asked to confirm each one, and forbids the destructive ones. You can loosen or tighten it in your own copy; it lives in git, so the whole lab shares the same defaults.</p>
 <div class="ob__note"><p><strong>Check:</strong> from your project folder on the grid, <code>claude</code> starts, and asking "what does CLAUDE.md say I should never do?" gets back the rules about reorienting volumes, assuming axes, and committing data.</p></div>
 
 <h2 id="dataset"><span class="ob__num">Section 4</span>The dataset: CTSpinoPelvic1K</h2>
