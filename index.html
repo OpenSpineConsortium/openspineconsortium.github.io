@@ -182,22 +182,31 @@
     <article class="dataset dataset--flagship reveal">
       <div class="dataset__meta">
         <span class="badge badge--flag">Flagship dataset</span>
-        <span class="badge">In submission · 2026 [VERIFY]</span>
+        <span class="badge">v10 · September 2026</span>
+        <span class="badge">Dataset article in submission</span>
       </div>
       <h3 class="dataset__name">CTSpinoPelvic1K</h3>
       <p class="dataset__desc">
-        A fused spine-and-pelvis CT segmentation dataset and benchmark that unifies
-        three public collections into a single, anatomy-consistent resource. It is
-        explicitly designed around lumbosacral transitional vertebrae (LSTV), the
-        anatomy where conventional pipelines most often fail.
+        802 abdominal CT records with the spine, sacrum, hips, femora, per-level ribs and
+        surgical hardware segmented in one coordinate frame. Built from three public
+        collections and annotated for lumbosacral and thoracolumbar transitional anatomy,
+        the levels where conventional pipelines most often fail.
       </p>
       <ul class="dataset__specs">
         <li><span class="spec-k">Source collections</span><span class="spec-v">CTSpine1K · CTPelvic1K · TCIA CT&nbsp;COLONOG</span></li>
-        <li><span class="spec-k">Label scheme</span><span class="spec-v">Unified merged-label map, LSTV-aware</span></li>
-        <li><span class="spec-k">Evaluation</span><span class="spec-v">5-fold cross-validation, frozen splits</span></li>
-        <li><span class="spec-k">Metadata</span><span class="spec-v">Croissant + Responsible-AI fields</span></li>
-        <li><span class="spec-k">Distribution</span><span class="spec-v">HuggingFace dataset export [VERIFY]</span></li>
+        <li><span class="spec-k">Label scheme</span><span class="spec-v">68 identifiers: VerSe vertebrae, S1, hips, femora, thirteen ribs per side, lumbar ribs, hardware</span></li>
+        <li><span class="spec-k">Transitional anatomy</span><span class="spec-v">33 records with two-reader Castellvi grades · 18 with an L6 · 16 with a lumbar rib</span></li>
+        <li><span class="spec-k">Splits</span><span class="spec-v">Patient-grouped, LSTV-stratified five-fold</span></li>
+        <li><span class="spec-k">Distribution</span><span class="spec-v">Zenodo archive of record (CC BY-NC-SA 4.0) · Hugging Face mirror</span></li>
       </ul>
+      <div class="dataset__links">
+        <a href="https://doi.org/10.5281/zenodo.22139642" target="_blank" rel="noopener">Zenodo archive</a>
+        <a href="https://huggingface.co/datasets/OpenSpineConsortium/CTSpinoPelvic1K" target="_blank" rel="noopener">Hugging Face mirror</a>
+        <a href="https://github.com/OpenSpineConsortium/CTSpinoPelvic1K" target="_blank" rel="noopener">Code and build chain</a>
+        <!-- ARXIV: once the preprint is up, replace the span below with
+             <a href="https://arxiv.org/abs/XXXX.XXXXX" target="_blank" rel="noopener">Dataset paper (arXiv)</a> -->
+        <span class="dataset__link--pending">Dataset paper on arXiv, soon</span>
+      </div>
     </article>
 
     <!-- Reference atlas: the flagship's numbers, published as a usable resource -->

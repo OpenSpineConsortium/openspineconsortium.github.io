@@ -414,6 +414,22 @@ em { font-style: italic; }
 .spec-k { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-faint); letter-spacing: 0.04em; text-transform: uppercase; }
 .spec-v { text-align: right; color: var(--ink); }
 
+.dataset__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin-top: 20px;
+  font-size: 0.92rem;
+}
+.dataset__links a {
+  color: var(--teal);
+  text-decoration: none;
+  border-bottom: 1px solid var(--teal);
+  padding-bottom: 1px;
+}
+.dataset__links a:hover { color: var(--teal-bright); border-color: var(--teal-bright); }
+.dataset__link--pending { color: var(--ink-faint); }
+
 .dataset__row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
