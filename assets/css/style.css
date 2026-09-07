@@ -981,7 +981,7 @@ em { font-style: italic; }
 }
 .join__cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 .join__card {
