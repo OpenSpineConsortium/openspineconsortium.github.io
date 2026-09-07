@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSC Primer · Onboarding · OpenSpineConsortium</title>
+<meta name="description" content="The OpenSpineConsortium primer: from an empty laptop to a population-level anatomical study on CTSpinoPelvic1K, with VS Code, Claude Code and the WSU grid.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css?v=20260904">
+<link rel="stylesheet" href="onboarding.css?v=20260907">
+</head>
+<body class="ob">
+
+<header class="ob__top">
+  <a class="ob__brand" href="../index.html">
+    <svg viewBox="0 0 28 28" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5"/><line x1="8.5" y1="6.2" x2="19.5" y2="6.2"/><line x1="8.5" y1="12.5" x2="19.5" y2="12.5"/><line x1="8.5" y1="18.8" x2="19.5" y2="18.8"/></g></svg>
+    <span>Open<strong>Spine</strong>Consortium</span>
+  </a>
+  <nav class="ob__toplinks" aria-label="Primer">
+    <a href="../index.html#datasets">Datasets</a>
+    <a href="../tutorials/">Workshop tutorials</a>
+    <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">Student_Projects</a>
+    <a href="../index.html#join">Get Involved</a>
+  </nav>
+</header>
+
+<section class="ob__hero">
+  <div>
+    <p class="ob__eyebrow">OSC Primer · onboarding for new students</p>
+    <h1 class="ob__title">From an empty laptop to a <em>population study</em> of the spine.</h1>
+    <p class="ob__lede">You do not need to know how to code. You need a laptop, an afternoon, and this page. By the end you will have an editor with an AI assistant in it, an account on the university grid, a copy of an 802-patient CT dataset, and a finished study of your own to imitate.</p>
+    <div class="ob__actions">
+      <a href="#toolkit" class="btn btn--solid">Start with the toolkit</a>
+      <a href="#project" class="btn btn--ghost">Propose a project</a>
+    </div>
+  </div>
+  <div class="ob__mark" aria-hidden="true">
+    <svg viewBox="0 0 28 28"><g fill="none" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"><path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5"/><line x1="8.5" y1="6.2" x2="19.5" y2="6.2"/><line x1="8.5" y1="12.5" x2="19.5" y2="12.5"/><line x1="8.5" y1="18.8" x2="19.5" y2="18.8"/></g></svg>
+  </div>
+</section>
+
+<section class="ob__path" aria-label="The path">
+  <ol class="ob__steps">
+    <li><a href="#toolkit">Toolkit</a><small>VS Code, Python, Claude Code</small></li>
+    <li><a href="#grid">The grid</a><small>account, SSH key, SLURM</small></li>
+    <li><a href="#claude">Claude on the grid</a><small>CLAUDE.md, environments, jobs</small></li>
+    <li><a href="#dataset">The dataset</a><small>what is in CTSpinoPelvic1K</small></li>
+    <li><a href="#demo">The demo study</a><small>run it, read it, change it</small></li>
+    <li><a href="#project">Your project</a><small>proposal, pull request, ClickUp</small></li>
+  </ol>
+</section>
+
+<div class="ob__layout">
+<nav class="ob__nav" aria-label="Sections">
+  <p class="ob__navhead">On this page</p>
+  <ol>
+    <li><a href="#welcome">Welcome</a></li>
+    <li><a href="#toolkit">1 · Toolkit</a></li>
+    <li><a href="#grid">2 · The grid</a></li>
+    <li><a href="#claude">3 · Claude on the grid</a></li>
+    <li><a href="#dataset">4 · The dataset</a></li>
+    <li><a href="#demo">5 · The demo study</a></li>
+    <li><a href="#project">6 · Your project</a></li>
+    <li><a href="#basics">7 · Basics you will need</a></li>
+    <li><a href="#checklist">8 · Checklist</a></li>
+  </ol>
+</nav>
+
+<main class="ob__content">
+
+<h2 id="welcome" style="border-top:none;margin-top:0;padding-top:0"><span class="ob__num">Welcome</span>What this is, and who it is for</h2>
+<p>OpenSpineConsortium builds openly licensed datasets of the spine and pelvis and the tools to measure them. Our flagship, <strong>CTSpinoPelvic1K</strong>, is 802 abdominopelvic CT scans with every vertebra, the sacrum, the first sacral segment, both hip bones, both femora and every rib labeled on one coordinate frame, plus the anatomy that makes lumbar numbering ambiguous recorded as itself. Students built it. Students are now using it to answer anatomical questions at a scale a cadaver lab never reaches.</p>
+<p>This primer is the on-ramp. It assumes nothing: not a terminal, not Python, not git. Each section ends with something concrete you can check. Work through it in order the first time; afterwards it is a reference.</p>
+<div class="ob__cards">
+  <div class="ob__card"><h4>What you will be able to do</h4><p>Open a labeled CT, measure a bone across 802 people, compare groups, draw the figure, and hand in a study someone else can rerun.</p></div>
+  <div class="ob__card"><h4>How long it takes</h4><p>One afternoon for the toolkit and the grid. One evening for the dataset and the demo. Your own project starts on day three.</p></div>
+  <div class="ob__card"><h4>How you get help</h4><p>Claude Code, in your editor, for the code. The <a href="../tutorials/">workshop tutorials</a> for depth. Your mentor, by pull request and ClickUp, for the science.</p></div>
+</div>
+
+<h2 id="toolkit"><span class="ob__num">Section 1</span>The toolkit</h2>
+<p>Four installs. Each is a download and a click except Python, which comes from a terminal command the linked tutorial gives you verbatim.</p>
+
+<h3>1.1 An editor: Visual Studio Code</h3>
+<p>Download from <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">code.visualstudio.com</a> and install with the defaults. On the first launch install two extensions from the Extensions panel (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> on Windows, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> on a Mac): <strong>Python</strong> (by Microsoft) and <strong>Remote - SSH</strong> (by Microsoft). Remote - SSH is how you will edit files on the grid as if they were on your laptop.</p>
+
+<h3>1.2 A command line and git</h3>
+<div class="ob__cards">
+  <div class="ob__card"><h4><span class="ob__os ob__os--alt">macOS</span>Xcode Command Line Tools</h4><p>Open Terminal (Applications → Utilities) and run <code>xcode-select --install</code>. Accept the dialog. This installs git and the compilers Python packages need. You do not need the full Xcode app.</p></div>
+  <div class="ob__card"><h4><span class="ob__os">Windows</span>Git for Windows and WSL</h4><p>Install <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">Git for Windows</a> with the defaults, which gives you Git Bash. Then, in an administrator PowerShell, run <code>wsl --install</code> and reboot: Windows Subsystem for Linux gives you the same Linux terminal the grid has, so every command in this primer works unchanged.</p></div>
+</div>
+
+<h3>1.3 Python: Miniforge</h3>
+<p>Follow <a href="../tutorials/01_environment_setup.html">Workshop Tutorial 1</a>, steps 1 and 2. It installs Miniforge (Python plus the <code>mamba</code> package manager) and creates an imaging environment. Do it on your laptop now; you will repeat the same two steps on the grid in Section 2, and Claude can do it for you there.</p>
+
+<h3>1.4 Claude Code</h3>
+<p>Claude Code is an AI programming assistant that runs in your terminal and inside VS Code. It reads your files, writes and edits code, runs commands with your permission, and explains what it did. It is how most of your code will get written, and the reason this primer can promise a study by the end.</p>
+<div class="ob__cards">
+  <div class="ob__card"><h4><span class="ob__os ob__os--alt">macOS / Linux / WSL</span>Install</h4><p><code>curl -fsSL https://claude.ai/install.sh | bash</code></p></div>
+  <div class="ob__card"><h4><span class="ob__os">Windows PowerShell</span>Install</h4><p><code>irm https://claude.ai/install.ps1 | iex</code></p></div>
+</div>
+<p>Then, in VS Code, install the <strong>Claude Code</strong> extension from the Extensions panel. Open a terminal (<kbd>Ctrl</kbd>+<kbd>`</kbd>), type <code>claude</code>, and sign in when the browser opens. You need a Claude account with Claude Code access; ask your mentor which plan the lab uses before buying anything.</p>
+<div class="ob__note"><p><strong>Check:</strong> in a VS Code terminal, <code>git --version</code>, <code>mamba --version</code> and <code>claude --version</code> each print a version. If one does not, ask Claude in the terminal that works: paste the error and say what you were installing.</p></div>
+
+<h2 id="grid"><span class="ob__num">Section 2</span>The grid</h2>
+<p>The Wayne State grid is a Linux cluster with far more CPU, memory and GPU than your laptop, run by SLURM, a job scheduler. You log in to a small "login node" to edit files and submit jobs; the jobs run on the big nodes. The rule is simple: anything heavier than a minute of work runs as a job, never on the login node.</p>
+
+<h3>2.1 Get an account</h3>
+<p>Accounts are tied to your WSU AccessID and sponsored by a faculty member. Request one through Wayne State C&amp;IT's High Performance Computing pages at <a href="https://tech.wayne.edu/" target="_blank" rel="noopener">tech.wayne.edu</a> (search "grid account") and name Gregory Schwing as sponsor. Email him that you have applied so he can confirm it.</p>
+
+<h3>2.2 Make an SSH key</h3>
+<p>An SSH key is a pair of files: a private one that stays on your laptop and a public one you give to the grid. It lets you log in without typing a password and it is what VS Code's Remote - SSH uses. In your laptop terminal (Terminal, Git Bash, or WSL):</p>
+<pre><code># make the key; press Enter at every prompt, or add a passphrase you will remember
+ssh-keygen -t ed25519 -C "youraccessid@wayne.edu"
+
+# copy the public half to the grid (type your grid password once)
+ssh-copy-id youraccessid@grid.wayne.edu
+
+# from now on this logs you in without a password
+ssh youraccessid@grid.wayne.edu</code></pre>
+<p>On Windows Git Bash, if <code>ssh-copy-id</code> is missing, do it by hand: <code>cat ~/.ssh/id_ed25519.pub | ssh youraccessid@grid.wayne.edu "mkdir -p ~/.ssh &amp;&amp; cat &gt;&gt; ~/.ssh/authorized_keys"</code>.</p>
+
+<h3>2.3 Give the grid a short name</h3>
+<p>Create or edit <code>~/.ssh/config</code> on your laptop so that <code>ssh grid</code> is enough:</p>
+<pre><code>Host grid
+    HostName grid.wayne.edu
+    User youraccessid
+    IdentityFile ~/.ssh/id_ed25519</code></pre>
+
+<h3>2.4 Open the grid in VS Code</h3>
+<p>Press <kbd>F1</kbd>, choose <em>Remote-SSH: Connect to Host</em>, pick <code>grid</code>. A new VS Code window opens whose files and terminal live on the grid. Open your home folder there. Everything from here on happens in that window, including Claude Code, which you install on the grid the same way as on your laptop (Section 1.4, the macOS/Linux command).</p>
+
+<h3>2.5 SLURM in five commands</h3>
+<table>
+  <tr><th>command</th><th>what it does</th></tr>
+  <tr><td><code>sbatch job.sh</code></td><td>submit a job script; prints a job id</td></tr>
+  <tr><td><code>squeue -u $USER</code></td><td>list your jobs and whether they are waiting or running</td></tr>
+  <tr><td><code>scancel &lt;jobid&gt;</code></td><td>stop a job</td></tr>
+  <tr><td><code>tail -f logs/&lt;name&gt;_&lt;jobid&gt;.out</code></td><td>watch a job's output as it runs</td></tr>
+  <tr><td><code>sacct -j &lt;jobid&gt; --format=JobID,State,Elapsed,MaxRSS</code></td><td>after it ends, how long it took and how much memory it used</td></tr>
+</table>
+<p><a href="../tutorials/05_training_on_the_grid.html">Workshop Tutorial 5</a> walks through a job script line by line. The <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/templates/slurm_job.sh" target="_blank" rel="noopener">template job script</a> in Student_Projects is the one you will actually use.</p>
+<div class="ob__note ob__note--warn"><p><strong>Where files live.</strong> Your home directory is small and backed up; put code and results there. Large data lives in the shared dataset folder your mentor names. Never put CT volumes in git, and never run a long script on the login node.</p></div>
+
+<h2 id="claude"><span class="ob__num">Section 3</span>Teaching Claude to work on the grid</h2>
+<p>Claude Code reads a file called <code>CLAUDE.md</code> in your project folder at the start of every session. That file is where you tell it, once, how the grid works, where the data is, and which rules never bend. Student_Projects ships a <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/templates/CLAUDE.md" target="_blank" rel="noopener">template</a>; copy it into your project folder and edit the three lines marked <code>EDIT</code>.</p>
+<p>With that in place, these are the prompts that do the work. Type them to Claude in the VS Code terminal on the grid.</p>
+<pre><code>Create the mamba environment from templates/environment.yml in my home
+directory and show me how to activate it.
+
+Write a SLURM job script from templates/slurm_job.sh that runs
+projects/&lt;me&gt;/measure_something.py with 8 workers and 32 GB of memory.
+Do not submit it; show it to me and explain each #SBATCH line.
+
+My job 123456 failed. Here is the tail of logs/osc_measure_123456.err:
+&lt;paste&gt;   What went wrong and what do I change?</code></pre>
+<p>Two habits keep you in charge. <strong>Claude drafts, you submit:</strong> read the job script, then run <code>sbatch</code> yourself. <strong>Claude explains, you decide:</strong> when it proposes a measurement, ask it which label identifiers it is using and why, and check them against <code>dataset_labels.json</code>. The template CLAUDE.md already tells it to work this way.</p>
+<div class="ob__note"><p><strong>Check:</strong> from your project folder on the grid, <code>claude</code> starts, and asking "what does CLAUDE.md say I should never do?" gets back the rules about reorienting volumes, assuming axes, and committing data.</p></div>
+
+<h2 id="dataset"><span class="ob__num">Section 4</span>The dataset: CTSpinoPelvic1K</h2>
+<p>802 abdominopelvic CT scans from one prospective screening trial (ACRIN 6664, 15 centers, five scanner vendors), each with a label volume on the same grid as the image. A label volume is an image whose voxels hold integers naming the structure at that point. The integers are the label scheme.</p>
+<div class="ob__stat">
+  <div><b>802</b><span>records, 802 patients, 50 to 89 years old</span></div>
+  <div><b>377</b><span>scanned prone, the position of posterior lumbar surgery</span></div>
+  <div><b>18</b><span>records with a sixth lumbar vertebra; 16 with a lumbar rib</span></div>
+  <div><b>33</b><span>Castellvi grades, consensus of two radiologists</span></div>
+</div>
+<h3>4.1 The label scheme (v10)</h3>
+<div class="ob__ids">
+  <div class="ob__id"><b>1–7 · 8–19</b><span>C1–C7 · T1–T12 (only the lowest thoracic levels are in the field of view)</span></div>
+  <div class="ob__id"><b>20–25</b><span>L1–L6; L6 is a real class, present in 18 records</span></div>
+  <div class="ob__id"><b>26 · 29</b><span>sacrum · S1 carved from it, the caudal anchor</span></div>
+  <div class="ob__id"><b>30–31 · 32–33</b><span>left and right hip · left and right femur</span></div>
+  <div class="ob__id"><b>34–46 · 47–59</b><span>ribs 1–13, left · right (13 = the rib of a T13; empty so far)</span></div>
+  <div class="ob__id"><b>60–61</b><span>lumbar ribs, a rudimentary rib on a lumbar-type L1</span></div>
+  <div class="ob__id"><b>62–68</b><span>surgical hardware: generic, cage, screw/rod, plate, arthroplasty, SI screw, osteosynthesis</span></div>
+</div>
+<p>The authoritative list is <code>dataset_labels.json</code> in the download. Read it in code; do not type identifiers from memory.</p>
+
+<h3>4.2 The manifest</h3>
+<p><code>manifest.json</code> has one row per record. The fields you will group by most: <code>sex</code> (female 393, male 345, other 11, missing 53), <code>age</code> (709 records), <code>position</code> (prone or supine), <code>castellvi_type</code> (33 records; <strong>null means ungraded, not normal</strong>), <code>has_l6</code>, <code>has_lumbar_rib</code>, <code>n_lumbar_labels</code>, <code>hardware_labelled</code>, plus scanner make, model, kernel and slice thickness.</p>
+
+<h3>4.3 Four rules before any analysis</h3>
+<p>They are in <code>KNOWN_ISSUES.md</code>, which ships with the data. Read the whole file once; these four bite most often.</p>
+<ol>
+  <li>A null Castellvi grade means nobody looked. Do not count it as normal.</li>
+  <li>Exclude the 11 hardware records from anything measured across a joint or a gap; eight of them have replaced hips.</li>
+  <li>Do not pool prone and supine for anything postural (lordosis, sacral slope, pelvic tilt). Widths are fine.</li>
+  <li>Nine four-lumbar records carry the fused transitional vertebra under the S1 identifier. Filter on <code>n_lumbar_labels</code> if that matters to you.</li>
+</ol>
+
+<h3>4.4 Get the data</h3>
+<p>The labels and metadata are 1.1 GB. The CT images are another 195 GB; download them only when you need voxel intensities (bone density, Hounsfield units), and on the grid, not your laptop.</p>
+<pre><code># in your mamba environment
+python - &lt;&lt;'EOF'
+from huggingface_hub import snapshot_download
+snapshot_download("OpenSpineConsortium/CTSpinoPelvic1K", repo_type="dataset",
+                  local_dir="CTSpinoPelvic1K",
+                  allow_patterns=["labels/*", "manifest.json", "dataset_labels.json",
+                                  "KNOWN_ISSUES.md", "splits_5fold.json", "README.md"])
+# add "ct/*" to allow_patterns for the images (195 GB)
+EOF</code></pre>
+<p>The archival copy is on Zenodo, <a href="https://doi.org/10.5281/zenodo.22642578" target="_blank" rel="noopener">10.5281/zenodo.22642578</a>, which is what you cite. On the grid, ask your mentor for the path of the shared copy rather than downloading your own.</p>
+
+<h3>4.5 Look at it</h3>
+<p>Before measuring anything, look at a record. Install <a href="http://www.itksnap.org/" target="_blank" rel="noopener">ITK-SNAP</a>, open <code>ct/0007_ct.nii.gz</code> as the main image and <code>labels/0007_label.nii.gz</code> as a segmentation, and load the label descriptions from <a href="https://github.com/OpenSpineConsortium/CTSpinoPelvic1K/blob/master/scripts/make_itksnap_descriptor.py" target="_blank" rel="noopener">the descriptor script</a> so the colors have names. <a href="../tutorials/04_itksnap_ai_annotation.html">Workshop Tutorial 4</a> covers the viewer; <a href="../tutorials/02_dicom_vs_nifti.html">Tutorial 2</a> explains the file format.</p>
+
+<h2 id="demo"><span class="ob__num">Section 5</span>The demo study: is the female pelvis relatively wider?</h2>
+<p>Every project here has the same shape: a question, a measurement made from labels, a comparison between groups, a figure, and a report whose numbers come from a file the script wrote. The demo does all five in one 120-line script you can read in ten minutes. It lives in <code>examples/pelvic_width_dimorphism/</code> of Student_Projects.</p>
+<h3>5.1 The question and the measurement</h3>
+<p>Is the pelvis wider in females, once you allow for the size of the skeleton it sits on? For each record the script measures the left–right extent of the two hip bones (identifiers 30 and 31) and of S1 (29), in millimeters, and divides one by the other. The left–right axis is read from the file's affine, so prone and supine records are measured identically.</p>
+<h3>5.2 Run it</h3>
+<pre><code>git clone https://github.com/OpenSpineConsortium/Student_Projects.git
+cd Student_Projects
+mamba activate osc
+python examples/pelvic_width_dimorphism/measure_pelvic_width.py \
+    --data /path/to/CTSpinoPelvic1K --out examples/pelvic_width_dimorphism/results --workers 8</code></pre>
+<p>About ten minutes on eight CPUs. On the grid, wrap the same command in <code>templates/slurm_job.sh</code> and <code>sbatch</code> it.</p>
+<h3>5.3 What it finds</h3>
+<figure>
+  <img src="pelvic_width.png" alt="Two box plots: absolute bi-iliac width and bi-iliac width relative to S1 width, female against male">
+  <figcaption>Bi-iliac width by sex, absolute (a) and relative to S1 width (b), from the released labels of 790 records.</figcaption>
+</figure>
+<div class="ob__stat">
+  <div><b>272.9</b><span>bi-iliac width, female, mm (mean)</span></div>
+  <div><b>283.9</b><span>bi-iliac width, male, mm (mean)</span></div>
+  <div><b>2.32 vs 2.36</b><span>relative width, female vs male</span></div>
+  <div><b>d = 0.27</b><span>Cohen's d; Welch p = 3 × 10<sup>-4</sup></span></div>
+</div>
+<p>The answer, for this measurement, is no. Male pelves are about 4 percent wider at the iliac crests in absolute terms (283.9 against 272.9 mm), and dividing by S1 width does not reverse that: males stay slightly wider relative to their sacrum (2.36 against 2.32), a small effect but not a chance one (390 females, 338 males). The classic female dimorphism lives in the pelvic inlet, the subpubic angle and the sciatic notch, none of which a bi-iliac extent measures. That is the first lesson of the demo: the measurement decides which question you actually asked, and an honest report says so. Every number above is in <code>results/report.txt</code>, written by the script from <code>results/pelvic_width.csv</code>, one row per record. That is the standard for your project too: if a number appears in your text, a script wrote it to a file first.</p>
+<h3>5.4 Make it yours</h3>
+<p>Change one thing at a time. Swap identifiers 30 and 31 for 32 and 33 and you measure femoral spread. Change the axis from left–right to superior–inferior and you measure heights. Group by <code>position</code> instead of <code>sex</code> and you test whether posture changes a width (it should not; that is a useful sanity check). Group by <code>has_l6</code> and you have a transitional-anatomy question. Ask Claude to make the change and to explain the two lines it edited.</p>
+
+<h2 id="project"><span class="ob__num">Section 6</span>Your project</h2>
+<p>Projects live in one private repository, <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">OpenSpineConsortium/Student_Projects</a>, one folder per project. Proposals are reviewed as pull requests, and approved projects are tracked in ClickUp.</p>
+<h3>6.1 Get access</h3>
+<p>Make a free <a href="https://github.com/" target="_blank" rel="noopener">GitHub account</a> if you do not have one, then email your GitHub username to <a href="mailto:gregory.schwing@med.wayne.edu">gregory.schwing@med.wayne.edu</a> with the subject "Student_Projects access". You will be added as a collaborator.</p>
+<h3>6.2 Write the proposal</h3>
+<p>Copy <code>templates/proposal_template.md</code> to <code>projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md</code> and fill in every section: the question, what is known, exactly what you will measure (identifiers, axis, unit), who you compare and what you exclude, the analysis, the outputs, milestones with dates, and what could go wrong. One page. The worked example, <a href="https://github.com/OpenSpineConsortium/Student_Projects/tree/main/projects/schwing_pelvic_width_dimorphism" target="_blank" rel="noopener">schwing_pelvic_width_dimorphism</a>, is the demo study written as a proposal; imitate it.</p>
+<h3>6.3 Open the pull request</h3>
+<pre><code>git checkout -b proposal/&lt;lastname&gt;-&lt;topic&gt;
+mkdir -p projects/&lt;lastname&gt;_&lt;topic&gt;
+cp templates/proposal_template.md projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md
+# ... edit the proposal ...
+git add projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md
+git commit -m "Proposal: &lt;title&gt;"
+git push -u origin proposal/&lt;lastname&gt;-&lt;topic&gt;</code></pre>
+<p>GitHub then offers to open a pull request. The PR template asks for the <strong>email address that should receive your ClickUp invitation</strong>, the mentor you are requesting, and a checklist (primer read, demo run, no data files). Fill all of it. The <a href="https://github.com/OpenSpineConsortium/Student_Projects/pull/1" target="_blank" rel="noopener">example pull request</a> shows what a complete one looks like.</p>
+<h3>6.4 Review, approval, ClickUp</h3>
+<p>Your mentor reviews in the PR thread; expect questions about the measurement and the exclusions, and revise by pushing to the same branch. When the proposal is approved the PR is merged and a ClickUp invitation goes to the email you gave. Your milestones become tasks there; that is where progress, blockers and deadlines are tracked from then on. Code and results keep going into your project folder by pull request, each one naming its ClickUp task.</p>
+<h3>6.5 Working with your mentor</h3>
+<ul>
+  <li>One branch per piece of work, a pull request when it is ready for eyes, never a commit straight to <code>main</code>.</li>
+  <li>Keep <code>JOURNAL.md</code> in your folder: a dated line whenever something worked or failed. It becomes your methods section.</li>
+  <li>Every figure has a script that makes it; every number in your text was written to a file by that script.</li>
+  <li>Ask early. A question in the PR thread or a ClickUp comment costs nothing; a week lost to a wrong identifier costs a week.</li>
+  <li>Authorship follows the ICMJE criteria and is settled by contribution, recorded as you go.</li>
+</ul>
+
+<h2 id="basics"><span class="ob__num">Section 7</span>Basics you will need</h2>
+<h3>7.1 The terminal in ten commands</h3>
+<table>
+  <tr><th>command</th><th>meaning</th></tr>
+  <tr><td><code>pwd</code></td><td>where am I</td></tr>
+  <tr><td><code>ls -la</code></td><td>what is here</td></tr>
+  <tr><td><code>cd folder</code> · <code>cd ..</code></td><td>go into a folder · go up one</td></tr>
+  <tr><td><code>mkdir -p a/b</code></td><td>make folders</td></tr>
+  <tr><td><code>cp src dst</code> · <code>mv src dst</code> · <code>rm file</code></td><td>copy · move or rename · delete (no undo)</td></tr>
+  <tr><td><code>cat file</code> · <code>head file</code> · <code>tail -f file</code></td><td>print a file · its first lines · follow it as it grows</td></tr>
+  <tr><td><code>grep -n word file</code></td><td>find lines containing a word</td></tr>
+  <tr><td><code>python script.py --help</code></td><td>run a script; every script here explains its options</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>stop what is running</td></tr>
+  <tr><td><kbd>Tab</kbd></td><td>autocomplete a file name; press it constantly</td></tr>
+</table>
+<h3>7.2 Git in six commands</h3>
+<pre><code>git clone &lt;url&gt;          # copy a repository to your machine
+git checkout -b name     # start a branch for a piece of work
+git status               # what changed
+git add file             # stage a change
+git commit -m "what"     # record it, with a message that says what and why
+git push -u origin name  # send the branch to GitHub; then open a pull request there</code></pre>
+<h3>7.3 Reading a label volume in twenty lines</h3>
+<pre><code>import json, numpy as np, nibabel as nib
+
+img = nib.load("CTSpinoPelvic1K/labels/0007_label.nii.gz")
+lab = np.asanyarray(img.dataobj)                 # the integer volume; never reorient it
+names = json.load(open("CTSpinoPelvic1K/dataset_labels.json"))["id_to_name"]
+
+ids, counts = np.unique(lab, return_counts=True)
+for i, n in zip(ids, counts):
+    print(i, names[str(i)], n, "voxels")
+
+codes = nib.aff2axcodes(img.affine)              # which array axis is left-right?
+lr = [k for k, c in enumerate(codes) if c in "LR"][0]
+mm = img.header.get_zooms()[lr]                  # voxel size along it
+hips = np.isin(lab, [30, 31])
+cols = np.nonzero(hips.any(axis=tuple(k for k in range(3) if k != lr)))[0]
+print("bi-iliac width:", (cols.max() - cols.min() + 1) * mm, "mm")</code></pre>
+<h3>7.4 The manifest in five lines</h3>
+<pre><code>import pandas as pd
+m = pd.read_json("CTSpinoPelvic1K/manifest.json")
+print(m["sex"].value_counts(dropna=False))
+print(m.groupby("sex")["age"].describe())
+print(m[m["has_l6"]][["label_file", "castellvi_type", "n_lumbar_labels"]])</code></pre>
+<h3>7.5 Asking Claude well</h3>
+<ul>
+  <li>Say what you want to end up with, not how: "a CSV with one row per record and the width in mm" beats "loop over the files".</li>
+  <li>Give it the facts it cannot see: paste the error, the log tail, the identifier list.</li>
+  <li>Ask it to explain before it edits: "which lines will you change, and why?"</li>
+  <li>Ask for small steps: ten records first, then all 802.</li>
+  <li>When it is confident and you are not, ask it to check: "print the unique identifiers in that volume and confirm 29 is present."</li>
+</ul>
+<h3>7.6 Reproducibility, the short version</h3>
+<ul>
+  <li>The environment is a file (<code>environment.yml</code>), and the file is in git.</li>
+  <li>One script per output, run from the repository root, with its options in <code>--help</code>.</li>
+  <li>Random things get a seed. Figures get a caption in the script's docstring.</li>
+  <li>Results are written by scripts, never edited by hand; if a number is wrong, fix the script and rerun.</li>
+  <li>Cite the dataset by DOI, and say which version.</li>
+</ul>
+<p>The workshop tutorials go deeper: <a href="../tutorials/03_inference_pretrained_nnunet.html">running a pretrained segmentation network</a>, <a href="../tutorials/05_training_on_the_grid.html">training one on the grid</a>, and <a href="../tutorials/06_writing_an_ai_paper.html">writing the paper</a>.</p>
+
+<h2 id="checklist"><span class="ob__num">Section 8</span>You are onboarded when</h2>
+<ul class="ob__check">
+  <li>VS Code, git, mamba and Claude Code all answer <code>--version</code> on your laptop.</li>
+  <li><code>ssh grid</code> logs you in without a password, and VS Code opens your grid home folder.</li>
+  <li>Claude Code on the grid can recite the rules in your CLAUDE.md.</li>
+  <li>The labels and manifest of CTSpinoPelvic1K are on disk, and you have opened one record in ITK-SNAP.</li>
+  <li>The demo study ran end to end and its report matches the numbers in Section 5.</li>
+  <li>Your proposal is a pull request in Student_Projects, with the email for your ClickUp invitation filled in.</li>
+</ul>
+<p>Then the science starts. Welcome.</p>
+
+</main>
+</div>
+
+<footer class="ob__foot">
+  <a href="../index.html">OpenSpineConsortium</a> · <a href="../index.html#join">Get Involved</a> · <a href="mailto:gregory.schwing@med.wayne.edu">gregory.schwing@med.wayne.edu</a><br>
+  CTSpinoPelvic1K is released under CC BY-NC-SA 4.0 for research use. Last revised 7 September 2026.
+</footer>
+
+</body>
+</html>
