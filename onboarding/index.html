@@ -243,28 +243,28 @@ EOF</code></pre>
 <h2 id="demo"><span class="ob__num">Section 5</span>The demo study: is the female pelvis relatively wider?</h2>
 <p>Every project here has the same shape: a question, a measurement made from labels, a comparison between groups, a figure, and a report whose numbers come from a file the script wrote. The demo does all five in one 120-line script you can read in ten minutes. It lives in <code>examples/pelvic_width_dimorphism/</code> of Student_Projects.</p>
 <h3>5.1 The question and the measurement</h3>
-<p>Is the pelvis wider in females, once you allow for the size of the skeleton it sits on? For each record the script measures the left–right extent of the two hip bones (identifiers 30 and 31) and of S1 (29), in millimeters, and divides one by the other. The left–right axis is read from the file's affine, so prone and supine records are measured identically.</p>
+<p>Is the pelvis wider in females, once you allow for the size of the skeleton it sits on? The textbook dimorphism is a wider hip joint separation relative to skeletal size, so that is what the script measures. Each femoral head centre is the centroid of the medial-most 28 mm of the top 30 mm of the femur label (identifiers 32 and 33); the distance between the two centres is the femoral head distance. The skeletal reference is the left–right width of the anterior 18 mm of the L4 body (23). Their ratio is the number the question is about. The script also walks the line through the two head centres outward to where it leaves each femur mask, giving the outer width on the same axis, and records the plain bi-iliac width of the hip bones (30, 31) for comparison. Every axis is read from the file's affine, so prone and supine records are measured identically.</p>
 <h3>5.2 Run it</h3>
 <pre><code>git clone https://github.com/OpenSpineConsortium/Student_Projects.git
 cd Student_Projects
 mamba activate osc
 python examples/pelvic_width_dimorphism/measure_pelvic_width.py \
     --data /path/to/CTSpinoPelvic1K --out examples/pelvic_width_dimorphism/results --workers 8</code></pre>
-<p>About ten minutes on eight CPUs. On the grid, wrap the same command in <code>templates/slurm_job.sh</code> and <code>sbatch</code> it.</p>
+<p>About an hour on eight laptop CPUs, because every record is a full label volume; add <code>--from-csv</code> to rebuild the report and figure from a finished CSV in seconds. On the grid, wrap the same command in <code>templates/slurm_job.sh</code> and <code>sbatch</code> it.</p>
 <h3>5.3 What it finds</h3>
 <figure>
-  <img src="pelvic_width.png" alt="Two box plots: absolute bi-iliac width and bi-iliac width relative to S1 width, female against male">
-  <figcaption>Bi-iliac width by sex, absolute (a) and relative to S1 width (b), from the released labels of 790 records.</figcaption>
+  <img src="pelvic_width.png" alt="Three box plots by sex: bi-iliac width, femoral head distance, and head distance relative to L4 body width">
+  <figcaption>Pelvis width (a), hip joint separation (b) and separation relative to L4 body width (c), by sex, from the released labels of 791 records.</figcaption>
 </figure>
 <div class="ob__stat">
-  <div><b>272.9</b><span>bi-iliac width, female, mm (mean)</span></div>
-  <div><b>283.9</b><span>bi-iliac width, male, mm (mean)</span></div>
-  <div><b>2.32 vs 2.36</b><span>relative width, female vs male</span></div>
-  <div><b>d = 0.27</b><span>Cohen's d; Welch p = 3 × 10<sup>-4</sup></span></div>
+  <div><b>164 vs 162</b><span>femoral head distance, female vs male, mm (mean)</span></div>
+  <div><b>50.2 vs 55.4</b><span>L4 body width, female vs male, mm (mean)</span></div>
+  <div><b>3.29 vs 2.94</b><span>head distance / body width, female vs male</span></div>
+  <div><b>d = 1.09</b><span>Cohen's d; Welch p = 2 × 10<sup>-43</sup></span></div>
 </div>
-<p>The answer, for this measurement, is no. Male pelves are about 4 percent wider at the iliac crests in absolute terms (283.9 against 272.9 mm), and dividing by S1 width does not reverse that: males stay slightly wider relative to their sacrum (2.36 against 2.32), a small effect but not a chance one (390 females, 338 males). The classic female dimorphism lives in the pelvic inlet, the subpubic angle and the sciatic notch, none of which a bi-iliac extent measures. That is the first lesson of the demo: the measurement decides which question you actually asked, and an honest report says so. Every number above is in <code>results/report.txt</code>, written by the script from <code>results/pelvic_width.csv</code>, one row per record. That is the standard for your project too: if a number appears in your text, a script wrote it to a file first.</p>
+<p>The answer is yes, and the three panels tell it in order. Male pelves are wider at the iliac crests in absolute terms (a). The femoral heads sit the same distance apart in both sexes, about 163 mm (b). Male skeletons are bigger, so the same joint separation on a smaller skeleton is a relatively wider pelvis: divided by L4 body width the ratio is 3.29 in females against 2.94 in males (391 females, 338 males), a large effect that separates the two distributions at a glance (c). The published value of this ratio is 3.95 against 3.48; ours is lower because a label-derived body width runs a few millimetres wider than a caliper endplate width, and it is the female to male ratio, 1.12 against 1.14, that agrees. Two lessons sit in this run. The first measurement we tried, bi-iliac width over S1 width, answered "no" with a small effect; the measurement decides which question you actually asked. And the far outliers in (b) and (c) are records where a femoral head was not where the label said (a fragment or a prosthesis); the medians do not move, but an honest report says they are there. Every number above is in <code>results/report.txt</code>, written by the script from <code>results/pelvic_width.csv</code>, one row per record. That is the standard for your project too: if a number appears in your text, a script wrote it to a file first.</p>
 <h3>5.4 Make it yours</h3>
-<p>Change one thing at a time. Swap identifiers 30 and 31 for 32 and 33 and you measure femoral spread. Change the axis from left–right to superior–inferior and you measure heights. Group by <code>position</code> instead of <code>sex</code> and you test whether posture changes a width (it should not; that is a useful sanity check). Group by <code>has_l6</code> and you have a transitional-anatomy question. Ask Claude to make the change and to explain the two lines it edited.</p>
+<p>Change one thing at a time. Divide by S1 width (identifier 29) instead of L4 and you have a sacral reference. Use the outer width instead of the head distance and you have the acetabular span. Group by <code>position</code> instead of <code>sex</code> and you test whether posture changes a distance (it should not; that is a useful sanity check). Group by <code>has_l6</code> and you have a transitional-anatomy question. Ask Claude to make the change and to explain the two lines it edited.</p>
 
 <h2 id="project"><span class="ob__num">Section 6</span>Your project</h2>
 <p>Projects live in one private repository, <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">OpenSpineConsortium/Student_Projects</a>, one folder per project. Proposals are reviewed as pull requests, and approved projects are tracked in ClickUp.</p>
