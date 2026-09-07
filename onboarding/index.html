@@ -106,11 +106,12 @@
 <h2 id="grid"><span class="ob__num">Section 2</span>The grid</h2>
 <p>The Wayne State grid is a Linux cluster with far more CPU, memory and GPU than your laptop, run by SLURM, a job scheduler. You log in to a small "login node" to edit files and submit jobs; the jobs run on the big nodes. The rule is simple: anything heavier than a minute of work runs as a job, never on the login node.</p>
 
-<h3>2.1 Get an account</h3>
-<p>Accounts are tied to your WSU AccessID and sponsored by a faculty member. Request one through Wayne State C&amp;IT's High Performance Computing pages at <a href="https://tech.wayne.edu/" target="_blank" rel="noopener">tech.wayne.edu</a> (search "grid account") and name Gregory Schwing as sponsor. Email him that you have applied so he can confirm it.</p>
+<h3>2.1 Get an account, and set up Google Authenticator</h3>
+<p>Accounts are tied to your WSU AccessID and sponsored by a faculty member. Request one through Wayne State C&amp;IT's High Performance Computing pages at <a href="https://tech.wayne.edu/kb/high-performance-computing" target="_blank" rel="noopener">tech.wayne.edu/kb/high-performance-computing</a> (the "Grid account request" form) and name Gregory Schwing as sponsor. Email him that you have applied so he can confirm it. Accounts are usually created within two business days; hpc@wayne.edu answers questions.</p>
+<p>The grid's second factor is Google Authenticator, not the Microsoft Authenticator the rest of the university uses. Install the app on your phone, connect to the WSU VPN, log in to <a href="https://ondemand.grid.wayne.edu" target="_blank" rel="noopener">ondemand.grid.wayne.edu</a> with your AccessID and password, open <strong>Interactive Apps → 2FA Setup</strong>, launch it, and scan the QR code with the app. From then on a password login to the grid asks for the six-digit code. C&amp;IT's <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20242" target="_blank" rel="noopener">step-by-step article</a> has screenshots.</p>
 
-<h3>2.2 Make an SSH key</h3>
-<p>An SSH key is a pair of files: a private one that stays on your laptop and a public one you give to the grid. It lets you log in without typing a password and it is what VS Code's Remote - SSH uses. In your laptop terminal (Terminal, Git Bash, or WSL):</p>
+<h3>2.2 Make an SSH key, so the code is asked only once</h3>
+<p>An SSH key is a pair of files: a private one that stays on your laptop and a public one you give to the grid. It lets you log in without a password or a phone code, and that matters here for a specific reason: Claude drives the grid with non-interactive <code>ssh</code> commands, which cannot answer a two-factor prompt. You type the password and the Authenticator code exactly once, to install the key. In your laptop terminal (Terminal, Git Bash, or WSL), or let <code>/onboard</code> run these for you:</p>
 <pre><code># make the key; press Enter at every prompt, or add a passphrase you will remember
 ssh-keygen -t ed25519 -C "youraccessid@wayne.edu"
 
@@ -158,7 +159,8 @@ tools/grid.sh wait 40056610                                 # poll every 30 s, t
 tools/grid.sh pull projects/me/results projects/me/results  # rsync a results folder back</code></pre>
 
 <h2 id="claude"><span class="ob__num">Section 3</span>Teaching Claude to work on the grid</h2>
-<p>Claude Code reads a file called <code>CLAUDE.md</code> in your project folder at the start of every session. That file is where you tell it, once, how the grid works, where the data is, and which rules never bend. Student_Projects ships a <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/templates/CLAUDE.md" target="_blank" rel="noopener">template</a>; copy it into your project folder and edit the three lines marked <code>EDIT</code>.</p>
+<div class="ob__note"><p><strong>The short path.</strong> Clone <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">Student_Projects</a>, open it in VS Code, type <code>claude</code>, then type <code>/onboard</code>. The repository's root <code>CLAUDE.md</code> gives Claude the whole lab workflow the moment it opens the folder, and <code>/onboard</code> walks you through everything in Sections 2 to 6: it checks your tools, makes the SSH key and installs it, builds the environment and fetches the dataset on the grid as jobs, runs the demo, and then helps you choose a project from <code>projects/IDEAS.md</code> and write the proposal. The only things it cannot do for you are the account request and the Authenticator scan. <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/GETTING_STARTED.md" target="_blank" rel="noopener">GETTING_STARTED.md</a> is the one-page version.</p></div>
+<p>Claude Code reads a file called <code>CLAUDE.md</code> at the start of every session: the one at the root of Student_Projects for the lab as a whole, and the one in your project folder for your project. That file is where you tell it, once, how the grid works, where the data is, and which rules never bend. Student_Projects ships a <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/templates/CLAUDE.md" target="_blank" rel="noopener">template</a>; <code>/new-project</code> copies it into your project folder and fills in the three lines marked <code>EDIT</code>.</p>
 <p>With that in place, these are the prompts that do the work. Type them to Claude in the VS Code terminal on the grid.</p>
 <pre><code>Create the mamba environment from templates/environment.yml in my home
 directory and show me how to activate it.
@@ -184,6 +186,7 @@ My job 123456 failed. Here is the tail of logs/osc_measure_123456.err:
 <p>Student_Projects also ships a <code>.claude/</code> folder that Claude Code reads automatically from the repository:</p>
 <table>
   <tr><th>command</th><th>what it does</th></tr>
+  <tr><td><code>/onboard</code></td><td>the whole setup, resumable: tools, SSH key, grid clone, environment and dataset as jobs, the demo, then a project from the ideas list</td></tr>
   <tr><td><code>/grid-status</code></td><td>checks the grid answers, lists your jobs, shows the last job's log tail</td></tr>
   <tr><td><code>/grid-submit &lt;what&gt;</code></td><td>writes the job script as a file, commits, syncs the grid, shows you the submit command, waits for your word, then submits and starts the background wait</td></tr>
   <tr><td><code>/grid-pull &lt;folder&gt;</code></td><td>rsyncs a results folder back, opens every figure, checks a report number against its CSV</td></tr>
@@ -270,7 +273,8 @@ python examples/pelvic_width_dimorphism/measure_pelvic_width.py \
 <p>Projects live in one private repository, <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">OpenSpineConsortium/Student_Projects</a>, one folder per project. Proposals are reviewed as pull requests, and approved projects are tracked in ClickUp.</p>
 <h3>6.1 Get access</h3>
 <p>Make a free <a href="https://github.com/" target="_blank" rel="noopener">GitHub account</a> if you do not have one, then email your GitHub username to <a href="mailto:gregory.schwing@med.wayne.edu">gregory.schwing@med.wayne.edu</a> with the subject "Student_Projects access". You will be added as a collaborator.</p>
-<h3>6.2 Write the proposal</h3>
+<h3>6.2 Choose a question, then write the proposal</h3>
+<p>If you do not arrive with a question, <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/projects/IDEAS.md" target="_blank" rel="noopener">projects/IDEAS.md</a> holds about twenty, drawn from the dataset paper's future directions, the site gallery's cases, and the lab's open tasks, each written the way a proposal has to state it: the measurement with its identifiers, axis and unit, the comparison, a difficulty from one to three, and the source. <code>/onboard</code> ends by asking three questions and proposing three of them that fit you.</p>
 <p>Copy <code>templates/proposal_template.md</code> to <code>projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md</code> and fill in every section: the question, what is known, exactly what you will measure (identifiers, axis, unit), who you compare and what you exclude, the analysis, the outputs, milestones with dates, and what could go wrong. One page. The worked example, <a href="https://github.com/OpenSpineConsortium/Student_Projects/tree/main/projects/schwing_pelvic_width_dimorphism" target="_blank" rel="noopener">schwing_pelvic_width_dimorphism</a>, is the demo study written as a proposal; imitate it.</p>
 <h3>6.3 Open the pull request</h3>
 <pre><code>git checkout -b proposal/&lt;lastname&gt;-&lt;topic&gt;
