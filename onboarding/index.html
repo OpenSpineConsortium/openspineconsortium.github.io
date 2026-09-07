@@ -79,6 +79,15 @@
   <div class="ob__card"><h4>How you get help</h4><p>Claude Code, in your editor, for the code. The <a href="../tutorials/">workshop tutorials</a> for depth. Your mentor, by pull request and ClickUp, for the science.</p></div>
 </div>
 
+<div class="ob__note" id="start">
+  <p><strong>Start here: one command.</strong> Make a <a href="https://claude.ai" target="_blank" rel="noopener">Claude</a> account and subscribe to Claude Pro (about $20 a month; it includes Claude Code, the assistant that will write and run your code), make a free <a href="https://github.com" target="_blank" rel="noopener">GitHub</a> account, then open a terminal and paste the line for your computer:</p>
+  <div class="ob__cards">
+    <div class="ob__card"><h4><span class="ob__os ob__os--alt">macOS / Linux / WSL</span>Terminal</h4><p><code>curl -fsSL https://openspineconsortium.com/onboard.sh | bash</code></p></div>
+    <div class="ob__card"><h4><span class="ob__os">Windows</span>PowerShell</h4><p><code>irm https://openspineconsortium.com/onboard.ps1 | iex</code></p></div>
+  </div>
+  <p>It installs what is missing (Git, the GitHub CLI, VS Code with the Claude Code extension, Claude Code), clones the Student_Projects repository into <code>~/OpenSpineConsortium</code>, and starts Claude on <code>/onboard</code>, which does Sections 1 to 6 with you one step at a time: GitHub and Hugging Face sign-in, the SSH key to the grid, the environment and the dataset on the grid, the demo study, and a project proposal. It stops only for the three things that need your university identity (the grid account request, the Google Authenticator scan, and one password-plus-code login), and tells you exactly what to do at each. Run the same line again any time; it resumes where you were. The rest of this page explains what it is doing and why, so you can do any step by hand.</p>
+</div>
+
 <h2 id="toolkit"><span class="ob__num">Section 1</span>The toolkit</h2>
 <p>Four installs. Each is a download and a click except Python, which comes from a terminal command the linked tutorial gives you verbatim.</p>
 
@@ -270,21 +279,24 @@ python examples/pelvic_width_dimorphism/measure_pelvic_width.py \
 <p>Change one thing at a time. Divide by S1 width (identifier 29) instead of L4 and you have a sacral reference. Use the outer width instead of the head distance and you have the acetabular span. Group by <code>position</code> instead of <code>sex</code> and you test whether posture changes a distance (it should not; that is a useful sanity check). Group by <code>has_l6</code> and you have a transitional-anatomy question. Ask Claude to make the change and to explain the two lines it edited.</p>
 
 <h2 id="project"><span class="ob__num">Section 6</span>Your project</h2>
-<p>Projects live in one private repository, <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">OpenSpineConsortium/Student_Projects</a>, one folder per project. Proposals are reviewed as pull requests, and approved projects are tracked in ClickUp.</p>
+<p>Two repositories, one folder. <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">Student_Projects</a> is public and holds the tools, templates, the demo, the ideas list and this onboarding. <a href="https://github.com/OpenSpineConsortium/Projects" target="_blank" rel="noopener">Projects</a> is private and holds the projects themselves, one folder each; it is cloned inside the public one as <code>projects/</code>. Proposals are reviewed as pull requests in the private repository, so only collaborators see them and your idea stays yours until it is published. Approved projects are tracked in ClickUp.</p>
 <h3>6.1 Get access</h3>
-<p>Make a free <a href="https://github.com/" target="_blank" rel="noopener">GitHub account</a> if you do not have one, then email your GitHub username to <a href="mailto:gregory.schwing@med.wayne.edu">gregory.schwing@med.wayne.edu</a> with the subject "Student_Projects access". You will be added as a collaborator.</p>
+<p>Make a free <a href="https://github.com/" target="_blank" rel="noopener">GitHub account</a> if you do not have one, then email your GitHub username to <a href="mailto:gregory.schwing@med.wayne.edu">gregory.schwing@med.wayne.edu</a> with the subject "Projects access". You will be added as a collaborator on the private repository; <code>/onboard</code> clones it into place once you are.</p>
 <h3>6.2 Choose a question, then write the proposal</h3>
 <p>If you do not arrive with a question, <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/projects/IDEAS.md" target="_blank" rel="noopener">projects/IDEAS.md</a> holds about twenty, drawn from the dataset paper's future directions, the site gallery's cases, and the lab's open tasks, each written the way a proposal has to state it: the measurement with its identifiers, axis and unit, the comparison, a difficulty from one to three, and the source. <code>/onboard</code> ends by asking three questions and proposing three of them that fit you.</p>
 <p>Copy <code>templates/proposal_template.md</code> to <code>projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md</code> and fill in every section: the question, what is known, exactly what you will measure (identifiers, axis, unit), who you compare and what you exclude, the analysis, the outputs, milestones with dates, and what could go wrong. One page. The worked example, <a href="https://github.com/OpenSpineConsortium/Student_Projects/tree/main/projects/schwing_pelvic_width_dimorphism" target="_blank" rel="noopener">schwing_pelvic_width_dimorphism</a>, is the demo study written as a proposal; imitate it.</p>
 <h3>6.3 Open the pull request</h3>
-<pre><code>git checkout -b proposal/&lt;lastname&gt;-&lt;topic&gt;
-mkdir -p projects/&lt;lastname&gt;_&lt;topic&gt;
-cp templates/proposal_template.md projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md
+<p><code>/new-project &lt;topic&gt;</code> does all of this with you and opens the pull request at the end. By hand, every command runs inside <code>projects/</code>, the private repository:</p>
+<pre><code>cd projects
+git checkout -b proposal/&lt;lastname&gt;-&lt;topic&gt;
+mkdir -p &lt;lastname&gt;_&lt;topic&gt;
+cp ../templates/proposal_template.md &lt;lastname&gt;_&lt;topic&gt;/proposal.md
 # ... edit the proposal ...
-git add projects/&lt;lastname&gt;_&lt;topic&gt;/proposal.md
+git add &lt;lastname&gt;_&lt;topic&gt;/proposal.md
 git commit -m "Proposal: &lt;title&gt;"
-git push -u origin proposal/&lt;lastname&gt;-&lt;topic&gt;</code></pre>
-<p>GitHub then offers to open a pull request. The PR template asks for the <strong>email address that should receive your ClickUp invitation</strong>, the mentor you are requesting, and a checklist (primer read, demo run, no data files). Fill all of it. The <a href="https://github.com/OpenSpineConsortium/Student_Projects/pull/1" target="_blank" rel="noopener">example pull request</a> shows what a complete one looks like.</p>
+git push -u origin proposal/&lt;lastname&gt;-&lt;topic&gt;
+gh pr create --fill --base main</code></pre>
+<p>The PR template asks for the <strong>email address that should receive your ClickUp invitation</strong>, the mentor you are requesting, and a checklist (onboarding done, demo run, no data files). Fill all of it. The <a href="https://github.com/OpenSpineConsortium/Student_Projects/blob/main/examples/proposal_example/proposal.md" target="_blank" rel="noopener">example proposal</a> shows what a complete one looks like.</p>
 <h3>6.4 Review, approval, ClickUp</h3>
 <p>Your mentor reviews in the PR thread; expect questions about the measurement and the exclusions, and revise by pushing to the same branch. When the proposal is approved the PR is merged and a ClickUp invitation goes to the email you gave. Your milestones become tasks there; that is where progress, blockers and deadlines are tracked from then on. Code and results keep going into your project folder by pull request, each one naming its ClickUp task.</p>
 <h3>6.5 Working with your mentor</h3>
