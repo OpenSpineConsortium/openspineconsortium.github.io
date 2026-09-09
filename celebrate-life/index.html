@@ -16,7 +16,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/style.css?v=20260904">
 <style>
-  .cl__wrap { max-width: 1180px; margin: 0 auto; padding: 84px 24px 90px; }
+  .cl__registerbar { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; box-sizing: border-box; padding: 22px 24px; margin: 0 0 22px; background: var(--teal); color: var(--paper-card); text-align: center; border: 2px solid var(--teal-deep); transition: background .2s var(--ease), transform .2s var(--ease); }
+  .cl__registerbar:hover { background: var(--teal-bright); transform: translateY(-2px); }
+  .cl__registerbar:focus-visible { outline: 3px solid var(--ochre); outline-offset: 2px; }
+  .cl__registerbar-main { font-family: var(--font-display); font-size: clamp(1.7rem, 3.4vw, 2.4rem); font-weight: 600; line-height: 1.05; }
+  .cl__registerbar-sub { font-size: .95rem; letter-spacing: .04em; opacity: .92; }
+  .cl__wrap { max-width: 1180px; margin: 0 auto; padding: 78px 24px 90px; }
   .cl__top { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin: 0 0 12px; }
   .cl__kicker { font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ochre); font-weight: 600; margin: 0; }
   .cl__title { font-family: var(--font-display); font-size: clamp(1.8rem, 3.6vw, 2.6rem); line-height: 1.05; font-weight: 500; margin: 0; }
@@ -81,6 +86,10 @@
   </header>
 
   <main class="cl__wrap">
+    <a class="cl__registerbar" href="https://forms.gle/v2NbizhJ8TpBdVi66" target="_blank" rel="noopener">
+      <span class="cl__registerbar-main">Register a player</span>
+      <span class="cl__registerbar-sub">Free &middot; two minutes &middot; so we can order food and pick teams by age</span>
+    </a>
     <div class="cl__top">
       <h1 class="cl__title">Celebrate Life</h1>
       <p class="cl__kicker">Saturday, October 24 &middot; 6:45 PM &middot; Detroit City Fieldhouse &middot; Simultaneous with the Detroit City FC Trunk or Treat event!</p>
