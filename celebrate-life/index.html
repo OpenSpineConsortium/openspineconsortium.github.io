@@ -22,7 +22,7 @@
   .cl__lede { font-size: 1.2rem; color: var(--ink-soft); max-width: 62ch; margin: 0 0 1.8em; }
   .cl__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: start; }
   .cl__flyer { display: block; width: 100%; height: auto; border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(26,28,24,.16); background: #4fb3a8; }
-  .cl__sticky { position: sticky; top: 96px; }
+  .cl__sticky { position: static; }
   .cl__facts { list-style: none; padding: 0; margin: 0 0 1.4em; }
   .cl__facts li { display: grid; grid-template-columns: 120px 1fr; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line); }
   .cl__facts li:last-child { border-bottom: 1px solid var(--line); }
@@ -45,7 +45,7 @@
   .cl__callout { background: var(--teal); color: var(--paper-card); padding: 22px 24px; margin: 0 0 1.6em; max-width: 64ch; }
   .cl__callout strong { font-weight: 600; }
   .cl__note { font-size: .95rem; color: var(--ink-faint); max-width: 64ch; }
-  @media (max-width: 900px) { .cl__grid { grid-template-columns: 1fr; } .cl__sticky { position: static; } .cl__contacts { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .cl__grid { grid-template-columns: 1fr; } .cl__contacts { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
