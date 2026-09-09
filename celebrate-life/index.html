@@ -41,6 +41,10 @@
   .cl__contact .role { color: var(--ink-soft); font-size: .95rem; margin-bottom: 8px; }
   .cl__contact .ask { color: var(--ink-soft); font-size: .92rem; margin-bottom: 10px; }
   .cl__contact .tel { font-family: var(--font-mono); font-size: 1.1rem; color: var(--teal); text-decoration: underline; line-height: 1.9; overflow-wrap: anywhere; }
+  .cl__register { display: grid; grid-template-columns: 236px 1fr; gap: 28px; align-items: start; margin: 0 0 .6em; }
+  .cl__qr { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--paper-card); border: 1px solid var(--line); padding: 8px; font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: var(--ink-soft); }
+  .cl__qr img { display: block; width: 220px; height: 220px; }
+  @media (max-width: 700px) { .cl__register { grid-template-columns: 1fr; } .cl__qr { width: 236px; margin: 0 auto; } }
   .cl__callout { background: var(--teal); color: var(--paper-card); padding: 22px 24px; margin: 0 0 1.6em; }
   .cl__callout strong { font-weight: 600; }
   .cl__note { font-size: .95rem; color: var(--ink-faint); }
@@ -112,13 +116,22 @@
         </ul>
 
         <h2 class="cl__h2">Register, so we can feed you and pick teams</h2>
-        <p class="cl__p">
-          Registration takes about two minutes and asks for the player's name and age, jersey size,
-          who is coming with them, what everyone will eat and drink, and any allergies or diet rules
-          from the care team. That is how we order the right amount of food and set up teams by age
-          so the six-year-olds are not chasing the sixteen-year-olds. You can also just show up.
-        </p>
-        <p class="cl__p"><a class="btn btn--solid" href="https://forms.gle/v2NbizhJ8TpBdVi66" target="_blank" rel="noopener">Register a player</a></p>
+        <div class="cl__register">
+          <a href="https://forms.gle/v2NbizhJ8TpBdVi66" target="_blank" rel="noopener" class="cl__qr" aria-label="Open the registration form">
+            <img src="register_qr.png" width="220" height="220" alt="QR code that opens the registration form">
+            <span>Scan or tap</span>
+          </a>
+          <div>
+            <p class="cl__p">
+              Registration takes about two minutes and asks for the player's name and age, jersey size,
+              who is coming with them, what everyone will eat and drink, and any allergies or diet rules
+              from the care team. That is how we order the right amount of food and set up teams by age
+              so the six-year-olds are not chasing the sixteen-year-olds. You can also just show up.
+            </p>
+            <p class="cl__p"><a class="btn btn--solid" href="https://forms.gle/v2NbizhJ8TpBdVi66" target="_blank" rel="noopener">Register a player</a></p>
+            <p class="cl__p">Or type the link: <a href="https://forms.gle/v2NbizhJ8TpBdVi66" target="_blank" rel="noopener">forms.gle/v2NbizhJ8TpBdVi66</a></p>
+          </div>
+        </div>
 
         <h2 class="cl__h2">What this is</h2>
         <p class="cl__p">
