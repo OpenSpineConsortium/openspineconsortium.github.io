@@ -17,7 +17,7 @@
 */
 
 import { SpineDetector, KPT_LABEL, assignLevels, suggestRegion, computeAngles,
-         angleToHorizontal } from "./infer.js";
+         angleToHorizontal } from "./infer.js?v=20260911b";
 
 const XR_BUILD = "20260826a";
 // ONE MODEL. YOLO11m-Pose at 1024, converted to float16: 42 MB against the 84 MB
@@ -168,12 +168,29 @@ function clampLabels(v, k) {
   });
 }
 
+/** Size a pane for the film it is showing.
+ *
+ *  A pane is wider than it is tall; a standing full-length film is the opposite. Fitting
+ *  such a film to the pane's HEIGHT renders it as a sliver whose vertebrae cannot be
+ *  read, and leaves nothing to scroll because the whole image is, technically, on
+ *  screen. Past roughly 1:1.6 the film is therefore sized to the pane's width and the
+ *  viewport scrolls instead. The overlay follows: .xrsvg sits inset over .xrwrap and
+ *  carries a viewBox, so it scales with its box. */
+const TALL_AR = 1.6;
+function fitPane(which, shape) {
+  const vp = (which === "ref" ? els.overlay : els.uoverlay)?.closest(".viewport");
+  if (!vp || !shape) return;
+  const [h, w] = shape;
+  vp.classList.toggle("is-tall", w > 0 && h / w > TALL_AR);
+}
+
 function draw(which) {
   const v = view[which];
   const svg = which === "ref" ? els.overlay : els.uoverlay;
   svg.innerHTML = "";
   if (!v) return;
   svg.setAttribute("viewBox", `0 0 ${v.shape[1]} ${v.shape[0]}`);
+  fitPane(which, v.shape);
   const k = kOf(v);
   for (const a of clampLabels(v, k)) {
     if (!active[which].has(a.id)) continue;

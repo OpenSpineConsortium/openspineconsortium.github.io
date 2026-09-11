@@ -315,3 +315,30 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
   .camwrap__bar { width: 100%; }
   .camwrap__bar .ctl { flex: 1; padding-block: .7rem; }
 }
+
+/* ── tall films ───────────────────────────────────────────────────────────────
+   A coned lumbar lateral is roughly square and fits the pane. A full-length
+   standing film is 1:2.4, and fitting THAT to the pane's height renders it as a
+   sliver a few dozen pixels wide -- every vertebra too small to read, and nothing
+   to scroll because the whole image is technically visible.
+
+   So a tall film is sized to the pane's WIDTH instead and the viewport scrolls.
+   The overlay follows because .xrsvg is inset:0 over .xrwrap and carries a
+   viewBox, so it scales with its box rather than with the window. */
+.viewport.is-tall { overflow-y: auto; overflow-x: hidden; }
+.viewport.is-tall .xrwrap { height: auto; width: 100%; display: block; }
+.viewport.is-tall .xrimg  { width: 100%; height: auto; max-width: none; }
+.viewport.is-tall .xrsvg  { height: 100%; }
+
+/* a hint that there is more film below, since the pane no longer shows it all */
+.viewport.is-tall::after {
+  content: ""; position: sticky; bottom: 0; left: 0; display: block;
+  height: 34px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,.55));
+}
+
+@media (max-width: 900px) {
+  /* on a phone the pane is already the width of the screen; let it grow instead of
+     trapping a tall film in a short box */
+  .viewport.is-tall { max-height: 78vh; }
+}
