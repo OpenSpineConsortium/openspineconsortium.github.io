@@ -84,11 +84,32 @@
             of a PACS window works. Drag a file anywhere onto this panel, or
             <button class="linkbtn" id="pickBtn" type="button">browse…</button>
           </p>
+          <!-- Photographing a lightbox or a monitor is how this gets used away from a
+               workstation, so it is a first-class control rather than a fallback. The
+               capture attribute opens the camera directly on a phone; on a desktop the
+               same button is a file picker, so one element serves both. -->
+          <p class="drop__p">
+            <button class="ctl ctl--cam" id="camBtn" type="button">
+              <span aria-hidden="true">📷</span> Take a photo
+            </button>
+            <span class="drop__hint" id="camHint">uses your camera — nothing leaves the page</span>
+          </p>
           <p class="drop__p drop__p--quiet">
             The model runs <b>in this tab</b>. The image is never uploaded, and this page
             has no server that could receive one.
           </p>
           <input id="fileInput" type="file" accept="image/*" hidden />
+          <input id="camInput" type="file" accept="image/*" capture="environment" hidden />
+        </div>
+
+        <!-- desktop webcam path: a phone gets the native camera from camInput above, but
+             a laptop has no capture UI, so it gets a viewfinder instead -->
+        <div class="camwrap" id="camWrap" hidden>
+          <video id="camVideo" class="camwrap__video" playsinline muted></video>
+          <div class="camwrap__bar">
+            <button class="ctl" id="camShoot" type="button">Capture</button>
+            <button class="ctl ctl--ghost" id="camCancel" type="button">Cancel</button>
+          </div>
         </div>
 
         <div class="dragveil" id="dragveil" hidden><span>Drop to analyse</span></div>
@@ -123,11 +144,28 @@
         <h2 class="panel__h">Model</h2>
         <div class="row">
           <span class="row__label">Weights</span>
-          <select id="modelSel" class="select select--w">
-            <option value="640" selected>YOLO11n-Pose · 640 (fast)</option>
-            <option value="1024">YOLO11n-Pose · 1024 (finer)</option>
+          <span class="row__value" id="modelName" title="YOLO11m-Pose, 1024 px, int8.
+Trained on 76,104 vertebrae across 13,781 radiographs from five sources.">
+            YOLO11m-Pose · 1024
+          </span>
+        </div>
+        <!-- THE MODEL DOES NOT NAME LEVELS. It finds vertebrae; the names come from a
+             chain counted up from the caudal end, and which chain applies depends on what
+             film this is. Asserting "lumbar" for every image labelled a cervical C7 as
+             "S1". So the assumption is a control, and its default declines to guess. -->
+        <div class="row">
+          <span class="row__label">Levels</span>
+          <select id="regionSel" class="select select--w">
+            <option value="none" selected>Unnamed (V1 upward)</option>
+            <option value="lumbar">Lumbar / thoracolumbar (S1 up)</option>
+            <option value="cervical">Cervical (C7 up)</option>
+            <option value="whole">Whole spine (S1 up through C1)</option>
           </select>
         </div>
+        <p class="panel__note" id="regionNote">
+          Levels are an assumption about the film, not a model output. Pick a region to
+          name them; angles that need named endplates appear once you do.
+        </p>
         <div class="row">
           <span class="row__label">Framing</span>
           <select id="modeSel" class="select select--w">
@@ -214,6 +252,11 @@
 
   <div id="tip" class="tip" hidden></div>
 
-  <script type="module" src="xr.js?v=20260825e"></script>
+  <!-- Adds COOP/COEP from a service worker so the page is cross-origin isolated and
+       SharedArrayBuffer exists; without it onnxruntime-web is capped at one CPU thread.
+       Must load BEFORE the module that starts the session, and is a no-op where the
+       browser already isolates the page or cannot register a worker. -->
+  <script src="coi-serviceworker.js"></script>
+  <script type="module" src="xr.js?v=20260911a"></script>
 </body>
 </html>

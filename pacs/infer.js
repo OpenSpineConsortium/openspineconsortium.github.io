@@ -1,10 +1,16 @@
 /*
   OpenSpineConsortium — in-browser vertebral corner detection.
 
-  Runs a YOLO11n-Pose model (Ultralytics, exported to ONNX opset 12) entirely on the
-  client: WebGPU where the browser has it, single-threaded WASM everywhere else. The
-  image never leaves the machine -- there is no upload endpoint, and that is the point
-  as much as the latency is.
+  Runs a YOLO11m-Pose model (Ultralytics, exported to ONNX opset 12, float16) entirely
+  on the client: WebGPU where the browser has it -- which on a Mac or an iPhone means
+  Metal, and Apple GPUs run fp16 natively -- and multithreaded WASM everywhere else. The
+  image never leaves the machine: there is no upload endpoint, and that is the point as
+  much as the latency is.
+
+  The weights were trained on 76,104 vertebrae across 13,781 radiographs from five
+  sources, cervical through lumbar, lateral and AP. The model has ONE class. It finds
+  vertebrae; it does not name them, and the level names this file assigns come from a
+  chain the caller chooses (see assignLevels).
 
   Model: one class ("vertebra"), four keypoints per instance, in the fixed order
 
@@ -150,19 +156,73 @@ export function tileTops(w, h, overlap = 0.5) {
 
 /* ── anatomy ────────────────────────────────────────────────────────────────── */
 
-/** Name the detected instances from the BOTTOM UP.
+/** The naming chains, each running from the CAUDAL end upward.
  *
- *  Bottom-up, not top-down: the caudal end of a lumbar lateral is anchored by the
- *  sacrum, while the cranial end is wherever the collimator happened to stop. Counting
- *  down from the top makes every level name depend on how much thoracic spine the
+ *  Bottom-up, not top-down: the caudal end of a film is anchored by an identifiable
+ *  structure, while the cranial end is wherever the collimator happened to stop.
+ *  Counting down from the top makes every name depend on how much spine the
  *  radiographer included. */
-export function assignLevels(dets) {
-  const CHAIN = ["S1", "L5", "L4", "L3", "L2", "L1", "T12", "T11", "T10", "T9",
-                 "T8", "T7", "T6", "T5", "T4", "T3", "T2", "T1"];
+export const REGION_CHAINS = {
+  lumbar: ["S1", "L5", "L4", "L3", "L2", "L1", "T12", "T11", "T10", "T9",
+           "T8", "T7", "T6", "T5", "T4", "T3", "T2", "T1"],
+  cervical: ["C7", "C6", "C5", "C4", "C3", "C2", "C1"],
+  whole: ["S1", "L5", "L4", "L3", "L2", "L1", "T12", "T11", "T10", "T9",
+          "T8", "T7", "T6", "T5", "T4", "T3", "T2", "T1",
+          "C7", "C6", "C5", "C4", "C3", "C2", "C1"],
+};
+
+/** Name the detected instances, or decline to.
+ *
+ *  WHY "none" IS THE DEFAULT AND NOT `lumbar`. The detector is class-agnostic: it finds
+ *  vertebrae and says nothing about which ones. Every name below is supplied by the
+ *  CHAIN, not by the model, and the chain is an assumption about what film this is. The
+ *  previous version hard-coded the lumbar chain, so a cervical radiograph -- which this
+ *  model reads well, a quarter of its training corpus being cervical -- came back with
+ *  its C7 confidently labelled "S1". A wrong name is worse than no name: it is the exact
+ *  error this whole project exists to study, reproduced in the demo that presents it.
+ *
+ *  So unnamed instances are numbered V1 upward from the caudal end, which is true
+ *  regardless of region, and a name is applied only when someone asserts the region.
+ *
+ *  @param region "none" | "lumbar" | "cervical" | "whole"
+ */
+export function assignLevels(dets, region = "none") {
+  const chain = REGION_CHAINS[region] || null;
   const cy = d => (d.y0 + d.y1) / 2;
   return [...dets].sort((a, b) => cy(b) - cy(a))
-                  .map((d, i) => ({ ...d, level: CHAIN[i] || `?${i}` }))
+                  .map((d, i) => ({
+                    ...d,
+                    level: chain ? (chain[i] || `?${i + 1}`) : `V${i + 1}`,
+                    named: Boolean(chain && chain[i]),
+                  }))
                   .reverse();
+}
+
+/** A guess at the region, offered to the user rather than applied behind their back.
+ *
+ *  The only bound here that is anatomy rather than guesswork is the count: there are
+ *  seven cervical vertebrae, so anything above seven detections cannot be a cervical
+ *  film. Beyond that the separation is soft -- a coned lumbar lateral and a cervical
+ *  lateral can carry a similar number of similarly-shaped boxes -- so this returns a
+ *  suggestion and a reason, and the caller decides what to do with both. */
+export function suggestRegion(dets) {
+  const n = dets.length;
+  if (!n) return { region: "none", why: "nothing detected" };
+  if (n > 7)
+    return { region: "lumbar",
+             why: `${n} vertebrae: more than the seven cervical ones, so this is a `
+                + `thoracolumbar or whole-spine film` };
+  // aspect ratio separates them better than size, which collimation controls:
+  // a cervical body is nearly as tall as it is deep; a lumbar body is wider than tall
+  const ar = dets.map(d => (d.x1 - d.x0) / Math.max(d.y1 - d.y0, 1e-6))
+                 .sort((a, b) => a - b)[Math.floor(n / 2)];
+  return ar < 1.25
+    ? { region: "cervical",
+        why: `${n} vertebrae, median width/height ${ar.toFixed(2)}: bodies about as tall `
+           + `as they are wide, which is cervical` }
+    : { region: "lumbar",
+        why: `${n} vertebrae, median width/height ${ar.toFixed(2)}: bodies wider than `
+           + `tall, which is lumbar` };
 }
 
 const kp = (d, name) => d.kpts.find(k => k.name === name);
@@ -217,9 +277,20 @@ async function loadOrt() {
   if (ort) return ort;
   ort = await import(/* @vite-ignore */ `${ORT_BASE}ort.webgpu.bundle.min.mjs`);
   ort.env.wasm.wasmPaths = ORT_BASE;
-  // GitHub Pages sends no COOP/COEP, so SharedArrayBuffer is unavailable and a
-  // threaded build would fail at startup rather than run slowly. Ask for one thread.
-  ort.env.wasm.numThreads = 1;
+  // THREADS, WHERE THE PAGE IS ALLOWED THEM. A multithreaded WASM build needs
+  // SharedArrayBuffer, which the browser exposes only to a cross-origin-isolated page.
+  // GitHub Pages cannot send COOP/COEP, so pacs/coi-serviceworker.js adds them from a
+  // service worker and the page reloads once into isolation. Where that succeeded,
+  // crossOriginIsolated is true and threads are real; where it did not -- an http
+  // origin, a browser without service workers, a failed registration -- this falls back
+  // to the single thread that always worked.
+  //
+  // Capped at four: measured on this graph the gain flattens there, and asking a phone
+  // for eight threads schedules work onto little cores and runs SLOWER than four.
+  ort.env.wasm.numThreads = (typeof crossOriginIsolated !== "undefined" && crossOriginIsolated)
+    ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4)))
+    : 1;
+  ort.env.wasm.simd = true;
   // Ask for the discrete card on a dual-GPU machine. Measured on Chrome/Windows this
   // changes NOTHING -- the GPU process exposes exactly one adapter, fixed at launch by
   // --force_high_performance_gpu or the per-app Windows graphics preference, and both
@@ -282,6 +353,8 @@ export class SpineDetector {
       new Float32Array(3 * S * S).fill(PAD_GREY / 255), [1, 3, S, S]) });
     onStatus("ready");
     this.adapter = await describeAdapter();
+    this.threads = o.env.wasm.numThreads;
+    this.isolated = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
     return this.backend;
   }
 
