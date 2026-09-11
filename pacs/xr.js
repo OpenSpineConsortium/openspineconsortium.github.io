@@ -16,11 +16,21 @@
   only in this tab.
 */
 
-import { SpineDetector, KPT_LABEL, assignLevels, computeAngles, angleToHorizontal }
-  from "./infer.js";
+import { SpineDetector, KPT_LABEL, assignLevels, suggestRegion, computeAngles,
+         angleToHorizontal } from "./infer.js";
 
 const XR_BUILD = "20260826a";
-const MODEL_URL = { 640: "models/v11n_640.onnx", 1024: "models/v11n_1024.onnx" };
+// ONE MODEL. YOLO11m-Pose at 1024, converted to float16: 42 MB against the 84 MB
+// the fp32 graph would cost, and verified against that graph to find the same
+// vertebrae. Apple GPUs execute fp16 natively, so this is also the fastest form on
+// a Mac or an iPhone, where WebGPU runs on Metal.
+//
+// int8 was tried first and REJECTED. At 22 MB it was tempting, but it changed the
+// detection COUNT on 15 of 40 test films, and the level chain is positional: one
+// lost vertebra renames every level above it. A quarter of the download is not
+// worth a model that silently miscounts.
+const MODEL_URL = "models/v11m_1024_fp16.onnx";
+const MODEL_IMGSZ = 1024;
 
 const $ = id => document.getElementById(id);
 const els = {
@@ -33,7 +43,10 @@ const els = {
   fileInput: $("fileInput"), pickBtn: $("pickBtn"), clearUser: $("clearUser"),
   uloading: $("uloading"), uloadtxt: $("uloadtxt"),
   engine: $("engineBadge"), timing: $("timing"),
-  modelSel: $("modelSel"), confRange: $("confRange"), confVal: $("confVal"),
+  confRange: $("confRange"), confVal: $("confVal"),
+  regionSel: $("regionSel"), regionNote: $("regionNote"), modelName: $("modelName"),
+  camBtn: $("camBtn"), camInput: $("camInput"), camWrap: $("camWrap"),
+  camVideo: $("camVideo"), camShoot: $("camShoot"), camCancel: $("camCancel"),
   modeSel: $("modeSel"),
   flipBtn: $("flipBtn"), paneRef: $("paneRef"), paneUser: $("paneUser"), tip: $("tip"),
 };
@@ -364,7 +377,9 @@ function intersect(p1, p2, p3, p4) {
 
 /** Detections -> the same {shape, angles, landmarks} a reference bundle carries. */
 function buildUserView(dets, W, H, femoral) {
-  const levelled = assignLevels(dets);
+  const levelled = assignLevels(dets, els.regionSel ? els.regionSel.value : "none");
+  // Say what the detections look like, without acting on it. See offerRegion.
+  offerRegion(dets);
   const ang = computeAngles(levelled);
   const byLevel = Object.fromEntries(levelled.map(d => [d.level, d]));
   const R = Math.min(W, H);
@@ -468,7 +483,10 @@ function buildUserView(dets, W, H, femoral) {
         label: `${d.level} ${KPT_LABEL[k.name] || k.name}`,
         xy: [k.x, k.y], color: LM_COLOR[k.name], conf: d.conf,
         desc: `Predicted in this browser. Box confidence ${d.conf.toFixed(2)}; `
-            + `levels are named upward from the most caudal detection.`,
+            + (d.named
+                ? `level names follow the region you selected, counted up from the `
+                  + `most caudal detection.`
+                : `unnamed — numbered upward from the most caudal detection.`),
       });
     }
 
@@ -479,13 +497,20 @@ function buildUserView(dets, W, H, femoral) {
   if (ang.SS == null) unavailable.unshift("SS");
   if (ang.LL == null) unavailable.unshift("LL");
 
-  let note = `${levelled.length} vertebrae detected. Levels are named from the caudal `
-           + `end up, so a film that includes more thoracic spine does not renumber the `
-           + `lumbar ones. Hover a marker for its class.`;
+  const named = levelled.length && levelled[0].named;
+  let note = named
+    ? `${levelled.length} vertebrae detected, named from the caudal end up, so a film `
+      + `that includes more spine above does not renumber the ones below. The names are `
+      + `the region you chose, not a model output. Hover a marker for its class.`
+    : `${levelled.length} vertebrae detected, numbered V1 upward from the caudal end. `
+      + `The model finds vertebrae but does not name them; choose a region under Model `
+      + `to apply level names. Hover a marker for its corner.`;
   if (ang.LL == null)
-    note += ` LL needs both the L1 and S1 superior endplates; only ${levelled.length} `
-          + `vertebra${levelled.length === 1 ? "" : "e"} were found, so L1 was never `
-          + `reached.`;
+    note += named
+      ? ` LL needs both the L1 and S1 superior endplates; only ${levelled.length} `
+        + `vertebra${levelled.length === 1 ? "" : "e"} were found, so L1 was never `
+        + `reached.`
+      : ` LL is an angle between two NAMED endplates, so it waits on a region.`;
 
   return { shape: [H, W], angles, landmarks, unavailable, levelled, lmNote: note };
 }
@@ -549,10 +574,9 @@ let detector = null, detImgsz = null;
 let userBitmap = null, flipped = false, userURL = null;
 
 async function ensureDetector() {
-  const size = Number(els.modelSel.value);
-  if (detector && detImgsz === size) return detector;
-  detector = new SpineDetector({ modelUrl: MODEL_URL[size], imgsz: size });
-  detImgsz = size;
+  if (detector && detImgsz === MODEL_IMGSZ) return detector;
+  detector = new SpineDetector({ modelUrl: MODEL_URL, imgsz: MODEL_IMGSZ });
+  detImgsz = MODEL_IMGSZ;
   els.engine.className = "badge badge--load";
   els.engine.textContent = "loading…";
   const backend = await detector.load(s => { els.uloadtxt.textContent = s; });
@@ -566,8 +590,9 @@ async function ensureDetector() {
       + " set this browser to High performance in the OS graphics settings — measured"
       + " here that is 445 ms against 133 ms, for identical output."
     : "This browser exposes no WebGPU, so the model is running on the CPU through"
-      + " WebAssembly. The result is identical; it takes roughly a second instead of"
-      + " a tenth of one.";
+      + " WebAssembly, across " + (detector.threads || 1) + " thread(s). The result is"
+      + " identical; it is slower than the GPU path but not by the margin one thread"
+      + " would cost.";
   return detector;
 }
 
@@ -685,13 +710,88 @@ els.flipBtn.addEventListener("click", () => {
   els.flipBtn.classList.toggle("ctl--on", flipped);
   analyse();
 });
-els.modelSel.addEventListener("change", () => {
-  detector = null;
-  // both panes, because the reference is the one with a known answer to compare against
-  analyse();
-  reinferReference();
-});
 els.modeSel.addEventListener("change", () => { analyse(); reinferReference(); });
+
+/* ── region, camera ──────────────────────────────────────────────────────────── */
+
+/** Offer the region the detections look like, without applying it.
+ *
+ *  Naming is the user's assertion about what film this is, so the page says what it
+ *  would guess and why, and leaves the control alone. Applying a guess silently is how
+ *  a cervical C7 came to be labelled "S1". */
+function offerRegion(dets) {
+  if (!els.regionNote) return;
+  if (!dets || !dets.length) {
+    els.regionNote.textContent =
+      "Levels are an assumption about the film, not a model output. Pick a region to "
+      + "name them; angles that need named endplates appear once you do.";
+    return;
+  }
+  const { region, why } = suggestRegion(dets);
+  const current = els.regionSel ? els.regionSel.value : "none";
+  els.regionNote.textContent = current === "none"
+    ? `Unnamed. Looks like a ${region} film — ${why}. Choose a region to apply names.`
+    : `Named as ${current}. From the detections alone this looks ${region} — ${why}.`;
+}
+
+/** Stop the viewfinder and put the panel back. Safe to call when nothing is running. */
+function camStop() {
+  const v = els.camVideo;
+  if (v && v.srcObject) {
+    for (const t of v.srcObject.getTracks()) t.stop();
+    v.srcObject = null;
+  }
+  if (els.camWrap) els.camWrap.hidden = true;
+  if (els.dropPrompt) els.dropPrompt.hidden = false;
+}
+
+/** A phone has a camera behind the file input; a laptop needs a viewfinder.
+ *
+ *  Feature-detection, not user-agent sniffing: if the input carries a `capture`
+ *  property the platform honours it and the native camera is the better experience. */
+async function camOpen() {
+  const nativeCapture = els.camInput && "capture" in els.camInput
+    && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  if (nativeCapture) { els.camInput.click(); return; }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    els.fileInput.click();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1440 } },
+      audio: false,
+    });
+    els.camVideo.srcObject = stream;
+    await els.camVideo.play();
+    els.camWrap.hidden = false;
+    if (els.dropPrompt) els.dropPrompt.hidden = true;
+  } catch (e) {
+    // denied, or no camera: fall back to the ordinary picker rather than a dead button
+    console.warn("[xr] camera unavailable:", e && e.message);
+    els.fileInput.click();
+  }
+}
+
+/** Grab the current frame at the sensor's own resolution. */
+async function camShoot() {
+  const v = els.camVideo;
+  if (!v || !v.videoWidth) return;
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  const blob = await new Promise(r => c.toBlob(r, "image/png"));
+  camStop();
+  await acceptBlob(blob);
+}
+
+if (els.camBtn) els.camBtn.addEventListener("click", e => { e.stopPropagation(); camOpen(); });
+if (els.camInput) els.camInput.addEventListener("change", e => acceptBlob(e.target.files?.[0]));
+if (els.camShoot) els.camShoot.addEventListener("click", e => { e.stopPropagation(); camShoot(); });
+if (els.camCancel) els.camCancel.addEventListener("click", e => { e.stopPropagation(); camStop(); });
+if (els.regionSel) els.regionSel.addEventListener("change", () => { analyse(); reinferReference(); });
+
 els.confRange.addEventListener("input", () => {
   els.confVal.textContent = Number(els.confRange.value).toFixed(2);
 });

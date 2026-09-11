@@ -293,3 +293,25 @@ input[type=range]{flex:1;accent-color:var(--teal-br)}
 .teachfig img:hover{border-color:var(--teal)}
 .teachfig figcaption{font-size:.7rem;color:var(--ink-faint);line-height:1.5;margin-top:6px}
 
+
+/* ── camera capture ───────────────────────────────────────────────────────────
+   Photographing a lightbox or a monitor is how this gets used away from a
+   workstation, so the button sits beside "browse" rather than hiding in a menu.
+   The viewfinder replaces the drop prompt in place, so the panel does not jump. */
+.ctl--cam { display: inline-flex; align-items: center; gap: .45rem; }
+.drop__hint { font-size: .8rem; opacity: .65; margin-left: .5rem; }
+
+.camwrap { display: flex; flex-direction: column; align-items: center;
+           gap: .6rem; width: 100%; }
+.camwrap__video { width: 100%; max-height: 60vh; object-fit: contain;
+                  background: #000; border-radius: 6px; }
+.camwrap__bar { display: flex; gap: .6rem; }
+
+/* A phone holds the film in portrait and the controls need to stay reachable. */
+@media (max-width: 640px) {
+  .drop__hint { display: block; margin: .35rem 0 0; }
+  .ctl--cam { width: 100%; justify-content: center; padding-block: .7rem; }
+  .camwrap__video { max-height: 52vh; }
+  .camwrap__bar { width: 100%; }
+  .camwrap__bar .ctl { flex: 1; padding-block: .7rem; }
+}
