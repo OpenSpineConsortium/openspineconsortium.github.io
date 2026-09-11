@@ -35,10 +35,14 @@ export const KPT_LABEL = {
   inf_post: "inferior endplate, posterior",
 };
 
-/* Bansal et al. score at conf 0.5; scripts/evaluate_yolo.py uses the same, so the
-   browser reproduces the reported numbers rather than a prettier threshold. NMS IoU
-   is Ultralytics' predict default. */
-export const CONF_DEFAULT = 0.5;
+/* 0.5 reproduces the published benchmark on films from the training sources, which is
+   the right default for a number you intend to compare against a paper. It is the wrong
+   default for a page that accepts anything: measured on public radiographs the model has
+   never seen, dropping to 0.25 took a cervical lateral from four vertebrae to seven --
+   the correct seven -- and a second from five to eleven. The benchmark threshold is kept
+   in scripts/evaluate_yolo.py, where the comparison lives; the page starts lower and the
+   slider still reaches 0.5. NMS IoU is Ultralytics' predict default. */
+export const CONF_DEFAULT = 0.3;
 export const NMS_IOU = 0.7;
 const PAD_GREY = 114;            // Ultralytics LetterBox fill
 
@@ -152,6 +156,41 @@ export function tileTops(w, h, overlap = 0.5) {
   for (let t = 0; t + w <= h; t += step) tops.push(t);
   if (!tops.length || tops[tops.length - 1] + w < h) tops.push(Math.max(0, h - w));
   return tops;
+}
+
+/** The horizontal band the spine occupies, from whatever the first pass managed to find.
+ *
+ *  WHY THIS EXISTS. Tiling the full width is the right move on a coned film, where the
+ *  spine fills the frame. On a standing full-length lateral it is not: the film is a
+ *  person, the spine is a narrow column down the middle, and a full-width square tile
+ *  spends most of its pixels on skull, lung and air. The vertebrae stay small after
+ *  tiling, which is why such a film could come back with one detection and then tile
+ *  itself into the same answer.
+ *
+ *  One detection anywhere on the column is enough to say where the column IS. Widening
+ *  it to a multiple of the vertebra's own width gives a band that certainly contains the
+ *  spine and little else, and tiles cut from that band put the anatomy at a scale the
+ *  network was trained on.
+ *
+ *  @param dets detections from a whole-film pass, in image pixels
+ *  @param w    image width
+ *  @param pad  band half-width, in multiples of the median detection width
+ *  @returns {{x:number, w:number}} or null when there is nothing to go on
+ */
+export function spineBand(dets, w, pad = 2.2) {
+  if (!dets || !dets.length) return null;
+  const widths = dets.map(d => d.x1 - d.x0).sort((a, b) => a - b);
+  const bw = widths[Math.floor(widths.length / 2)];
+  if (!(bw > 0)) return null;
+  const cxs = dets.map(d => (d.x0 + d.x1) / 2).sort((a, b) => a - b);
+  const cx = cxs[Math.floor(cxs.length / 2)];
+  const half = Math.max(bw * pad, bw * 1.2);
+  const x0 = Math.max(0, Math.round(cx - half));
+  const x1 = Math.min(w, Math.round(cx + half));
+  const bandW = x1 - x0;
+  // A band that is most of the film buys nothing over tiling the film itself.
+  if (bandW < 32 || bandW > 0.9 * w) return null;
+  return { x: x0, w: bandW };
 }
 
 /* ── anatomy ────────────────────────────────────────────────────────────────── */
@@ -379,20 +418,39 @@ export class SpineDetector {
 
     if (mode !== "tiled") dets = await this.#pass(source, w, h, conf);
 
+    // TALL FILMS ALWAYS TILE. The sweep in the comment above measures single-shot at
+    // ZERO by the framing of a standing film, so waiting to see fewer than five
+    // detections before paying for tiles is waiting for a number that is already in.
+    // Aspect ratio is known before any inference; use it.
+    const tall = h > w * 1.8;
     const tops = tileTops(w, h);
     const needTiles = mode === "tiled"
-                   || (mode === "auto" && tops && dets.length < 5);
+                   || (mode === "auto" && tops && (tall || dets.length < 5));
+
     if (needTiles && tops) {
+      // Follow the spine where the first pass found it, rather than tiling the whole
+      // width. On a full-length film the column is a narrow band and a full-width tile
+      // spends its resolution on everything else. See spineBand.
+      const band = mode === "tiled" ? spineBand(dets, w) : spineBand(dets, w);
+      const bx = band ? band.x : 0;
+      const bw = band ? band.w : w;
+      const btops = tileTops(bw, h) || [0];
+
       const all = [];
-      for (const t of tops)
+      for (const t of btops)
         all.push(...await this.#pass(source, w, h, conf,
-                                     { x: 0, y: t, w, h: Math.min(w, h - t) }));
-      // One global NMS over every tile's output: a vertebra seen twice across an
-      // overlap keeps whichever copy the network was more sure of.
-      dets = nms(all);
-      tiles = tops.length;
-      used = "tiled";
+                                     { x: bx, y: t, w: bw, h: Math.min(bw, h - t) }));
+
+      // Keep whatever the whole-film pass already found: the band is a crop, so a
+      // vertebra outside it would otherwise be dropped by narrowing the search.
+      const merged = nms([...all, ...dets]);
+      // A band pass that finds LESS than the whole film did is a band in the wrong
+      // place; fall back rather than ship the narrower answer.
+      dets = merged.length >= dets.length ? merged : dets;
+      tiles = btops.length;
+      used = band ? "tiled (spine band)" : "tiled";
     }
-    return { dets, ms: performance.now() - t0, backend: this.backend, tiles, mode: used };
+    return { dets, ms: performance.now() - t0, backend: this.backend, tiles, mode: used,
+             band: needTiles && tops ? (spineBand(dets, w) || null) : null };
   }
 }
