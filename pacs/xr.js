@@ -29,7 +29,26 @@ const XR_BUILD = "20260826a";
 // detection COUNT on 15 of 40 test films, and the level chain is positional: one
 // lost vertebra renames every level above it. A quarter of the download is not
 // worth a model that silently miscounts.
-const MODEL_URL = "models/v11m_1024_fp16.onnx";
+// v4 (detect_v4, best epoch 126 of 156, early-stopped). Chosen over v3 on a head-to-head
+// over the SAME held-out test split -- 87 films, 558 instances -- because each run's own
+// validation numbers were selected on its own split and are not comparable:
+//
+//                 AP50      PCK@0.1    PCK@0.2
+//     v3         0.9800      0.8335     0.9512
+//     v4         0.9691      0.8475     0.9588
+//
+// v4 places corners better on every source (film .828->.841, standing DR .840->.855,
+// BUU .850->.867, Mendeley .839->.854) and finds about one percent fewer. Corners are
+// what this page draws and measures angles from, so that is the trade taken. Roll back by
+// pointing this at v11m_1024_fp16.onnx, which is still served.
+//
+// The fp16 cast was re-checked for THIS model rather than assumed from v3's: no change in
+// detection count on 12 test films, median corner drift 0.21 px, and PCK identical to
+// fp32 to within one corner in 328. src/export_onnx.py in the spine-detector repo.
+//
+// The filename carries the version because Pages caches models/ hard; overwriting in
+// place leaves returning visitors on the old weights with no way to tell.
+const MODEL_URL = "models/v11m_1024_v4_fp16.onnx";
 const MODEL_IMGSZ = 1024;
 
 const $ = id => document.getElementById(id);
