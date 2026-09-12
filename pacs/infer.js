@@ -32,7 +32,10 @@ const ORT_VER = "1.20.1";
 //   [wasm]   Error: previous call to 'initWasm()' failed
 // So isolation and a CDN are mutually exclusive here -- taking the threads costs the CDN.
 // Vendored under pacs/ort/ at the pinned version; update both together.
-const ORT_BASE = `ort/`;
+// The leading ./ is load-bearing: `import("ort/x.mjs")` is a BARE specifier and the module
+// resolver rejects it outright ("Failed to resolve module specifier"), where "./ort/x.mjs"
+// is a relative URL and resolves against this file.
+const ORT_BASE = `./ort/`;
 
 export const KPT_NAMES = ["sup_ant", "sup_post", "inf_ant", "inf_post"];
 export const KPT_LABEL = {
