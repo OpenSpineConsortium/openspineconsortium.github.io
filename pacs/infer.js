@@ -25,7 +25,14 @@
 */
 
 const ORT_VER = "1.20.1";
-const ORT_BASE = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/dist/`;
+// SELF-HOSTED, AND IT HAS TO BE. The page is cross-origin isolated (coi-serviceworker
+// sends COOP/COEP) so that onnxruntime-web gets more than one wasm thread. COEP then
+// forbids constructing a Worker from a cross-origin script, and BOTH backends build one:
+//   [webgpu] SecurityError: Failed to construct 'Worker': Script at 'https://cdn.jsdelivr...'
+//   [wasm]   Error: previous call to 'initWasm()' failed
+// So isolation and a CDN are mutually exclusive here -- taking the threads costs the CDN.
+// Vendored under pacs/ort/ at the pinned version; update both together.
+const ORT_BASE = `ort/`;
 
 export const KPT_NAMES = ["sup_ant", "sup_post", "inf_ant", "inf_post"];
 export const KPT_LABEL = {
