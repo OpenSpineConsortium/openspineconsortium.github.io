@@ -21,6 +21,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!-- HTTPS OR NOTHING, AND IT MUST BE THE FIRST THING THAT RUNS. Both of this page's
+       fast paths are secure-context-only: navigator.gpu is undefined over http, so
+       WebGPU cannot start, and a service worker cannot register, so coi-serviceworker
+       never applies COOP/COEP and onnxruntime-web is capped at a SINGLE wasm thread.
+       The two failures compound. Measured on one 556x630 cervical film, same files,
+       same machine: 40,018 ms over http against a working GPU session over https.
+       The apex domain is what made this reachable -- the Pages redirect from
+       <user>.github.io lands on http://openspineconsortium.com unless Enforce HTTPS
+       is set, and this runs whether or not anyone remembers to set it. Kept even once
+       it is set: it costs one redirect on a protocol nobody should arrive on.
+       localhost is exempt so `python -m http.server` still works (it is already a
+       secure context by definition). -->
+  <script>
+    (function () {
+      var h = location.hostname;
+      if (location.protocol === "http:" && h !== "localhost" && h !== "127.0.0.1"
+          && h !== "[::1]") {
+        location.replace("https://" + location.host + location.pathname
+                         + location.search + location.hash);
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spinopelvic X-ray demo — OpenSpineConsortium</title>
   <meta name="description" content="Lateral radiograph tab of the OpenSpineConsortium spinopelvic demo: vertebral corner landmarks, sacral slope and lumbar lordosis, with a YOLO-Pose model running in your own browser on your own film." />
