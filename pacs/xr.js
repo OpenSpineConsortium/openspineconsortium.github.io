@@ -48,8 +48,19 @@ const XR_BUILD = "20260826a";
 //
 // The filename carries the version because Pages caches models/ hard; overwriting in
 // place leaves returning visitors on the old weights with no way to tell.
-const MODEL_URL = "models/v11m_1024_v4_fp16.onnx";
-const MODEL_IMGSZ = 1024;
+// 640, NOT 1024, AND IT COSTS NOTHING IN ACCURACY. The head emits one candidate per anchor
+// and 1024 carries 21,504 of them against 8,400 at 640 -- 2.6x the compute for a network
+// whose weights are identical. Measured on the same cervical film, same machine, CPU:
+//
+//     1024   2,472 ms   5 detections   conf 0.903-0.922
+//      640     537 ms   5 detections   conf 0.869-0.901   centres within 0.5 px
+//
+// The films this page is given are phone photographs and PACS screenshots, typically well
+// under 1024 on the long side, so 1024 was upscaling them and paying for the privilege.
+// fp16 against fp32 at 640 was checked on the 12 reference films before shipping: no
+// detection count changed and median corner drift was 0.11 px.
+const MODEL_URL = "models/v11m_640_v4_fp16.onnx";
+const MODEL_IMGSZ = 640;
 
 const $ = id => document.getElementById(id);
 const els = {
