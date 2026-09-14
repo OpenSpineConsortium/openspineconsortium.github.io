@@ -16,8 +16,9 @@
   only in this tab.
 */
 
-import { SpineDetector, KPT_LABEL, assignLevels, suggestRegion, computeAngles,
-         angleToHorizontal } from "./infer.js?v=20260911b";
+import { KPT_LABEL, assignLevels, suggestRegion, computeAngles,
+         angleToHorizontal } from "./infer.js?v=20260914a";
+import { RemoteDetector, modelLevels, serviceURL } from "./remote.js?v=20260914a";
 
 const XR_BUILD = "20260826a";
 // ONE MODEL. YOLO11m-Pose at 1024, converted to float16: 42 MB against the 84 MB
@@ -37,29 +38,12 @@ const XR_BUILD = "20260826a";
 //     v3         0.9800      0.8335     0.9512
 //     v4         0.9691      0.8475     0.9588
 //
-// v4 places corners better on every source (film .828->.841, standing DR .840->.855,
-// BUU .850->.867, Mendeley .839->.854) and finds about one percent fewer. Corners are
-// what this page draws and measures angles from, so that is the trade taken. Roll back by
-// pointing this at v11m_1024_fp16.onnx, which is still served.
-//
-// The fp16 cast was re-checked for THIS model rather than assumed from v3's: no change in
-// detection count on 12 test films, median corner drift 0.21 px, and PCK identical to
-// fp32 to within one corner in 328. src/export_onnx.py in the spine-detector repo.
-//
-// The filename carries the version because Pages caches models/ hard; overwriting in
-// place leaves returning visitors on the old weights with no way to tell.
-// 640, NOT 1024, AND IT COSTS NOTHING IN ACCURACY. The head emits one candidate per anchor
-// and 1024 carries 21,504 of them against 8,400 at 640 -- 2.6x the compute for a network
-// whose weights are identical. Measured on the same cervical film, same machine, CPU:
-//
-//     1024   2,472 ms   5 detections   conf 0.903-0.922
-//      640     537 ms   5 detections   conf 0.869-0.901   centres within 0.5 px
-//
-// The films this page is given are phone photographs and PACS screenshots, typically well
-// under 1024 on the long side, so 1024 was upscaling them and paying for the privilege.
-// fp16 against fp32 at 640 was checked on the 12 reference films before shipping: no
-// detection count changed and median corner drift was 0.11 px.
-const MODEL_URL = "models/v11m_640_v4_fp16.onnx";
+// THE MODEL NO LONGER SHIPS WITH THE PAGE. Until 2026-09-14 the detector was served as an
+// ONNX file and ran in the browser; anything a page loads a visitor can save, so the
+// weights were, in effect, published. The detector, the level model and the run labeller
+// now run behind one endpoint (see remote.js) and this page sends pixels and receives
+// boxes, corners and level NAMES. The 640 px working size is kept: measured on the same
+// film it finds the same vertebrae as 1024 at a quarter of the compute.
 const MODEL_IMGSZ = 640;
 
 const $ = id => document.getElementById(id);
@@ -424,7 +408,10 @@ function intersect(p1, p2, p3, p4) {
 
 /** Detections -> the same {shape, angles, landmarks} a reference bundle carries. */
 function buildUserView(dets, W, H, femoral) {
-  const levelled = assignLevels(dets, els.regionSel ? els.regionSel.value : "none");
+  // The model names the levels; a region chosen under Model overrides it with counting.
+  const region = els.regionSel ? els.regionSel.value : "none";
+  const levelled = (region === "none" && dets.some(d => d.level_run || d.level))
+    ? modelLevels(dets) : assignLevels(dets, region);
   // Say what the detections look like, without acting on it. See offerRegion.
   offerRegion(dets);
   const ang = computeAngles(levelled);
@@ -577,8 +564,8 @@ async function reinferReference() {
     const bmp = await createImageBitmap(await (await fetch(view.ref.imageUrl)).blob());
     const cv = sourceCanvas(bmp, false);
     const conf = Number(els.confRange.value);
-    const { dets, ms, backend } =
-      await det.infer(cv, bmp.width, bmp.height, conf, els.modeSel.value);
+    const { dets, ms, serverMs } =
+      await det.infer(cv, bmp.width, bmp.height, conf, els.modeSel ? els.modeSel.value : "auto");
     if (!dets.length) {
       view.ref.lmNote = "No vertebra passed the confidence threshold on the synthetic "
                       + "radiograph at this setting.";
@@ -594,9 +581,10 @@ async function reinferReference() {
       view.ref.shape = built.shape;
       const got = Object.fromEntries(built.angles.map(q => [q.id, q.value]));
       view.ref.lmNote =
-        `Re-inferred in this browser with ${detImgsz}px weights at confidence `
-        + `${conf.toFixed(2)} — ${built.levelled.length} vertebrae, ${ms.toFixed(0)} ms on `
-        + `${backend === "webgpu" ? "the GPU" : "the CPU"}. Every angle here is measured `
+        `Re-inferred by the level service at ${detImgsz}px and confidence `
+        + `${conf.toFixed(2)} — ${built.levelled.length} vertebrae, ${ms.toFixed(0)} ms round trip`
+        + (serverMs != null ? ` (${Number(serverMs).toFixed(0)} ms on the server)` : "")
+        + `. Every angle here is measured `
         + `from these corners, by the same construction ostk uses. `
         + (got.PI ? `PI ${got.PI}°, ` : "")
         + (got.SS ? `SS ${got.SS}°. ` : "")
@@ -618,28 +606,26 @@ async function reinferReference() {
 /* ── user pane : plumbing ────────────────────────────────────────────────── */
 
 let detector = null, detImgsz = null;
+const MODEL_URL = serviceURL();
 let userBitmap = null, flipped = false, userURL = null;
 
 async function ensureDetector() {
   if (detector && detImgsz === MODEL_IMGSZ) return detector;
-  detector = new SpineDetector({ modelUrl: MODEL_URL, imgsz: MODEL_IMGSZ });
+  detector = new RemoteDetector({ url: MODEL_URL, imgsz: MODEL_IMGSZ });
   detImgsz = MODEL_IMGSZ;
   els.engine.className = "badge badge--load";
-  els.engine.textContent = "loading…";
-  const backend = await detector.load(s => { els.uloadtxt.textContent = s; });
+  els.engine.textContent = "connecting…";
+  await detector.load(s => { els.uloadtxt.textContent = s; });
   els.engine.className = "badge badge--ok";
-  const gpu = detector.adapter;
-  els.engine.textContent = backend === "webgpu"
-    ? (gpu ? `WebGPU · ${gpu}` : "WebGPU") : "WASM (CPU)";
-  els.engine.title = backend === "webgpu"
-    ? `Running on the GPU through WebGPU${gpu ? ` (${gpu})` : ""}.`
-      + " If that is the integrated chip on a machine that also has a discrete card,"
-      + " set this browser to High performance in the OS graphics settings — measured"
-      + " here that is 445 ms against 133 ms, for identical output."
-    : "This browser exposes no WebGPU, so the model is running on the CPU through"
-      + " WebAssembly, across " + (detector.threads || 1) + " thread(s). The result is"
-      + " identical; it is slower than the GPU path but not by the margin one thread"
-      + " would cost.";
+  els.engine.textContent = detector.adapter || "server";
+  const reg = detector.health && detector.health.registry;
+  els.engine.title = "The model runs on the OpenSpine level service, not in this browser: the page"
+    + " sends the image and receives boxes, corner landmarks and level names. No model"
+    + " parameters are delivered to the page."
+    + (reg && reg.level_model ? ` Serving level model ${reg.level_model.registry_id || ""}`
+       + ` (release ${reg.release || "?"}).` : "");
+  if (els.modelName && reg) els.modelName.textContent =
+    `level model ${reg.level_model && reg.level_model.registry_id || "?"} · release ${reg.release || "?"}`;
   return detector;
 }
 
@@ -672,13 +658,12 @@ async function analyse() {
 
     els.uloadtxt.textContent = "detecting…";
     const conf = Number(els.confRange.value);
-    const { dets, ms, backend, tiles, mode } =
-      await det.infer(cv, W, H, conf, els.modeSel.value);
+    const { dets, ms, serverMs } =
+      await det.infer(cv, W, H, conf, els.modeSel ? els.modeSel.value : "auto");
     if (!dets.length) {
       view.user = { shape: [H, W], angles: [], landmarks: [], unavailable: ["PI", "PT"],
                     lmNote: "No vertebra passed the confidence threshold. Lower it, or "
-                          + "check that this is a LATERAL lumbar film — the model has "
-                          + "only ever seen lateral views." };
+                          + "check that this is a spine radiograph (lateral or AP)." };
       els.hudUser.textContent = "no detections";
     } else {
       view.user = buildUserView(dets, W, H, null);
@@ -687,9 +672,9 @@ async function analyse() {
     }
     active.user.clear();
     view.user.angles.forEach(a => active.user.set(a.id, true));
-    els.timing.textContent = `${ms.toFixed(0)} ms · ${backend === "webgpu" ? "GPU" : "CPU"}`
-                           + ` · ${detImgsz}px`
-                           + (mode === "tiled" ? ` · ${tiles} tiles` : "");
+    els.timing.textContent = `${ms.toFixed(0)} ms round trip`
+                           + (serverMs != null ? ` · ${Number(serverMs).toFixed(0)} ms on the server` : "")
+                           + ` · ${detImgsz}px`;
     focusPane("user");
     panelSrc = "user";
     renderPanel();
@@ -776,9 +761,13 @@ function offerRegion(dets) {
   }
   const { region, why } = suggestRegion(dets);
   const current = els.regionSel ? els.regionSel.value : "none";
+  const modelNamed = dets.some(d => d.level_run || d.level);
   els.regionNote.textContent = current === "none"
-    ? `Unnamed. Looks like a ${region} film — ${why}. Choose a region to apply names.`
-    : `Named as ${current}. From the detections alone this looks ${region} — ${why}.`;
+    ? (modelNamed
+        ? `Named by the level model (${dets.map(d => (d.level_run || d.level || "?").replace("sacrum", "S1")).join(" ")}). `
+          + `From the detections alone this looks ${region} — ${why}. Choose a region to override with counting.`
+        : `Unnamed. Looks like a ${region} film — ${why}. Choose a region to apply names.`)
+    : `Named as ${current} by counting. From the detections alone this looks ${region} — ${why}.`;
 }
 
 /** Stop the viewfinder and put the panel back. Safe to call when nothing is running. */
