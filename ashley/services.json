@@ -3,6 +3,6 @@
   "allowlist": "https://ashley-service.openspineconsortium.workers.dev/allowlist",
   "revocation": "https://ashley-service.openspineconsortium.workers.dev/revoked",
   "report": "https://ashley-service.openspineconsortium.workers.dev/report",
-  "request_page": "https://openspineconsortium.github.io/ashley/request.html",
-  "support_page": "https://openspineconsortium.github.io/ashley/support.html"
+  "request_page": "https://openspineconsortium.com/ashley/request.html",
+  "support_page": "https://openspineconsortium.com/ashley/support.html"
 }
