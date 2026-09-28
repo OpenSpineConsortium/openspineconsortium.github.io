@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ashley</title>
+<style>
+  :root { --ink: #1c1c1c; --muted: #555; --line: #ddd; --accent: #1f3b2e; --bg: #fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ink: #e8e8e8; --muted: #b0b0b0; --line: #333; --accent: #8fd3b0; --bg: #121212; } }
+  :root[data-theme="dark"] { --ink: #e8e8e8; --muted: #b0b0b0; --line: #333; --accent: #8fd3b0; --bg: #121212; }
+  body { margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 760px; margin-inline: auto; }
+  h1 { font-size: 1.8em; margin: 32px 0 4px; } h2 { font-size: 1.2em; margin: 28px 0 8px; color: var(--accent); }
+  a { color: var(--accent); } p.lead { color: var(--muted); }
+  ul { padding-left: 1.2em; } li { margin: 4px 0; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0; }
+</style>
+</head>
+<body>
+<h1>Ashley</h1>
+<p class="lead">A grid research environment for medical students: one wizard sets up the laptop for the university HPC grid and keeps a Claude Code worker running there, on the student's own Claude subscription, reachable from VS Code and from the Claude app on a phone.</p>
+
+<div class="box">
+<strong>Licensed software.</strong> Ashley is licensed, not sold: you receive a license to use it under the
+<a href="license.txt">Ashley Software License Agreement</a> and the <a href="privacy.html">Privacy Statement</a>,
+accepted in a signing dialog before first use. A free Trial Edition for Wayne State AccessIDs the lab has approved, ends by itself; nothing
+converts to a paid license and no payment details are taken for a trial. Paid keys, when offered, are one-time
+term licenses and do not renew. Access is by approval: <a href="request.html">ask for access</a> with your
+AccessID. <a href="support.html">Support and notices</a>.
+</div>
+
+<h2>What Ashley accesses and does</h2>
+<ul>
+  <li><strong>Sign-ins through VS Code's own providers:</strong> your institutional Microsoft account (to check that your license names you) and GitHub (a token with the scopes repo, workflow, read:org, gist). Ashley never sees passwords.</li>
+  <li><strong>Tokens:</strong> your GitHub token, your Hugging Face token and an optional Anthropic Console key are kept in the operating system's credential store and, with your consent in each wizard step, copied over SSH into a file readable only by you in your own grid account.</li>
+  <li><strong>No Claude credential:</strong> Ashley never reads, stores or copies one. You sign in to Claude Code yourself, on the laptop and once in a terminal on the grid.</li>
+  <li><strong>Terminals, SSH and Slurm:</strong> a managed block in <code>~/.ssh/config</code>, an SSH key, terminals that run <code>ssh</code> to your grid account, scripts installed there, and Slurm jobs in your account (a persistent worker running the unmodified Claude Code binary; Remote Control for your phone if you turn it on).</li>
+  <li><strong>MCP:</strong> an MCP server registered with the Claude Code extension, so the Claude on your laptop can hand work to the worker.</li>
+  <li><strong>License check:</strong> offline verification of your key; a daily fetch of a signed list of withdrawn keys if your lab configures one; a trial request sends the licence service the Microsoft sign-in token VS Code holds so it can ask Microsoft who you are.</li>
+  <li><strong>Error reports, opt-out:</strong> when a check fails, and only if you allow it, VS Code telemetry is on and a report address is configured: versions, which checks failed and their messages with names, paths and secrets replaced. Never prompts, files, tokens or your AccessID. Kept 365 days; a copy stays on your laptop.</li>
+  <li><strong>No downloaded code.</strong> Everything Ashley runs ships inside the package.</li>
+</ul>
+
+<h2>Outside dependencies</h2>
+<p>Ashley works only while your institution's grid, network and account, Anthropic's services and terms, Microsoft's VS Code and Marketplace, and GitHub's and Hugging Face's services allow what it does. Any of them can stop it working; section 7 of the agreement names each, and that is not refunded (a long outage extends a paid license). Ashley is a research and teaching tool, not a medical device, and is not provided by or on behalf of any university. Ashley runs Claude Code; it is not an Anthropic product.</p>
+
+<h2>Documents</h2>
+<ul>
+  <li><a href="request.html">Ask for access</a></li>
+  <li><a href="license.txt">License agreement (current version)</a></li>
+  <li><a href="privacy.html">Privacy statement</a></li>
+  <li><a href="support.html">Support, refunds and the notice address for disputes</a></li>
+  <li><a href="third_party_notices.html">Third-party notices</a></li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,438 @@
+ASHLEY FULL EDITION LICENSE AGREEMENT
+
+Version 4, 2026-09-28. Applies to the Full Edition of Ashley 3.0.0 and later versions that ship this
+text. You accept this agreement in the signing dialog Ashley shows when you register a Full Edition
+key; until you do, your use of Ashley is governed by the Ashley Trial Edition License Agreement. You
+can read, copy, save and print this text at any time: it is in the file LICENSE-FULL.txt inside
+Ashley, in the command "Ashley: Read the license terms", in the signing dialog ("Open in editor",
+"Save a copy"), and on the Ashley support page. You may ask for a paper copy at the notice address
+there.
+
+Copyright (c) 2026 Gregory Schwing, trading as OpenSpineConsortium. All rights reserved.
+
+PLEASE READ THIS AGREEMENT. IT CONTAINS A DISPUTE-RESOLUTION SECTION WITH A NOTICE-AND-CURE
+REQUIREMENT, A CLASS-ACTION WAIVER AND A ONE-YEAR LIMIT ON CONTRACT AND WARRANTY CLAIMS (SECTION 19),
+A WAIVER OF JURY TRIAL (SECTION 20), A WARRANTY DISCLAIMER (SECTION 12), LIMITS ON LIABILITY AND AN
+EXCLUSIVE REMEDY (SECTION 13), AND AN ASSUMPTION OF NAMED RISKS (SECTION 8). YOU ARE BUYING A LICENSE
+TO USE ASHLEY, NOT THE SOFTWARE ITSELF.
+
+This is an agreement between Gregory Schwing, trading as OpenSpineConsortium ("Licensor", "we"),
+and you, the person named in a Full Edition key ("you"). It is formed when, in the signing dialog
+Ashley shows as you register that key, you tick the boxes, type your name and choose the button
+labelled "Accept and Continue". Ashley records the version of this text you accepted, its hash, the
+time, what you ticked and the name you typed, and keeps a copy of the text for you. From that moment
+this agreement replaces the Trial Edition agreement for your use of Ashley. If you do not agree,
+choose "Decline"; your Trial Edition access, if any, continues under its own agreement.
+
+1. WHAT ASHLEY IS
+
+"Ashley" means the Visual Studio Code extension of that name, its command-line tool, its MCP
+server, the scripts it installs in your own computing account ("the grid scripts"), its
+documentation, and updates Licensor provides. "License key" means the signed text beginning
+"ASHLEY1." that Licensor or its licence service issues; it names one person (by institutional
+account and e-mail) or, for a site license, one institution's e-mail domain, and states an edition,
+an end date and a license id. "Full Edition key" means a key of any edition other than "trial".
+"Trial Edition" means the free edition governed by the Ashley Trial Edition License Agreement.
+"Named Dependencies" are the outside parties and conditions listed in section 7.
+
+2. YOUR LICENSE, AND WHAT IT IS NOT
+
+(a) Subject to this agreement, Licensor grants you a personal, non-exclusive, non-transferable,
+non-sublicensable, revocable license to install and use Ashley, during the term of your Full Edition
+key, on computers you use and in computing accounts you are authorised to use, for your own research
+and study.
+
+(b) Ashley is licensed, not sold. When you "buy" Ashley you receive this license and no ownership of
+the software. The license can end as this agreement says (sections 3 and 9). All rights not granted
+are reserved.
+
+3. LICENSE KEYS
+
+(a) Every copy of Ashley in use requires a valid license key for the person using it. Ashley checks
+the key against the institutional sign-in you make in it and refuses to work without a match.
+
+(b) Your key is for you alone. Do not share, publish, transfer or sell it, and do not use a key issued
+to someone else. A site license may be used only by people who hold an account in the e-mail
+domain it names and whom that institution permits to use it.
+
+(c) Trial Edition keys are governed by the Trial Edition agreement, not by this one. Ashley contains
+the code that enforces keys and their end dates; you may not disable, remove or work around it.
+
+(d) Licensor may withdraw a key that has been shared, misused, issued in error or obtained by
+misrepresentation. Ashley checks keys against a signed list of withdrawn keys.
+
+4. YOUR ACCOUNTS AND THE TERMS THAT COME WITH THEM
+
+Ashley works with accounts and systems that are yours or your institution's, not Licensor's. You
+represent that you are the sole holder of, and authorised to use, each account Ashley touches, and
+you agree to use Ashley only in compliance with each of the following, as amended from time to time:
+
+(a) your institution's rules for its computing systems, including for Wayne State University the
+Acceptable Use of Information Technology Resources policy (UP 00-1), the HPC Grid policies and the
+student or employee rules that apply to you; in particular, no process may be run on a login node,
+and jobs must carry a wall-time limit;
+
+(b) Anthropic's Consumer Terms of Service, Usage Policy and the Claude Code terms, for your Claude
+account: one person, one account; no sharing of credentials; no use of another person's account;
+
+(c) GitHub's Terms of Service and Acceptable Use Policies, for your GitHub account and token;
+
+(d) Hugging Face's Terms of Service and Content Policy, and the conditions of any gated dataset you
+accept, for your Hugging Face account and token;
+
+(e) Microsoft's terms for Visual Studio Code and its Marketplace.
+
+Breach of any of them is a breach of this agreement. Licensor is not affiliated with, endorsed by or
+acting for Wayne State University, Anthropic, Microsoft, GitHub or Hugging Face, and none of them is
+a party to this agreement.
+
+5. WHAT ASHLEY DOES WITH YOUR CREDENTIALS
+
+This section describes the software as shipped, so that you can hold Licensor to it.
+
+(a) Claude. Ashley never reads, stores, copies or relays a Claude credential. You sign in to Claude
+Code yourself, through Anthropic's own flow, on your laptop and, once, in a terminal inside your own
+grid account; Claude Code keeps its own credential there, and Ashley only starts Claude Code where
+that credential already is. Ashley reads Claude Code's yes-or-no answer about whether it is signed
+in, nothing more. You use one Claude account, your own.
+
+(b) GitHub and Hugging Face tokens. With your consent in each step, Ashley stores your GitHub token
+(obtained through Visual Studio Code's own GitHub sign-in) and your Hugging Face token in your
+operating system's credential store, and copies them into a file readable only by you in your own
+grid account, so that your own tools there can use them. You can delete them at any time in Ashley
+and revoke them at GitHub and Hugging Face.
+
+(c) Your optional Anthropic Console key, if you provide one, is stored the same way and used only
+when your subscription window is exhausted.
+
+(d) Your license key and the institutional identity you signed in with (AccessID and e-mail) are
+stored on your laptop, and the key is copied to your grid account, where the Ashley worker refuses to
+run without it.
+
+(e) None of (a) to (d) is sent to Licensor. Section 10 describes the only things that may be.
+
+6. RESTRICTIONS
+
+Except as this agreement allows, or as applicable law permits despite this section, you must not:
+
+(a) copy Ashley beyond what installation, use and one backup need;
+(b) distribute, publish, rent, lease, lend, sublicense or otherwise make Ashley or a key available
+    to anyone else;
+(c) modify, adapt, translate, decompile, disassemble or reverse engineer Ashley, or create works
+    derived from it. This does not limit what 17 U.S.C. 1201(f) (interoperability), 17 U.S.C.
+    1201(j) (security testing), the security-research exemption in 37 C.F.R. 201.40, or other law
+    that cannot be contracted away, allows you to do;
+(d) disable, remove, bypass or interfere with the license check, the key's end date, the list of
+    withdrawn keys or any other technical measure in Ashley, or help anyone else do so;
+(e) remove or alter any copyright, license or other notice in Ashley;
+(f) use Ashley to build a product or service that competes with it;
+(g) use Ashley in breach of section 4, or for any clinical purpose (section 11), or in any setting
+    where its failure could cause injury or damage to property.
+
+Items (b), (c) and (e) are conditions of the license in section 2; the others are promises you
+make. Nothing in this agreement restricts you from giving an honest review or assessment of Ashley,
+and Licensor claims no right in such a review beyond permission to quote it.
+
+7. NAMED DEPENDENCIES: THE OUTSIDE THINGS ASHLEY NEEDS
+
+Ashley works only while all of the following hold. None of them is within Licensor's control, and
+each is disclosed here, in the signing dialog and where Ashley is offered, so that you can decide
+with this in mind:
+
+(a) your institution keeps your AccessID, your grid account and your access to its network and HPC
+grid, and its policies, firewalls, maintenance windows, queue rules and job limits allow what Ashley
+does;
+(b) Anthropic keeps offering Claude, Claude Code, its sign-in flow, the subscription plan you hold and
+Remote Control on terms that permit your use, and does not change, limit or enforce them against your
+account or your pattern of use;
+(c) Microsoft keeps Visual Studio Code, its extension interfaces, its Microsoft and GitHub sign-in
+providers and the Marketplace listing of Ashley available and compatible, and does not remove or
+disable Ashley;
+(d) GitHub and Hugging Face keep your accounts, tokens and services available;
+(e) you keep your own accounts, do not share them, and keep your sign-ins current;
+(f) the internet connections between your laptop, the grid and these services work.
+
+Licensor may also stop offering Ashley, or a version of it, at any time, with notice to holders of
+paid licenses where practical.
+
+8. ASSUMPTION OF RISK
+
+You choose to use Ashley knowing section 7. You accept the risk that any Named Dependency fails or
+changes, that Ashley stops working as a result, and that work you had running, files you had in a
+worker's session, or time you had planned may be lost or delayed. You agree that such an event is
+not a defect in Ashley, not a breach of this agreement by Licensor, and gives no claim against
+Licensor other than the remedy in section 9(e). This section is one of the terms you specifically
+acknowledge in the signing dialog. It does not cover loss caused by Licensor's own gross negligence,
+wilful misconduct or fraud.
+
+9. TERM, SUPPORT, FEES AND REFUNDS
+
+(a) Term. This agreement lasts until your Full Edition key ends or is withdrawn, or until it is
+terminated. It terminates automatically if you breach it. When it ends you must stop using Ashley
+under it and delete your key; if you still hold Trial Edition access, its own agreement governs from
+then on. Sections 4 to 8 and 10 to 23, and anything else that by its nature should survive, survive.
+
+(b) Support. While you hold a valid Full Edition key, Licensor provides commercially reasonable
+support through the channel stated where you obtained Ashley. Support means help with using Ashley
+as designed; it does not include restoring a Named Dependency, and it carries no response-time
+promise.
+
+(c) Fees and the seller. The fee for a key is stated before you pay, is payable in advance for a
+fixed term, and does not renew by itself. Where Ashley is sold through a reseller acting as merchant
+of record, you buy the key from that reseller under its own terms; it collects any tax and handles
+refunds under its policy, and where its policy and this section differ, its policy governs the
+purchase. Taxes are yours where the law puts them on you.
+
+(d) Refund on request. Within 14 days after a paid purchase you may ask for a full refund for any
+reason, once per person, by notice under section 22(e) or to the reseller; the key is then
+withdrawn and the refund is paid promptly. This is a policy Licensor offers, not a warranty.
+
+(e) No refunds for Named Dependencies after that window. Because Ashley depends on the parties and
+conditions in section 7, and because that is disclosed before any purchase, you agree that after the
+window in (d) NO REFUND IS DUE when Ashley stops working, in whole or in part, because of any of
+them: your institution's network, grid, account or policy changes; Anthropic's changes to or
+enforcement of its terms, features, prices or availability; Microsoft removing, disabling or
+changing Visual Studio Code or Ashley's listing; GitHub or Hugging Face suspending or changing your
+account or service; your loss, sharing or change of any account; grid maintenance; or network
+outages. Instead: if a Named Dependency stops Ashley working for you for more than fourteen
+consecutive days during a paid term, tell Licensor; once Ashley works again, Licensor extends your
+license by the days lost, or credits them toward your next key. That extension or credit is your
+sole remedy for such an outage.
+
+(f) A person who was under 18 when a key was bought for them without a parent's or guardian's
+acceptance may cancel it and receive a full refund on request; the key is then withdrawn.
+
+(g) Nothing in this section limits rights that consumer law gives you and does not allow you to
+waive, including under the Michigan Consumer Protection Act, or your card issuer's rules.
+
+10. ERROR REPORTS, KEY RECORDS AND PRIVACY
+
+(a) With your permission, Ashley sends Licensor an error report when one of its own checks fails
+or is repaired. A report contains: Ashley, grid-script and Visual Studio Code versions; operating
+system and processor family; a random identifier created on your laptop; which checks ran, their
+verdicts and timings; the checks' messages and the last error lines of Ashley's own log, with
+e-mail addresses, AccessIDs, file paths, hostnames, network addresses, job numbers and anything
+token-shaped replaced by placeholders. A report never contains your prompts, your files, your
+tokens, your AccessID or e-mail, or environment values. Ashley keeps a copy of every report on your
+laptop.
+
+(b) You choose whether reports are sent in the signing dialog, and you can change the choice at any
+time in Settings (Ashley: Diagnostics: Share) or with "Ashley: Error reports". Ashley honours Visual
+Studio Code's own telemetry setting: when that is off, nothing is sent. Nothing is sent before you
+have chosen, and nothing is sent unless a report address is configured, which is named in the
+documentation.
+
+(c) Reports are used to find and fix defects in Ashley and to decide what to build next. Reviewing
+them and drafting fixes is assisted by AI tools running on Licensor's own accounts; every change
+proposed that way is reviewed by a person and tested before release. Reports are kept for at most
+365 days, are not sold, and are shared only with processors acting for Licensor.
+
+(d) Registering a key sends Licensor's licence service the sign-in token Visual Studio Code holds
+for your institutional (Microsoft) account, so that the service can ask Microsoft who you are; the
+service records your AccessID, e-mail, name as Microsoft gives it, the key, its dates and the
+purchase it belongs to.
+
+(e) Licensor keeps your acceptance record (the version and hash of this text, what you ticked, your
+typed name, the time, the install id, the software versions) and your license and purchase records
+for the life of the license and six years after, to prove the agreement and its terms.
+
+(f) The full privacy statement is in PRIVACY.md, which forms part of this agreement.
+
+11. NOT FOR CLINICAL OR HIGH-RISK USE
+
+Ashley is a research and teaching tool. It is not a medical device and must not be used for
+diagnosis, treatment or any other clinical decision, or as a source of medical advice, or in any
+setting where its failure could cause injury, death or damage to property.
+
+12. NO WARRANTY
+
+ASHLEY IS PROVIDED "AS IS" AND "AS AVAILABLE", WITH ALL FAULTS AND WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED. TO THE FULLEST EXTENT THE LAW ALLOWS, LICENSOR DISCLAIMS ALL IMPLIED WARRANTIES,
+INCLUDING THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND
+NON-INFRINGEMENT. LICENSOR DOES NOT WARRANT THAT ASHLEY WILL WORK WITHOUT ERROR OR INTERRUPTION, THAT
+IT WILL WORK ON ANY PARTICULAR COMPUTING SYSTEM OR WITH ANY PARTICULAR SERVICE, OR THAT THE NAMED
+DEPENDENCIES WILL HOLD. THIS AGREEMENT MAKES NO WRITTEN WARRANTY OF PERFORMANCE; THE REFUND IN
+SECTION 9(d) IS A POLICY, NOT A WARRANTY. SOME STATES DO NOT ALLOW SOME OF THESE DISCLAIMERS; TO THAT
+EXTENT THEY DO NOT APPLY TO YOU.
+
+13. EXCLUSIVE REMEDY AND LIMITATION OF LIABILITY
+
+(a) Exclusive remedy. For any claim about Ashley or this agreement, your sole and exclusive remedy
+is, at Licensor's choice, correction of the problem or a refund of the fees you paid for the unused
+part of your current term, which Licensor can always perform. Sections 9(d) and 9(e) state the
+remedies for a refund request and for an outage.
+
+(b) TO THE FULLEST EXTENT THE LAW ALLOWS, AND WHETHER OR NOT THE REMEDY IN (a) IS HELD TO FAIL OF ITS
+ESSENTIAL PURPOSE, LICENSOR IS NOT LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR
+PUNITIVE DAMAGES, OR FOR LOSS OF DATA, COMPUTING TIME, RESEARCH RESULTS, ACCOUNT ACCESS, PROFITS OR
+GOODWILL, ARISING OUT OF OR RELATED TO ASHLEY OR THIS AGREEMENT, HOWEVER CAUSED AND UNDER ANY
+THEORY. LICENSOR'S TOTAL LIABILITY FOR ALL CLAIMS TOGETHER IS LIMITED TO THE GREATER OF THE FEES YOU
+PAID FOR ASHLEY IN THE TWELVE MONTHS BEFORE THE CLAIM AND ONE HUNDRED US DOLLARS.
+
+(c) These limits do not apply to liability for gross negligence, wilful misconduct, fraud, death or
+personal injury, or any other liability that the law does not allow to be limited.
+
+14. INDEMNITIES
+
+(a) You will defend and indemnify Licensor against claims by third parties, and the resulting
+losses and reasonable costs, to the extent caused by your breach of section 3, 4 or 6 or by your
+misrepresentation under section 4 or 21, and not by Licensor's own negligence or breach.
+
+(b) Licensor will defend you against a third-party claim that Ashley itself (not the open-source
+components, and not your use of it in breach of this agreement) infringes that party's copyright or
+trade secret, and pay the damages finally awarded, subject to section 13, provided you tell Licensor
+promptly and let Licensor control the defence.
+
+15. OWNERSHIP, OPEN-SOURCE COMPONENTS, FEEDBACK AND NAMES
+
+Ashley is protected by copyright and other laws; Licensor and its licensors keep all right, title and
+interest in it. Ashley bundles open-source packages listed in THIRD_PARTY_NOTICES.md; each is
+licensed to you under its own license, which this agreement does not limit. Claude Code, Node.js,
+the container image and the Visual Studio Code extensions Ashley asks you to install are not part of
+Ashley: they are installed from their own sources under their own terms. If you send Licensor
+suggestions about Ashley, Licensor may use them without obligation. "Claude" is Anthropic's mark;
+Ashley runs Claude Code and is not an Anthropic product. Wayne State University's names and marks
+belong to the University.
+
+16. SECURITY AND BREACH NOTICE
+
+Licensor keeps reasonable security measures for the systems that hold license records, acceptance
+records and error reports, and will notify you as Michigan law (MCL 445.72) or the law of your state
+requires if a breach affects your personal information held by Licensor. This duty is Licensor's and
+is not shifted to you by anything else in this agreement.
+
+17. UPDATES AND CHANGES TO THESE TERMS
+
+Updates are distributed through the channel where you obtained Ashley; an extension installed by
+hand from a file does not update itself. Each version ships the terms that apply to it. Licensor may
+change these terms for future versions. A change is never effective merely by being posted: Ashley
+shows a changed agreement in the signing dialog and asks you to accept it again, by the same steps,
+before the new version is used. A change to section 19 or 20 applies only to disputes that arise
+after you accept it. If you decline a changed agreement during a paid term, you may keep using the
+version you accepted for the rest of that term, or ask for a refund of the fees for the unused part
+of the term; earlier acceptance records are kept.
+
+18. EXPORT AND SANCTIONS
+
+You must comply with the export-control and sanctions laws that apply to you. You represent that you
+are not located in, and will not use Ashley in, a country or region subject to a comprehensive US
+embargo, and that you are not on a US government restricted-party list. Ashley contains
+cryptography used to verify signatures and to open SSH connections.
+
+19. DISPUTES: NOTICE FIRST, THEN INDIVIDUAL CLAIMS IN MICHIGAN COURTS
+
+Please read this section; it affects how disputes between you and Licensor are resolved and is one
+of the terms you specifically acknowledge in the signing dialog.
+
+(a) Notice and 60 days to fix it, before any lawsuit. Before starting any lawsuit or other
+proceeding, the party with a claim sends the other a written notice, signed by that party
+personally, stating their name, the e-mail in the license record, the install id shown in "Ashley:
+License", what the problem is and what outcome they want. Notice to Licensor goes to the notice
+address on the Ashley support page; notice to you goes to the e-mail in your license record. The
+parties then have 60 days to resolve it in good faith, including one telephone or video call if
+either asks. Completing this paragraph is a condition of bringing any claim other than in
+small-claims court; a court may decide, at either party's request, whether it was completed. Any
+time limit that applies to the claim, including (e), is paused from the day the notice is sent until
+the 60 days end. Licensor owes you the same notice and the same 60 days.
+
+(b) Where. Any lawsuit or proceeding arising out of or relating to Ashley, your license or this
+agreement is brought only in the state courts sitting in Wayne County, Michigan, or the United States
+District Court for the Eastern District of Michigan, and both parties consent to their jurisdiction,
+except that (1) either party may bring an individual claim that qualifies in the small-claims court
+of the county where you live, and (2) you may bring a claim where you live where the law of your
+state gives you that right and does not allow it to be waived.
+
+(c) CLASS-ACTION WAIVER. YOU AND LICENSOR EACH AGREE TO BRING CLAIMS AGAINST THE OTHER ONLY IN AN
+INDIVIDUAL CAPACITY, AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE,
+CONSOLIDATED OR REPRESENTATIVE PROCEEDING. Every individual remedy the law gives you remains
+available to you individually. If a court holds this paragraph unenforceable for a particular claim,
+it is severed for that claim only and the rest of this agreement stands.
+
+(d) Fees. Each party pays its own lawyers, except that in a proceeding other than small claims the
+court may award the prevailing party its reasonable attorney fees and costs; this does not displace
+any award a statute gives you.
+
+(e) One year to bring contract and warranty claims. Any claim for breach of this agreement, or for
+breach of warranty, must be brought within one year after it arose, or it is barred; the period is
+paused as (a) says. This paragraph does not apply to claims under a consumer-protection statute or
+to any claim whose period the law does not allow to be shortened.
+
+(f) Governing law. This agreement and any dispute are governed by the laws of the State of Michigan
+without regard to conflict-of-laws rules, except that the consumer-protection law of the state where
+you live applies to you where that law says it cannot be displaced.
+
+(g) No arbitration in this version. Disputes go to court as this section says. Licensor may offer
+arbitration in a future version; it would apply only if you accept that version by the steps in
+section 17.
+
+20. WAIVER OF JURY TRIAL
+
+TO THE EXTENT THE LAW ALLOWS, YOU AND LICENSOR EACH KNOWINGLY AND VOLUNTARILY WAIVE ANY RIGHT TO A
+TRIAL BY JURY IN ANY PROCEEDING ARISING OUT OF OR RELATING TO ASHLEY, YOUR LICENSE OR THIS
+AGREEMENT. A CLAIM WILL BE DECIDED BY A JUDGE. This section is one of the terms you specifically
+acknowledge in the signing dialog.
+
+21. YOUR STATE'S RIGHTS, AND AGE
+
+(a) Nothing in this agreement takes away a right that the law of your state gives you and does not
+allow to be waived. No provision of this agreement is void, unenforceable or inapplicable in your
+state unless this section or that law says so.
+
+(b) New Jersey residents: sections 12 and 13 do not limit Licensor's liability for its own fraud,
+wilful misconduct or gross negligence, or your rights under the New Jersey Consumer Fraud Act; section
+9(e) does not apply to a refund the New Jersey Consumer Fraud Act entitles you to; section 19(e) does
+not shorten a period that New Jersey law does not allow to be shortened; and section 20 applies only
+to the extent New Jersey law allows.
+
+(c) California residents: you may make any statement you wish about Ashley (Civil Code 1670.8);
+nothing here waives public injunctive relief that California law does not allow to be waived; a
+notice under section 19(a) that meets the form of the Consumers Legal Remedies Act counts as the
+notice that Act requires; and section 2(b) is the license disclosure Business and Professions Code
+17500.6 requires.
+
+(d) Texas and Massachusetts residents: your rights under the Deceptive Trade Practices Act and
+chapter 93A, including their notice procedures, are not waived; section 19(a) runs alongside them.
+
+(e) Where a state requires a written waiver in a particular form for a particular right, and this
+agreement does not meet that form, that right is not waived.
+
+(f) Age. You must be at least eighteen years old to accept this agreement. A person under eighteen
+may use Ashley only if a parent or guardian accepts this agreement on their behalf in the signing
+dialog and remains responsible for their use. Licensor does not invoke sections 19 or 20 against a
+person who was under eighteen when they accepted without such acceptance; section 9(f) applies.
+
+22. GENERAL
+
+(a) Entire agreement; no reliance. This agreement, with PRIVACY.md and THIRD_PARTY_NOTICES.md, is the
+entire agreement between you and Licensor about your Full Edition key and replaces the Trial Edition
+agreement for your use of Ashley from the moment you register that key, as well as any earlier
+terms for the versions it covers, and anything said in a listing, a README, a demonstration, a post
+or a conversation. You have not relied on any statement about Ashley that is not written here or in
+the documentation shipped with it. Licensor does not promise any particular result from using
+Ashley, any particular availability of a Named Dependency, or any particular response time. This
+paragraph does not exclude liability for fraud.
+
+(b) Severability. If any part of this agreement is unenforceable, the rest remains in effect, subject
+to section 19(c).
+
+(c) Assignment. You may not assign this agreement; Licensor may assign it to a successor to the
+Ashley business or to an entity Licensor controls, with notice to you.
+
+(d) No waiver; no oral changes. A failure to enforce a term is not a waiver of it. This agreement
+changes only as section 17 says.
+
+(e) Notices. Notices to you go to the e-mail in your license record and, where practical, inside
+Ashley; notices to Licensor go to the notice address on the Ashley support page.
+
+(f) Electronic records. You agree to receive this agreement, the privacy statement and notices
+electronically; you can save and print them, and you may withdraw this consent by stopping use of
+Ashley. To read them you need a computer with Visual Studio Code or a web browser. You may ask for a
+paper copy at the notice address.
+
+(g) Headings and language. Headings are for convenience. Where this agreement is translated, the
+English text governs.
+
+23. CONTACT
+
+Questions about licensing: the person who issued your key, or the Ashley support page, which also
+carries the notice address for section 19(a).
