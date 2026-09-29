@@ -27,7 +27,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
 <nav class="crumbs"><a href="./">Ashley Bridge</a> · <a href="../support.html">Support and notices</a></nav>
 <h1 id="ashley-bridge-privacy-statement">Ashley Bridge privacy
 statement</h1>
-<p>Version 5, 2026-09-29. Part of the Ashley Bridge Trial Edition
+<p>Version 6, 2026-09-29. Part of the Ashley Bridge Trial Edition
 License Agreement (LICENSE.txt) and of any Full Edition agreement that
 names it. You can save and print this text; it is also on the Ashley
 support page.</p>
@@ -38,11 +38,11 @@ to individuals; it is not provided by or on behalf of any school, and
 Licensor is not acting for one.</p>
 <p>Ashley Bridge is a browser extension that starts, watches and stops a
 job in your own cluster account through your university’s Open OnDemand
-portal, and a set of scripts (the framework) in that account. The job
-runs Claude Code, which you signed in to yourself. This statement says
-what stays in your browser, what your portal sees, what happens when you
-sign in to Claude, what Anthropic receives, what Licensor receives, and
-what is never collected.</p>
+portal, and a set of scripts (the framework) that runs in that account.
+The job runs Claude Code, which you signed in to yourself. This
+statement says what stays in your browser, what your portal sees, what
+happens when you sign in to Claude, what Anthropic receives, what
+Licensor receives, and what is never collected.</p>
 <h2 id="what-stays-in-your-browser">What stays in your browser</h2>
 <table>
 <colgroup>
@@ -123,8 +123,9 @@ opened by itself, so each opens once; a note of the check job it
 submitted by itself (the time and the job number), so it is not
 submitted again while it runs; and a note of the install or update it
 ran by itself in your cluster account (the time, whether it succeeded,
-and how many files it uploaded), so a failing one is not repeated in a
-loop</td>
+and how many files it uploaded or which shared copy of your lab’s it
+used, with one line when it could not use that copy), so a failing one
+is not repeated in a loop</td>
 <td><code>storage.local</code></td>
 <td>so the automatic steps do not repeat themselves</td>
 <td>uninstalling</td>
@@ -188,16 +189,21 @@ answer about whether it is signed in.</p>
 <h2 id="what-goes-to-your-own-cluster-account">What goes to your own
 cluster account</h2>
 <p>The framework’s scripts and settings, the job files, a random per-job
-token in a file only you can read, and the job’s status files. Nothing
-about your approval goes there. When you make the statement above for a
-worker, the extension also writes one small file in your account (the
-framework’s own marker, <code>~/.hpcworker/consent</code>), one line:
-the word yes, the time, and the random installation identifier from your
-browser. Your worker gives that answer to Claude Code when Claude Code
-asks its one-time question “Enable Remote Control?”, and after the first
-session Claude Code’s own record of your answer takes over. Everything
-there is in your own account under your institution’s rules; Licensor
-has no access to it.</p>
+token in a file only you can read, and the job’s status files. Where
+your university’s lab keeps one shared copy of the framework on the
+cluster, the scripts are not copied into your account: a small launcher
+that runs the shared copy, and a one-line note of where that copy is,
+take their place. Either way, the install adds a marked block of a few
+lines to <code>~/.bashrc</code> so that a terminal finds the tool.
+Nothing about your approval goes there. When you make the statement
+above for a worker, the extension also writes one small file in your
+account (the framework’s own marker, <code>~/.hpcworker/consent</code>),
+one line: the word yes, the time, and the random installation identifier
+from your browser. Your worker gives that answer to Claude Code when
+Claude Code asks its one-time question “Enable Remote Control?”, and
+after the first session Claude Code’s own record of your answer takes
+over. Everything there is in your own account under your institution’s
+rules; Licensor has no access to it.</p>
 <h2 id="what-your-portal-sees">What your portal sees</h2>
 <p>The extension makes requests to your university’s Open OnDemand
 portal, and only to it, using the sign-in your browser already holds:
@@ -205,16 +211,18 @@ waking the portal’s own web server up if it is asleep, opening the
 portal’s shell once to submit a job and closing it, holding the shell
 open once for the sign-in sitting described below and closing it when
 the sitting ends, listing and reading files in your own account through
-the portal’s Files app and writing the framework’s files and the marker
-there, listing your jobs, and cancelling a job when you ask. Your
-institution’s logs record those requests as they record any use of the
-portal; the shell’s page token appears in the portal’s access log, as it
-does when you open the shell yourself. The extension never signs in for
-you and never touches a multi-factor step. It reads no other website and
-makes no request to claude.ai. When it opens a claude.ai page (your
-session’s link when your worker connects, or the connectors page from
-the optional step) or Anthropic’s sign-in page, it opens it in a new
-browser tab, as a bookmark would, and runs nothing there.</p>
+the portal’s Files app (and, where your lab keeps a shared copy of the
+framework, reading that copy’s version number) and writing the
+framework’s files (unless the shared copy is used) and the marker there,
+listing your jobs, and cancelling a job when you ask. Your institution’s
+logs record those requests as they record any use of the portal; the
+shell’s page token appears in the portal’s access log, as it does when
+you open the shell yourself. The extension never signs in for you and
+never touches a multi-factor step. It reads no other website and makes
+no request to claude.ai. When it opens a claude.ai page (your session’s
+link when your worker connects, or the connectors page from the optional
+step) or Anthropic’s sign-in page, it opens it in a new browser tab, as
+a bookmark would, and runs nothing there.</p>
 <h2 id="what-happens-when-you-sign-in-to-claude">What happens when you
 sign in to Claude</h2>
 <p>Claude Code itself does the sign-in, inside your job’s container on a
@@ -356,6 +364,14 @@ consent (LICENSE.txt section 21).</p>
 <p>A new version of this statement ships with the Ashley Bridge version
 it applies to and is shown for acceptance when it changes
 materially.</p>
+<p>Version 6 (2026-09-29, Ashley Bridge 5.0.0): where your institution’s
+lab keeps one shared, read-only copy of the cluster-side scripts, the
+extension no longer copies them into your account; it writes a small
+launcher, a one-line marker naming the lab’s copy and your profile, and
+reads that copy’s version file through your portal. Nothing new leaves
+your device and nothing new reaches Licensor. The install note the
+extension keeps is also written when you press “Set up the cluster
+again” under Details.</p>
 <p>Version 5 (2026-09-29, Ashley Bridge 4.0.0): there are no license
 keys any more, and nothing to type or paste. Your own sign-in to your
 portal identifies you, by the account name the portal’s dashboard shows;
