@@ -37,10 +37,11 @@ a.store span{display:block;font-weight:400;font-size:.85em}
 <strong>Licensed software, by approval.</strong> Ashley Bridge is licensed, not sold: you receive a license to use it under the
 <a href="terms.html">Trial Edition License Agreement</a> and the <a href="privacy.html">privacy statement</a>, accepted once in a
 signing dialog on the extension's own setup page. The Trial Edition is free for
-approved institutional accounts during the evaluation period; a paid Full Edition, if offered, is a separate key and a separate
-agreement. Nothing converts by itself and no payment details are taken for a trial. <a href="../request.html">Ask for access</a>
-with your institutional identifier; once you are approved you receive a key that names you, which you paste once on the
-extension's setup page.
+approved institutional accounts during the evaluation period; a paid Full Edition, if offered, is a separate agreement. Nothing
+converts by itself and no payment details are taken for a trial. <a href="../request.html">Ask for access</a> with the account
+name your university's Open OnDemand portal shows for you; once you are approved the extension just works. There is no key and
+nothing to paste: your own sign-in to your portal identifies you, and the extension confirms your approval with the maintainer's
+access service when you connect and about once a day.
 </div>
 
 <h2 id="install">Install</h2>
@@ -52,16 +53,20 @@ button opens it.</p>
 <a class="store" data-store="edge" data-status="pending" href="#install" aria-disabled="true">Microsoft Edge Add-ons<span>listing pending review</span></a>
 <a class="store" data-store="firefox" data-status="pending" href="#install" aria-disabled="true">Firefox Add-ons<span>listing pending review</span></a>
 </p>
-<p class="note">Testers: ask Greg for the package. A Safari edition is planned and is not offered yet.</p>
+<p class="note">Testers, until the listings are live: <a href="../request.html">ask for access</a> with the account name your portal
+shows for you, wait for Greg to tell you it is approved, install the package he sends you, then open your portal and click the icon.
+There is nothing to paste; an instruction you were given earlier that mentions a key is out of date. A Safari edition is planned and
+is not offered yet.</p>
 
 <h2>Three steps</h2>
-<p>After installing the extension, accepting the agreement once on its setup page and pasting the key your lead sent:</p>
+<p>After installing the extension and accepting the agreement once on its setup page (and once your account is approved):</p>
 <ol class="steps">
 <li><strong>Open your portal tab.</strong> Sign in to your university's Open OnDemand portal the usual way (VPN first if your
 university requires it) and keep the tab open.</li>
 <li><strong>Click the Ashley Bridge icon.</strong> The first click asks your browser once for access to that one site. Then the
 extension does the rest by itself, in order, and says in one line what it is doing: it wakes the portal up, checks you are
-signed in, installs its small set of scripts in your own cluster account if they are not there, shows you where your work goes
+signed in, confirms your account is approved, installs its small set of scripts in your own cluster account if they are not
+there, shows you where your work goes
 and takes your statement about it, starts your worker through the portal's own shell, and waits for Claude Code to connect.</li>
 <li><strong>Sign in to Claude once, when the panel asks.</strong> The extension opens Anthropic's sign-in page in a new tab; you
 sign in with your own Claude account, click <em>Authorize</em>, and paste the code that page shows into the one box in the
@@ -80,18 +85,29 @@ you paste into the extension's box is typed once into your own job's terminal on
 not sent anywhere else; the extension reads only whether Claude Code says it is signed in.</li>
 <li>Ashley Bridge runs no code it did not ship with. Its daily update check downloads a signed list, not a program.</li>
 <li>Ashley Bridge works with one website: the Open OnDemand portal you connect. It requests access to that site when you click its
-icon on that site's tab, and to nothing else. Its only other request is a daily download of the signed withdrawn-keys list from
-the maintainer's site, which carries nothing about you.</li>
+icon on that site's tab, and to nothing else. Its only other requests go to the maintainer: the approval check, which sends the
+account name your portal shows for you, your portal's address, the product name and its version, so the maintainer's access
+service can answer whether that account is approved; and a daily download, from the maintainer's website, of that service's
+address and the signed list of withdrawn versions, which carries nothing about you.</li>
 <li>Ashley Bridge does not read your portal cookie and does not sign in for you. When your portal asks for a sign-in, the
-extension asks you to sign in in a tab.</li>
-<li>Ashley Bridge's audit log of what it asked your portal never contains what you typed to sign in.</li>
+extension asks you to sign in in a tab. There is no key and nothing to paste: your institution's own sign-in identifies you.</li>
+<li>Ashley Bridge sends its maintainer no usage data, no error reports and no activation request; the approval check is the only
+thing it sends about you. Its audit log of what it asked your portal never contains what you typed to sign in and is never
+transmitted.</li>
 </ul>
+
+<h2>After it connects</h2>
+<p>The worker is a job on the cluster, not a program on your computer. Once the panel shows <em>Open in Claude</em>, close the
+panel, the portal tab, the browser or the laptop as you like: open <a href="https://claude.ai/code">claude.ai/code</a> or
+<em>Code</em> in the Claude app from any device, pick the environment named after your site, and carry on. The job queues its own
+successor before its time is up, and the successor continues the same session. The portal is needed again only to stop the
+worker, to start one after you stopped it, or if the cluster ended the chain.</p>
 
 <h2>Documents</h2>
 <ul>
-<li><a href="privacy.html">Privacy statement</a> (version 4): what stays in your browser, what your portal sees, what happens
+<li><a href="privacy.html">Privacy statement</a> (version 5): what stays in your browser, what your portal sees, what happens
 when you sign in to Claude, what Anthropic receives, what the maintainer receives, and what is never collected.</li>
-<li><a href="terms.html">Trial Edition License Agreement</a> (version 3): the terms you accept in the signing dialog, including
+<li><a href="terms.html">Trial Edition License Agreement</a> (version 4): the terms you accept in the signing dialog, including
 the dispute section.</li>
 <li><a href="../support.html">Support and notices</a>: getting help, the notice address, disputes, security reports.</li>
 <li><a href="../request.html">Ask for access</a>.</li>
@@ -109,9 +125,11 @@ to work until that is granted; no host permission at install time, and none on a
 <code>declarativeNetRequest</code>, <code>nativeMessaging</code>, <code>debugger</code>, <code>identity</code>,
 <code>clipboardRead</code>.</p>
 <p>No remote code: the daily update check downloads one signed list (<a href="../bridge-killlist.json">bridge-killlist.json</a>)
-and checks its signature against a key built into the extension; the list can withdraw a version or a key and nothing else. The
-bundle is minified for size and not obfuscated; the Firefox source package carries build instructions. Security reports go to the
-notice address on the <a href="../support.html">support page</a>.</p>
+and checks its signature against a key built into the extension; the list can withdraw a version and nothing else. No licence
+key: the one request that carries anything about the person is the approval check, which sends the account name the portal shows,
+the portal's hostname, the product and the version to the maintainer's access service and is answered yes or no. The bundle is
+minified for size and not obfuscated; the Firefox source package carries build instructions. Security reports go to the notice
+address on the <a href="../support.html">support page</a>.</p>
 </div>
 
 <p class="note">Ashley Bridge runs Claude Code and is not an Anthropic product; "Claude" is Anthropic's mark and "Open OnDemand"

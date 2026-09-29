@@ -27,7 +27,7 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
 <nav class="crumbs"><a href="./">Ashley Bridge</a> · <a href="../support.html">Support and notices</a></nav>
 <h1 id="ashley-bridge-privacy-statement">Ashley Bridge privacy
 statement</h1>
-<p>Version 4, 2026-09-29. Part of the Ashley Bridge Trial Edition
+<p>Version 5, 2026-09-29. Part of the Ashley Bridge Trial Edition
 License Agreement (LICENSE.txt) and of any Full Edition agreement that
 names it. You can save and print this text; it is also on the Ashley
 support page.</p>
@@ -79,10 +79,14 @@ the options page says so where each is switched)</td>
 <td>the options page</td>
 </tr>
 <tr>
-<td>Your license key and the institutional identifier you entered</td>
+<td>The account name your portal’s dashboard showed for your session,
+and the answer of the last approval check: yes or no, the time it was
+given, the portal it was given for and, when it was no, the address of
+the page where you can ask for access</td>
 <td><code>storage.local</code></td>
-<td>to check that the license names you</td>
-<td>the options page (remove the key); uninstalling</td>
+<td>to know which account to ask about, and to keep working for a day
+without asking again</td>
+<td>disconnecting the portal on the options page; uninstalling</td>
 </tr>
 <tr>
 <td>Your acceptance of the agreement: its version and text hashes, the
@@ -134,11 +138,14 @@ in a new tab; the extension does nothing on it</td>
 <td>untick it; uninstalling</td>
 </tr>
 <tr>
-<td>The last good copy of the withdrawn-keys list, and a random
-installation identifier created in your browser</td>
+<td>The last good copy of the withdrawn-versions list, the address of
+Licensor’s access service as read once a day from a small file on
+Licensor’s website, and a random installation identifier created in your
+browser</td>
 <td><code>storage.local</code></td>
-<td>to keep working when Licensor’s service cannot be reached; to name
-your acceptance record and the marker below without naming you</td>
+<td>to keep working when Licensor’s website cannot be reached; to know
+where the approval check goes; to name your acceptance record and the
+marker below without naming you</td>
 <td>uninstalling</td>
 </tr>
 <tr>
@@ -168,26 +175,29 @@ export, clear); it is never transmitted</td>
 </tr>
 </tbody>
 </table>
-<p>There is no durable secret in the extension’s storage. The extension
+<p>There is no durable secret in the extension’s storage, and there is
+no key: your own sign-in to your portal identifies you. The extension
 never reads your portal’s sign-in cookie: your browser attaches it to
 requests to that one website, as it does for the portal’s own pages. The
-extension never reads, stores, copies or relays a Claude credential:
-Claude Code keeps its own sign-in in your cluster account, and the
-framework reads only Claude Code’s yes-or-no answer about whether it is
-signed in.</p>
+one thing it reads about you from the portal is the account name the
+portal’s own dashboard page shows for your session; there is nowhere to
+type a different one. The extension never reads, stores, copies or
+relays a Claude credential: Claude Code keeps its own sign-in in your
+cluster account, and the framework reads only Claude Code’s yes-or-no
+answer about whether it is signed in.</p>
 <h2 id="what-goes-to-your-own-cluster-account">What goes to your own
 cluster account</h2>
-<p>Your license key, the framework’s scripts and settings, the job
-files, a random per-job token in a file only you can read, and the job’s
-status files. When you make the statement above for a worker, the
-extension also writes one small file in your account (the framework’s
-own marker, <code>~/.hpcworker/consent</code>), one line: the word yes,
-the time, and the random installation identifier from your browser. Your
-worker gives that answer to Claude Code when Claude Code asks its
-one-time question “Enable Remote Control?”, and after the first session
-Claude Code’s own record of your answer takes over. Everything there is
-in your own account under your institution’s rules; Licensor has no
-access to it.</p>
+<p>The framework’s scripts and settings, the job files, a random per-job
+token in a file only you can read, and the job’s status files. Nothing
+about your approval goes there. When you make the statement above for a
+worker, the extension also writes one small file in your account (the
+framework’s own marker, <code>~/.hpcworker/consent</code>), one line:
+the word yes, the time, and the random installation identifier from your
+browser. Your worker gives that answer to Claude Code when Claude Code
+asks its one-time question “Enable Remote Control?”, and after the first
+session Claude Code’s own record of your answer takes over. Everything
+there is in your own account under your institution’s rules; Licensor
+has no access to it.</p>
 <h2 id="what-your-portal-sees">What your portal sees</h2>
 <p>The extension makes requests to your university’s Open OnDemand
 portal, and only to it, using the sign-in your browser already holds:
@@ -243,69 +253,102 @@ draws from your plan’s shared limit. Anthropic’s terms and privacy
 policy apply to that data, not this statement. The extension shows these
 facts before each job start.</p>
 <h2 id="what-licensor-receives">What Licensor receives</h2>
-<p><strong>From the extension: the withdrawn-keys request, and nothing
-else.</strong> Once a day the extension fetches a signed list of
-withdrawn keys and withdrawn versions from Licensor’s website, at
-<code>https://openspineconsortium.com/ashley/bridge-killlist.json</code>.
-The request is sent without cookies and carries nothing about you beyond
-what any web request carries (your network address, which the web host’s
-ordinary server logs may record for a short time); the file holds the
-list only; the extension makes no request to Licensor before you have
-accepted the agreement. That is the only request the extension ever
-makes to Licensor. In particular:</p>
+<p><strong>From the extension: the approval check, and two small
+files.</strong> The extension makes no request to Licensor before you
+have accepted the agreement. After that:</p>
 <ul>
-<li>your license key is checked inside your browser, against public keys
-built into the extension; nothing is sent to check it, and there is no
-activation step;</li>
+<li><strong>The approval check.</strong> Once your portal is connected
+and the extension has read your account name from the portal’s
+dashboard, it asks Licensor’s access service whether that account is
+approved: when you connect, about once a day while it is in use, and
+again when you click the icon after a day has passed or after a no. The
+request is sent without cookies, over an encrypted connection, to the
+address named in the services file below, and carries: the account name
+your portal shows for your session (never one you typed; there is
+nowhere to type one), your portal’s hostname, the product name
+(<code>bridge</code>) and the extension’s version; like any request, it
+arrives at a time. The service answers yes or no, and nothing else about
+you or anyone else. The extension keeps a yes for up to a day, and for
+up to seven days when the service cannot be reached, so an outage on
+Licensor’s side does not stop your work; it keeps a no for ten minutes,
+and while the answer is no it starts no worker and offers you a button
+to ask for access.</li>
+<li><strong>Two files, once a day.</strong>
+<code>https://openspineconsortium.com/ashley/services.json</code> (the
+address of the access service) and
+<code>https://openspineconsortium.com/ashley/bridge-killlist.json</code>
+(the signed list of withdrawn extension versions). Both requests are
+sent without cookies and carry nothing about you beyond what any web
+request carries (your network address, which the web host’s ordinary
+server logs may record for a short time); the files hold addresses and
+the list only.</li>
+</ul>
+<p>Those are the only requests the extension ever makes to Licensor. In
+particular:</p>
+<ul>
+<li>there is no key and no activation step; your institution’s own
+sign-in identifies you, and the extension never reads your portal’s
+cookie or password;</li>
 <li>the extension sends no error reports, no crash reports and no usage
 data; it has no code for them and no address to send them to;</li>
 <li>your acceptance record, your statements, your audit log and your
 settings stay in your browser.</li>
 </ul>
-<p><strong>Your license record.</strong> When Licensor issues your key,
-Licensor’s own records hold the key’s id, the name and institutional
-identifier it names, the e-mail it was sent to, its dates, and any
-withdrawal decision. Those records come from your access request and
-from the person who issued the key, not from the extension.</p>
+<p><strong>What Licensor records from each check.</strong> The account
+name, the portal hostname, the product, the version, the time, a salted
+hash of your network address (the address itself is not kept) and the
+answer given. These lines sit with your access record.</p>
+<p><strong>The <em>Ask for access</em> button.</strong> When the answer
+is no, the panel’s one button opens Licensor’s request page in a new tab
+with your account name in the page’s address, so the form is filled in
+for you. As with any page you open, your browser’s history and the web
+host’s ordinary server logs may record that address.</p>
 <p><strong>Access requests.</strong> If you ask for access on the Ashley
 support site (a web page, not the extension), the request form records
-what you enter: institutional identifier, name, institutional e-mail,
+what you enter: your account name, your name, your institutional e-mail,
 what you will use Ashley Bridge for, and the time.</p>
+<p><strong>Your access record.</strong> Licensor’s records hold the
+approval and withdrawal decisions about your account, with the name and
+e-mail you gave when you asked, their dates, and the check lines above.
+The same approved list serves Licensor’s other product, Ashley for VS
+Code, so one approval covers both.</p>
 <p><strong>A notice under the agreement</strong>, if you send one: what
-you write in it, kept with your license record.</p>
+you write in it, kept with your access record.</p>
 <h2 id="what-is-never-collected">What is never collected</h2>
 <p>Stated in the negative because reviewers read for what is absent: the
 extension does not collect command text, file paths, prompt content, job
 output, portal cookies or tokens, the code you paste to sign in to
 Claude, browsing activity, or anything from claude.ai or any Anthropic
 page. It sends Licensor no error or crash reports, no usage data and no
-activation request. It has no access to claude.ai, requests no
+activation request; the approval check above is the only thing it sends
+about you. It has no access to claude.ai, requests no
 <code>cookies</code>, <code>tabs</code>, <code>webRequest</code>,
 <code>nativeMessaging</code>, <code>debugger</code>,
 <code>identity</code> or <code>clipboardRead</code> permission, and runs
 no code fetched from anywhere.</p>
 <h2 id="how-licensor-uses-and-keeps-it">How Licensor uses and keeps
 it</h2>
-<p>License and access records are kept for the life of the license and
-six years after, to prove the agreement and for accounting and disputes.
-Nothing is sold or used for advertising. The web host that serves the
-withdrawn-keys list sees the requests any web server sees and nothing
-more. Processors acting for Licensor (hosting, the access-request
-service) see only what they need to run the service. Licensor’s use of
-data complies with the Chrome Web Store’s Limited Use requirements.</p>
+<p>Access records, including the check lines, are kept for the life of
+your access and six years after, to prove the agreement and for
+accounting and disputes. Nothing is sold or used for advertising. The
+web host that serves the two daily files sees the requests any web
+server sees and nothing more. Processors acting for Licensor (hosting;
+the access service) see only what they need to run the service.
+Licensor’s use of data complies with the Chrome Web Store’s Limited Use
+requirements.</p>
 <h2 id="security-and-breaches">Security and breaches</h2>
 <p>Licensor keeps reasonable security measures for the systems that hold
-license and access records, and will notify you as Michigan law (MCL
-445.72) requires if a breach affects your personal information held by
+access records, and will notify you as Michigan law (MCL 445.72)
+requires if a breach affects your personal information held by
 Licensor.</p>
 <h2 id="your-choices-and-rights">Your choices and rights</h2>
 <p>Remove the site permission or uninstall the extension at any time;
-ask Licensor for a copy or deletion of your license or access records
-(deletion of a license record ends the license). Michigan residents and
-residents of other states may have further rights under their state’s
-laws; Licensor honours requests it is obliged to honour and answers
-others where it reasonably can. Ashley Bridge is offered in the United
-States.</p>
+ask Licensor for a copy or deletion of your access records (deletion of
+your access record ends your approval and with it the license). Michigan
+residents and residents of other states may have further rights under
+their state’s laws; Licensor honours requests it is obliged to honour
+and answers others where it reasonably can. Ashley Bridge is offered in
+the United States.</p>
 <h2 id="children">Children</h2>
 <p>Ashley Bridge is for adults, or minors with a parent’s or guardian’s
 consent (LICENSE.txt section 21).</p>
@@ -313,6 +356,20 @@ consent (LICENSE.txt section 21).</p>
 <p>A new version of this statement ships with the Ashley Bridge version
 it applies to and is shown for acceptance when it changes
 materially.</p>
+<p>Version 5 (2026-09-29, Ashley Bridge 4.0.0): there are no license
+keys any more, and nothing to type or paste. Your own sign-in to your
+portal identifies you, by the account name the portal’s dashboard shows;
+the extension confirms with Licensor’s access service that this account
+is approved when you connect, when you click the icon and about once a
+day, and that check is now the one request that carries anything about
+you (the account name, the portal’s hostname, the product and its
+version; Licensor records those with the time, a salted hash of the
+network address and the answer). The daily list withdraws versions only;
+the extension also reads a daily services file for the service’s
+address. The table rows for the key and the identifier are replaced by
+the account name and the last answer; the <em>Ask for access</em>
+button, which carries your account name in the page’s address, is named.
+Nothing else changed.</p>
 <p>Version 4 (2026-09-29): the statement now describes the software as
 built. Earlier versions described an activation request and optional
 error reports; the extension has neither (there is no code for them and

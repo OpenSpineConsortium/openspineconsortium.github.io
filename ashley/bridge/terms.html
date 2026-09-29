@@ -27,8 +27,8 @@ code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
 <nav class="crumbs"><a href="./">Ashley Bridge</a> · <a href="../support.html">Support and notices</a></nav>
 <h1 id="ashley-bridge-trial-edition-license-agreement">ASHLEY BRIDGE
 TRIAL EDITION LICENSE AGREEMENT</h1>
-<p>Version 3, 2026-09-29. Applies to the Trial Edition of Ashley Bridge
-1.0.0 and later versions that ship this text, as distributed through the
+<p>Version 4, 2026-09-29. Applies to the Trial Edition of Ashley Bridge
+4.0.0 and later versions that ship this text, as distributed through the
 Chrome Web Store, Microsoft Edge Add-ons, Firefox Add-ons and, for
 Safari, the App Store, and as a signed file for unlisted distribution.
 You can read, copy, save and print this text at any time: it is in the
@@ -70,10 +70,12 @@ this agreement covers: free of charge during the evaluation period, for
 persons whose institutional account Licensor has approved. "Full
 Edition" means the paid edition, if Licensor offers one, governed by the
 separate Ashley Bridge Full Edition License Agreement, which you accept
-only if you choose to register a Full Edition key. "Access key" means
-the signed text beginning "ASHLEY1." that Licensor issues in your name;
-it states an edition, an end date and a license id. "Named Dependencies"
-are the outside parties and conditions listed in section 7.</p>
+only if you choose that edition. "Your portal" means your institution's
+Open OnDemand portal, and "your account name" means the name that
+portal's dashboard shows for the session you signed in to; it is the
+only identifier Ashley Bridge uses for you, and there is nothing to type
+or paste. "Named Dependencies" are the outside parties and conditions
+listed in section 7.</p>
 <h2 id="your-license-and-what-it-is-not">2. YOUR LICENSE, AND WHAT IT IS
 NOT</h2>
 <p>(a) Subject to this agreement, Licensor grants you a personal,
@@ -84,29 +86,32 @@ are authorised to use, for your own research and study.</p>
 <p>(b) Ashley Bridge is licensed, not sold. You receive this license and
 no ownership of the software. The license can end as this agreement says
 (sections 3 and 9). All rights not granted are reserved.</p>
-<h2 id="approval-access-keys-and-withdrawal">3. APPROVAL, ACCESS KEYS
-AND WITHDRAWAL</h2>
+<h2 id="approval-and-withdrawal">3. APPROVAL AND WITHDRAWAL</h2>
 <p>(a) The Trial Edition is available only to persons whose
 institutional account Licensor has approved. Approval is requested on
-the Ashley support site and may be refused or withdrawn at any time,
-with or without reason. Licensor issues an access key in your name,
-which you paste once into the Extension's setup page; the Extension
-checks it inside your browser, against public keys built into the
-Extension, on every use, and refuses to work without it. Nothing is sent
-to check a key. A copy of Ashley Bridge with no valid key for the person
-using it does not work.</p>
-<p>(b) Your key is for you alone. Do not share, publish, transfer or
-sell it, and do not use a key issued to someone else.</p>
+the Ashley support site, with your account name, and may be refused or
+withdrawn at any time, with or without reason. There is no key and no
+password of Licensor's: your own sign-in to your portal identifies you.
+After you have accepted this agreement and connected your portal, the
+Extension asks Licensor's access service whether your account name is
+approved, when you connect, about once a day while it is in use, and
+again when you click its icon after a day has passed or after a no, and
+it starts a worker only while the answer is yes. A copy of Ashley Bridge
+used from an account that is not approved does not start a worker; its
+panel offers a link to ask for access instead.</p>
+<p>(b) Your approval is for you and the institutional account it names
+alone. Do not use Ashley Bridge from an account that is not yours, and
+do not arrange for anyone else to use it under your approval.</p>
 <p>(c) No payment is taken for the Trial Edition, nothing converts
 automatically into a paid license, and no charge follows its end. Ashley
-Bridge contains the code that enforces keys and their end dates; you may
+Bridge contains the code that asks for and enforces approval; you may
 not disable, remove or work around it.</p>
-<p>(d) Licensor may withdraw a key that has been shared, misused, issued
-in error or obtained by misrepresentation, or whose holder's approval
-has been withdrawn. Ashley Bridge checks keys against a signed list of
-withdrawn keys, and checks its own version against a signed list of
-withdrawn versions; a withdrawn version stops sending commands and tells
-you to update.</p>
+<p>(d) Licensor may withdraw an approval that has been misused, given in
+error or obtained by misrepresentation, or for any other reason. Once
+your approval is withdrawn, the Extension stops starting workers at its
+next check and tells you so. Ashley Bridge also checks its own version
+against a signed list of withdrawn versions; a withdrawn version stops
+sending commands and tells you to update.</p>
 <h2 id="your-accounts-and-the-terms-that-come-with-them">4. YOUR
 ACCOUNTS AND THE TERMS THAT COME WITH THEM</h2>
 <p>Ashley Bridge works with accounts and systems that are yours or your
@@ -159,10 +164,14 @@ already holds for your institution's Open OnDemand portal, on that one
 website only, in the same way the portal's own pages do. It never reads
 the sign-in cookie, never stores a portal password, never signs in for
 you and never touches a multi-factor step. When the portal asks for a
-sign-in, the Extension asks you to sign in in a tab.</p>
-<p>(c) Your access key and the identifier you entered are stored in the
-Extension's own storage in your browser, and the key is copied to your
-cluster account, where the Framework refuses to run without it.</p>
+sign-in, the Extension asks you to sign in in a tab. The one thing it
+reads about you from the portal is your account name, from the portal's
+own dashboard page.</p>
+<p>(c) Your account name, as the portal's dashboard shows it, and the
+answer of the last approval check with its time are stored in the
+Extension's own storage in your browser. Nothing about your approval is
+copied to your cluster account; the Framework has no key, password or
+account list of Licensor's.</p>
 <p>(d) The Framework makes a random token for each job so that only your
 own browser session can reach your worker. It is kept in a file only you
 can read, is never shown, and never appears on a command line or in a
@@ -183,23 +192,25 @@ tab, as a bookmark would: the sign-in page during the sign-in described
 in (a), your worker's session page when the worker connects, and the
 connectors settings page if you choose the optional Google Drive
 step.</p>
-<p>(g) None of (a) to (f) is sent to Licensor. Section 10 describes the
-only things that may be.</p>
+<p>(g) Of (a) to (f), only your account name in (c) is sent to Licensor,
+in the approval check that section 10 describes; nothing else is.
+Section 10 describes the only things that may be.</p>
 <h2 id="restrictions">6. RESTRICTIONS</h2>
 <p>Except as this agreement allows, or as applicable law permits despite
 this section, you must not:</p>
 <p>(a) copy Ashley Bridge beyond what installation, use and one backup
 need;</p>
 <p>(b) distribute, publish, rent, lease, lend, sublicense or otherwise
-make Ashley Bridge or a key available to anyone else;</p>
+make Ashley Bridge available to anyone else, or let anyone else use it
+under your approval;</p>
 <p>(c) modify, adapt, translate, decompile, disassemble or reverse
 engineer Ashley Bridge, or create works derived from it. This does not
 limit what 17 U.S.C. 1201(f) (interoperability), 17 U.S.C. 1201(j)
 (security testing), the security-research exemption in 37 C.F.R. 201.40,
 or other law that cannot be contracted away, allows you to do;</p>
-<p>(d) disable, remove, bypass or interfere with the key check, the
-key's end date, the list of withdrawn keys or versions, or any other
-technical measure in Ashley Bridge, or help anyone else do so;</p>
+<p>(d) disable, remove, bypass or interfere with the approval check, the
+list of withdrawn versions, or any other technical measure in Ashley
+Bridge, or help anyone else do so;</p>
 <p>(e) remove or alter any copyright, license or other notice in Ashley
 Bridge;</p>
 <p>(f) use Ashley Bridge to build a product or service that competes
@@ -255,16 +266,15 @@ Licensor's own gross negligence, wilful misconduct or fraud.</p>
 <h2 id="evaluation-period-support-no-fees-and-the-full-edition">9.
 EVALUATION PERIOD, SUPPORT, NO FEES, AND THE FULL EDITION</h2>
 <p>(a) Evaluation period and term. The evaluation period runs from your
-acceptance until the earliest of: the end date of your access key
-(Ashley Bridge shows it, and a new key is issued while you remain
-approved); the withdrawal of your approval; and the date Licensor ends
-the Trial Edition, of which Licensor gives at least 30 days' notice
-inside Ashley Bridge or on the support page. This agreement lasts for
-the evaluation period and terminates automatically if you breach it.
-When it ends you must stop using Ashley Bridge and delete it and your
-key, unless you have registered a Full Edition key, in which case that
-edition's agreement governs. Sections 4 to 8 and 10 to 23, and anything
-else that by its nature should survive, survive.</p>
+acceptance until the earliest of: the withdrawal of your approval,
+including the end of an approval that was given for a limited time; and
+the date Licensor ends the Trial Edition, of which Licensor gives at
+least 30 days' notice inside Ashley Bridge or on the support page. This
+agreement lasts for the evaluation period and terminates automatically
+if you breach it. When it ends you must stop using Ashley Bridge and
+delete it, unless you have accepted the Full Edition agreement, in which
+case that edition's agreement governs. Sections 4 to 8 and 10 to 23, and
+anything else that by its nature should survive, survive.</p>
 <p>(b) Support. The Trial Edition comes with the documentation and the
 support page. Licensor may help with using Ashley Bridge as designed, at
 its discretion and with no response-time promise; support does not
@@ -277,38 +287,53 @@ you have no claim against Licensor; Licensor will, where practical,
 restore access once the dependency works again.</p>
 <p>(d) The Full Edition. If and when Licensor offers the Full Edition,
 you may continue with the Trial Edition for as long as Licensor offers
-it, or register a Full Edition key by accepting the Ashley Bridge Full
-Edition License Agreement in the signing dialog. Registering a key is
-your choice; nothing in this agreement obliges you to buy anything, and
-no Trial Edition data or record is used to charge you. On Safari, where
-Apple's rules do not allow license keys, any Full Edition is offered
-free or through an in-app purchase instead.</p>
+it, or take up the Full Edition by accepting the Ashley Bridge Full
+Edition License Agreement in the signing dialog. Doing so is your
+choice; nothing in this agreement obliges you to buy anything, and no
+Trial Edition data or record is used to charge you. On Safari, where
+Apple's rules do not allow an app to unlock features outside Apple's own
+purchase system, any Full Edition is offered free or through an in-app
+purchase instead.</p>
 <p>(e) Nothing in this section limits rights that consumer law gives you
 and does not allow you to waive, including under the Michigan Consumer
 Protection Act.</p>
 <h2 id="what-licensor-receives-access-records-and-privacy">10. WHAT
 LICENSOR RECEIVES, ACCESS RECORDS AND PRIVACY</h2>
-<p>(a) Once a day, and only after you have accepted this agreement, the
-Extension fetches from Licensor's website a signed list of withdrawn
-keys and withdrawn versions. That request is sent without cookies and
-carries nothing about you beyond what any web request carries (your
-network address). It is the only request the Extension makes to
-Licensor.</p>
-<p>(b) The Extension sends no error reports, no crash reports and no
+<p>(a) The approval check. Only after you have accepted this agreement,
+and only once your portal is connected and your account name is known,
+the Extension asks Licensor's access service whether that account is
+approved: when you connect, about once a day while it is in use, and
+again when you click the Extension's icon after a day has passed or
+after a no. Each check sends, over an encrypted connection and without
+cookies, your account name as your portal's dashboard shows it, your
+portal's hostname, the product name, the Extension's version and, as any
+request does, the time it was made. The service answers yes or no.
+Licensor's service records each check: those items, a salted hash of
+your network address (never the address itself) and the answer. The
+Extension keeps a yes for up to a day, and for up to seven days when the
+service cannot be reached, so that an outage on Licensor's side does not
+stop your work; it keeps a no for ten minutes.</p>
+<p>(b) Two files. Once a day, and only after you have accepted this
+agreement, the Extension also fetches from Licensor's website a small
+file naming the address of the access service and a signed list of
+withdrawn versions. Those requests are sent without cookies and carry
+nothing about you beyond what any web request carries (your network
+address). The check in (a) and these two files are the only requests the
+Extension makes to Licensor.</p>
+<p>(c) The Extension sends no error reports, no crash reports and no
 usage data, and there is no activation step: it has no code for them and
 no address to send them to. Your acceptance record (the version and hash
 of this text, what you ticked, your typed name, the time, the install
 id, the software versions), your statements, your audit log and your
 settings stay in your browser; Licensor does not receive them.</p>
-<p>(c) Access records. An access request on the support site records
-what you enter there (institutional identifier, name, institutional
-e-mail, what you will use Ashley Bridge for). When Licensor issues your
-key, Licensor's own records hold the key's id, the identifier or domain
-it is bound to, the name and e-mail given, the edition, the dates, and
-the approval and withdrawal decisions about you. Licensor keeps these
-records for the life of your access and six years after, to prove the
-license and its terms.</p>
-<p>(d) The full privacy statement is in PRIVACY.md, which forms part of
+<p>(d) Access records. An access request on the support site records
+what you enter there (your account name, your name, your institutional
+e-mail, what you will use Ashley Bridge for). Licensor's own records
+hold the approval and withdrawal decisions about your account, with the
+name and e-mail given and their dates, and the record of each approval
+check described in (a). Licensor keeps these records for the life of
+your access and six years after, to prove the license and its terms.</p>
+<p>(e) The full privacy statement is in PRIVACY.md, which forms part of
 this agreement.</p>
 <h2
 id="not-for-clinical-or-high-risk-use-and-not-for-restricted-data">11.
@@ -395,9 +420,9 @@ effective merely by being posted: Ashley Bridge shows a changed
 agreement in the signing dialog and asks you to accept it again, by the
 same steps, before the new version is used. A change to section 19 or 20
 applies only to disputes that arise after you accept it. If you decline
-a changed agreement, you may keep using the version you accepted for the
-rest of your key's term, or stop using Ashley Bridge; earlier acceptance
-records are kept.</p>
+a changed agreement, you may keep using the version you accepted for as
+long as your approval and the evaluation period last, or stop using
+Ashley Bridge; earlier acceptance records are kept.</p>
 <h2 id="export-and-sanctions">18. EXPORT AND SANCTIONS</h2>
 <p>You must comply with the export-control and sanctions laws that apply
 to you. You represent that you are not located in, and will not use
@@ -414,17 +439,17 @@ acknowledge in the signing dialog.</p>
 <p>(a) Notice and 60 days to fix it, before any lawsuit. Before starting
 any lawsuit or other proceeding, the party with a claim sends the other
 a written notice, signed by that party personally, stating their name,
-the e-mail in the access record, the install id shown on the Extension's
-license page, what the problem is and what outcome they want. Notice to
-Licensor goes to the notice address on the Ashley support page; notice
-to you goes to the e-mail in your access record. The parties then have
-60 days to resolve it in good faith, including one telephone or video
-call if either asks. Completing this paragraph is a condition of
-bringing any claim other than in small-claims court; a court may decide,
-at either party's request, whether it was completed. Any time limit that
-applies to the claim, including (e), is paused from the day the notice
-is sent until the 60 days end. Licensor owes you the same notice and the
-same 60 days.</p>
+the e-mail in the access record, the install id shown with the
+acceptance record on the Extension's setup page, what the problem is and
+what outcome they want. Notice to Licensor goes to the notice address on
+the Ashley support page; notice to you goes to the e-mail in your access
+record. The parties then have 60 days to resolve it in good faith,
+including one telephone or video call if either asks. Completing this
+paragraph is a condition of bringing any claim other than in
+small-claims court; a court may decide, at either party's request,
+whether it was completed. Any time limit that applies to the claim,
+including (e), is paused from the day the notice is sent until the 60
+days end. Licensor owes you the same notice and the same 60 days.</p>
 <p>(b) Where. Any lawsuit or proceeding arising out of or relating to
 Ashley Bridge, your access or this agreement is brought only in the
 state courts sitting in Wayne County, Michigan, or the United States
@@ -499,14 +524,14 @@ accepted without such acceptance.</p>
 and THIRD_PARTY_NOTICES.md, is the entire agreement between you and
 Licensor about the Trial Edition and replaces any earlier terms for the
 versions it covers, and anything said in a listing, a README, a
-demonstration, a post or a conversation. If you later register a Full
-Edition key, the Full Edition agreement replaces this one from that
-moment. You have not relied on any statement about Ashley Bridge that is
-not written here or in the documentation shipped with it. Licensor does
-not promise any particular result from using Ashley Bridge, any
-particular availability of a Named Dependency, any continuation of the
-Trial Edition, or any particular response time. This paragraph does not
-exclude liability for fraud.</p>
+demonstration, a post or a conversation. If you later accept the Full
+Edition agreement, it replaces this one from that moment. You have not
+relied on any statement about Ashley Bridge that is not written here or
+in the documentation shipped with it. Licensor does not promise any
+particular result from using Ashley Bridge, any particular availability
+of a Named Dependency, any continuation of the Trial Edition, or any
+particular response time. This paragraph does not exclude liability for
+fraud.</p>
 <p>(b) Severability. If any part of this agreement is unenforceable, the
 rest remains in effect, subject to section 19(c).</p>
 <p>(c) Assignment. You may not assign this agreement; Licensor may
