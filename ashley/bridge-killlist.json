@@ -1,0 +1,9 @@
+{
+ "v": 1,
+ "kid": "k1",
+ "issued": 1790695956,
+ "revoked_versions": [],
+ "revoked_lids": [],
+ "message": "Ashley Bridge is current.",
+ "sig": "ASHLEYREV1.eyJ2IjoxLCJraWQiOiJrMSIsImlzc3VlZCI6MTc5MDY5NTk1NiwicmV2b2tlZF92ZXJzaW9ucyI6W10sInJldm9rZWRfbGlkcyI6W10sIm1lc3NhZ2UiOiJBc2hsZXkgQnJpZGdlIGlzIGN1cnJlbnQuIn0.SY0GPV6IFv0EpAe7jWzCrkJbQIcVyAVM-waLMUGeiB-bd-e6xsMZIJx2iNtLA1sH5TJUQSjV3Byy3LJ8qlxjAg"
+}

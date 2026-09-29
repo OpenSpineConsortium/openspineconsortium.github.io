@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ashley Bridge privacy statement</title>
+<style>
+:root{--ink:#1c1c1c;--muted:#555;--line:#ddd;--accent:#1f3b2e;--bg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}}
+:root[data-theme="dark"]{--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}
+body{margin:0;padding:0 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",Helvetica,Arial,sans-serif;max-width:760px;margin-inline:auto}
+h1{font-size:1.8em;margin:32px 0 4px}h2{font-size:1.2em;margin:28px 0 8px;color:var(--accent)}a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.95em}td,th{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+pre{white-space:pre-wrap;border:1px solid var(--line);padding:8px;font-size:.9em}
+</style>
+<style>
+/* Ashley Bridge pages: the same look as the Ashley pages above, plus what a phone needs */
+body{overflow-wrap:break-word}a:visited{color:var(--accent)}
+p.lead,.note{color:var(--muted)}ul,ol{padding-left:1.2em}li{margin:4px 0}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:16px 0}
+nav.crumbs{margin:24px 0 0;font-size:.95em;color:var(--muted)}
+table{display:block;overflow-x:auto}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
+</style>
+</head>
+<body>
+<nav class="crumbs"><a href="./">Ashley Bridge</a> · <a href="../support.html">Support and notices</a></nav>
+<h1 id="ashley-bridge-privacy-statement">Ashley Bridge privacy
+statement</h1>
+<p>Version 4, 2026-09-29. Part of the Ashley Bridge Trial Edition
+License Agreement (LICENSE.txt) and of any Full Edition agreement that
+names it. You can save and print this text; it is also on the Ashley
+support page.</p>
+<p>Who collects: Gregory Schwing, trading as OpenSpineConsortium
+(“Licensor”), the maintainer of Ashley Bridge. Questions and requests:
+the notice address on the Ashley support page. Ashley Bridge is licensed
+to individuals; it is not provided by or on behalf of any school, and
+Licensor is not acting for one.</p>
+<p>Ashley Bridge is a browser extension that starts, watches and stops a
+job in your own cluster account through your university’s Open OnDemand
+portal, and a set of scripts (the framework) in that account. The job
+runs Claude Code, which you signed in to yourself. This statement says
+what stays in your browser, what your portal sees, what happens when you
+sign in to Claude, what Anthropic receives, what Licensor receives, and
+what is never collected.</p>
+<h2 id="what-stays-in-your-browser">What stays in your browser</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Data</th>
+<th>Where</th>
+<th>Why</th>
+<th>You control it by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The portal address you connected from its tab or typed, and the one
+website you granted the extension access to</td>
+<td>the extension’s own storage (<code>storage.local</code>)</td>
+<td>to reach your portal</td>
+<td>the options page; removing the site permission in your browser;
+uninstalling</td>
+</tr>
+<tr>
+<td>Your preferences: the shell host and site profile name, the worker’s
+name and permission mode, whether your worker starts by itself when your
+portal tab connects, and whether the claude.ai tab opens by itself when
+your worker connects (in this build both are on until you turn them off;
+the options page says so where each is switched)</td>
+<td><code>storage.local</code></td>
+<td>convenience</td>
+<td>the options page</td>
+</tr>
+<tr>
+<td>Your license key and the institutional identifier you entered</td>
+<td><code>storage.local</code></td>
+<td>to check that the license names you</td>
+<td>the options page (remove the key); uninstalling</td>
+</tr>
+<tr>
+<td>Your acceptance of the agreement: its version and text hashes, the
+statements you ticked with their wording, your typed name, the time, and
+the exact texts shown</td>
+<td><code>storage.local</code>, with a copy you can save</td>
+<td>to prove the agreement and its terms, for you and for Licensor</td>
+<td>it is yours to read, copy and print; uninstalling removes it</td>
+</tr>
+<tr>
+<td>Your statement about a worker’s workspace: that it holds none of the
+restricted data the notice names, and that Remote Control will be
+enabled for that worker; kept as the workspace name, the exact text and
+its version, the time, and the time the marker below was written, one
+record per workspace</td>
+<td><code>storage.local</code></td>
+<td>so the notice is shown at every start but you are not asked to tick
+it again for the same workspace</td>
+<td>making it again for a workspace on the options page; uninstalling.
+It is asked again when the text or the workspace changes</td>
+</tr>
+<tr>
+<td>A note of the last sign-in to Claude made from this browser: the
+time, and what Claude Code’s own report said afterwards (the account it
+is signed in as and its plan)</td>
+<td><code>storage.local</code></td>
+<td>so the sign-in step is not offered again while a newer check has not
+yet confirmed it</td>
+<td>uninstalling</td>
+</tr>
+<tr>
+<td>The claude.ai links to your sessions that the extension already
+opened by itself, so each opens once; a note of the check job it
+submitted by itself (the time and the job number), so it is not
+submitted again while it runs; and a note of the install or update it
+ran by itself in your cluster account (the time, whether it succeeded,
+and how many files it uploaded), so a failing one is not repeated in a
+loop</td>
+<td><code>storage.local</code></td>
+<td>so the automatic steps do not repeat themselves</td>
+<td>uninstalling</td>
+</tr>
+<tr>
+<td>Your tick on the optional step <em>Connect Google Drive in
+claude.ai</em>: a yes or no. The step opens that claude.ai settings page
+in a new tab; the extension does nothing on it</td>
+<td><code>storage.local</code></td>
+<td>so the checklist remembers what you finished</td>
+<td>untick it; uninstalling</td>
+</tr>
+<tr>
+<td>The last good copy of the withdrawn-keys list, and a random
+installation identifier created in your browser</td>
+<td><code>storage.local</code></td>
+<td>to keep working when Licensor’s service cannot be reached; to name
+your acceptance record and the marker below without naming you</td>
+<td>uninstalling</td>
+</tr>
+<tr>
+<td>Connection state while a job runs: the worker’s name and its folder
+on the cluster, the job number, what the worker’s status file last said
+(its state, its one-line message, the node, the account and plan Claude
+Code reports, whether your Remote Control answer is on record), the
+session name and its claude.ai link, the last 4,000 characters of the
+worker’s own log (Claude Code’s registration output as the job printed
+it), the portal tab the extension talks to and the tab the icon was
+clicked from, when your portal sign-in was last seen, what the last
+automatic start did, and the last results of its checks</td>
+<td><code>storage.session</code>, cleared when the browser closes</td>
+<td>to talk to your portal during this session, to show you the link,
+and to show you under <em>Details</em> what your worker printed</td>
+<td>closing the browser</td>
+</tr>
+<tr>
+<td>The audit log: one line per request the extension made to your
+portal (time, endpoint, method, job number, byte count, outcome). The
+sign-in sitting is one line with how many bytes were read and typed;
+what you typed is never in it</td>
+<td>the extension’s own storage on your device</td>
+<td>so you can see exactly what the extension did</td>
+<td>the log under <em>Details</em> and on the options page (view,
+export, clear); it is never transmitted</td>
+</tr>
+</tbody>
+</table>
+<p>There is no durable secret in the extension’s storage. The extension
+never reads your portal’s sign-in cookie: your browser attaches it to
+requests to that one website, as it does for the portal’s own pages. The
+extension never reads, stores, copies or relays a Claude credential:
+Claude Code keeps its own sign-in in your cluster account, and the
+framework reads only Claude Code’s yes-or-no answer about whether it is
+signed in.</p>
+<h2 id="what-goes-to-your-own-cluster-account">What goes to your own
+cluster account</h2>
+<p>Your license key, the framework’s scripts and settings, the job
+files, a random per-job token in a file only you can read, and the job’s
+status files. When you make the statement above for a worker, the
+extension also writes one small file in your account (the framework’s
+own marker, <code>~/.hpcworker/consent</code>), one line: the word yes,
+the time, and the random installation identifier from your browser. Your
+worker gives that answer to Claude Code when Claude Code asks its
+one-time question “Enable Remote Control?”, and after the first session
+Claude Code’s own record of your answer takes over. Everything there is
+in your own account under your institution’s rules; Licensor has no
+access to it.</p>
+<h2 id="what-your-portal-sees">What your portal sees</h2>
+<p>The extension makes requests to your university’s Open OnDemand
+portal, and only to it, using the sign-in your browser already holds:
+waking the portal’s own web server up if it is asleep, opening the
+portal’s shell once to submit a job and closing it, holding the shell
+open once for the sign-in sitting described below and closing it when
+the sitting ends, listing and reading files in your own account through
+the portal’s Files app and writing the framework’s files and the marker
+there, listing your jobs, and cancelling a job when you ask. Your
+institution’s logs record those requests as they record any use of the
+portal; the shell’s page token appears in the portal’s access log, as it
+does when you open the shell yourself. The extension never signs in for
+you and never touches a multi-factor step. It reads no other website and
+makes no request to claude.ai. When it opens a claude.ai page (your
+session’s link when your worker connects, or the connectors page from
+the optional step) or Anthropic’s sign-in page, it opens it in a new
+browser tab, as a bookmark would, and runs nothing there.</p>
+<h2 id="what-happens-when-you-sign-in-to-claude">What happens when you
+sign in to Claude</h2>
+<p>Claude Code itself does the sign-in, inside your job’s container on a
+compute node, through Anthropic’s own paste-code flow. The extension
+starts that sitting for you through the portal’s shell, reads the short
+lines the framework prints (that the sitting is running, the address of
+Anthropic’s sign-in page, that it is waiting for the code, and Claude
+Code’s own yes-or-no answer afterwards with the account and plan it
+reports), opens the sign-in page in a new tab, and shows you one box.
+Claude Code’s own screen is never sent to your browser: it stays in a
+temporary file on the compute node that only you can read and that is
+removed when the sitting ends. You sign in on Anthropic’s page with your
+own account, click <em>Authorize</em>, and paste the code the page shows
+into that box. The extension types the code once into the sitting on
+your cluster, through the same portal connection, and then forgets it:
+the code is not kept in any storage, not written to the audit log (which
+records only how many bytes were typed) and not sent to Licensor or
+anywhere else; on the compute node it is passed to Claude Code without
+being echoed. The extension never reads the sign-in page, never reads
+your clipboard, and never sees the credential Claude Code makes from the
+code; that credential stays in Claude Code’s own folder in your cluster
+account. The sitting ends by itself within ten minutes of starting on
+the compute node, and the wait for a compute node is bounded too (the
+extension closes the connection after fifteen minutes at the latest); if
+it ends without a sign-in, nothing is kept and you can start it
+again.</p>
+<h2 id="what-anthropic-receives">What Anthropic receives</h2>
+<p>Through Claude Code, which you signed in to with your own account:
+your prompts, the files the worker reads, and every command’s output.
+While you are connected through claude.ai or the Claude app, the session
+transcript, including your messages, Claude’s responses and tool
+activity, is also stored on Anthropic’s servers. On a personal plan
+Anthropic retains it five years if you have model training on and 30
+days otherwise. No BAA covers a personal plan. Remote Control usage
+draws from your plan’s shared limit. Anthropic’s terms and privacy
+policy apply to that data, not this statement. The extension shows these
+facts before each job start.</p>
+<h2 id="what-licensor-receives">What Licensor receives</h2>
+<p><strong>From the extension: the withdrawn-keys request, and nothing
+else.</strong> Once a day the extension fetches a signed list of
+withdrawn keys and withdrawn versions from Licensor’s website, at
+<code>https://openspineconsortium.com/ashley/bridge-killlist.json</code>.
+The request is sent without cookies and carries nothing about you beyond
+what any web request carries (your network address, which the web host’s
+ordinary server logs may record for a short time); the file holds the
+list only; the extension makes no request to Licensor before you have
+accepted the agreement. That is the only request the extension ever
+makes to Licensor. In particular:</p>
+<ul>
+<li>your license key is checked inside your browser, against public keys
+built into the extension; nothing is sent to check it, and there is no
+activation step;</li>
+<li>the extension sends no error reports, no crash reports and no usage
+data; it has no code for them and no address to send them to;</li>
+<li>your acceptance record, your statements, your audit log and your
+settings stay in your browser.</li>
+</ul>
+<p><strong>Your license record.</strong> When Licensor issues your key,
+Licensor’s own records hold the key’s id, the name and institutional
+identifier it names, the e-mail it was sent to, its dates, and any
+withdrawal decision. Those records come from your access request and
+from the person who issued the key, not from the extension.</p>
+<p><strong>Access requests.</strong> If you ask for access on the Ashley
+support site (a web page, not the extension), the request form records
+what you enter: institutional identifier, name, institutional e-mail,
+what you will use Ashley Bridge for, and the time.</p>
+<p><strong>A notice under the agreement</strong>, if you send one: what
+you write in it, kept with your license record.</p>
+<h2 id="what-is-never-collected">What is never collected</h2>
+<p>Stated in the negative because reviewers read for what is absent: the
+extension does not collect command text, file paths, prompt content, job
+output, portal cookies or tokens, the code you paste to sign in to
+Claude, browsing activity, or anything from claude.ai or any Anthropic
+page. It sends Licensor no error or crash reports, no usage data and no
+activation request. It has no access to claude.ai, requests no
+<code>cookies</code>, <code>tabs</code>, <code>webRequest</code>,
+<code>nativeMessaging</code>, <code>debugger</code>,
+<code>identity</code> or <code>clipboardRead</code> permission, and runs
+no code fetched from anywhere.</p>
+<h2 id="how-licensor-uses-and-keeps-it">How Licensor uses and keeps
+it</h2>
+<p>License and access records are kept for the life of the license and
+six years after, to prove the agreement and for accounting and disputes.
+Nothing is sold or used for advertising. The web host that serves the
+withdrawn-keys list sees the requests any web server sees and nothing
+more. Processors acting for Licensor (hosting, the access-request
+service) see only what they need to run the service. Licensor’s use of
+data complies with the Chrome Web Store’s Limited Use requirements.</p>
+<h2 id="security-and-breaches">Security and breaches</h2>
+<p>Licensor keeps reasonable security measures for the systems that hold
+license and access records, and will notify you as Michigan law (MCL
+445.72) requires if a breach affects your personal information held by
+Licensor.</p>
+<h2 id="your-choices-and-rights">Your choices and rights</h2>
+<p>Remove the site permission or uninstall the extension at any time;
+ask Licensor for a copy or deletion of your license or access records
+(deletion of a license record ends the license). Michigan residents and
+residents of other states may have further rights under their state’s
+laws; Licensor honours requests it is obliged to honour and answers
+others where it reasonably can. Ashley Bridge is offered in the United
+States.</p>
+<h2 id="children">Children</h2>
+<p>Ashley Bridge is for adults, or minors with a parent’s or guardian’s
+consent (LICENSE.txt section 21).</p>
+<h2 id="changes">Changes</h2>
+<p>A new version of this statement ships with the Ashley Bridge version
+it applies to and is shown for acceptance when it changes
+materially.</p>
+<p>Version 4 (2026-09-29): the statement now describes the software as
+built. Earlier versions described an activation request and optional
+error reports; the extension has neither (there is no code for them and
+no address to send them to), so the sections that described them are
+removed and the section “What Licensor receives” names the one request
+the extension makes to Licensor, the daily withdrawn-keys list. The
+record Licensor keeps when it issues a key is named for what it is.
+Nothing new leaves your device; less was ever leaving it than the
+earlier text said.</p>
+<p>Version 3 (2026-09-29): the extension now starts the Claude sign-in
+sitting for you and takes the pasted code in its own panel (the section
+“What happens when you sign in to Claude” is new); your statement about
+a worker’s workspace is kept per workspace in the browser instead of per
+browser session, and now includes your answer to Claude Code’s Remote
+Control question, which the extension records in one marker file in your
+cluster account; the notes the extension keeps so its automatic steps do
+not repeat (the last sign-in it saw, the links it opened, the check job
+it submitted, the install it ran) are listed; the session-state row
+names everything the run record holds, including the last 4,000
+characters of the worker’s own log; the preference “open claude.ai when
+my worker connects” is added; the audit-log row says what it never
+holds. Nothing new leaves your device or your accounts.</p>
+<p>Version 2 (2026-09-29): added the checklist tick, the start-by-itself
+preference and the session’s claude.ai link to the table of what stays
+in your browser, and named the withdrawn-keys copy and the installation
+identifier that were already kept there. Nothing new leaves your
+device.</p>
+<div class="box note" id="save-a-copy">
+<p><strong>Save a copy.</strong> Use your browser's <em>Save page</em> or <em>Print</em>. This page is the text of <code>PRIVACY.md</code> that ships inside Ashley Bridge; its version and date are at the top of the text, and the same file is inside the extension and inside the framework it installs in your cluster account. You may ask for a paper copy at the notice address on the <a href="../support.html">support page</a>.</p>
+<p><a href="./">Back to Ashley Bridge</a></p>
+</div>
+</body>
+</html>
