@@ -240,7 +240,8 @@
       }
       if (r.status === 200 && j.status === 'denied') return sayHere('This request was not approved. If you think that is a mistake, talk to your lab lead.');
       if (r.status === 413) return sayHere(cv ? 'Not sent: the CV is too large for the service. Choose a smaller file, or leave it out.' : 'Not sent: there is too much text.');
-      if (r.status === 429) return sayHere('Too many requests from this connection today. Try again tomorrow.');
+      // the service's own limit on confirmation e-mails (three a day for one AccessID) says what to do instead
+      if (r.status === 429) return sayHere(j.error && j.error.indexOf('confirmation e-mails') >= 0 ? 'Not sent: ' + j.error + '.' : 'Too many requests from this connection today. Try again tomorrow.');
       sayHere(j.error ? 'Not sent: ' + j.error + '.' : 'Not sent: the service answered HTTP ' + r.status + '. Try again later or ask your lab lead.');
     }).catch(function () {
       sayHere('Not sent: the service could not be reached. Check your connection and try again, or ask your lab lead.');

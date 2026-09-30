@@ -738,3 +738,76 @@ body[data-shell="app"] .nav__links a { white-space: nowrap; }
 .admin td.admin__none { color: var(--ink-faint); }
 .admin__row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .admin__row > div { flex: 1 1 160px; }
+/* the requests as cards, the approvals as a table that stacks under 720px, the stage tags, the copy
+   box and the step after an approval (the Google Group invitation) */
+.admin__lead { color: var(--ink-soft); max-width: 76ch; margin: -2px 0 16px; font-size: 0.95rem; }
+.admin__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.admin button:focus-visible, .admin a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.admin__cards { display: grid; gap: 14px; margin-bottom: 8px; }
+.admin__cards > .admin__none { margin: 0; }
+.admin__card { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-card); padding: 14px 18px 12px; min-width: 0; }
+.admin__card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 1.05rem; }
+.admin__facts { display: grid; grid-template-columns: 9em minmax(0, 1fr); gap: 7px 18px; margin: 12px 0 4px; font-size: 0.92rem; line-height: 1.5; }
+.admin__facts dt { color: var(--ink-soft); font-weight: 600; }
+.admin__facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.admin__facts dd button { margin: 0 6px 0 0; padding: 3px 12px; font-size: 0.85rem; }
+.admin__text { white-space: pre-wrap; }
+.admin__faint { color: var(--ink-faint); }
+.admin__warn { color: var(--ochre); }
+.admin__lines > div + div { margin-top: 2px; }
+.admin__tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.6;
+  padding: 0 9px;
+  border-radius: 100px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: var(--paper);
+  white-space: nowrap;
+}
+.admin__tag--ok { color: var(--teal); border-color: rgba(14, 95, 88, 0.35); background: rgba(14, 95, 88, 0.08); }
+.admin__tag--mid { color: var(--ink); border-color: rgba(26, 28, 24, 0.35); }
+.admin__tag--wait { color: #8F4E17; border-color: rgba(188, 107, 38, 0.45); background: rgba(188, 107, 38, 0.09); }
+.admin__copy { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; max-width: 100%; vertical-align: middle; }
+.admin .admin__addr { user-select: all; overflow-wrap: anywhere; min-width: 0; font-size: 0.86rem; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; }
+.admin .admin__copy button { flex: 0 0 auto; margin: 0; padding: 2px 12px; font-size: 0.85rem; }
+.admin time { white-space: nowrap; }
+.admin td.admin__act { white-space: normal; min-width: 8.5em; }
+.admin td.admin__act button { margin: 2px 6px 4px 0; }
+/* the stacked tables break a word only when it cannot fit on a line of its own */
+.admin table.admin__stack td { overflow-wrap: break-word; }
+.admin .group-name { white-space: nowrap; }
+@media (min-width: 721px) {
+  #approved td:nth-child(1) { min-width: 9.5em; }
+  #approved td:nth-child(2) { min-width: 18.5em; }
+  #approved td:nth-child(3) { min-width: 7.5em; }
+  #approved td:nth-child(4) { min-width: 8.5em; }
+  #approved td:nth-child(5) { min-width: 12em; }
+}
+.admin__next { border-color: rgba(14, 95, 88, 0.45); background: rgba(14, 95, 88, 0.05); }
+.admin__next p { margin: 0 0 10px; }
+.admin__next .admin__copy { margin-bottom: 10px; }
+.admin__next .admin__addr { font-size: 0.95rem; padding: 3px 10px; }
+.admin__next a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 720px) {
+  .admin__facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .admin__facts dt { margin-top: 9px; font-size: 0.84rem; }
+  .admin__card { padding: 12px 14px 10px; }
+  .admin table.admin__stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .admin table.admin__stack,
+  .admin table.admin__stack tbody,
+  .admin table.admin__stack tr { display: block; width: 100%; }
+  .admin table.admin__stack tr { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .admin table.admin__stack tr:last-child { border-bottom: 0; }
+  .admin table.admin__stack td { display: grid; grid-template-columns: 7.2em minmax(0, 1fr); gap: 10px; border: 0; padding: 4px 14px; }
+  .admin table.admin__stack td::before { content: attr(data-label); font-weight: 600; font-size: 0.84rem; color: var(--ink-soft); }
+  .admin table.admin__stack td.admin__act,
+  .admin table.admin__stack td.admin__none { display: block; min-width: 0; }
+  .admin table.admin__stack td.admin__act::before,
+  .admin table.admin__stack td.admin__none::before { content: none; }
+  /* a cell holding an address: its label above it, so the whole address shows */
+  .admin table.admin__stack td.admin__wide { display: block; }
+  .admin table.admin__stack td.admin__wide::before { display: block; margin-bottom: 4px; }
+}

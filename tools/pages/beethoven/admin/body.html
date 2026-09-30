@@ -8,10 +8,10 @@ strip: no
   <header class="page-head">
     <span class="eyebrow">Beethoven</span>
     <h1>Access admin</h1>
-    <p>The list of people approved to use Beethoven, both editions. For the maintainer only.</p>
+    <p>Requests, approvals and installations of Beethoven, both editions. For the maintainer only.</p>
   </header>
 
-  <div class="admin__box" id="msg" role="status"></div>
+  <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
 
   <div class="admin__box" id="gate">
     <label for="token">Admin token</label>
@@ -21,13 +21,21 @@ strip: no
   </div>
 
   <div id="app" class="hidden">
-    <p><button id="refresh" type="button" class="quiet">Refresh</button> <button id="signout" type="button" class="quiet">Forget the token</button> <small id="counts"></small></p>
+    <p class="admin__bar"><button id="refresh" type="button" class="quiet">Refresh</button> <button id="signout" type="button" class="quiet">Forget the token</button> <small id="counts"></small></p>
+
+    <div class="admin__box admin__next hidden" id="next" aria-live="polite"></div>
 
     <h2>Waiting for a decision</h2>
-    <div class="table-scroll"><table id="pending"><thead><tr><th>AccessID</th><th>Name</th><th>What for</th><th>Asked</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="admin__lead">Every request the form stored. When the service e-mails students, a request is marked
+    <em>Mailbox not confirmed</em> until the student confirms from their Wayne State mailbox; it lapses after seven
+    days if they do not, and they can send the form again.</p>
+    <div id="pending" class="admin__cards"></div>
 
     <h2>Approved</h2>
-    <div class="table-scroll"><table id="approved"><thead><tr><th>AccessID</th><th>Name</th><th>Note</th><th>Approved</th><th>Keys</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="admin__lead">After an approval for Beethoven: <strong>invited</strong> once the Google account is in
+    the Google Group <span class="group-name">Beethoven-users</span>, which opens the private Chrome listing to it,
+    then <strong>installed</strong> once the first installation has checked in and holds the seat.</p>
+    <div class="table-scroll"><table id="approved" class="admin__stack"><thead><tr><th>Person</th><th>Google account</th><th>Grants</th><th>Stage</th><th>Installation</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
     <div class="admin__box">
       <strong>Add a person without a request</strong>
       <div class="admin__row">
@@ -39,7 +47,7 @@ strip: no
     </div>
 
     <h2>Not approved</h2>
-    <div class="table-scroll"><table id="denied"><thead><tr><th>AccessID</th><th>Name</th><th>Reason</th><th>Denied</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="table-scroll"><table id="denied" class="admin__stack"><thead><tr><th>AccessID</th><th>Name</th><th>Reason</th><th>Denied</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
 
     <h2>Withdrawn keys</h2>
     <p id="revoked"><small>None yet.</small></p>
@@ -57,93 +65,283 @@ strip: no
 
 <script>
 (function () {
+  // The access service's /admin routes, behind the bearer token; ACCESS_CHECK.md in the service's
+  // repository ("The admin routes: the admin page's contract") is what this page codes to.
   var KEY = 'beethoven_admin_token';
+  // the private listing's Google Group; /admin/list names it too (group), and its answer wins
+  var GROUP = { name: 'Beethoven-users', members_url: 'https://groups.google.com/g/beethoven-users/members', mode: 'manual' };
+  var group = GROUP;
   var origin = '';
   var token = '';
+  var serverNow = 0;
   var $ = function (id) { return document.getElementById(id); };
   var msg = $('msg');
 
   function say(text) { msg.textContent = text || ''; }
-  function when(iso) { return iso ? String(iso).slice(0, 10) : ''; }
-  function cell(tr, text) { var td = document.createElement('td'); td.textContent = text == null ? '' : String(text); tr.appendChild(td); return td; }
-  function btn(label, quiet, onClick) { var b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (quiet) b.className = 'quiet'; b.addEventListener('click', onClick); return b; }
-  function empty(tbody, cols, text) { var tr = document.createElement('tr'); var td = cell(tr, text); td.colSpan = cols; td.className = 'admin__none'; tbody.appendChild(tr); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+  function add(parent) { for (var i = 1; i < arguments.length; i++) { var x = arguments[i]; if (x) parent.appendChild(typeof x === 'string' ? document.createTextNode(x) : x); } return parent; }
+  function btn(label, quiet, onClick) { var b = el('button', quiet ? 'quiet' : '', label); b.type = 'button'; b.addEventListener('click', onClick); return b; }
+  function day(iso) { return iso ? String(iso).slice(0, 10) : ''; }
+  function stamp(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    try { return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+  }
+  // how long ago, against the service's clock when the list gave one
+  function ago(iso) {
+    var t = new Date(iso).getTime();
+    if (!iso || isNaN(t)) return '';
+    var s = Math.max(0, ((serverNow || Date.now()) - t) / 1000);
+    if (s < 90) return 'just now';
+    if (s < 5400) return Math.round(s / 60) + ' minutes ago';
+    if (s < 129600) return Math.round(s / 3600) + ' hours ago';
+    return Math.round(s / 86400) + ' days ago';
+  }
+  function timeEl(iso, text) { var t = el('time', '', text || stamp(iso)); if (iso) { t.dateTime = iso; t.title = iso; } return t; }
+  function faint(text) { return el('span', 'admin__faint', text); }
+  function size(n) { return !n ? '' : n < 1048576 ? Math.ceil(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
+
+  function grantsOf(rec) { return Array.isArray(rec.grants) ? rec.grants : ['extension', 'lab']; }
+  function hasBeethoven(rec) { return grantsOf(rec).indexOf('extension') >= 0; }
+  function grantsText(g) {
+    var ext = g.indexOf('extension') >= 0, lab = g.indexOf('lab') >= 0;
+    return ext && lab ? 'Beethoven and lab' : ext ? 'Beethoven only' : lab ? 'Lab membership only' : 'None';
+  }
+  function unconfirmed(p) { return p.stage === 'unconfirmed' || p.mailbox === 'waiting'; }
+  function submittedAt(p) { return p.submitted_at || p.requested_at || ''; }
+  // an approval's stage: lab, approved (not invited yet), invited, installed
+  function stageOf(a) {
+    if (a.stage) return a.stage;
+    if (!hasBeethoven(a)) return 'lab';
+    return a.installed_at ? 'installed' : a.invited_at ? 'invited' : 'approved';
+  }
+  // the store reviewers' mock account is never invited to the group (the daily reminder skips it too)
+  function awaitingInvite(a) { return stageOf(a) === 'approved' && a.any_installation !== true; }
 
   function remember(t) { token = t; try { sessionStorage.setItem(KEY, t); } catch (e) { /* private window: the token lives in memory only */ } }
-  function forget() { token = ''; try { sessionStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } $('app').className = 'hidden'; $('gate').className = 'admin__box'; $('token').value = ''; }
+  function forget() { token = ''; try { sessionStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } $('app').className = 'hidden'; $('gate').className = 'admin__box'; $('token').value = ''; hideNext(); }
 
-  function api(method, path, body) {
+  function call(method, path, body) {
     var init = { method: method, headers: { authorization: 'Bearer ' + token }, credentials: 'include' };
     if (body) { init.headers['content-type'] = 'application/json'; init.body = JSON.stringify(body); }
     return fetch(origin + path, init).then(function (r) {
+      if (r.status === 401) { forget(); say('The token was not accepted. Paste it again.'); throw new Error('401'); }
+      return r;
+    });
+  }
+  function api(method, path, body) {
+    return call(method, path, body).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
-        if (r.status === 401) { forget(); say('The token was not accepted. Paste it again.'); throw new Error('401'); }
         if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
         return j;
       });
     });
   }
-
-  function act(question, path, body) {
-    if (!window.confirm(question)) return;
+  // one write: confirm, POST, reload the lists, then then(j) with the answer (after the lists, so a
+  // box it shows is where the page scrolls to)
+  function act(question, path, body, then) {
+    if (question && !window.confirm(question)) return;
     say('Working...');
-    api('POST', path, body).then(function () { say(''); return load(); }).catch(function (e) { if (e.message !== '401') say('Not done: ' + e.message); });
+    api('POST', path, body).then(function (j) { say(''); return load().then(function () { if (then) then(j); }); }).catch(function (e) { if (e.message !== '401') say('Not done: ' + e.message); });
   }
+
+  // a copy box: the address as text (one click selects all of it) and a Copy button
+  function copyBox(text, label) {
+    var box = el('span', 'admin__copy');
+    var code = el('code', 'admin__addr', text);
+    var b = btn('Copy', true, function () {
+      function done() { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); }
+      function fallback() {
+        var r = document.createRange(); r.selectNodeContents(code);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        try { if (document.execCommand('copy')) done(); } catch (e) { /* the address stays selected for Ctrl+C */ }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
+    });
+    b.setAttribute('aria-label', 'Copy the ' + (label || 'address') + ': ' + text);
+    return add(box, code, b);
+  }
+
+  // the CV through /admin/cv: a PDF opens in a new tab, a Word file is saved
+  function openCv(p) {
+    var pdf = (p.cv || {}).kind === 'pdf';
+    var w = pdf ? window.open('', '_blank') : null;
+    say('Fetching the CV...');
+    call('POST', '/admin/cv', { accessId: p.accessId }).then(function (r) {
+      if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); });
+      var name = (/filename="?([^";]+)"?/.exec(r.headers.get('content-disposition') || '') || [])[1] || (p.accessId + '-cv');
+      return r.blob().then(function (b) {
+        var url = URL.createObjectURL(b);
+        if (w) { w.opener = null; w.location.href = url; } else { var a = el('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        say('');
+      });
+    }).catch(function (e) { if (w) w.close(); if (e.message !== '401') say('Could not open the CV: ' + e.message); });
+  }
+
+  // Mark invited: the maintainer has added the Google account to the group by hand
+  function markInvited(accessId, google) {
+    act('Mark ' + accessId + ' as invited? Do this once ' + (google || 'their Google account') + ' is in the Google Group ' + group.name + '.',
+      '/admin/invited', { accessId: accessId }, function () { hideNext(); });
+  }
+  function hideNext() { var box = $('next'); box.className = 'admin__box admin__next hidden'; box.textContent = ''; }
+  // after an approval for Beethoven: what the service did about the group, and the next step when it is manual
+  function showNext(j, fallbackGoogle) {
+    var rec = (j && j.record) || {}, inv = (j && j.invite) || {}, id = (j && j.accessId) || rec.accessId || '';
+    if (!hasBeethoven(rec)) return hideNext();
+    var google = inv.google_account || rec.google_account || fallbackGoogle || '';
+    var gname = inv.group || group.name, members = inv.members_url || group.members_url;
+    var box = $('next'); box.textContent = '';
+    if (inv.invited || rec.invited_at) {
+      add(box, add(el('p', 'admin__next-head'), el('strong', '', id + ' is approved and invited. '), google ? google + ' is in the Google Group ' + gname + '.' : ''));
+      // GROUP_MODE "workspace" added them just now: Google sends no invitation, so nothing carries the listing's address
+      if (inv.mode === 'workspace' && inv.invited_at) add(box, el('p', '', 'Google sends no invitation when the service adds someone, so no e-mail carries the private listing’s address: send it to them yourself.'));
+      add(box, add(el('div', 'admin__act'), btn('Close', true, hideNext)));
+    } else {
+      if (inv.error) add(box, el('p', 'admin__warn', 'The service could not add them to the group itself: ' + inv.error + '. Add them by hand:'));
+      add(box, add(el('p', 'admin__next-head'), el('strong', '', 'Next: '), 'add ', google ? el('strong', '', google) : el('em', '', 'their Google account (none on record: ask them for it)'), ' to the Google Group ' + gname + '.'));
+      if (google) add(box, copyBox(google, 'Google account of ' + id));
+      var link = el('a', '', 'Open the members of ' + gname + ' at Google Groups'); link.href = members; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      add(box, add(el('p'), link, ': Add members, paste the address, and put the private listing’s address in the invitation’s message; the student is told the invitation e-mail has the link.'));
+      add(box, add(el('div', 'admin__act'), btn('Done, invited', false, function () { markInvited(id, google); }), btn('Later', true, hideNext)));
+    }
+    box.className = 'admin__box admin__next';
+    box.scrollIntoView({ block: 'nearest' });
+  }
+
+  function fact(dl, term, value) { add(dl, el('dt', '', term), add(el('dd'), value)); }
+
+  function pendingCard(p) {
+    var card = el('article', 'admin__card');
+    var waiting = unconfirmed(p), sent = submittedAt(p);
+    var head = add(el('div', 'admin__card-head'), el('strong', '', p.name || '(no name)'), ' ', el('code', '', p.accessId));
+    if (waiting) add(head, ' ', el('span', 'admin__tag admin__tag--wait', 'Mailbox not confirmed'));
+    else if (p.mailbox === 'confirmed') add(head, ' ', el('span', 'admin__tag admin__tag--ok', 'Mailbox confirmed'));
+    card.appendChild(head);
+    var dl = el('dl', 'admin__facts');
+    fact(dl, 'E-mail', p.email || (p.accessId + '@wayne.edu'));
+    fact(dl, 'Google account', p.google_account ? copyBox(p.google_account, 'Google account of ' + p.accessId) : faint('None given (the older form)'));
+    fact(dl, 'What for', p.note ? el('span', 'admin__text', p.note) : faint('Nothing written'));
+    if (p.cv) fact(dl, 'CV', add(el('span'), btn('Open the CV', true, function () { openCv(p); }), ' ', faint([p.cv.name, p.cv.kind === 'pdf' ? 'PDF' : 'Word', size(p.cv.size)].filter(Boolean).join(', '))));
+    else fact(dl, 'CV', faint('None sent'));
+    var mb;
+    if (waiting) mb = add(el('span'), p.confirm_mail === 'failed' ? add(el('span', 'admin__warn'), 'The confirmation e-mail to ' + p.accessId + '@wayne.edu could not be sent; the student was told to send the form again. ') : 'Waiting for the student to confirm from ' + p.accessId + '@wayne.edu. ', faint(p.expires_at ? 'Lapses ' + stamp(p.expires_at) + ' unless confirmed.' : 'Lapses seven days after it was sent unless confirmed.'));
+    else if (p.mailbox === 'confirmed') mb = add(el('span'), 'Confirmed ', timeEl(p.confirmed_at || p.verified_at));
+    else mb = add(el('span'), 'Not verified. ', faint('Anyone can type an AccessID; check with the person before approving.'));
+    fact(dl, 'Mailbox', mb);
+    fact(dl, 'Sent', add(el('span'), ago(sent) + ' ', faint('(' + stamp(sent) + ')'), p.requested_at && p.requested_at !== sent ? faint(' first asked ' + day(p.requested_at)) : null));
+    if (p.asked_from) fact(dl, 'Asked from', p.asked_from);
+    card.appendChild(dl);
+    var who = p.accessId + ' (' + (p.name || 'no name') + ')';
+    var caution = waiting ? '\n\nTheir Wayne State mailbox has not confirmed this request.' : p.mailbox === 'confirmed' ? '' : '\n\nThe mailbox is not verified: anyone can type an AccessID.';
+    add(card, add(el('div', 'admin__act'),
+      btn('Approve for Beethoven', false, function () {
+        act('Approve ' + who + ' for Beethoven and lab membership?' + caution, '/admin/approve', { accessId: p.accessId }, function (j) { showNext(j, p.google_account); });
+      }),
+      btn('Lab membership only', true, function () {
+        act('Approve ' + who + ' for lab membership only? Beethoven stays closed to them.' + caution, '/admin/approve', { accessId: p.accessId, grants: ['lab'] });
+      }),
+      btn('Deny', true, function () {
+        var reason = window.prompt('Deny ' + p.accessId + '. Reason (kept for you; the student does not see it):', '');
+        if (reason === null) return;
+        act('Deny ' + p.accessId + '?', '/admin/deny', { accessId: p.accessId, reason: reason });
+      })));
+    return card;
+  }
+
+  function td(tr, label, content) { var c = add(el('td'), content); c.setAttribute('data-label', label); tr.appendChild(c); return c; }
+  function lines() { var d = el('div', 'admin__lines'); for (var i = 0; i < arguments.length; i++) if (arguments[i]) d.appendChild(add(el('div'), arguments[i])); return d; }
+
+  var STAGES = { lab: ['Lab member', ''], approved: ['Not invited yet', 'admin__tag--wait'], invited: ['Invited', 'admin__tag--mid'], installed: ['Installed', 'admin__tag--ok'] };
+
+  function approvedRow(a, seatList, conflictList) {
+    var tr = el('tr');
+    var ext = hasBeethoven(a), stage = stageOf(a), s = STAGES[stage] || [stage, ''];
+    if (stage === 'approved' && a.any_installation === true) s = ['Store reviewers', ''];
+    // the list embeds the seat and the refusal count in each approval; the separate lists are the fallback
+    var seat = a.seat ? (a.seat.bound ? a.seat : null) : seatList || null;
+    var refused = typeof a.conflicts === 'number' ? a.conflicts : conflictList ? conflictList.count || 0 : 0;
+    var refusedAt = a.conflict_last_at || (conflictList && conflictList.last_at) || '';
+    td(tr, 'Person', lines(el('strong', '', a.name || '(no name)'), el('code', '', a.accessId),
+      a.email && a.email !== a.accessId + '@wayne.edu' ? faint(a.email) : null, a.note ? el('span', 'admin__faint admin__text', a.note) : null));
+    td(tr, 'Google account', a.google_account ? copyBox(a.google_account, 'Google account of ' + a.accessId) : faint('None on record')).className = 'admin__wide';
+    td(tr, 'Grants', lines(grantsText(grantsOf(a)), (a.lids || []).length ? faint((a.lids || []).length + ' VS Code key(s)') : null));
+    var approvedAt = a.approved_at || a.decided_at;
+    td(tr, 'Stage', lines(el('span', 'admin__tag ' + s[1], s[0]),
+      approvedAt ? add(faint(''), 'approved ', timeEl(approvedAt, day(approvedAt)), a.mailbox === 'confirmed' ? ' (mailbox confirmed)' : '') : null,
+      ext && a.invited_at ? add(faint(''), 'invited ', timeEl(a.invited_at, day(a.invited_at)), a.invited_by ? ' (' + a.invited_by + ')' : '') : null,
+      ext && a.installed_at ? add(faint(''), 'installed ', timeEl(a.installed_at, day(a.installed_at))) : null));
+    var inst;
+    if (a.any_installation === true) inst = lines('Any installation', faint('binds none: the store reviewers’ mock account, on a localhost portal only'));
+    else if (seat) inst = lines('Bound: yes', add(faint(''), 'first seen ', timeEl(seat.first_seen)), add(faint(''), 'last seen ', timeEl(seat.last_seen)),
+      seat.version ? faint('version ' + seat.version) : null, seat.moved_at ? add(faint(''), 'moved ', timeEl(seat.moved_at, day(seat.moved_at))) : null);
+    else inst = lines('Bound: no', faint(ext ? 'the next installation to check takes it' : 'a lab member has no Beethoven'));
+    inst.appendChild(add(el('div', refused ? 'admin__warn' : 'admin__faint'), 'Refused checks: ' + refused, refused && refusedAt ? ', last ' : '', refused && refusedAt ? timeEl(refusedAt, day(refusedAt)) : null));
+    td(tr, 'Installation', inst);
+    var cell = td(tr, 'Actions', null); cell.className = 'admin__act';
+    if (ext && awaitingInvite(a)) add(cell, btn('Mark invited', false, function () { markInvited(a.accessId, a.google_account); }));
+    if (seat || refused) add(cell, btn('Reset seat', true, function () {
+      act('Reset the seat of ' + a.accessId + '? The binding and the refusals are cleared, and the next installation to check takes the account.', '/admin/reset-seat', { accessId: a.accessId });
+    }));
+    add(cell, btn('Remove', true, function () {
+      var n = (a.lids || []).length;
+      act('Remove ' + a.accessId + ' (' + (a.name || 'no name') + ')? Their approval, seat, refusals, checks and CV are deleted.' + (n ? ' ' + n + ' key(s) issued to them will be withdrawn within a day.' : '') +
+        (a.google_account && ext ? '\n\nTake ' + a.google_account + ' out of ' + group.name + ' at Google Groups too.' : ''), '/admin/remove', { accessId: a.accessId });
+    }));
+    return tr;
+  }
+
+  function none(tbody, cols, text) { var tr = el('tr'); var c = el('td', 'admin__none', text); c.colSpan = cols; tr.appendChild(c); tbody.appendChild(tr); }
 
   function load() {
     return api('GET', '/admin/list').then(function (d) {
       $('gate').className = 'admin__box hidden';
       $('app').className = '';
-      $('counts').textContent = d.pending.length + ' waiting, ' + d.approved.length + ' approved, ' + d.denied.length + ' not approved, ' + d.revoked.length + ' keys withdrawn';
+      serverNow = d.now ? new Date(d.now).getTime() || 0 : 0;
+      group = { name: (d.group && d.group.name) || GROUP.name, members_url: (d.group && d.group.members_url) || GROUP.members_url, mode: (d.group && d.group.mode) || GROUP.mode };
+      Array.prototype.forEach.call(document.querySelectorAll('.admin .group-name'), function (n) { n.textContent = group.name; });
+      var pending = d.pending || [], approved = d.approved || [], denied = d.denied || [], revoked = d.revoked || [];
+      var waiting = pending.filter(unconfirmed).length;
+      var notInvited = approved.filter(awaitingInvite).length;
+      $('counts').textContent = pending.length + ' waiting' + (waiting ? ' (' + waiting + ' mailbox not confirmed)' : '') + ', ' + approved.length + ' approved' +
+        (notInvited ? ' (' + notInvited + ' not invited yet)' : '') + ', ' + denied.length + ' not approved, ' + revoked.length + ' keys withdrawn';
+      var seats = {}, conflicts = {};
+      (d.seats || []).forEach(function (x) { seats[x.accessId] = x; });
+      (d.conflicts || []).forEach(function (x) { conflicts[x.accessId] = x; });
 
-      var tb = $('pending').tBodies[0]; tb.textContent = '';
-      if (!d.pending.length) empty(tb, 5, 'No one is waiting.');
-      d.pending.forEach(function (p) {
-        var tr = document.createElement('tr');
-        cell(tr, p.accessId); cell(tr, p.name); cell(tr, p.note); cell(tr, when(p.requested_at));
-        var td = cell(tr, ''); td.className = 'admin__act';
-        td.appendChild(btn('Approve', false, function () { act('Approve ' + p.accessId + ' (' + p.name + ')? Both editions then let them in.', '/admin/approve', { accessId: p.accessId }); }));
-        td.appendChild(btn('Deny', true, function () {
-          var reason = window.prompt('Deny ' + p.accessId + '. Reason (kept for you; the student does not see it):', '');
-          if (reason === null) return;
-          act('Deny ' + p.accessId + '?', '/admin/deny', { accessId: p.accessId, reason: reason });
-        }));
-        tb.appendChild(tr);
-      });
+      // requests ready for a decision first, then the unconfirmed ones; the newest first in each
+      var box = $('pending'); box.textContent = '';
+      if (!pending.length) box.appendChild(el('p', 'admin__box admin__none', 'No one is waiting.'));
+      pending.slice().sort(function (x, y) { return (unconfirmed(x) - unconfirmed(y)) || String(submittedAt(y)).localeCompare(String(submittedAt(x))); })
+        .forEach(function (p) { box.appendChild(pendingCard(p)); });
 
-      tb = $('approved').tBodies[0]; tb.textContent = '';
-      if (!d.approved.length) empty(tb, 6, 'No one is approved yet.');
-      d.approved.forEach(function (a) {
-        var tr = document.createElement('tr');
-        cell(tr, a.accessId); cell(tr, a.name); cell(tr, a.note); cell(tr, when(a.approved_at)); cell(tr, (a.lids || []).length);
-        var td = cell(tr, ''); td.className = 'admin__act';
-        td.appendChild(btn('Remove', true, function () {
-          var n = (a.lids || []).length;
-          act('Remove ' + a.accessId + ' (' + a.name + ')? ' + (n ? n + ' key(s) issued to them will be withdrawn within a day.' : 'No keys have been issued to them.'), '/admin/remove', { accessId: a.accessId });
-        }));
-        tb.appendChild(tr);
-      });
+      var tb = $('approved').tBodies[0]; tb.textContent = '';
+      if (!approved.length) none(tb, 6, 'No one is approved yet.');
+      approved.forEach(function (a) { tb.appendChild(approvedRow(a, seats[a.accessId], conflicts[a.accessId])); });
 
       tb = $('denied').tBodies[0]; tb.textContent = '';
-      if (!d.denied.length) empty(tb, 5, 'None.');
-      d.denied.forEach(function (x) {
-        var tr = document.createElement('tr');
-        cell(tr, x.accessId); cell(tr, x.name); cell(tr, x.reason); cell(tr, when(x.denied_at));
-        var td = cell(tr, ''); td.className = 'admin__act';
-        td.appendChild(btn('Approve', false, function () { act('Approve ' + x.accessId + ' after all?', '/admin/approve', { accessId: x.accessId }); }));
-        td.appendChild(btn('Clear', true, function () { act('Clear the record for ' + x.accessId + '? They can ask again.', '/admin/remove', { accessId: x.accessId }); }));
+      if (!denied.length) none(tb, 5, 'None.');
+      denied.forEach(function (x) {
+        var tr = el('tr');
+        td(tr, 'AccessID', el('code', '', x.accessId)); td(tr, 'Name', x.name || ''); td(tr, 'Reason', x.reason || ''); td(tr, 'Denied', day(x.denied_at || x.decided_at));
+        var c = td(tr, 'Actions', null); c.className = 'admin__act';
+        add(c, btn('Approve', false, function () { act('Approve ' + x.accessId + ' for Beethoven after all?', '/admin/approve', { accessId: x.accessId }, function (j) { showNext(j, x.google_account); }); }),
+          btn('Clear', true, function () { act('Clear the record for ' + x.accessId + '? They can ask again.', '/admin/remove', { accessId: x.accessId }); }));
         tb.appendChild(tr);
       });
 
       var rv = $('revoked'); rv.textContent = '';
-      if (!d.revoked.length) { var s = document.createElement('small'); s.textContent = 'None yet.'; rv.appendChild(s); }
-      d.revoked.forEach(function (lid) { var c = document.createElement('code'); c.textContent = lid; rv.appendChild(c); rv.appendChild(document.createTextNode(' ')); });
+      if (!revoked.length) rv.appendChild(el('small', '', 'None yet.'));
+      revoked.forEach(function (lid) { add(rv, el('code', '', lid), ' '); });
     }).catch(function (e) { if (e.message !== '401') say('Could not load the list: ' + e.message); });
   }
 
   $('open').addEventListener('click', function () {
     var t = $('token').value.trim();
     if (!t) return say('Paste the admin token first.');
+    if (!origin) return say('The access service’s address is not known (services.json). Reload the page.');
     remember(t);
     say('');
     load();
