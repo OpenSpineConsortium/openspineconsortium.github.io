@@ -479,6 +479,69 @@ body[data-shell="page"] .hero { padding-top: 96px; min-height: 0; }
 }
 .request-form .fineprint { margin-top: 22px; font-size: 0.84rem; color: var(--ink-faint); }
 .request-form .fineprint a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+/* the Google account's one line stays on the short form too, so it reads a shade stronger */
+.request-form small.why { color: var(--ink-soft); }
+.request-form .opt { font-weight: 400; color: var(--ink-faint); }
+.request-form .consent { margin-top: 18px; font-size: 0.88rem; line-height: 1.5; color: var(--ink-soft); }
+.request-form .consent a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+
+/* the CV box: the file input is the box's control, hidden from sight but not from the keyboard (Tab
+   reaches it, Enter or Space opens the file dialog, and the box shows the focus ring) */
+.drop { position: relative; }
+.request-form .drop__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.request-form label.drop__zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  min-height: 108px;
+  padding: 20px 18px;
+  font-weight: 400;
+  text-align: center;
+  background: var(--paper-card);
+  border: 1.5px dashed rgba(26, 28, 24, 0.26);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color .2s var(--ease), background-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.drop__big { font-size: 0.98rem; font-weight: 600; color: var(--ink); }
+.drop__hint { font-size: 0.86rem; color: var(--ink-faint); }
+.request-form label.drop__zone:hover,
+.drop--over label.drop__zone { border-color: var(--teal); background: rgba(14, 95, 88, 0.06); }
+.drop--over label.drop__zone { border-style: solid; }
+.request-form .drop__input:focus-visible + label.drop__zone { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 95, 88, 0.2); }
+.drop--has label.drop__zone { min-height: 64px; }
+.drop--has .drop__big { font-weight: 500; color: var(--ink-soft); }
+.drop__file { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 8px; font-size: 0.92rem; }
+.drop__file[hidden] { display: none; }
+.drop__name { overflow-wrap: anywhere; }
+.request-form .drop__clear {
+  justify-self: auto;
+  margin: 0;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--teal);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) { .request-form label.drop__zone { transition: none; } }
 
 /* ============================================================
    BROWSER CARDS
@@ -498,6 +561,11 @@ body[data-shell="page"] .hero { padding-top: 96px; min-height: 0; }
 .browser__note { font-size: 0.8rem; color: var(--ink-faint); line-height: 1.45; margin-top: auto; }
 @media (max-width: 960px) { .browsers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .browsers { grid-template-columns: 1fr; } }
+/* the browser edition's one card: Chrome, the private listing (no button; the note says how the
+   invitation comes, so it reads as text, not as a caption) */
+.browsers--one { grid-template-columns: minmax(0, 440px); justify-content: center; }
+.browser--private .browser__note { margin-top: 0; font-size: 0.95rem; line-height: 1.55; color: var(--ink-soft); }
+.bh-sec .browser.browser--private:hover { border-color: var(--line); transform: none; box-shadow: none; }
 
 /* ============================================================
    SUB-SITES: pages that had a header of their own

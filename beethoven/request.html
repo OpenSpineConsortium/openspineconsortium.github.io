@@ -16,10 +16,10 @@
   })();
 </script>
 <title>Ask for access to Beethoven</title>
-<meta name="description" content="Ask for access to Beethoven with your Wayne State AccessID; the lab lead approves requests by hand.">
+<meta name="description" content="Ask for access to Beethoven with your Wayne State AccessID; the lab lead approves requests by hand, and Beethoven comes from a private Chrome listing by invitation.">
 <link rel="canonical" href="https://openspineconsortium.com/beethoven/request.html">
 <meta property="og:title" content="Ask for access to Beethoven">
-<meta property="og:description" content="Ask for access to Beethoven with your Wayne State AccessID; the lab lead approves requests by hand.">
+<meta property="og:description" content="Ask for access to Beethoven with your Wayne State AccessID; the lab lead approves requests by hand, and Beethoven comes from a private Chrome listing by invitation.">
 <meta property="og:url" content="https://openspineconsortium.com/beethoven/request.html">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#F1EEE3">
@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202609300728">
-<link rel="stylesheet" href="/assets/css/site.css?v=202609300728">
+<link rel="stylesheet" href="/assets/css/style.css?v=202609301511">
+<link rel="stylesheet" href="/assets/css/site.css?v=202609301511">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -70,7 +70,8 @@
     <span class="eyebrow">Beethoven</span>
     <h1>Ask for access to Beethoven</h1>
     <p>Beethoven is for Wayne State students and staff working with the lab. Fill this in and the lab lead will look at
-    it. Once you are approved, Beethoven starts working the next time you click its icon on your portal.</p>
+    it. Once you are approved, an invitation to Beethoven's private Chrome listing comes to the Google account you give
+    here.</p>
   </header>
 
   <div class="request-form">
@@ -88,14 +89,30 @@
   <input id="email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="ab1234@wayne.edu" required>
   <small>Your AccessID followed by <code>@wayne.edu</code>.</small>
 
+  <label for="google">Google account</label>
+  <input id="google" name="google" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="the account you use in Chrome" maxlength="254" required aria-describedby="google-why">
+  <small class="why" id="google-why">Beethoven is on a private Chrome listing. Once you are approved, the invitation goes to this account.</small>
+
   <label for="note">What will you use Beethoven for?</label>
-  <textarea id="note" name="note" maxlength="500" placeholder="The project, the course, or who you are working with."></textarea>
+  <textarea id="note" name="note" maxlength="500" required placeholder="The project, the course, or who you are working with."></textarea>
   <small>Up to 500 characters.</small>
+
+  <label for="cv">CV <span class="opt">(optional)</span></label>
+  <div class="drop" id="drop">
+    <input id="cv" name="cv" type="file" class="drop__input" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    <label for="cv" class="drop__zone">
+      <span class="drop__big" id="cv-big">Drop your CV here</span>
+      <span class="drop__hint" id="cv-hint">or choose a file: PDF or Word, 5 MB at most</span>
+    </label>
+  </div>
+  <p class="drop__file" id="cv-file" hidden><span class="drop__name" id="cv-name"></span><button type="button" class="drop__clear" id="cv-clear">Remove</button></p>
+
+  <p class="consent">By sending, you agree that the lab's own access service keeps what you send as the <a href="/beethoven/privacy.html#what-licensor-receives">privacy statement</a> says.</p>
 
   <button id="send" type="submit" class="btn btn--solid">Send the request</button>
 </form>
 
-<p class="fineprint">What this page sends: the four fields above, and the name of the product this page belongs to, to the lab's own service. The connection you send from is kept only as a hash for up to two days, to limit repeats. If Beethoven brought you here, the account name your portal shows came along in this page's address and was used only to fill in the first field. <a href="/beethoven/privacy.html">Privacy statement</a> · <a href="/beethoven/support.html">Support</a> · <a href="/beethoven/">About Beethoven</a></p>
+<p class="fineprint">What this page sends: the fields above (your AccessID, name, WSU e-mail and Google account, what you will use Beethoven for, and the CV if you add one) and the name of the product this page belongs to, to the lab's own service. The lab lead reads them to decide. A CV is deleted twelve months after the decision, or at once if the request is not approved. The service may first e-mail a link to your WSU address to confirm the request is yours. The connection you send from is kept only as a hash for up to two days, to limit repeats. If Beethoven brought you here, the account name your portal shows came along in this page's address and was used only to fill in the first field. <a href="/beethoven/privacy.html">Privacy statement</a> · <a href="/beethoven/support.html">Support</a> · <a href="/beethoven/">About Beethoven</a></p>
 </div>
 
 <script>
@@ -105,10 +122,39 @@
   var send = document.getElementById('send');
   var accessId = document.getElementById('accessId');
   var email = document.getElementById('email');
+  var google = document.getElementById('google');
+  var note = document.getElementById('note');
+  var cvInput = document.getElementById('cv');
+  var drop = document.getElementById('drop');
+  var cvFile = document.getElementById('cv-file');
+  var cvName = document.getElementById('cv-name');
   var target = '';
 
-  function say(text) { status.textContent = text; status.className = 'box show'; }
+  // the CV, once read and checked: { name, type, base64 }; `reading` while a file is being read;
+  // `turn` makes a file chosen later win over one still being read
+  var cv = null, reading = null, turn = 0;
+  var CV_MAX = 5 * 1024 * 1024;
+  // the type sent is the one the file's first bytes show, never the one the browser guessed
+  var CV_TYPES = {
+    pdf: { type: 'application/pdf', magic: [0x25, 0x50, 0x44, 0x46, 0x2d] },
+    docx: { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', magic: [0x50, 0x4b, 0x03, 0x04] },
+    doc: { type: 'application/msword', magic: [0xd0, 0xcf, 0x11, 0xe0] }
+  };
+
+  // `cvSaid`: the box above shows a message about the CV, which goes when a good file comes
+  var cvSaid = false;
+  function say(text) { status.textContent = text; status.className = 'box show'; cvSaid = false; }
+  function sayHere(text) {
+    say(text);
+    try { status.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { status.scrollIntoView(); }
+  }
+  function sayCv(text) { sayHere(text); cvSaid = true; }
+  function unsayCv() { if (cvSaid) { status.textContent = ''; status.className = 'box'; cvSaid = false; } }
+  function fail(field, text) { sayHere(text); if (field) field.focus(); }
   function id() { return accessId.value.trim().toLowerCase(); }
+  function size(n) {
+    return n < 1024 * 1024 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+  }
 
   // the service's addresses live in services.json beside this page: the request route itself, or
   // failing that the same service's origin (the access_check address) with /request
@@ -139,39 +185,166 @@
     }
   } catch (e) { /* an old browser without URLSearchParams: the field is simply empty */ }
 
+  // ---- the CV: dropped on the box, or chosen with the file dialog (the box is the input's label, so
+  // Tab reaches the input and Enter or Space opens the dialog). On a phone or tablet there is nothing
+  // to drop, so the box says "Choose" ----
+  var touch = !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+  var cvBig = document.getElementById('cv-big');
+  function boxText(has) {
+    cvBig.textContent = has ? (touch ? 'Choose another file' : 'Drop another file to replace it') : (touch ? 'Choose your CV' : 'Drop your CV here');
+    document.getElementById('cv-hint').textContent = touch ? 'PDF or Word, 5 MB at most' : 'or choose a file: PDF or Word, 5 MB at most';
+  }
+  boxText(false);
+  function clearCv() {
+    turn++;
+    cv = null;
+    reading = null;
+    cvName.textContent = '';
+    cvFile.hidden = true;
+    drop.classList.remove('drop--has');
+    boxText(false);
+  }
+  function showCv(text) {
+    cvName.textContent = text;
+    cvFile.hidden = false;
+    drop.classList.add('drop--has');
+    boxText(true);
+  }
+  function take(file) {
+    clearCv();
+    if (!file) return;
+    var ext = ((file.name || '').match(/\.([A-Za-z]+)$/) || ['', ''])[1].toLowerCase();
+    var kind = CV_TYPES[ext];
+    if (!kind) { cvInput.value = ''; return sayCv('The CV must be a PDF or a Word file (.pdf, .docx or .doc).'); }
+    if (!file.size) { cvInput.value = ''; return sayCv('That file is empty.'); }
+    if (file.size > CV_MAX) { cvInput.value = ''; return sayCv('That file is larger than 5 MB, the most a CV can be. Choose a smaller one, or leave it out.'); }
+    unsayCv();
+    var mine = turn;
+    showCv(file.name + ' (reading...)');
+    reading = new Promise(function (done) {
+      var fr = new FileReader();
+      fr.onload = function () {
+        if (mine !== turn) return done();
+        var b64 = String(fr.result).replace(/^data:[^,]*,/, '');
+        var head = atob(b64.slice(0, 8));
+        var ok = kind.magic.every(function (byte, i) { return head.charCodeAt(i) === byte; });
+        if (!ok) {
+          clearCv();
+          cvInput.value = '';
+          sayCv('"' + file.name + '" does not look like a ' + (ext === 'pdf' ? 'PDF' : 'Word') + ' file inside. Save it again as PDF, or leave it out.');
+          return done();
+        }
+        cv = { name: file.name.slice(-120), type: kind.type, base64: b64 };
+        reading = null;
+        showCv(file.name + ' · ' + size(file.size));
+        done();
+      };
+      fr.onerror = function () {
+        if (mine === turn) { clearCv(); cvInput.value = ''; sayCv('That file could not be read. Try again, or leave it out.'); }
+        done();
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  cvInput.addEventListener('change', function () { take(cvInput.files && cvInput.files[0]); });
+  document.getElementById('cv-clear').addEventListener('click', function () { clearCv(); cvInput.value = ''; cvInput.focus(); });
+
+  function hasFiles(ev) {
+    var t = ev.dataTransfer && ev.dataTransfer.types;
+    return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0;
+  }
+  ['dragenter', 'dragover'].forEach(function (name) {
+    drop.addEventListener(name, function (ev) {
+      if (!hasFiles(ev)) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'copy';
+      drop.classList.add('drop--over');
+    });
+  });
+  drop.addEventListener('dragleave', function (ev) {
+    if (!drop.contains(ev.relatedTarget)) drop.classList.remove('drop--over');
+  });
+  drop.addEventListener('drop', function (ev) {
+    if (!hasFiles(ev)) return;
+    ev.preventDefault();
+    drop.classList.remove('drop--over');
+    var files = ev.dataTransfer.files;
+    if (files.length !== 1) return sayCv('Drop one file: your CV.');
+    try { cvInput.files = files; } catch (e) { /* an old browser: the file is still taken below */ }
+    take(files[0]);
+  });
+  // a file dropped beside the box would make the browser leave the page and lose what was typed
+  window.addEventListener('dragover', function (ev) { if (hasFiles(ev) && !drop.contains(ev.target)) ev.preventDefault(); });
+  window.addEventListener('drop', function (ev) { if (hasFiles(ev) && !drop.contains(ev.target)) ev.preventDefault(); });
+
+  // The service's answer to a new request is 202 {status: 'pending', mailbox: 'confirm'} when it first
+  // e-mailed a "Confirm it is you" link to <AccessID>@wayne.edu, and 202 {status: 'pending'} when the
+  // lab lead hears at once
+  function confirmSent(j) {
+    return j.mailbox === 'confirm' || j.mailbox === 'confirmation_sent' || j.status === 'confirm' || j.confirm === 'sent' || j.confirm === true;
+  }
+
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
-    if (!target) return;
-    // product "bridge" is the extension's name on the wire since its first version; the service shows it as Beethoven
-    var body = { accessId: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), note: document.getElementById('note').value.trim(), product: 'bridge' };
-    if (!/^[a-z]{2}[0-9]{4}$/.test(body.accessId)) return say('The AccessID is two letters and four digits, like ab1234.');
-    if (body.name.length < 2 || body.name.length > 80) return say('Please give your name (2 to 80 characters).');
-    if (body.email !== body.accessId + '@wayne.edu') return say('The e-mail must be ' + body.accessId + '@wayne.edu.');
-    if (body.note.length > 500) return say('The note is too long (500 characters at most).');
+    if (!target || send.disabled) return;
     send.disabled = true;
-    say('Sending...');
-    fetch(target, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j }; });
-    }).then(function (r) {
-      if (r.status === 202) return say('Thank you. Your request is in. Once the lead approves it, Beethoven works the next time you click its icon on your portal.');
-      if (r.status === 200 && r.body.status === 'approved') return say('You are already approved. Click the Beethoven icon on your portal.');
-      if (r.status === 200 && r.body.status === 'denied') return say('This request was not approved. If you think that is a mistake, talk to your lab lead.');
-      if (r.status === 429) return say('Too many requests from this connection today. Try again tomorrow.');
-      say(r.body.error ? 'Not sent: ' + r.body.error + '.' : 'Not sent: the service answered HTTP ' + r.status + '. Try again later or ask your lab lead.');
-    }).catch(function () {
-      say('Not sent: the service could not be reached. Check your connection and try again, or ask your lab lead.');
-    }).then(function () { send.disabled = false; });
+    (reading || Promise.resolve()).then(submit, submit);
   });
+
+  function submit() {
+    // v 2 carries the Google account, what it is for and the CV; product "bridge" is the extension's
+    // name on the wire since its first version; the service shows it as Beethoven
+    var body = { v: 2, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), google_account: google.value.trim().toLowerCase(), purpose: note.value.trim(), product: 'bridge' };
+    var bad = null;
+    if (!/^[a-z]{2}[0-9]{4}$/.test(body.access_id)) bad = [accessId, 'The AccessID is two letters and four digits, like ab1234.'];
+    else if (body.name.length < 2 || body.name.length > 80) bad = [document.getElementById('name'), 'Please give your name (2 to 80 characters).'];
+    else if (body.email !== body.access_id + '@wayne.edu') bad = [email, 'The WSU e-mail must be ' + body.access_id + '@wayne.edu.'];
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.google_account) || body.google_account.length > 254) bad = [google, 'Please give the Google account you use in Chrome; the invitation to Beethoven goes there.'];
+    else if (body.purpose.length < 2) bad = [note, 'Please say in a sentence what you will use Beethoven for.'];
+    else if (body.purpose.length > 500) bad = [note, 'What you will use it for is too long (500 characters at most).'];
+    if (bad) { send.disabled = false; return fail(bad[0], bad[1]); }
+    if (cv) body.cv = cv;
+    say(cv ? 'Sending, with your CV...' : 'Sending...');
+    fetch(target, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j || {} }; });
+    }).then(function (r) {
+      var j = r.body;
+      if (r.status === 202) return sayHere(confirmSent(j) ? 'Sent. Check your Wayne State mail for a confirmation link.' : 'Sent. You hear from the lab lead.');
+      if (r.status === 200 && j.status === 'approved') {
+        if (Array.isArray(j.grants) && j.grants.indexOf('extension') < 0) return sayHere('You are approved as a lab member, not for Beethoven itself. If you need Beethoven, talk to your lab lead.');
+        return sayHere('You are already approved. Beethoven installs from its private Chrome listing, by invitation; if no invitation has reached the Google account you use in Chrome, ask your lab lead.');
+      }
+      if (r.status === 200 && j.status === 'denied') return sayHere('This request was not approved. If you think that is a mistake, talk to your lab lead.');
+      if (r.status === 413) return sayHere(cv ? 'Not sent: the CV is too large for the service. Choose a smaller file, or leave it out.' : 'Not sent: there is too much text.');
+      if (r.status === 429) return sayHere('Too many requests from this connection today. Try again tomorrow.');
+      sayHere(j.error ? 'Not sent: ' + j.error + '.' : 'Not sent: the service answered HTTP ' + r.status + '. Try again later or ask your lab lead.');
+    }).catch(function () {
+      sayHere('Not sent: the service could not be reached. Check your connection and try again, or ask your lab lead.');
+    }).then(function () { send.disabled = false; });
+  }
 })();
 </script>
 
+
   <div class="prose" style="margin-top:56px">
     <h2>What happens next</h2>
-    <p>The lead approves requests by hand, usually within a few days. You can come back to this page and send the same
-    request again to see where it stands: it will say pending, approved, or not approved. When you are approved, click the
-    Beethoven icon on your portal; you do not need to wait for an e-mail.</p>
-    <p>The same approval covers <a href="/beethoven/vscode/">Beethoven for VS Code</a>: once you are approved, its setup
-    wizard lets you through at the Wayne State sign-in step.</p>
+    <ol>
+      <li>If the service e-mails your Wayne State address a link, open it and confirm the request is yours. That link is
+      how the lab knows the request came from your mailbox.</li>
+      <li>The lab lead reads the request, usually within a few days, and approves it for Beethoven, approves you as a lab
+      member only, or says no.</li>
+      <li>Approved for Beethoven: an invitation to its private listing in the Chrome Web Store comes to the Google account
+      you gave. Open it in Chrome, signed in to that account, and install Beethoven there. The listing opens only for
+      invited accounts; there is no other place to get it.</li>
+      <li>Open your grid portal and click the Beethoven icon.</li>
+    </ol>
+    <p>Beethoven works on one computer per approved account, and only for the AccessID that was approved. A second
+    computer, a second Chrome profile or a reinstall counts as a new installation and is refused until the lab lead moves
+    your approval to it. Sharing a copy or an account breaks the <a href="/beethoven/terms.html">agreement</a>.</p>
+    <p>You can send the same request again to see where it stands: the page says it was sent and is waiting for the lab
+    lead, that you are already approved, or that it was not approved.</p>
+    <p>An approval for Beethoven also covers <a href="/beethoven/vscode/">Beethoven for VS Code</a>: its setup wizard
+    lets you through at the Wayne State sign-in step.</p>
   </div>
 </section>
 </main>
@@ -224,7 +397,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202609300728"></script>
+<script src="/assets/js/main.js?v=202609301511"></script>
 <!-- /site:footer -->
 
 </body>

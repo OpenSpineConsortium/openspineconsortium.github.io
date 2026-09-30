@@ -97,8 +97,8 @@ breadcrumb: no
 | directive | becomes |
 |---|---|
 | `<!-- build:request-form services=<url> -->` | the access-request form and its script (`tools/templates/request-form.html`); `services` is where it reads the access service's address (default `/beethoven/services.json`; `request.html` passes `services.json`, relative, as it always has, and the build checks that it still does) |
-| `<!-- build:request-form services=<url> fine=short -->` | the same form and the same script without the three hints under the fields and with one line of fine print that links the privacy statement (`request.html` keeps the full "What this page sends" text). The home page uses it so it stays under 120 words outside the form's labels |
-| `<!-- build:browsers -->` | the four browser cards: the store button once `store_url` is set in `BROWSERS`, else "Direct download" of `/beethoven/downloads/beethoven-<version>-<browser>.zip` |
+| `<!-- build:request-form services=<url> fine=short -->` | the same form and the same script without the three plain hints under the fields and without the "What this page sends" paragraph (`request.html` keeps it). The Google account's line (`<small class="why">`), the CV box and the consent line, which links the privacy statement, stay in both. The home page uses it |
+| `<!-- build:browsers -->` | the one install card: Chrome, "Private listing, by invitation: after approval you receive an invitation at the Google account you gave" (`BROWSERS`, `PRIVATE_LISTING`). No button while `store_url` is `None`; set it to the listing's `https://chromewebstore.google.com/...` address only if the card should link it. Nothing is downloaded from this site |
 | `<!-- build:section-index -->` | on a tab's landing page (`/research/`, `/data/`), a list of the pages one level below its children (the six tutorials, the Spine MRI parts), made from `SITE`, so every page is at most two clicks from the header |
 | `<!-- build:vscode-install -->` | the one install card of Beethoven for VS Code: the Marketplace button once `VSCODE_STORE_URL` is set, else "listing pending" |
 | `<!-- build:license-title -->`, `<!-- build:license-toc -->`, `<!-- build:license-text -->` | the browser edition's Trial Edition License Agreement, rendered from its repository's `LICENSE.txt` |
@@ -172,10 +172,30 @@ Beethoven has two editions, and both live under `/beethoven/`:
 - **The browser extension.** `/` and `/beethoven/` are its product page (its homepage
   is `/beethoven/`), with its agreement, privacy statement, support, request and
   reviewers pages beside it. The texts come from its repository (`../beethoven/`, or
-  `../ashley-bridge/` until the folder is renamed; `BEETHOVEN_REPO` overrides). The
-  build also copies the four browser packages from that repository's
-  `release/<version>/` into `beethoven/downloads/` with a `SHA256SUMS.txt`, and refuses
-  a package whose hash does not match the release's list.
+  `../ashley-bridge/` until the folder is renamed; `BEETHOVEN_REPO` overrides), and its
+  version from that repository's `extension/package.json`. It is for Chrome only and is
+  distributed only through a **private Chrome Web Store listing** whose testers are the
+  lab's Google Group: the maintainer adds each approved student's Google account (the
+  request form asks for it), and the invitation goes there. The site offers no package:
+  `beethoven/downloads/` is gone, and the build fails if that folder, a package file
+  (`beethoven-*.zip`, `.crx`, `.xpi`) or a link to one comes back, or if a page names
+  another browser (the names are `OTHER_BROWSERS` in the script; a text rendered from the
+  browser repository that names one is reported as a note, because the change belongs in
+  that file).
+  The 7.0.0 packages are still in this repository's git history (commit `816e9c4`);
+  removing them from history would be a rewrite and is the maintainer's decision.
+- **The request form** (`tools/templates/request-form.html`) posts `v: 2` to the access
+  service's `/request`: `access_id`, `name`, `email` (the AccessID at `wayne.edu`),
+  `google_account`, `purpose` (required, 500 characters at most), `product: 'bridge'`
+  and, if one was added, `cv: {name, type, base64}`: a PDF or Word file of at most 5 MB
+  (5 × 1024 × 1024 bytes, checked in the page before sending), dropped on the box or
+  chosen with the file dialog, whose type is taken from its first bytes, never from the
+  browser's guess. What the page says after sending depends on the answer: 202 with
+  `mailbox: 'confirm'` means the service first e-mailed a confirmation link to the
+  student's Wayne State address ("Sent. Check your Wayne State mail for a confirmation
+  link."); any other 202 means the lab lead hears at once ("Sent. You hear from the lab
+  lead."). The service must be deployed with `v: 2` before the site, because the form no
+  longer sends the old body.
 - **Beethoven for VS Code**, `/beethoven/vscode/` (the "For VS Code" pill): its product
   page, `terms.html` (Trial Edition), `terms-full.html` (Full Edition), `privacy.html`
   and `third-party.html`, rendered from its repository's `extension/` texts
@@ -194,9 +214,9 @@ Every text is checked word for word against its source, and the old product name
 appear on a page only inside a person's name or one of the `KEPT` identifiers (the key
 prefixes `ASHLEY1.`/`ASHLEYREV1`, the folders `~/.ashley`, `~/.ashley-local` and
 `/shared/ashley`, the old settings `ashley.*`, the old Marketplace id and service name),
-which stay because renaming them would break an installed copy. `BEETHOVEN_VERSION`,
-`VSCODE_STORE_URL` and the browser store addresses (`BROWSERS[*]["store_url"]`, `None`
-until a store approves a listing) are at the top of `tools/build_site.py`.
+which stay because renaming them would break an installed copy. `VSCODE_STORE_URL`,
+`BROWSERS` (Chrome only; `store_url` `None`) and `PRIVATE_LISTING` are at the top of
+`tools/build_site.py`.
 
 **Retired:** the browser repository's `tools/site_beethoven_build.py` and the VS Code
 repository's `tools/site_build.py` and `docs/site/` no longer build pages for this site;

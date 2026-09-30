@@ -19,7 +19,7 @@ WHAT IT DOES, IN ORDER
             vscode-full, vscode-privacy, vscode-third-party (Beethoven for VS Code); -toc only
             for the agreements
         <!-- build:request-form services=<url> [fine=short] -->   the access form and its script
-        <!-- build:browsers -->                      the four browser cards
+        <!-- build:browsers -->                      the one install card: Chrome, the private listing
         <!-- build:vscode-install -->                the Beethoven for VS Code install card
         <!-- build:section-index -->                 on a tab's landing page, the pages one level
                                                      below its children (tutorials, Spine MRI parts)
@@ -32,23 +32,28 @@ WHAT IT DOES, IN ORDER
     Celebrate Life, the PACS demo) the same header and footer, between <!-- site:... --> markers,
     so a second run replaces rather than adds. Their content is not touched; only the old header,
     the old inline menu script and links to the retired one-page anchors are replaced.
- 4. Copies the Beethoven packages for direct download into beethoven/downloads/ when the release
-    folder is there.
- 5. Stamps every local stylesheet, script, image, video and document reference in every page
+ 4. Stamps every local stylesheet, script, image, video and document reference in every page
     with ?v=<yyyymmddHHMM> (UTC), and keeps content hashes on ES-module import edges, because a new
     stamp on gallery.js does not make a browser refetch the ./viewer.js it imports.
- 6. Writes sitemap.xml (canonical addresses only, so / is left to /beethoven/) and robots.txt.
- 7. Writes the moved pages in REDIRECTS (old address -> new address): a two-line page that sends
+ 5. Writes sitemap.xml (canonical addresses only, so / is left to /beethoven/) and robots.txt.
+ 6. Writes the moved pages in REDIRECTS (old address -> new address): a two-line page that sends
     the visitor on, with the query and the fragment (an installed build opens
     /ashley/request.html?access_id=...), and a meta refresh for a browser without scripts. It
     also writes TEXT_COPIES, the plain-text agreements, byte for byte from their sources.
- 8. Checks: every page parses and its tags balance; the header is byte-identical on every page
+ 7. Checks: every page parses and its tags balance; the header is byte-identical on every page
     except the mark on the current tab; the footer is identical everywhere; every internal link and
     asset resolves to a file; every page is reachable; the banned word and the old product name are
     absent (outside a person's name and the KEPT identifiers); every file under /ashley/ is either
     a redirect in REDIRECTS or a file in KEPT_FILES with the same bytes as before (installed
-    builds read those by address); /beethoven/services.json names every route both editions read.
+    builds read those by address); /beethoven/services.json names every route both editions read;
+    the browser edition is offered only through its private Chrome listing (check_private_listing:
+    no package of it in the site, no link to one, no other browser named on a page).
     A failed check exits non-zero and says which page and why.
+
+THE BROWSER EDITION IS NOT DOWNLOADED FROM THIS SITE. It is on a private Chrome Web Store listing
+whose testers are the lab's Google Group; the maintainer adds each approved student's Google account
+(the request form asks for it). The site used to copy the packages into beethoven/downloads/; that
+step and the folder are gone, and the check fails if either comes back.
 
 /ASHLEY/ is the product's old address. Nothing there is edited by hand: every file is either in
 REDIRECTS (written here) or in KEPT_FILES (never written; its SHA-256 is pinned below, so a change
@@ -107,8 +112,9 @@ def sibling_repo(env, names, marker):
 
 # The browser edition's repository (override with BEETHOVEN_REPO)
 BEETHOVEN_REPO = sibling_repo("BEETHOVEN_REPO", ("beethoven", "ashley-bridge"), "extension/src/licensing")
-BEETHOVEN_VERSION = "7.0.0"
-RELEASE_DIR = BEETHOVEN_REPO / "release" / BEETHOVEN_VERSION
+# its version ({{version}}) is read from its extension/package.json on every run; the site offers no
+# package of it (see BROWSERS)
+BEETHOVEN_EXT = BEETHOVEN_REPO / "extension"
 # Beethoven for VS Code's repository (override with BEETHOVEN_VSCODE_REPO); its version is read from
 # its extension/package.json on every run
 VSCODE_REPO = sibling_repo("BEETHOVEN_VSCODE_REPO", ("beethoven-vscode", "ashley"), "extension/LICENSE-FULL.txt")
@@ -135,14 +141,22 @@ TEXT_COPIES = {
     "beethoven/vscode-license.txt": "vscode-license",
     "beethoven/vscode-license-full.txt": "vscode-full",
 }
-DOWNLOADS = "/beethoven/downloads/"
-# A store listing's address once the store has approved it; None shows "Direct download".
+# The browser edition has one listing: the Chrome Web Store, Private visibility, open only to the Google
+# accounts in the lab's Google Group of testers (the maintainer adds each approved student's Google
+# account, which the request form asks for). No other store, and no package on this site.
+# store_url: None shows no button, only how the invitation comes. Set it to the listing's address only
+# if the card should link it; the listing still opens only for the invited accounts.
 BROWSERS = [
     {"key": "chrome", "name": "Chrome", "store": "Chrome Web Store", "store_url": None},
-    {"key": "edge", "name": "Edge", "store": "Edge Add-ons", "store_url": None},
-    {"key": "firefox", "name": "Firefox", "store": "Firefox Add-ons", "store_url": None},
-    {"key": "safari", "name": "Safari", "store": None, "store_url": None},
 ]
+PRIVATE_LISTING = ("Private listing, by invitation: after approval you receive an invitation at the Google "
+                   "account you gave.")
+# What check_private_listing refuses: a package of the extension in the site or a link to one, and
+# another browser named in a page's text (case matters: "edge cases" is not the browser)
+OLD_DOWNLOADS = "beethoven/downloads"
+PACKAGE_FILE = re.compile(r"^beethoven[-_].*\.(?:zip|crx|xpi)$", re.I)
+PACKAGE_LINK = re.compile(r"/beethoven/downloads\b|beethoven[-_][^\"'\s/]*\.(?:zip|crx|xpi)\b", re.I)
+OTHER_BROWSERS = re.compile(r"\b(?:Edge|Firefox|Safari|Opera|Brave|Vivaldi)\b")
 PANDOC = shutil.which("pandoc") or r"C:\Program Files\Pandoc\pandoc.exe"
 FONTS = ("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;"
          "0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:"
@@ -703,23 +717,21 @@ def parse_body(p):
 
 
 def browsers_html():
+    """The install card: Chrome, the private listing. There is nothing to download here; with
+    store_url set, the card also links the listing (it opens only for the invited accounts)."""
     cards = []
     card = template("browser-card.html")
     for b in BROWSERS:
-        pkg = f"{DOWNLOADS}beethoven-{BEETHOVEN_VERSION}-{b['key']}.zip"
+        action = ""
         if b["store_url"]:
-            href, button, dl = b["store_url"], f"Get it on {b['store']}", ""
-            note = f"Version {BEETHOVEN_VERSION}."
-        else:
-            href, button, dl = pkg, "Direct download", " download"
-            # short, because the home page carries these cards and stays under 120 words
-            if b["key"] == "safari":
-                note = "For Apple's converter, not a direct install."
-            else:
-                note = "Listing pending review"
-        cards.append(fill(card, {"key": b["key"], "name": esc(b["name"]), "href": href, "button": esc(button),
-                                 "download": dl, "note": esc(note)}, "browser-card.html"))
-    return '<div class="browsers">\n' + "\n".join(cards) + "\n</div>"
+            if not b["store_url"].startswith("https://chromewebstore.google.com/"):
+                raise SystemExit(f"BROWSERS: {b['store_url']} is not a Chrome Web Store address")
+            action = (f'    <a class="btn btn--solid" href="{esc(b["store_url"])}" target="_blank" rel="noopener">'
+                      "Open the private listing</a>\n")
+        cards.append(fill(card, {"key": b["key"], "name": esc(b["name"]), "action": action,
+                                 "note": esc(PRIVATE_LISTING)}, "browser-card.html").rstrip("\n"))
+    one = " browsers--one" if len(cards) == 1 else ""
+    return f'<div class="browsers{one}">\n' + "\n".join(cards) + "\n</div>"
 
 
 def vscode_install_html(version):
@@ -738,23 +750,25 @@ def vscode_install_html(version):
             + f'  <p class="browser__note">{esc(note)}</p>\n</article>\n</div>')
 
 
-# The home page's copy of the form is the short one: same fields, same script, no hints under the
-# fields (the placeholders and the script's own messages carry them) and one line of fine print that
-# links the privacy statement (its "Access requests" paragraph); request.html keeps the full
-# "What this page sends" text. The home page stays under
-# 120 words that way, the form's labels and button aside.
-SHORT_FINEPRINT = ('<p class="fineprint">Sent only to the lab\'s own access service. '
-                   '<a href="/beethoven/privacy.html">Privacy</a></p>')
+# The home page's copy of the form is the short one: same fields, same script, same CV box and the same
+# consent line (which links the privacy statement), without the three plain hints under the fields (the
+# placeholders and the script's own messages carry them) and without the "What this page sends"
+# paragraph, which request.html keeps. The Google account's one line, <small class="why">, stays in
+# both: without it nobody knows why a Google account is asked for.
 
 
 def request_form(services, fine):
     out = fill(template("request-form.html"), {"services": services}, "request-form.html")
+    for must in ('<small class="why"', 'class="consent"', 'id="cv"', "google_account", "purpose"):
+        if must not in out:
+            raise SystemExit(f"request-form.html: '{must}' is gone (the form's v2 fields, the Google account's "
+                             "line and the consent line are part of the form everywhere it appears)")
     if fine == "short":
         out, n_hints = re.subn(r"\n  <small>.*?</small>", "", out)
-        out, n_fine = re.subn(r'<p class="fineprint">.*?</p>', lambda m: SHORT_FINEPRINT, out, flags=re.S)
+        out, n_fine = re.subn(r'\n*<p class="fineprint">.*?</p>', "", out, flags=re.S)
         if n_hints != 3 or n_fine != 1:
-            raise SystemExit("request-form.html: the short form expects three <small> hints and one fine-print "
-                             f"paragraph, found {n_hints} and {n_fine}")
+            raise SystemExit("request-form.html: the short form expects three plain <small> hints and one "
+                             f"fine-print paragraph, found {n_hints} and {n_fine}")
     elif fine != "full":
         raise SystemExit(f"build:request-form: fine={fine} is not 'full' or 'short'")
     return out
@@ -800,7 +814,7 @@ def expand(body, texts, where, path=None):
         body = body.replace("<!-- build:section-index -->", section_index(path) if path else "")
     # placeholders first, then the texts, so a "{{" inside a text is never read as a placeholder
     if "{{" in body:
-        body = fill(body, {"version": BEETHOVEN_VERSION,
+        body = fill(body, {"version": texts["version"],
                            **{k: v for k, v in texts.items() if k.endswith("_version")}}, where)
 
     def text(m):
@@ -997,37 +1011,8 @@ def stamp_modules():
 
 
 # ============================================================
-# DOWNLOADS, SITEMAP, ROBOTS
+# SITEMAP, ROBOTS
 # ============================================================
-def copy_packages(notes):
-    dest = OUT / DOWNLOADS.strip("/")
-    names = [f"beethoven-{BEETHOVEN_VERSION}-{b['key']}.zip" for b in BROWSERS]
-    if not RELEASE_DIR.is_dir():
-        missing = [n for n in names if not (dest / n).exists()]
-        if missing:
-            notes.append(f"{RELEASE_DIR} is not there and {', '.join(missing)} are not in {DOWNLOADS}: the direct-download buttons will 404 until they are copied")
-        return
-    sums = {}
-    for line in read(RELEASE_DIR / "SHA256SUMS.txt").splitlines() if (RELEASE_DIR / "SHA256SUMS.txt").exists() else []:
-        bits = line.split()
-        if len(bits) == 2:
-            sums[bits[1].lstrip("*")] = bits[0]
-    dest.mkdir(parents=True, exist_ok=True)
-    lines = []
-    for name in names:
-        src = RELEASE_DIR / name
-        if not src.exists():
-            notes.append(f"{src} is missing: its download button will 404")
-            continue
-        digest = hashlib.sha256(src.read_bytes()).hexdigest()
-        if name in sums and sums[name] != digest:
-            raise SystemExit(f"{src}: SHA-256 {digest} does not match the release's SHA256SUMS.txt ({sums[name]})")
-        if not (dest / name).exists() or (dest / name).read_bytes() != src.read_bytes():
-            shutil.copyfile(src, dest / name)
-        lines.append(f"{digest} *{name}")
-    write(dest / "SHA256SUMS.txt", "\n".join(lines) + "\n")
-
-
 def write_sitemap(pages):
     today = _dt.date.today().isoformat()
     urls = "".join(f"  <url><loc>{esc(ORIGIN + p)}</loc><lastmod>{today}</lastmod></url>\n" for p in pages)
@@ -1138,6 +1123,51 @@ def check_services(problems):
                 problems.append(f"beethoven/services.json: '{k}' names {v}, which is not in the site")
         elif urlparse(v).hostname != SERVICE_HOST:
             problems.append(f"beethoven/services.json: '{k}' is {v}, not on {SERVICE_HOST}")
+
+
+def check_private_listing(parsed, rendered, problems, notes):
+    """The browser edition is offered only through its private Chrome listing: no package of it in the
+    site, no link to one, and no other browser named in a page's text. /ashley/ is not checked (its
+    kept files are the exact texts people accepted, pinned byte for byte). A page that carries a text
+    from TEXTS is checked without that text, and the text at its source instead: the page renders it
+    word for word, so a browser named there is changed in that repository's file; that is a note, and
+    it stays on every run until the file changes."""
+    if (OUT / OLD_DOWNLOADS).exists():
+        problems.append(f"{OLD_DOWNLOADS}/: still in the site; the browser edition is offered only through its "
+                        "private Chrome listing (delete the folder)")
+    for top, dirs, files in os.walk(OUT):
+        dirs[:] = [d for d in dirs if d not in (".git", "node_modules")]
+        for f in files:
+            if PACKAGE_FILE.match(f):
+                rel = (Path(top) / f).relative_to(OUT).as_posix()
+                if not rel.startswith(EXCLUDE_DIRS):
+                    problems.append(f"{rel}: a package of the browser edition in the site (it is offered only "
+                                    "through its private Chrome listing)")
+    unstamp = lambda s: re.sub(r"\?v=\d{12}\b", "", s)  # noqa: E731 (the check-only run has another stamp)
+    for rel, (text, pg) in parsed.items():
+        for tag, attr, ref, line in pg.refs:
+            if PACKAGE_LINK.search(ref):
+                problems.append(f"{rel}:{line}: {attr}='{ref}' points at a package of the browser edition")
+        page = unstamp(text)
+        for key, t in TEXTS.items():
+            if t["page"] == rel and key in rendered:
+                for piece in rendered[key][1:]:
+                    page = page.replace(unstamp(piece), "")
+        body = text_of(page)
+        named = list(OTHER_BROWSERS.finditer(body))
+        if named:
+            where =["'" + " ".join(body[max(0, m.start() - 40):m.end() + 40].split()) + "'" for m in named[:3]]
+            problems.append(f"{rel}: names another browser ({', '.join(sorted({m.group(0) for m in named}))}); "
+                            f"the browser edition is for Chrome only: {'; '.join(where)}")
+    for key, t in TEXTS.items():
+        src = t["src"]
+        if not src.exists():
+            continue
+        lines = [i + 1 for i, line in enumerate(read(src).splitlines()) if OTHER_BROWSERS.search(line)]
+        if lines:
+            which = sorted(set(OTHER_BROWSERS.findall(read(src))))
+            notes.append(f"{src}: names {', '.join(which)} on line(s) {', '.join(map(str, lines))}; {t['page']} "
+                         "renders this text word for word, so the change belongs in that file")
 
 
 # ============================================================
@@ -1400,6 +1430,10 @@ def main():
     texts, rendered = load_texts(problems)
     pj = VSCODE_EXT / "package.json"
     texts["vscode_version"] = json.loads(read(pj))["version"]
+    pj = BEETHOVEN_EXT / "package.json"
+    if not pj.exists():
+        raise SystemExit(f"{pj}: not there (set BEETHOVEN_REPO)")
+    texts["version"] = json.loads(read(pj))["version"]
 
     # body files that no page claims
     claimed = {body_file(n["path"]) for n, _ in walk(SITE)}
@@ -1410,7 +1444,6 @@ def main():
     if not a.check_only:
         for c in stamp_modules():
             notes.append("module stamp: " + c)
-        copy_packages(notes)
         sitemap = []
         for n, parents in walk(SITE):
             if not exists(n):
@@ -1489,6 +1522,7 @@ def main():
     check_legacy(problems)
 
     parsed = check_site(written, problems, notes, external=a.external)
+    check_private_listing(parsed, rendered, problems, notes)
 
     for n_ in notes:
         if a.quiet and n_.startswith(("external 2", "external 3", "module stamp")):
@@ -1505,7 +1539,8 @@ def main():
     vs = ", ".join(f"{k} v{t['version']} ({t['date']})" for k, t in TEXTS.items() if "version" in t)
     print(f"\n{len(parsed)} pages checked{where}, {did}; {len(REDIRECTS)} moved pages, {len(KEPT_FILES)} kept files; "
           f"texts: {vs}; Beethoven for VS Code {texts['vscode_version']} from {VSCODE_REPO.name}, "
-          f"Beethoven {BEETHOVEN_VERSION} from {BEETHOVEN_REPO.name}; {len(problems)} problem(s), {len(notes)} note(s)")
+          f"Beethoven {texts['version']} from {BEETHOVEN_REPO.name} (private Chrome listing; no package here); "
+          f"{len(problems)} problem(s), {len(notes)} note(s)")
     sys.exit(1 if problems else 0)
 
 

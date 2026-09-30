@@ -26,9 +26,10 @@ description: Getting help with Beethoven, how it works step by step, the notice 
       if your university requires it) and keep the tab open.</li>
       <li><strong>Click the Beethoven icon.</strong> The first click asks your browser once for access to that one site.
       Then the extension does the rest by itself, in order, and says in one line what it is doing: it wakes the portal up,
-      checks you are signed in, confirms your account is approved, installs its small set of scripts in your own cluster
-      account if they are not there, shows you where your work goes and takes your statement about it, starts your worker
-      through the portal's own shell, and waits for Claude Code to connect.</li>
+      checks you are signed in, confirms your account is approved for this installation, points your cluster account at
+      the lab's shared copy of Beethoven's tools (the lab lead keeps that copy set up on the cluster), shows you where your
+      work goes and takes your statement about it, starts your worker through the portal's own shell, and waits for Claude
+      Code to connect.</li>
       <li><strong>Sign in to Claude once, when the panel asks.</strong> The extension opens Anthropic's sign-in page in a
       new tab; you sign in with your own Claude account, click <em>Authorize</em>, and paste the code that page shows into
       the one box in the panel. The code is typed once into your own job's terminal and is not kept. When your worker
@@ -41,12 +42,20 @@ description: Getting help with Beethoven, how it works step by step, the notice 
     environment named after your site, and carry on. The job queues its own successor before its time is up, and the
     successor continues the same session. The portal is needed again only to stop the worker, to start one after you
     stopped it, or if the cluster ended the chain.</p>
+    <p>What the worker makes (figures, tables, files) shows in that claude.ai session. If you want results in Google
+    Drive, Docs or Sheets, turn on Claude's Google connectors yourself in claude.ai's settings; Beethoven does not do it
+    for you.</p>
 
     <h2 id="install">Installing</h2>
-    <p>Once a browser's store has approved the listing, Beethoven installs from that store like any other extension: no
-    developer mode and no file to unpack. Until then, the <a href="/beethoven/">product page</a> offers each browser's
-    package as a direct download. The Safari package is the input for Apple's converter on a Mac, not something Safari
-    installs by itself; Safari is untested.</p>
+    <p>Beethoven is for Chrome, on a private listing in the Chrome Web Store that opens only for invited Google accounts.
+    After the lab lead approves your <a href="/beethoven/request.html">request</a>, an invitation comes to the Google
+    account you gave on it. Open it in Chrome, signed in to that account, and install Beethoven from the listing like any
+    other extension: no developer mode and no file to unpack. There is no other place to get it.</p>
+    <p>One approved account, one installation. The first time Beethoven checks your approval, that installation becomes
+    the one your account is tied to. It is identified by a random number Beethoven makes when you accept its agreement, not by
+    anything about your computer. A second computer, a second Chrome profile or a reinstall is a new installation: the
+    panel says <em>This account is already set up on another computer</em>, and your lab lead can move the approval to
+    the new one. Beethoven works only for the AccessID that was approved.</p>
 
     <h2 id="vscode">Beethoven for VS Code</h2>
     <p>Start with the troubleshooter inside the extension: click Beethoven in VS Code's status bar, then <em>Troubleshoot

@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202609300728">
-<link rel="stylesheet" href="/assets/css/site.css?v=202609300728">
+<link rel="stylesheet" href="/assets/css/style.css?v=202609301511">
+<link rel="stylesheet" href="/assets/css/site.css?v=202609301511">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -86,13 +86,14 @@
       <li>Beethoven never sees your Claude sign-in. You sign in to Claude Code yourself, on Anthropic's own page; the
       one-time code you paste into the extension's box is typed once into your own job's terminal on your cluster and is not
       stored, not logged and not sent anywhere else; the extension reads only whether Claude Code says it is signed in.</li>
-      <li>Beethoven runs no code it did not ship with. Its daily update check downloads a signed list, not a program.</li>
+      <li>Beethoven runs no code it did not ship with. Its daily update check fetches a signed list, not a program.</li>
       <li>Beethoven works with one website: the Open OnDemand portal you connect. It requests access to that site when you
       click its icon on that site's tab, and to nothing else. Its only other requests go to the maintainer: the approval
       check, which sends the account name your portal shows for you, your portal's address, the product name and its
-      version, so the maintainer's access service can answer whether that account is approved; and a daily download, from
-      the maintainer's website, of that service's address and the signed list of withdrawn versions, which carries nothing
-      about you.</li>
+      version, and the installation identifier (a random number the extension makes when its agreement is accepted, not derived
+      from the device), so the maintainer's access service can answer whether that account is approved on this
+      installation; and a daily fetch, from the maintainer's website, of that service's address and the signed list of
+      withdrawn versions, which carries nothing about you.</li>
       <li>Beethoven does not read your portal cookie and does not sign in for you. When your portal asks for a sign-in, the
       extension asks you to sign in in a tab. There is no key and nothing to paste: your institution's own sign-in
       identifies you.</li>
@@ -103,22 +104,34 @@
 
     <h2 id="permissions">Permissions and code</h2>
     <div class="callout">
-      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>activeTab</code>, and
-      <code>sidePanel</code> in the Chrome and Edge builds (the Firefox build uses its sidebar instead). One optional host
+      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>activeTab</code> and
+      <code>sidePanel</code>. One optional host
       permission, <code>https://*/*</code>, which the extension asks your browser to grant for the one portal website you
       click from, and it refuses to work until that is granted; no host permission at install time, and none on any
       Anthropic domain. Never requested: <code>cookies</code>, <code>tabs</code>, <code>webRequest</code>,
       <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>nativeMessaging</code>,
       <code>debugger</code>, <code>identity</code>, <code>clipboardRead</code>.</p>
-      <p>No remote code: the daily update check downloads one signed list
-      (<a href="/beethoven/killlist.json?v=202609300728">killlist.json</a>) and checks its signature against a key built into the extension;
+      <p>No remote code: the daily update check fetches one signed list
+      (<a href="/beethoven/killlist.json?v=202609301511">killlist.json</a>) and checks its signature against a key built into the extension;
       the list can withdraw a version and nothing else. No licence key: the one request that carries anything about the
-      person is the approval check, which sends the account name the portal shows, the portal's hostname, the product and
-      the version to the maintainer's access service (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
-      <a href="/beethoven/services.json?v=202609300728">services.json</a>) and is answered yes or no. The bundle is minified for size and not
-      obfuscated; the Firefox source package carries build instructions. Security reports go to the notice address on the
-      <a href="/beethoven/support.html">support page</a>.</p>
+      person is the approval check, which sends the account name the portal shows, the portal's hostname, the product, the
+      version and the installation identifier to the maintainer's access service
+      (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
+      <a href="/beethoven/services.json?v=202609301511">services.json</a>) and is answered yes or no. The bundle is minified for size and not
+      obfuscated. Security reports go to the notice address on the <a href="/beethoven/support.html">support page</a>.</p>
     </div>
+
+    <h2 id="distribution">Distribution and installations</h2>
+    <p>Beethoven is published only as a private listing in the Chrome Web Store: the listing opens for the Google accounts
+    in the lab's group of testers, which the maintainer adds one by one after approving a request. There is no public
+    listing, no other store and no download from this site. The access service ties each approved account to one
+    installation, identified by the random installation identifier the extension makes when its agreement is accepted and keeps in
+    its own storage (it is not derived from the device, and a reinstall makes a new one). A check from a second
+    installation of the same account is refused, and the maintainer is told; the maintainer can move the approval or
+    withdraw it. The service keeps the identifier and when it was first and last seen; of refused checks it keeps a
+    count, the time of the last one and the first eight characters of a one-way hash of the refused installation's
+    identifier. This is an access rule the extension and the service keep between them, not copy protection: it makes casual
+    sharing fail, and the agreement makes sharing a breach.</p>
 
     <p class="note">Beethoven's use of information received from your browser complies with the Chrome Web Store User Data
     Policy, including the Limited Use requirements.</p>
@@ -178,7 +191,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202609300728"></script>
+<script src="/assets/js/main.js?v=202609301511"></script>
 <!-- /site:footer -->
 
 </body>
