@@ -616,3 +616,57 @@ body[data-shell="app"] .nav__links a { white-space: nowrap; }
   .nav__links, .tile, .subnav__pill, .skip-link { transition: none !important; }
   .tile:hover { transform: none; }
 }
+
+/* ============================================================
+   BEETHOVEN FOR VS CODE (/beethoven/vscode/): the home page's
+   classes (hero.css) with three small additions
+   ============================================================ */
+.vsc-eyebrow { display: block; margin-bottom: 16px; }
+.bh-sec .vsc-steps { text-align: left; max-width: 720px; margin: 0 auto; }
+.vsc-steps p { color: var(--ink-soft); }
+.bh-sec .vsc-get { grid-template-columns: minmax(0, 340px); justify-content: center; }
+.vsc-get .browser { text-align: left; }
+.page-vsc .bh__fine a { white-space: nowrap; }
+
+/* ============================================================
+   ACCESS ADMIN (/beethoven/admin.html): the maintainer's page
+   ============================================================ */
+.admin h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; margin: 40px 0 12px; }
+.admin__box { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-card); padding: 16px 18px; margin: 16px 0; }
+.admin #msg:empty { display: none; }
+.admin .hidden { display: none; }
+.admin label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 0.95rem; }
+.admin input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+.admin input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 95, 88, 0.16); }
+.admin small { display: block; margin-top: 6px; color: var(--ink-faint); font-size: 0.84rem; }
+.admin code { font-family: var(--font-mono); font-size: 0.9em; }
+.admin button {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--paper-card);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 100px;
+  padding: 7px 16px;
+  margin: 8px 6px 2px 0;
+  cursor: pointer;
+}
+.admin button:hover { background: var(--teal); border-color: var(--teal); }
+.admin button.quiet { color: var(--ink); background: transparent; border-color: var(--line); }
+.admin button.quiet:hover { border-color: var(--teal); color: var(--teal); }
+.admin button:disabled { opacity: 0.5; cursor: default; }
+.admin table { border-collapse: collapse; width: 100%; font-size: 0.9rem; line-height: 1.5; }
+.admin th, .admin td { border-bottom: 1px solid var(--line); padding: 8px 10px; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+.admin th { font-weight: 600; }
+.admin td.admin__act { white-space: nowrap; }
+.admin td.admin__none { color: var(--ink-faint); }
+.admin__row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.admin__row > div { flex: 1 1 160px; }

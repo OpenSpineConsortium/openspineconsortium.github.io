@@ -1,0 +1,52 @@
+---
+title: Beethoven for VS Code · Your grid, from VS Code
+description: Beethoven for VS Code sets up your laptop for the Wayne State grid and keeps a Claude Code worker running in your own grid account, reachable from VS Code and from the Claude app.
+css: /assets/css/hero.css
+body_class: page-home page-vsc
+---
+<section class="bh" aria-labelledby="vsc-title">
+  <span class="eyebrow vsc-eyebrow">Beethoven for VS Code</span>
+  <h1 class="bh__title" id="vsc-title">Your grid. <em>From VS Code.</em></h1>
+  <p class="bh__lede">One setup on your laptop. A Claude Code worker in your own grid account, on your own Claude subscription.</p>
+
+  <p class="bh__need"><span class="bh__need-k">You need:</span>
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Category/877/AccessID-and-accounts" target="_blank" rel="noopener">a Wayne State AccessID</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20199/How-to-apply-for-a-Grid-account" target="_blank" rel="noopener">a grid account</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20314/Wayne-State-VPN-and-the-Global-Protect-client" target="_blank" rel="noopener">GlobalProtect VPN</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">Claude Pro or Max</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">VS Code</a>
+    <a class="bh__how" href="/beethoven/request.html">Ask for access <span aria-hidden="true">→</span></a></p>
+</section>
+
+<section class="bh-sec" id="what" aria-labelledby="what-title">
+  <h2 class="bh__h2" id="what-title">What it does</h2>
+  <ol class="obd-steps vsc-steps">
+    <li>
+      <h3>Sets up your laptop</h3>
+      <p>One wizard: an SSH key, a marked block in your SSH settings, sign-in through VS Code's own Microsoft and GitHub
+      accounts, and your GitHub and Hugging Face tokens kept in your computer's credential store.</p>
+    </li>
+    <li>
+      <h3>Keeps a worker on the grid</h3>
+      <p>It installs its scripts in your own grid account and keeps a Claude Code worker running there as a Slurm job.
+      You sign in to Claude yourself; Beethoven never reads, stores or copies your Claude sign-in.</p>
+    </li>
+    <li>
+      <h3>Reach it from VS Code or your phone</h3>
+      <p>Terminals and a side panel in VS Code, a link that lets the Claude on your laptop hand work to the worker, and
+      Remote Control from the Claude app if you turn it on.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="bh-sec bh-sec--get" id="install" aria-labelledby="install-title">
+  <h2 class="bh__h2" id="install-title">Install</h2>
+<!-- build:vscode-install -->
+  <p class="bh__fine">One approval covers both editions: <a href="/beethoven/request.html">ask for access</a> with your
+  AccessID. Beethoven for VS Code runs Claude Code and is not an Anthropic product.<br>
+  <a href="/beethoven/vscode/terms.html">Trial agreement</a><span class="bh__sep" aria-hidden="true">·</span>
+  <a href="/beethoven/vscode/terms-full.html">Full agreement</a><span class="bh__sep" aria-hidden="true">·</span>
+  <a href="/beethoven/vscode/privacy.html">Privacy</a><span class="bh__sep" aria-hidden="true">·</span>
+  <a href="/beethoven/vscode/third-party.html">Third-party notices</a><span class="bh__sep" aria-hidden="true">·</span>
+  <a href="/beethoven/support.html#vscode">Support</a></p>
+</section>

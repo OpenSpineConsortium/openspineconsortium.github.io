@@ -10,9 +10,12 @@ external scripts.
 python -X utf8 tools/build_site.py              # build, stamp, check
 python -X utf8 tools/build_site.py --external   # also ask every outside link for its status
 python -X utf8 tools/build_site.py --check-only # write nothing; check what is on disk
+python -X utf8 tools/build_site.py --out DIR    # copy the site to DIR (new or empty, outside this
+                                                # folder) and build and check there instead
 ```
 
-It exits non-zero and names the page when a check fails. Commit what it wrote.
+It exits non-zero and names the page when a check fails. Commit what it wrote. `--out` is the
+dry run: it touches nothing here, and `diff -r` against DIR shows what a real build would change.
 
 ## Publishing (read this before every push)
 
@@ -25,12 +28,17 @@ It exits non-zero and names the page when a check fails. Commit what it wrote.
    `Cache-Control: max-age=600`, so for up to ten minutes after the deploy a visitor (and the
    CDN) may still get the previous HTML, which points at the previous, still-present assets.
    Nothing to do but wait; a hard reload shows the new page at once.
-3. **`/ashley/` is legacy and stays as it is.** It holds the pages and service files of the
-   product's earlier name: the agreement, privacy, support, request and admin pages, the
-   `services.json` and withdrawn-keys list that installed extension builds 4.0.0 to 6.0.0
-   still fetch, and `/ashley/bridge/`, which now redirects to `/beethoven/`. The build does
-   not template, stamp, check or list them in the sitemap, and nothing here edits them.
-   Remove them only when no installed build older than 7.0.0 is left.
+3. **`/ashley/` is the product's old address, and two tables in `tools/build_site.py` say
+   what every file there is.** `REDIRECTS` (old file -> new address): the build writes each
+   as a two-line page that sends the visitor on with the query and the fragment
+   (`/ashley/request.html?access_id=ab1234` lands on `/beethoven/request.html?access_id=ab1234`)
+   and a meta refresh for a browser without scripts. `KEPT_FILES`: files installed builds
+   read by address, or the exact texts people accepted, kept byte for byte with their
+   SHA-256 pinned (`services.json`, which Ashley for VS Code 3.0.0 and Beethoven 4.0.0 to
+   6.0.0 read; `bridge-killlist.json`; the version 4 `license.txt`, `license-full.txt` and
+   `privacy.html`; `bridge/privacy.html` and `bridge/terms.html`). The build never writes a
+   kept file, fails if one changes, and fails on any file under `/ashley/` that is in
+   neither table. Remove an entry only when no installed build that reads it is left.
 4. The old one-page site is not kept as a file here (everything in this repository is
    published); it is in git: `git show 28d2cee:index.html`.
 
@@ -79,6 +87,7 @@ breadcrumb: no
 | `css` | no | extra stylesheets, comma separated, root-absolute |
 | `js` | no | extra scripts, comma separated, root-absolute; add ` module` after a path for `type="module"` |
 | `canonical` | no | `<link rel="canonical">` (default: the page's own address) |
+| `robots` | no | `<meta name="robots">`, e.g. `noindex` (the admin page) |
 | `body_class` | no | classes on `<body>` |
 | `strip` | no | `no` hides the section strip on this page |
 | `breadcrumb` | no | `no` hides the breadcrumb (the home page has none anyway) |
@@ -91,9 +100,12 @@ breadcrumb: no
 | `<!-- build:request-form services=<url> fine=short -->` | the same form and the same script without the three hints under the fields and with one line of fine print that links the privacy statement (`request.html` keeps the full "What this page sends" text). The home page uses it so it stays under 120 words outside the form's labels |
 | `<!-- build:browsers -->` | the four browser cards: the store button once `store_url` is set in `BROWSERS`, else "Direct download" of `/beethoven/downloads/beethoven-<version>-<browser>.zip` |
 | `<!-- build:section-index -->` | on a tab's landing page (`/research/`, `/data/`), a list of the pages one level below its children (the six tutorials, the Spine MRI parts), made from `SITE`, so every page is at most two clicks from the header |
-| `<!-- build:license-title -->`, `<!-- build:license-toc -->`, `<!-- build:license-text -->` | the Trial Edition License Agreement, rendered from the Beethoven repository's `LICENSE.txt` |
-| `<!-- build:privacy-title -->`, `<!-- build:privacy-text -->` | the privacy statement, rendered from its `PRIVACY.md` with pandoc |
-| `{{version}}`, `{{license_version}}`, `{{privacy_version}}` | the extension's version and the two texts' version numbers |
+| `<!-- build:vscode-install -->` | the one install card of Beethoven for VS Code: the Marketplace button once `VSCODE_STORE_URL` is set, else "listing pending" |
+| `<!-- build:license-title -->`, `<!-- build:license-toc -->`, `<!-- build:license-text -->` | the browser edition's Trial Edition License Agreement, rendered from its repository's `LICENSE.txt` |
+| `<!-- build:privacy-title -->`, `<!-- build:privacy-text -->` | the browser edition's privacy statement, rendered from its `PRIVACY.md` with pandoc |
+| `<!-- build:vscode-license-… -->`, `<!-- build:vscode-full-… -->` (`-title`, `-toc`, `-text`) | Beethoven for VS Code's Trial and Full Edition License Agreements, from its repository's `extension/LICENSE.txt` and `LICENSE-FULL.txt` |
+| `<!-- build:vscode-privacy-… -->`, `<!-- build:vscode-third-party-… -->` (`-title`, `-text`) | its `extension/PRIVACY.md` and `extension/THIRD_PARTY_NOTICES.md`, with pandoc |
+| `{{version}}`, `{{vscode_version}}`, `{{license_version}}`, `{{privacy_version}}`, `{{vscode_license_version}}`, `{{vscode_full_version}}`, `{{vscode_privacy_version}}` | the two editions' versions and the texts' version numbers |
 
 Rules for bodies:
 
@@ -155,24 +167,44 @@ Data & Tools.
 
 ## Beethoven
 
-`/` and `/beethoven/` are the Beethoven product page (the extension's homepage is
-`/beethoven/`). The agreement and the privacy statement are rendered on every build
-from the Beethoven repository, `../ashley-bridge/` by default (set `BEETHOVEN_REPO`
-to change it), and checked word for word against their sources. The build also
-copies the four browser packages from that repository's `release/<version>/` into
-`beethoven/downloads/` with a `SHA256SUMS.txt`, and refuses to copy a package whose
-hash does not match the release's list. `BEETHOVEN_VERSION` and the store addresses
-(`BROWSERS[*]["store_url"]`, `None` until a store approves a listing) are at the top
-of `tools/build_site.py`.
+Beethoven has two editions, and both live under `/beethoven/`:
 
-**Retired:** the Beethoven repository's `tools/site_beethoven_build.py` no longer
-builds pages for this site; running it would overwrite the themed pages. It also
-used to write `/ashley/bridge/index.html` and a line in `/ashley/index.html`; those
-legacy files stay as they are and nothing here edits them.
+- **The browser extension.** `/` and `/beethoven/` are its product page (its homepage
+  is `/beethoven/`), with its agreement, privacy statement, support, request and
+  reviewers pages beside it. The texts come from its repository (`../beethoven/`, or
+  `../ashley-bridge/` until the folder is renamed; `BEETHOVEN_REPO` overrides). The
+  build also copies the four browser packages from that repository's
+  `release/<version>/` into `beethoven/downloads/` with a `SHA256SUMS.txt`, and refuses
+  a package whose hash does not match the release's list.
+- **Beethoven for VS Code**, `/beethoven/vscode/` (the "For VS Code" pill): its product
+  page, `terms.html` (Trial Edition), `terms-full.html` (Full Edition), `privacy.html`
+  and `third-party.html`, rendered from its repository's `extension/` texts
+  (`../beethoven-vscode/`, or `../ashley/` until the folder is renamed;
+  `BEETHOVEN_VSCODE_REPO` overrides), plus `beethoven/vscode-license.txt` and
+  `vscode-license-full.txt`, byte-for-byte copies of the two agreements. Its version is
+  read from its `extension/package.json`. The other spellings `beethoven/vscode-privacy.html`
+  and `beethoven/third_party_notices.html` are redirects in `REDIRECTS`.
+- **`/beethoven/admin.html`**, the maintainer's approval page, is generated like any page
+  but `hidden`: no navigation leads to it, it carries `noindex` and it is not in the
+  sitemap. It reads the access service's address from `beethoven/services.json`
+  (`beethoven-access`).
 
-Never edited by hand or by the build: `beethoven/services.json`,
-`beethoven/killlist.json` (the extension fetches both), anything under `/ashley/`
-(legacy copies and redirects for extension builds 4.0.0 to 6.0.0), and
+One approval covers both editions; `/beethoven/request.html` is the one request form.
+Every text is checked word for word against its source, and the old product name may
+appear on a page only inside a person's name or one of the `KEPT` identifiers (the key
+prefixes `ASHLEY1.`/`ASHLEYREV1`, the folders `~/.ashley`, `~/.ashley-local` and
+`/shared/ashley`, the old settings `ashley.*`, the old Marketplace id and service name),
+which stay because renaming them would break an installed copy. `BEETHOVEN_VERSION`,
+`VSCODE_STORE_URL` and the browser store addresses (`BROWSERS[*]["store_url"]`, `None`
+until a store approves a listing) are at the top of `tools/build_site.py`.
+
+**Retired:** the browser repository's `tools/site_beethoven_build.py` and the VS Code
+repository's `tools/site_build.py` and `docs/site/` no longer build pages for this site;
+everything is generated here.
+
+Never edited by hand: `beethoven/services.json` and `beethoven/killlist.json` (both
+editions fetch them; the build checks that `services.json` names every route both read,
+on `beethoven-access`, and never writes either), the `KEPT_FILES` under `/ashley/`, and
 `googlec3911e7fb095977e.html`.
 
 ## Caching

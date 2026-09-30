@@ -4,6 +4,7 @@
   "revocation": "https://beethoven-access.openspineconsortium.workers.dev/revoked",
   "allowlist": "https://beethoven-access.openspineconsortium.workers.dev/allowlist",
   "license_service": "https://beethoven-access.openspineconsortium.workers.dev/trial",
+  "report": "https://beethoven-access.openspineconsortium.workers.dev/report",
   "request_page": "https://openspineconsortium.com/beethoven/request.html",
   "support_page": "https://openspineconsortium.com/beethoven/support.html"
 }
