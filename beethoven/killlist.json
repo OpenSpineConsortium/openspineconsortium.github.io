@@ -1,0 +1,9 @@
+{
+ "v": 1,
+ "kid": "k1",
+ "issued": 1790735333,
+ "revoked_versions": [],
+ "revoked_lids": [],
+ "message": "Beethoven is current.",
+ "sig": "ASHLEYREV1.eyJ2IjoxLCJraWQiOiJrMSIsImlzc3VlZCI6MTc5MDczNTMzMywicmV2b2tlZF92ZXJzaW9ucyI6W10sInJldm9rZWRfbGlkcyI6W10sIm1lc3NhZ2UiOiJCZWV0aG92ZW4gaXMgY3VycmVudC4ifQ.AeGobM1LhTXBkoak9KcIgxnyU33eQojg3DdZXeTZzbGEYg6JYCa2oCWG5Y11FfTVVP2zo-BikM-IT1XAqieuAA"
+}

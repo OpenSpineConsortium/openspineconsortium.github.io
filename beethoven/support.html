@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beethoven support</title>
+<style>
+:root{--ink:#1c1c1c;--muted:#555;--line:#ddd;--accent:#1f3b2e;--bg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}}
+:root[data-theme="dark"]{--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}
+body{margin:0;padding:0 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",Helvetica,Arial,sans-serif;max-width:760px;margin-inline:auto}
+h1{font-size:1.8em;margin:32px 0 4px}h2{font-size:1.2em;margin:28px 0 8px;color:var(--accent)}a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.95em}td,th{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+pre{white-space:pre-wrap;border:1px solid var(--line);padding:8px;font-size:.9em}
+</style>
+<style>
+/* Beethoven pages: the same look as the site's other pages, plus what a phone needs */
+body{overflow-wrap:break-word}a:visited{color:var(--accent)}
+p.lead,.note{color:var(--muted)}ul,ol{padding-left:1.2em}li{margin:4px 0}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:16px 0}
+nav.crumbs{margin:24px 0 0;font-size:.95em;color:var(--muted)}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
+</style>
+</head>
+<body>
+<nav class="crumbs"><a href="./">Beethoven</a> · <a href="request.html">Ask for access</a></nav>
+<h1>Beethoven: support and notices</h1>
+
+<h2>Getting help</h2>
+<p>Start with the panel: under <em>Details</em>, <em>Run the checks</em> names the piece that is not working and says in one sentence what to do about it. When you write for help, send the one line the panel shows, the list of checks as it stands (a screenshot is fine) and, if you like, the audit log exported from <em>Details</em> or the setup page; it holds one line per request the extension made to your portal and never what you typed.</p>
+<p>Students: the Trial Edition is free for approved institutional accounts (<a href="request.html">ask for access</a>); your lab lead is the first line of support. Beyond that, the maintainer may help through the address below, at his discretion and without a response-time promise (agreement, section 9(b)).</p>
+
+<div class="box">
+<h2 style="margin-top:0">Notice address</h2>
+<p>Notices under either agreement (section 19(a) notice of a dispute, Full Edition section 9(d) refund requests and 9(e) outage claims, privacy requests, requests for a paper copy) go to:</p>
+<p><strong>NOTICE ADDRESS TO BE PUBLISHED BY THE LICENSOR BEFORE ANY MARKETPLACE LISTING OR PAID KEY</strong><br>
+(a postal address and an e-mail address that are not a university or hospital address)</p>
+<p>Until then, notices go to the person who approved your account.</p>
+</div>
+
+<h2>Disputes</h2>
+<p>Section 19 of the agreement: before any lawsuit, the party with a claim sends the other a signed written notice (name, the e-mail in the access record, the install id shown with your acceptance record on the extension's setup page, the problem, the outcome wanted) and both sides have 60 days to resolve it, with a call if either asks. Claims are individual (class-action waiver), heard by a judge (jury waiver) in Wayne County, Michigan or the Eastern District of Michigan, or in small-claims court where you live. There is no arbitration clause in this version. Nothing in the agreement takes away a right your state's law does not allow to be waived.</p>
+
+<h2>Refunds and outages</h2>
+<p>The Trial Edition is free, takes no payment and converts to nothing; approval can be withdrawn and the edition can end with 30 days' notice, and because nothing is paid nothing is refunded. When Beethoven stops working because of an outside dependency named in section 7 of the agreement (your university's cluster, portal, network or policies; Anthropic; your browser or the store you installed from; your own accounts), there is no claim against the licensor; access is restored where practical once the dependency works again (section 9(c)). A paid Full Edition, if ever offered, would be a separate agreement with its own terms.</p>
+
+<h2>Security</h2>
+<p>Report a security problem privately to the notice address, not in a public place. Good-faith research within the law is welcome. Details: the SECURITY policy shipped with the source.</p>
+
+<h2>Your records</h2>
+<p>Your acceptance of the agreement (version, text hashes, what you ticked, your typed name, the time) is kept in the extension's own storage in your browser with the exact texts beside it; the setup page lets you save and print them. Licensor keeps access records for the life of your access and six years after.</p>
+<p>Texts: <a href="terms.html">Trial Edition License Agreement</a>, <a href="privacy.html">Privacy statement</a>.</p>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beethoven</title>
+<meta name="description" content="Beethoven starts, watches and stops a Claude Code worker on your university's Open OnDemand cluster and hands you its Remote Control link.">
+<style>
+:root{--ink:#1c1c1c;--muted:#555;--line:#ddd;--accent:#1f3b2e;--bg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}}
+:root[data-theme="dark"]{--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}
+body{margin:0;padding:0 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",Helvetica,Arial,sans-serif;max-width:760px;margin-inline:auto}
+h1{font-size:1.8em;margin:32px 0 4px}h2{font-size:1.2em;margin:28px 0 8px;color:var(--accent)}a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.95em}td,th{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+pre{white-space:pre-wrap;border:1px solid var(--line);padding:8px;font-size:.9em}
+</style>
+<style>
+/* Beethoven pages: the same look as the site's other pages, plus what a phone needs */
+body{overflow-wrap:break-word}a:visited{color:var(--accent)}
+p.lead,.note{color:var(--muted)}ul,ol{padding-left:1.2em}li{margin:4px 0}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:16px 0}
+nav.crumbs{margin:24px 0 0;font-size:.95em;color:var(--muted)}
+table{display:block;overflow-x:auto}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
+.stores{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+a.store{display:inline-block;padding:10px 16px;border:1px solid var(--accent);border-radius:6px;text-decoration:none;font-weight:600;color:var(--accent)}
+a.store[aria-disabled="true"]{border-color:var(--line);color:var(--muted);cursor:default}
+a.store span{display:block;font-weight:400;font-size:.85em}
+</style>
+</head>
+<body>
+<nav class="crumbs"><a href="support.html">Support and notices</a> · <a href="request.html">Ask for access</a></nav>
+<h1>Beethoven</h1>
+<p class="lead">Beethoven is a browser extension that starts, watches and stops a Claude Code worker in your own account on your university's cluster, through the Open OnDemand portal you already use. When the worker connects, it hands you the link that opens that session at claude.ai and in the Claude app. It talks to one website, your portal: it has no access to claude.ai, never sees your Claude sign-in, and runs no code it did not ship with.</p>
+
+<div class="box">
+<strong>Licensed software, by approval.</strong> Beethoven is licensed, not sold: you receive a license to use it under the
+<a href="terms.html">Trial Edition License Agreement</a> and the <a href="privacy.html">privacy statement</a>, accepted once in a
+signing dialog on the extension's own setup page. The Trial Edition is free for
+approved institutional accounts during the evaluation period; a paid Full Edition, if offered, is a separate agreement. Nothing
+converts by itself and no payment details are taken for a trial. <a href="request.html">Ask for access</a> with the account
+name your university's Open OnDemand portal shows for you; once you are approved the extension just works. There is no key and
+nothing to paste: your own sign-in to your portal identifies you, and the extension confirms your approval with the maintainer's
+access service when you connect and about once a day.
+</div>
+
+<h2 id="install">Install</h2>
+<p>Beethoven is installed from your browser's own store, like any other extension: no developer mode and no file to unpack.
+The listings are being submitted. Until a store has approved its listing, the button below says so; when a listing is live, its
+button opens it.</p>
+<p class="stores">
+<a class="store" data-store="chrome" data-status="pending" href="#install" aria-disabled="true">Chrome Web Store<span>listing pending review</span></a>
+<a class="store" data-store="edge" data-status="pending" href="#install" aria-disabled="true">Microsoft Edge Add-ons<span>listing pending review</span></a>
+<a class="store" data-store="firefox" data-status="pending" href="#install" aria-disabled="true">Firefox Add-ons<span>listing pending review</span></a>
+</p>
+<p class="note">Testers, until the listings are live: <a href="request.html">ask for access</a> with the account name your portal
+shows for you, wait for Greg to tell you it is approved, install the package he sends you, then open your portal and click the icon.
+There is nothing to paste; an instruction you were given earlier that mentions a key is out of date. A Safari edition is planned and
+is not offered yet.</p>
+
+<h2>Three steps</h2>
+<p>After installing the extension and accepting the agreement once on its setup page (and once your account is approved):</p>
+<ol class="steps">
+<li><strong>Open your portal tab.</strong> Sign in to your university's Open OnDemand portal the usual way (VPN first if your
+university requires it) and keep the tab open.</li>
+<li><strong>Click the Beethoven icon.</strong> The first click asks your browser once for access to that one site. Then the
+extension does the rest by itself, in order, and says in one line what it is doing: it wakes the portal up, checks you are
+signed in, confirms your account is approved, installs its small set of scripts in your own cluster account if they are not
+there, shows you where your work goes
+and takes your statement about it, starts your worker through the portal's own shell, and waits for Claude Code to connect.</li>
+<li><strong>Sign in to Claude once, when the panel asks.</strong> The extension opens Anthropic's sign-in page in a new tab; you
+sign in with your own Claude account, click <em>Authorize</em>, and paste the code that page shows into the one box in the
+panel. The code is typed once into your own job's terminal and is not kept. When your worker connects, your session's claude.ai
+page opens in a new tab (you can turn that off), and the panel's <em>Open in Claude</em> button opens it again any time.</li>
+</ol>
+
+<h2>What it never does</h2>
+<ul>
+<li>Beethoven has no access to claude.ai or any Anthropic page. It does not run on those sites, does not read them and does
+not change them. It opens an Anthropic page in a new tab in two cases (the sign-in page Claude Code printed during a sitting you
+started; your session's claude.ai/code link when your worker connects) and the connectors settings page for the optional Google
+Drive step, as a bookmark would; nothing of the extension runs there.</li>
+<li>Beethoven never sees your Claude sign-in. You sign in to Claude Code yourself, on Anthropic's own page; the one-time code
+you paste into the extension's box is typed once into your own job's terminal on your cluster and is not stored, not logged and
+not sent anywhere else; the extension reads only whether Claude Code says it is signed in.</li>
+<li>Beethoven runs no code it did not ship with. Its daily update check downloads a signed list, not a program.</li>
+<li>Beethoven works with one website: the Open OnDemand portal you connect. It requests access to that site when you click its
+icon on that site's tab, and to nothing else. Its only other requests go to the maintainer: the approval check, which sends the
+account name your portal shows for you, your portal's address, the product name and its version, so the maintainer's access
+service can answer whether that account is approved; and a daily download, from the maintainer's website, of that service's
+address and the signed list of withdrawn versions, which carries nothing about you.</li>
+<li>Beethoven does not read your portal cookie and does not sign in for you. When your portal asks for a sign-in, the
+extension asks you to sign in in a tab. There is no key and nothing to paste: your institution's own sign-in identifies you.</li>
+<li>Beethoven sends its maintainer no usage data, no error reports and no activation request; the approval check is the only
+thing it sends about you. Its audit log of what it asked your portal never contains what you typed to sign in and is never
+transmitted.</li>
+</ul>
+
+<h2>After it connects</h2>
+<p>The worker is a job on the cluster, not a program on your computer. Once the panel shows <em>Open in Claude</em>, close the
+panel, the portal tab, the browser or the laptop as you like: open <a href="https://claude.ai/code">claude.ai/code</a> or
+<em>Code</em> in the Claude app from any device, pick the environment named after your site, and carry on. The job queues its own
+successor before its time is up, and the successor continues the same session. The portal is needed again only to stop the
+worker, to start one after you stopped it, or if the cluster ended the chain.</p>
+
+<h2>Documents</h2>
+<ul>
+<li><a href="privacy.html">Privacy statement</a> (version 7): what stays in your browser, what your portal sees, what happens
+when you sign in to Claude, what Anthropic receives, what the maintainer receives, and what is never collected.</li>
+<li><a href="terms.html">Trial Edition License Agreement</a> (version 6): the terms you accept in the signing dialog, including
+the dispute section.</li>
+<li><a href="support.html">Support and notices</a>: getting help, the notice address, disputes, security reports.</li>
+<li><a href="request.html">Ask for access</a>.</li>
+</ul>
+<p class="note">Beethoven's use of information received from your browser complies with the Chrome Web
+Store User Data Policy, including the Limited Use requirements.</p>
+
+<h2>For reviewers and security offices</h2>
+<div class="box">
+<p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>activeTab</code>, and
+<code>sidePanel</code> in the Chrome and Edge builds (the Firefox build uses its sidebar instead). One optional host permission,
+<code>https://*/*</code>, which the extension asks your browser to grant for the one portal website you click from, and it refuses
+to work until that is granted; no host permission at install time, and none on any Anthropic domain. Never requested:
+<code>cookies</code>, <code>tabs</code>, <code>webRequest</code>, <code>webRequestBlocking</code>,
+<code>declarativeNetRequest</code>, <code>nativeMessaging</code>, <code>debugger</code>, <code>identity</code>,
+<code>clipboardRead</code>.</p>
+<p>No remote code: the daily update check downloads one signed list (<a href="killlist.json">killlist.json</a>)
+and checks its signature against a key built into the extension; the list can withdraw a version and nothing else. No licence
+key: the one request that carries anything about the person is the approval check, which sends the account name the portal shows,
+the portal's hostname, the product and the version to the maintainer's access service
+(<code>beethoven-access.openspineconsortium.workers.dev</code>, named in <a href="services.json">services.json</a>) and is
+answered yes or no. The bundle is minified for size and not obfuscated; the Firefox source package carries build instructions.
+Security reports go to the notice address on the <a href="support.html">support page</a>.</p>
+</div>
+
+<p class="note">Beethoven runs Claude Code and is not an Anthropic product; "Claude" and "Claude Code" are Anthropic's marks,
+used here to say what it runs; "Open OnDemand" is the mark of its publisher. Beethoven is licensed to individuals and is not
+provided by or on behalf of any university. Vendor: Gregory Schwing, trading as OpenSpineConsortium.</p>
+</body>
+</html>

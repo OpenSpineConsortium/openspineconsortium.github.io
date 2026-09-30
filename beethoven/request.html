@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask for access to Beethoven</title>
+<style>
+:root{--ink:#1c1c1c;--muted:#555;--line:#ddd;--accent:#1f3b2e;--bg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}}
+:root[data-theme="dark"]{--ink:#e8e8e8;--muted:#b0b0b0;--line:#333;--accent:#8fd3b0;--bg:#121212}
+body{margin:0;padding:0 16px 48px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",Helvetica,Arial,sans-serif;max-width:760px;margin-inline:auto}
+h1{font-size:1.8em;margin:32px 0 4px}h2{font-size:1.2em;margin:28px 0 8px;color:var(--accent)}a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.95em}td,th{border:1px solid var(--line);padding:6px 8px;vertical-align:top;text-align:left}
+pre{white-space:pre-wrap;border:1px solid var(--line);padding:8px;font-size:.9em}
+</style>
+<style>
+/* Beethoven pages: the same look as the site's other pages, plus the form */
+body{overflow-wrap:break-word}a:visited{color:var(--accent)}
+p.lead,.note{color:var(--muted)}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:16px 0}
+nav.crumbs{margin:24px 0 0;font-size:.95em;color:var(--muted)}
+label{display:block;margin:14px 0 4px;font-weight:600}
+input,textarea{box-sizing:border-box;width:100%;padding:8px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px}
+textarea{min-height:96px;resize:vertical}
+small{color:var(--muted)}
+button{margin-top:16px;padding:10px 18px;font:inherit;font-weight:600;color:var(--bg);background:var(--accent);border:0;border-radius:6px;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+#status{display:none}#status.show{display:block}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.95em}
+</style>
+</head>
+<body>
+<nav class="crumbs"><a href="./">Beethoven</a> · <a href="support.html">Support and notices</a></nav>
+<h1>Ask for access to Beethoven</h1>
+<p class="lead">Beethoven is for Wayne State students and staff working with the lab. Fill this in and the lab lead will look at it. Once you are approved, Beethoven starts working the next time you click its icon on your portal.</p>
+
+<div class="box" id="status" role="status"></div>
+
+<form id="form" novalidate>
+  <label for="accessId">AccessID</label>
+  <input id="accessId" name="accessId" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="ab1234" maxlength="6" required>
+  <small>Two letters and four digits, the one you sign in to Academica with.</small>
+
+  <label for="name">Your name</label>
+  <input id="name" name="name" autocomplete="name" maxlength="80" required>
+
+  <label for="email">WSU e-mail</label>
+  <input id="email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="ab1234@wayne.edu" required>
+  <small>Your AccessID followed by <code>@wayne.edu</code>.</small>
+
+  <label for="note">What will you use Beethoven for?</label>
+  <textarea id="note" name="note" maxlength="500" placeholder="The project, the course, or who you are working with."></textarea>
+  <small>Up to 500 characters.</small>
+
+  <button id="send" type="submit">Send the request</button>
+</form>
+
+<h2>What happens next</h2>
+<p>The lead approves requests by hand, usually within a few days. You can come back to this page and send the same request again to see where it stands: it will say pending, approved, or not approved. When you are approved, click the Beethoven icon on your portal; you do not need to wait for an e-mail.</p>
+<p><small>What this page sends: the four fields above, and the name of the product this page belongs to, to the lab's own service. The connection you send from is kept only as a hash for up to two days, to limit repeats. If Beethoven brought you here, the account name your portal shows came along in this page's address and was used only to fill in the first field. <a href="privacy.html">Privacy statement</a> · <a href="support.html">Support</a> · <a href="./">About Beethoven</a></small></p>
+
+<script>
+(function () {
+  var form = document.getElementById('form');
+  var status = document.getElementById('status');
+  var send = document.getElementById('send');
+  var accessId = document.getElementById('accessId');
+  var email = document.getElementById('email');
+  var target = '';
+
+  function say(text) { status.textContent = text; status.className = 'box show'; }
+  function id() { return accessId.value.trim().toLowerCase(); }
+
+  // the service's addresses live in services.json beside this page: the request route itself, or
+  // failing that the same service's origin (the access_check address) with /request
+  fetch('services.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (s) {
+    var url = s && (s.request || (s.access_check && new URL(s.access_check).origin + '/request'));
+    if (url && /^https:\/\//.test(url)) { target = url; return; }
+    say('Requests are not open yet. Ask your lab lead for access.');
+    send.disabled = true;
+  }).catch(function () {
+    say('This page could not find the request service. Ask your lab lead for access.');
+    send.disabled = true;
+  });
+
+  // typing the AccessID fills the e-mail, which must match it
+  accessId.addEventListener('input', function () {
+    if (!email.value || /^[a-z]{0,2}[0-9]{0,4}@wayne\.edu$/.test(email.value.trim().toLowerCase())) email.value = id() ? id() + '@wayne.edu' : '';
+  });
+
+  // Beethoven opens this page as request.html?access_id=<the account name the portal shows>: that name
+  // fills the first field and nothing else; it is not sent anywhere until the person presses the button
+  try {
+    var given = (new URLSearchParams(location.search).get('access_id') || '').trim().toLowerCase().replace(/[^a-z0-9._@-]/g, '').slice(0, 64);
+    if (given) {
+      accessId.value = given;
+      accessId.dispatchEvent(new Event('input'));
+      if (/^[a-z]{2}[0-9]{4}$/.test(given)) document.getElementById('name').focus();
+      else say('Your portal shows you as "' + given + '". This form takes a Wayne State AccessID (two letters and four digits); if yours is different, talk to the lab lead.');
+    }
+  } catch (e) { /* an old browser without URLSearchParams: the field is simply empty */ }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!target) return;
+    // product "bridge" is the extension's name on the wire since its first version; the service shows it as Beethoven
+    var body = { accessId: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), note: document.getElementById('note').value.trim(), product: 'bridge' };
+    if (!/^[a-z]{2}[0-9]{4}$/.test(body.accessId)) return say('The AccessID is two letters and four digits, like ab1234.');
+    if (body.name.length < 2 || body.name.length > 80) return say('Please give your name (2 to 80 characters).');
+    if (body.email !== body.accessId + '@wayne.edu') return say('The e-mail must be ' + body.accessId + '@wayne.edu.');
+    if (body.note.length > 500) return say('The note is too long (500 characters at most).');
+    send.disabled = true;
+    say('Sending...');
+    fetch(target, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j }; });
+    }).then(function (r) {
+      if (r.status === 202) return say('Thank you. Your request is in. Once the lead approves it, Beethoven works the next time you click its icon on your portal.');
+      if (r.status === 200 && r.body.status === 'approved') return say('You are already approved. Click the Beethoven icon on your portal.');
+      if (r.status === 200 && r.body.status === 'denied') return say('This request was not approved. If you think that is a mistake, talk to your lab lead.');
+      if (r.status === 429) return say('Too many requests from this connection today. Try again tomorrow.');
+      say(r.body.error ? 'Not sent: ' + r.body.error + '.' : 'Not sent: the service answered HTTP ' + r.status + '. Try again later or ask your lab lead.');
+    }).catch(function () {
+      say('Not sent: the service could not be reached. Check your connection and try again, or ask your lab lead.');
+    }).then(function () { send.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>
