@@ -17,8 +17,8 @@
 */
 
 import { KPT_LABEL, assignLevels, suggestRegion, computeAngles,
-         angleToHorizontal } from "./infer.js?v=20260914a";
-import { RemoteDetector, modelLevels, serviceURL } from "./remote.js?v=20260914a";
+         angleToHorizontal } from "./infer.js?v=80972e4d";
+import { RemoteDetector, modelLevels, serviceURL } from "./remote.js?v=9f6be602";
 
 const XR_BUILD = "20260826a";
 // ONE MODEL. YOLO11m-Pose at 1024, converted to float16: 42 MB against the 84 MB

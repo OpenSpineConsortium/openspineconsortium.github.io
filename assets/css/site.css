@@ -1,0 +1,618 @@
+/* ============================================================
+   OpenSpineConsortium — the shared shell (site.css)
+
+   Loaded after style.css on every page. It adds, and never
+   rewrites, what the page-per-section site needs:
+
+     header       five tabs, a mark on the current one, a drawer
+                  only under 720px
+     subnav       the section strip under the header
+     crumbs       the breadcrumb line above the footer
+     footer__dir  the footer's directory of every page
+     components   prose (legal texts), callouts, forms, tiles,
+                  browser cards
+     sub-sites    offsets for pages that had their own header
+     app pages    the header on the full-screen PACS demo
+
+   The markup for all of it is written by tools/build_site.py
+   from one site map; do not hand-edit the header or footer of a
+   page, run the build.
+   ============================================================ */
+
+:root { --nav-h: 64px; }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.nav { height: var(--nav-h); padding-top: 0; padding-bottom: 0; }
+
+/* THE SHELL LOOKS THE SAME ON EVERY PAGE, EVEN WHERE A PAGE RESTYLES ITS OWN LINKS.
+   The sub-sites set `body.sm a { color: ... }`, redefine --teal at :root (the timeline's is a
+   different green) or run at another body size. So the shared parts carry the site's tokens
+   themselves and win on specificity: #nav, or two classes. */
+#nav, .subnav, .crumbs-band, .footer {
+  --paper: #F1EEE3; --paper-card: #FBFAF4; --paper-deep: #E7E2D2;
+  --ink: #1A1C18; --ink-soft: #585B50; --ink-faint: #8C8E82;
+  --teal: #0E5F58; --teal-deep: #0A423D; --teal-bright: #157A70; --ochre: #BC6B26;
+  --line: rgba(26, 28, 24, 0.14); --line-soft: rgba(26, 28, 24, 0.08);
+  --font-display: "Newsreader", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --maxw: 1180px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.62;
+  letter-spacing: normal;
+  text-align: left;
+}
+#nav a, .subnav a, .crumbs-band a, .footer a { text-decoration: none; }
+#nav .nav__brand { color: var(--ink); font-family: var(--font-display); font-weight: 400; }
+#nav .nav__brand strong { color: var(--teal); font-weight: 600; }
+#nav .nav__links a { color: var(--ink-soft); font-weight: 400; }
+#nav .nav__links a:hover,
+#nav .nav__links a[aria-current] { color: var(--ink); }
+#nav .nav__links a[aria-current]:not(.nav__cta)::after { width: 100%; }
+#nav .nav__links a.nav__cta { color: var(--paper-card); background: var(--ink); font-weight: 500; }
+#nav .nav__links a.nav__cta:hover,
+#nav .nav__links a.nav__cta[aria-current] { background: var(--teal); }
+
+.nav a:focus-visible,
+.nav button:focus-visible,
+.subnav a:focus-visible,
+.crumbs a:focus-visible,
+.footer a:focus-visible,
+.tile:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px; top: -60px;
+  z-index: 200;
+  background: var(--ink);
+  color: var(--paper-card);
+  padding: 10px 16px;
+  border-radius: 100px;
+  font-size: .9rem;
+  transition: top .2s var(--ease);
+}
+.skip-link:focus { top: 12px; }
+
+/* style.css opens the drawer at 1300px because the bar once held sixteen links.
+   Five tabs and a button fit in one row down to 721px. */
+@media (min-width: 721px) {
+  .nav { padding-left: 32px; padding-right: 32px; }
+  .nav__links {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 28px;
+    background: none;
+    border: 0;
+    padding: 0;
+    transform: none;
+    transition: none;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    visibility: visible;
+  }
+  .nav__links.is-open { box-shadow: none; }
+  .nav__links a { padding: 0; width: auto; font-size: .92rem; }
+  .nav__links a.nav__cta { padding: 9px 18px; margin-top: 0; }
+  .nav__toggle { display: none; }
+}
+@media (min-width: 721px) and (max-width: 860px) {
+  .nav { padding-left: 20px; padding-right: 20px; }
+  .nav__links { gap: 15px; }
+  .nav__links a { font-size: .86rem; }
+  .nav__links a.nav__cta { padding: 8px 15px; }
+  #nav .nav__brand { font-size: 1rem; gap: 7px; }
+}
+
+@media (max-width: 720px) {
+  .nav { padding-left: 16px; padding-right: 16px; }
+  .nav__links {
+    top: var(--nav-h);
+    max-height: calc(100dvh - var(--nav-h));
+    padding-left: 16px;
+    padding-right: 16px;
+    visibility: hidden;
+    transition: transform .36s var(--ease), visibility 0s linear .36s;
+  }
+  .nav__links.is-open { visibility: visible; transition: transform .36s var(--ease); }
+  .nav__links a { font-size: 1.05rem; border-bottom: 1px solid var(--line-soft); }
+  .nav__links a:not(.nav__cta)::after { display: none; }
+  #nav .nav__links a[aria-current]:not(.nav__cta) { color: var(--teal); font-weight: 600; }
+  .nav__links a.nav__cta {
+    width: auto;
+    align-self: flex-start;
+    padding: 11px 22px;
+    margin-top: 14px;
+    border-bottom: 0;
+  }
+}
+
+/* generated pages: the header is fixed, so the page starts below it */
+body[data-shell="page"] { padding-top: var(--nav-h); }
+body[data-shell="page"] main > .section:first-child { padding-top: 80px; }
+body[data-shell="page"] .hero { padding-top: 96px; min-height: 0; }
+@media (max-width: 1300px) {
+  body[data-shell="page"] main > .section:first-child { padding-top: 56px; }
+  body[data-shell="page"] .hero { padding-top: 64px; }
+}
+@media (max-width: 720px) {
+  body[data-shell="page"] .section { padding-left: 16px; padding-right: 16px; }
+  body[data-shell="page"] .hero { padding-left: 16px; padding-right: 16px; }
+}
+
+/* ============================================================
+   SECTION STRIP (sub-navigation)
+   ============================================================ */
+.subnav {
+  background: rgba(251, 250, 244, 0.72);
+  border-bottom: 1px solid var(--line-soft);
+}
+.subnav__in {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.subnav .subnav__title {
+  font-family: var(--font-display);
+  font-size: 1.22rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.subnav .subnav__title:hover { color: var(--teal); }
+.subnav__pills {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.subnav .subnav__pill {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  transition: border-color .2s var(--ease), color .2s var(--ease), background .2s var(--ease);
+}
+.subnav .subnav__pill:hover { border-color: var(--teal); color: var(--ink); }
+.subnav .subnav__pill[aria-current] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--paper-card);
+}
+/* stacked below 820px: in one row the eight Data & Tools pills leave "X-ray" alone on a second,
+   right-aligned line at tablet widths (768) */
+@media (max-width: 819px) {
+  .subnav__in {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .subnav__pills { margin-left: 0; justify-content: flex-start; }
+}
+@media (max-width: 720px) {
+  .subnav__in { padding: 10px 16px 12px; }
+}
+
+/* ============================================================
+   BREADCRUMB (above the footer, as apple.com places it)
+   ============================================================ */
+.crumbs-band { background: var(--paper); border-top: 1px solid var(--line-soft); }
+.crumbs {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 16px 32px;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+}
+.crumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.crumbs li { display: inline-flex; align-items: center; gap: 8px; }
+.crumbs li + li::before { content: "\203A"; color: var(--ink-faint); }
+.crumbs-band .crumbs a { color: var(--ink-soft); }
+.crumbs-band .crumbs a:hover { color: var(--teal); }
+.crumbs-band .crumbs [aria-current] { color: var(--ink); }
+.crumbs svg { width: 16px; height: 16px; color: var(--teal); display: block; }
+@media (max-width: 720px) { .crumbs { padding: 14px 16px; } }
+
+/* ============================================================
+   FOOTER DIRECTORY
+   ============================================================ */
+.footer__top { padding-bottom: 28px; }
+.footer .footer__tag { font-size: 0.9rem; color: rgba(241, 238, 227, 0.6); }
+.footer__dir {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 30px 0 34px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.footer .footer__col h2 {
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(241, 238, 227, 0.5);
+  line-height: 1.5;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+.footer .footer__col h2 a { color: inherit; }
+.footer .footer__col h2 a:hover { color: var(--paper); }
+.footer__col ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.footer .footer__col li a {
+  font-size: 0.88rem;
+  color: rgba(241, 238, 227, 0.72);
+  transition: color 0.2s var(--ease);
+}
+.footer .footer__col li a:hover { color: var(--paper); }
+.footer .footer__connect { border-top: 0; }
+.footer .footer__brand { color: var(--paper); }
+.footer .footer__brand strong { color: #4FA89D; font-weight: 600; }
+.footer .footer__social a { color: rgba(241, 238, 227, 0.7); }
+.footer .footer__social a:hover { color: #4FA89D; }
+.footer .footer__bottom p { margin: 0; }
+@media (max-width: 960px) { .footer__dir { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 720px) {
+  .footer { padding-left: 16px; padding-right: 16px; }
+  .footer__dir { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
+}
+
+/* ============================================================
+   PAGE COMPONENTS
+   ============================================================ */
+
+/* a page title on pages that are not a section of the old one-pager */
+.page-head { margin-bottom: 36px; }
+.page-head .eyebrow { display: block; margin-bottom: 14px; }
+.page-head h1 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2.1rem, 5vw, 3.4rem);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.page-head p {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 640px;
+  margin-top: 16px;
+}
+
+/* long text: the agreement, the privacy statement, support */
+.prose { max-width: 760px; overflow-wrap: break-word; }
+.prose h1 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  letter-spacing: -0.015em;
+  line-height: 1.12;
+  margin: 0 0 0.7em;
+}
+.prose h2 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.45rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 2em 0 0.55em;
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+.prose h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.6em 0 0.4em;
+  scroll-margin-top: calc(var(--nav-h) + 20px);
+}
+.prose p { margin: 0 0 1em; }
+.prose ul, .prose ol { margin: 0 0 1em; padding-left: 1.4em; }
+.prose li { margin: 0.4em 0; }
+.prose li > p { margin: 0; }
+.prose a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+.prose a:hover { color: var(--teal-bright); }
+.prose strong { font-weight: 600; }
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--paper-card);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 0 4px;
+  overflow-wrap: anywhere;
+}
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 0 0 1em;
+}
+.prose pre code { border: 0; padding: 0; background: none; }
+.prose blockquote { border-left: 3px solid var(--line); padding-left: 16px; color: var(--ink-soft); margin: 0 0 1em; }
+.prose hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+.table-scroll {
+  overflow-x: auto;
+  margin: 0 0 1.4em;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-card);
+  -webkit-overflow-scrolling: touch;
+}
+.prose table { border-collapse: collapse; width: 100%; font-size: 0.9rem; line-height: 1.5; }
+.prose th, .prose td {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 9em;
+}
+.prose th { font-weight: 600; background: rgba(26, 28, 24, 0.03); }
+.prose td code, .prose th code { overflow-wrap: normal; white-space: nowrap; }
+.prose tr:last-child td { border-bottom: 0; }
+
+/* the agreement's table of contents */
+.toc {
+  margin: 0 0 2.4em;
+  padding: 18px 22px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+.toc p { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 8px; }
+.toc ol { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 28px; }
+.toc li { margin: 0 0 6px; break-inside: avoid; }
+.toc a { color: var(--ink-soft); text-decoration: none; }
+.toc a:hover { color: var(--teal); }
+@media (max-width: 720px) { .toc ol { columns: 1; } }
+
+/* a quiet box: a note, a notice, a summary */
+.callout {
+  margin: 0 0 1.6em;
+  padding: 18px 22px;
+  border-left: 3px solid var(--teal);
+  background: var(--paper-card);
+  border-radius: 0 12px 12px 0;
+  font-size: 0.97rem;
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout--ochre { border-left-color: var(--ochre); background: rgba(188, 107, 38, 0.06); }
+.note { font-size: 0.88rem; color: var(--ink-faint); }
+
+/* tiles: a section landing's children */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 26px 26px 22px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  transition: border-color .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease);
+}
+.tile:hover { border-color: var(--teal); transform: translateY(-2px); box-shadow: 0 18px 36px -30px rgba(26, 28, 24, 0.45); }
+.tile__k { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); }
+.tile h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.55rem; letter-spacing: -0.01em; line-height: 1.15; }
+.tile p { font-size: 0.95rem; color: var(--ink-soft); }
+.tile__go { margin-top: auto; padding-top: 10px; font-size: 0.88rem; color: var(--teal); }
+@media (max-width: 960px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .tiles { grid-template-columns: 1fr; } }
+
+/* the lessons one level below a landing page's tiles (build:section-index), so every page is at
+   most two clicks from the header */
+.sindex-wrap { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--line); }
+.sindex-wrap > .tile__k { display: block; margin-bottom: 18px; }
+.sindex { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; }
+.sindex__group h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.25rem; line-height: 1.2; margin-bottom: 10px; }
+.sindex__group h3 a { color: var(--ink); }
+.sindex__group h3 a:hover { color: var(--teal); }
+.sindex__group ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.sindex__group li a { font-size: 0.95rem; color: var(--ink-soft); border-bottom: 1px solid transparent; transition: color .2s var(--ease), border-color .2s var(--ease); }
+.sindex__group li a:hover { color: var(--teal); border-bottom-color: var(--teal); }
+@media (max-width: 720px) { .sindex { grid-template-columns: 1fr; } .sindex-wrap { margin-top: 40px; } }
+
+/* ============================================================
+   THE REQUEST FORM (same fields and script everywhere it appears)
+   ============================================================ */
+.request-form { max-width: 620px; }
+.request-form form { display: grid; gap: 4px; }
+.request-form label { font-weight: 600; font-size: 0.95rem; margin-top: 14px; }
+.request-form label:first-child { margin-top: 0; }
+.request-form input,
+.request-form textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 14px;
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.request-form input:focus,
+.request-form textarea:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(14, 95, 88, 0.16);
+}
+.request-form textarea { min-height: 110px; resize: vertical; }
+.request-form small { color: var(--ink-faint); font-size: 0.84rem; }
+.request-form code { font-family: var(--font-mono); font-size: 0.9em; }
+.request-form button { justify-self: start; margin-top: 20px; cursor: pointer; }
+.request-form button:disabled { opacity: 0.5; cursor: default; transform: none; background: var(--ink); border-color: var(--ink); }
+.request-form #status { display: none; }
+.request-form #status.show {
+  display: block;
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--teal);
+  background: var(--paper-card);
+  border-radius: 0 10px 10px 0;
+  font-size: 0.95rem;
+}
+.request-form .fineprint { margin-top: 22px; font-size: 0.84rem; color: var(--ink-faint); }
+.request-form .fineprint a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ============================================================
+   BROWSER CARDS
+   ============================================================ */
+.browsers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.browser {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.browser__name { font-family: var(--font-display); font-size: 1.35rem; font-weight: 500; letter-spacing: -0.01em; }
+.browser .btn { align-self: flex-start; font-size: 0.88rem; padding: 10px 18px; }
+.browser__note { font-size: 0.8rem; color: var(--ink-faint); line-height: 1.45; margin-top: auto; }
+@media (max-width: 960px) { .browsers { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .browsers { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   SUB-SITES: pages that had a header of their own
+   Each laid its first element out below a fixed bar; the strip now
+   does that, so their own clearance comes off.
+   ============================================================ */
+body[data-shell="sub"] .subnav { margin-top: var(--nav-h); }
+body[data-shell="sub"] .subnav ~ .sm-bar { margin-top: 0; }
+body.sm .sm-bar { top: var(--nav-h); }
+body[data-shell="sub"] .subnav ~ .smh__wrap { padding-top: 48px; }
+body[data-shell="sub"] .subnav ~ .atlas__wrap > p:first-child { margin-top: 2.5rem !important; }
+body[data-shell="sub"] .subnav ~ .cl__wrap { padding-top: 32px; }
+body[data-shell="sub"] .crumbs-band { position: relative; }
+@media (max-width: 720px) {
+  body[data-shell="sub"] .subnav ~ .smh__wrap { padding-top: 28px; }
+}
+
+/* ============================================================
+   APP PAGES (the PACS demo): the same header, in the page flow.
+   These pages do not load style.css (its reset and body rules
+   would restyle the viewer) and their own :root redefines --ink
+   and --line for a dark theme, so the header carries its tokens.
+   ============================================================ */
+body[data-shell="app"] .nav {
+  --paper: #F1EEE3;
+  --paper-card: #FBFAF4;
+  --ink: #1A1C18;
+  --ink-soft: #585B50;
+  --ink-faint: #8C8E82;
+  --teal: #0E5F58;
+  --teal-bright: #157A70;
+  --line: rgba(26, 28, 24, 0.14);
+  --line-soft: rgba(26, 28, 24, 0.08);
+  --font-display: "Newsreader", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--nav-h);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+body[data-shell="app"] .nav * { box-sizing: border-box; }
+body[data-shell="app"] .nav a { color: inherit; text-decoration: none; }
+body[data-shell="app"] .nav__brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-size: 1.18rem; letter-spacing: -0.01em; }
+body[data-shell="app"] .nav__brand strong { color: var(--teal); font-weight: 600; }
+body[data-shell="app"] .nav__mark { width: 26px; height: 26px; color: var(--teal); }
+body[data-shell="app"] .nav__links { display: flex; align-items: center; gap: 28px; margin: 0; padding: 0; }
+body[data-shell="app"] .nav__links a { font-size: 0.92rem; color: var(--ink-soft); position: relative; transition: color 0.2s var(--ease); }
+body[data-shell="app"] .nav__links a:not(.nav__cta)::after {
+  content: ""; position: absolute; left: 0; bottom: -5px; width: 0; height: 1.5px;
+  background: var(--teal); transition: width 0.28s var(--ease);
+}
+body[data-shell="app"] .nav__links a:not(.nav__cta):hover { color: var(--ink); }
+body[data-shell="app"] .nav__links a:not(.nav__cta):hover::after,
+body[data-shell="app"] .nav__links a[aria-current]:not(.nav__cta)::after { width: 100%; }
+body[data-shell="app"] .nav__links a[aria-current] { color: var(--ink); }
+body[data-shell="app"] .nav__links a.nav__cta {
+  background: var(--ink); color: var(--paper-card); padding: 9px 18px; border-radius: 100px; font-weight: 500;
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+body[data-shell="app"] .nav__links a.nav__cta:hover { background: var(--teal); transform: translateY(-1px); }
+body[data-shell="app"] .nav__toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 6px; }
+body[data-shell="app"] .nav__toggle span { display: block; width: 24px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform 0.3s var(--ease), opacity 0.2s var(--ease); }
+body[data-shell="app"] .nav__toggle.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+body[data-shell="app"] .nav__toggle.is-open span:nth-child(2) { opacity: 0; }
+body[data-shell="app"] .nav__toggle.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+@media (max-width: 720px) {
+  body[data-shell="app"] .nav__toggle { display: flex; }
+  body[data-shell="app"] .nav__links {
+    position: absolute; top: var(--nav-h); left: 0; right: 0;
+    flex-direction: column; align-items: flex-start; gap: 4px;
+    background: var(--paper-card); border-bottom: 1px solid var(--line);
+    padding: 16px 16px 24px;
+    box-shadow: 0 18px 34px rgba(26, 28, 24, 0.16);
+    transform: translateY(-8px); opacity: 0; visibility: hidden;
+    transition: transform .3s var(--ease), opacity .3s var(--ease), visibility 0s linear .3s;
+  }
+  body[data-shell="app"] .nav__links.is-open { transform: none; opacity: 1; visibility: visible; transition: transform .3s var(--ease), opacity .3s var(--ease); }
+  body[data-shell="app"] .nav__links a { width: 100%; padding: 12px 0; font-size: 1.05rem; border-bottom: 1px solid var(--line-soft); }
+  body[data-shell="app"] .nav__links a:not(.nav__cta)::after { display: none; }
+  body[data-shell="app"] .nav__links a[aria-current]:not(.nav__cta) { color: var(--teal); font-weight: 600; }
+  body[data-shell="app"] .nav__links a.nav__cta { width: auto; margin-top: 14px; padding: 11px 22px; border-bottom: 0; }
+}
+/* the same tightening the other pages get between 721 and 860px (their rule loses to the app
+   selectors above on specificity); without it "Data & Tools" and "Get Involved" wrap onto two
+   lines and the brand runs into "Home" at tablet widths */
+body[data-shell="app"] .nav__links a { white-space: nowrap; }
+@media (min-width: 721px) and (max-width: 860px) {
+  body[data-shell="app"] .nav__links { gap: 15px; }
+  body[data-shell="app"] .nav__links a { font-size: .86rem; }
+  body[data-shell="app"] .nav__links a.nav__cta { padding: 8px 15px; }
+}
+/* the viewer fills what the header leaves: the demo's own layout is 100% minus its 52px bar */
+@media (min-width: 821px) {
+  body[data-shell="app"] .stage { height: calc(100% - 52px - var(--nav-h)); }
+}
+@media (max-width: 1180px) {
+  /* minmax(0, 1fr), not 1fr: a 1fr track grows to its widest nowrap line, and the case caption
+     made the X-ray panes 468px wide in a 390px phone (true before the site header came) */
+  body[data-shell="app"] .stage--xr2 { height: auto; grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ============================================================
+   MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .nav__links, .tile, .subnav__pill, .skip-link { transition: none !important; }
+  .tile:hover { transform: none; }
+}

@@ -121,7 +121,7 @@
     img.onload = function () { portrait.appendChild(img); };
     img.onerror = function () {
       if (idx < HEADSHOT_EXTS.length) {
-        img.src = "headshots/" + encodeURIComponent(base) + "."
+        img.src = "/headshots/" + encodeURIComponent(base) + "."
           + HEADSHOT_EXTS[idx++] + "?v=" + HEADSHOT_V;
       }
     };
@@ -237,7 +237,10 @@
     }
   }
 
-  fetch("contributions/manifest.json", { cache: "no-cache" })
+  /* Root-absolute since the site became one page per section (/people/ and /research/goals/
+     both render from this file), and fetched only where something renders it. */
+  if (document.getElementById("peopleGrid") || document.getElementById("outputsList"))
+  fetch("/contributions/manifest.json", { cache: "no-cache" })
     .then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
@@ -358,7 +361,8 @@
     });
   }
 
-  fetch("meded/survey-summary.json", { cache: "no-cache" })
+  if (document.getElementById("comfortChart"))
+  fetch("/meded/survey-summary.json", { cache: "no-cache" })
     .then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();

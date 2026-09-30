@@ -15,12 +15,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Spinopelvic PACS demo — OpenSpineConsortium</title>
   <meta name="description" content="Interactive PACS-style viewer for CTSpinoPelvic1K with on-click pelvic incidence, sacral slope, pelvic tilt and lumbar lordosis from OpenSpineToolkit." />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css?v=20260803g" />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="pacs.css?v=202609300531" />
+<!-- site:head -->
+<script>
+  /* https before anything else: the access service refuses a request from http://, and
+     GitHub Pages serves the apex over http without redirecting. localhost is exempt. */
+  (function () {
+    var h = location.hostname;
+    if (location.protocol === "http:" && h !== "localhost" && h !== "127.0.0.1" && h !== "[::1]") {
+      location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+    }
+  })();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%230E5F58' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5'/%3E%3Cline x1='8.5' y1='6.2' x2='19.5' y2='6.2'/%3E%3Cline x1='8.5' y1='12.5' x2='19.5' y2='12.5'/%3E%3Cline x1='8.5' y1='18.8' x2='19.5' y2='18.8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/css/site.css?v=202609300531">
+<!-- /site:head -->
 </head>
-<body>
+<body data-shell="app">
+<!-- site:header -->
+<header class="nav" id="nav">
+  <a href="/" class="nav__brand" aria-label="OpenSpineConsortium home">
+    <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+        <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+        <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+        <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+      </g>
+    </svg>
+    <span>Open<strong>Spine</strong>Consortium</span>
+  </a>
+  <nav class="nav__links" id="navLinks" aria-label="Primary">
+    <a href="/">Home</a>
+    <a href="/onboarding/">Onboarding</a>
+    <a href="/research/">Research</a>
+    <a href="/data/" aria-current="true">Data &amp; Tools</a>
+    <a href="/people/">People</a>
+    <a href="/beethoven/request.html" class="nav__cta">Get Involved</a>
+  </nav>
+  <button class="nav__toggle" id="navToggle" type="button" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<!-- /site:header -->
   <header class="topbar">
-    <a class="topbar__brand" href="../index.html">Open<strong>Spine</strong>Consortium</a>
+    <a class="topbar__brand" href="/">Open<strong>Spine</strong>Consortium</a>
     <span class="topbar__tag">Spinopelvic demo</span>
     <nav class="modetabs" aria-label="Modality">
       <a class="modetab is-on" href="ct.html" aria-current="page">CT</a>
@@ -90,6 +130,9 @@
     </aside>
   </main>
 
-  <script type="module" src="pacs.js?v=20260624j"></script>
+  <script type="module" src="pacs.js?v=202609300531"></script>
+<!-- site:footer -->
+<script src="/assets/js/main.js?v=202609300531"></script>
+<!-- /site:footer -->
 </body>
 </html>

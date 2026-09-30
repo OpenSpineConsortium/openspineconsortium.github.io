@@ -1,0 +1,112 @@
+---
+title: Onboarding · OpenSpineConsortium
+description: Five things to have, three steps, and your first question to Claude Code on the Wayne State grid.
+css: /assets/css/hero.css, /assets/css/deck.css
+js: /assets/js/deck.js module
+---
+<section class="obd-hero" aria-labelledby="obd-title">
+  <p class="eyebrow">Onboarding</p>
+  <h1 class="bh__title" id="obd-title">Start <em>here.</em></h1>
+  <p class="bh__lede">Five things to have, three steps, and then your first question.</p>
+</section>
+
+<div class="obd">
+
+<section class="obd-sec" id="need" aria-labelledby="need-title">
+  <h2 class="obd__h2" id="need-title"><span class="eyebrow">What you need</span>Five things, once.</h2>
+  <ol class="obd-need">
+    <li><b>01</b><a href="https://services.wayne.edu/TDClient/277/Portal/KB/Category/877/AccessID-and-accounts" target="_blank" rel="noopener">Wayne State AccessID</a><span>Your university sign-in, the one you use for Academica.</span></li>
+    <li><b>02</b><a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20199/How-to-apply-for-a-Grid-account" target="_blank" rel="noopener">Grid account</a><span>Apply once, with the grid account request form.</span></li>
+    <li><b>03</b><a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20314/Wayne-State-VPN-and-the-Global-Protect-client" target="_blank" rel="noopener">GlobalProtect VPN</a><span>Connect it before you open the grid's portal.</span></li>
+    <li><b>04</b><a href="https://claude.ai/upgrade" target="_blank" rel="noopener">Claude Pro or Max</a><span>Your own plan, which includes Claude Code.</span></li>
+    <li><b>05</b><a href="/beethoven/">Beethoven</a><span>The browser extension. Ask for access, then install it.</span></li>
+  </ol>
+</section>
+
+<section class="obd-sec" id="steps" aria-labelledby="steps-title">
+  <h2 class="obd__h2" id="steps-title"><span class="eyebrow">Three steps</span>Connect once. Then ask.</h2>
+  <ol class="obd-steps">
+    <li>
+      <h3>Open OnDemand and sign in.</h3>
+      <p>With GlobalProtect connected, open <a href="https://ondemand.grid.wayne.edu/" target="_blank" rel="noopener">ondemand.grid.wayne.edu</a> and sign in with your AccessID (<a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20239/How-to-connect-to-the-Grid-OnDemand" target="_blank" rel="noopener">how to connect</a>).</p>
+    </li>
+    <li>
+      <h3>Click the Beethoven icon, once.</h3>
+      <p>It does the rest: it sets up and starts your Claude Code worker on the grid, and asks you to sign in to Claude one time.</p>
+    </li>
+    <li>
+      <h3>Open claude.ai or the Claude app, and ask.</h3>
+      <p>In Code, pick the environment named after your site, and type your question.</p>
+    </li>
+  </ol>
+  <p class="obd__after">The worker is a job on the grid, not a program on your laptop: close the browser and it keeps going. You need the portal again only to stop it, or to start a new one.</p>
+</section>
+
+<section class="obd-sec" id="first" aria-labelledby="first-title">
+  <h2 class="obd__h2" id="first-title"><span class="eyebrow">Your first question</span>Ask it the way you would ask a colleague.</h2>
+  <div class="obd-chat">
+    <div class="obd-chat__bar" aria-hidden="true"><i></i><i></i><i></i><span>claude.ai</span></div>
+    <p class="obd-chat__ask">Is the female pelvis relatively wider?</p>
+    <ol class="obd-chat__do" aria-label="What Claude Code does on the grid, as in the lab's demo study">
+      <li>Opens the labels of CTSpinoPelvic1K; <code>dataset_labels.json</code> says which identifier is which bone.</li>
+      <li>Finds each femoral head centre (identifiers 32 and 33) and the width of the L4 body (23).</li>
+      <li>Divides the distance between the heads by the L4 width, for every record.</li>
+      <li>Compares females and males: a Welch test and Cohen's d.</li>
+      <li>Draws the three panels below.</li>
+      <li>Writes the report from the CSV it just made. The heavy pass runs as a SLURM job.</li>
+    </ol>
+  </div>
+
+  <figure class="obd-fig">
+    <div class="obd-fig__scroll">
+      <img src="/onboarding/pelvic_width.png" width="1920" height="600" data-zoom alt="Three box plots by sex: bi-iliac width, femoral head distance, and head distance relative to L4 body width">
+    </div>
+    <figcaption>Pelvis width (a), hip joint separation (b) and separation relative to L4 body width (c), by sex, from the released labels of 791 records.</figcaption>
+  </figure>
+
+  <ul class="obd-stats">
+    <li><b>164 vs 162</b><span>femoral head distance, female vs male, mm (mean)</span></li>
+    <li><b>50.2 vs 55.4</b><span>L4 body width, female vs male, mm (mean)</span></li>
+    <li><b>3.29 vs 2.94</b><span>head distance / body width, female vs male</span></li>
+    <li><b>d = 1.09</b><span>Cohen's d; Welch p = 2 × 10<sup>-43</sup></span></li>
+  </ul>
+
+  <p class="obd__answer"><strong>The answer is yes.</strong> Male pelves are wider at the iliac crests in absolute terms (a), and the femoral heads sit about 163 mm apart in both sexes (b); on a smaller skeleton that is a relatively wider pelvis: 3.29 against 2.94 (391 females, 338 males) (c). The published ratio is 3.95 against 3.48; ours is lower because a body width taken from labels runs a few millimetres wider than a caliper endplate width, and the female to male ratio, 1.12 against 1.14, agrees. The far outliers are records where a femoral head was not where the label said; the medians do not move.</p>
+  <p>Every number above is in <code>results/report.txt</code>, which the script writes from <code>results/pelvic_width.csv</code>. The <a href="https://github.com/OpenSpineConsortium/Student_Projects/tree/main/examples/pelvic_width_dimorphism" target="_blank" rel="noopener">demo study's code</a> is one 120-line script.</p>
+</section>
+
+<section class="obd-sec" id="data" aria-labelledby="data-title">
+  <h2 class="obd__h2" id="data-title"><span class="eyebrow">Your data</span>What goes where.</h2>
+  <ul class="obd-data">
+    <li>You sign in to Claude with your own account, on your own plan.</li>
+    <li>No protected health information, FERPA-protected records, data under an IRB protocol that has not approved this use, or export-controlled data in the working directory.</li>
+    <li>Your prompts, the files the worker reads and every command's output go to Anthropic, and the session transcript is stored on Anthropic's servers.</li>
+    <li>On a personal plan Anthropic keeps it five years if model training is on, and 30 days otherwise. No BAA covers a personal plan.</li>
+    <li>The details: <a href="/beethoven/privacy.html">Beethoven's privacy statement</a> and <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">Anthropic's privacy policy</a>.</li>
+  </ul>
+</section>
+
+<section class="obd-sec" id="involved" aria-labelledby="involved-title">
+  <h2 class="obd__h2" id="involved-title"><span class="eyebrow">Other ways to get involved</span>Join the consortium.</h2>
+  <p>Whether you are a radiologist, an ML researcher, a data engineer, or a clinician with imaging to contribute &mdash; there is a place for you here. The consortium grows through public pull requests and open conversation.</p>
+  <ul class="obd-ways">
+    <li>
+      <h3>Contribute code or data</h3>
+      <p>Open an issue or a pull request on GitHub. Dataset contributions are reviewed against our origin and licensing checklist.</p>
+      <a href="https://github.com/OpenSpineConsortium" target="_blank" rel="noopener">GitHub organization &rarr;</a>
+    </li>
+    <li>
+      <h3>Collaborate on research</h3>
+      <p>Interested in co-developing a benchmark or a study? Reach out to the project lead to start a conversation.</p>
+      <a href="mailto:gregory.schwing@med.wayne.edu">gregory.schwing@med.wayne.edu</a>
+    </li>
+    <li>
+      <h3>Students: start here</h3>
+      <p>Templates, the demo study above, and a list of project ideas, in one public repository.</p>
+      <a href="https://github.com/OpenSpineConsortium/Student_Projects" target="_blank" rel="noopener">Student_Projects &rarr;</a>
+    </li>
+  </ul>
+  <p class="obd__more">Go deeper with the six <a href="/tutorials/">workshop tutorials</a>.</p>
+</section>
+
+</div>

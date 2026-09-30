@@ -1,0 +1,39 @@
+---
+title: Gallery · Data & Tools · OpenSpineConsortium
+description: Surfaces rendered from the released CTSpinoPelvic1K segmentations on a turntable, and the shape of the cohort.
+css: /assets/css/gallery.css
+js: /assets/js/gallery.js module
+---
+<section class="section" id="gallery">
+  <div class="section__head reveal">
+    <h1 class="section__title">Gallery</h1>
+  </div>
+
+  <p class="section__intro reveal gal__lead">
+    Surfaces rendered straight from the released segmentations, each on a turntable
+    &mdash; drag a specimen to turn it. Below them, the shape of the cohort.
+    <span class="gal__n" id="gal-n">loading&hellip;</span>
+  </p>
+
+  <div class="gal__cases" id="gal-cases"></div>
+
+  <div class="section__head reveal">
+    <h3 class="section__title" style="font-size:1.5rem">What the cohort looks like</h3>
+  </div>
+
+  <p class="section__intro reveal gal__lead">
+    Every measure here is <strong>count-free</strong>: none of them requires knowing which
+    vertebra is which. A transitional vertebra cannot be named from a spine-limited field
+    of view &mdash; the same bone is a sacralised L5 or a lumbarised S1 depending only on
+    where the count starts &mdash; so these describe shape and intervals instead.
+  </p>
+
+  <div class="gal__dist" id="gal-dist"></div>
+
+  <p class="gal__note reveal">
+    Surfaces are decimated for the browser and are not the release geometry; the labels
+    themselves are published at full resolution on
+    <a href="https://huggingface.co/datasets/anonymous-mlhc/CTSpinoPelvic1K">HuggingFace</a>.
+    Images originate from the public TCIA CT&nbsp;COLONOGRAPHY collection.
+  </p>
+</section>

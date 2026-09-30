@@ -17,9 +17,9 @@
    vertebra is which.
    ============================================================ */
 
-import { createViewer } from "./viewer.js?v=a187d396";
+import { createViewer } from "./viewer.js?v=5f88d78c";
 
-const DATA = "assets/gallery/";
+const DATA = "/assets/gallery/";  // root-absolute: the gallery is its own page now
 /* key -> construction diagram. Filled before any panel is drawn; empty is fine, and a
    panel with no entry simply gets no explainer rather than a broken control. */
 let MEASURES = {};

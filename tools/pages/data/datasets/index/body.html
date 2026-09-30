@@ -1,0 +1,106 @@
+---
+title: Datasets & Benchmarks · Data & Tools · OpenSpineConsortium
+description: CTSpinoPelvic1K: 802 abdominal CT records with the spine, sacrum, hips, femora, per-level ribs and surgical hardware segmented in one frame, with the reference atlas and the benchmarks built on it.
+---
+<section class="section" id="datasets">
+  <div class="section__head reveal">
+    <h1 class="section__title">Datasets &amp; Benchmarks</h1>
+  </div>
+
+  <p class="section__intro reveal">
+    Our datasets are released as benchmark resources &mdash; each ships with a
+    data card, machine-readable metadata, and a fixed evaluation protocol so that
+    every reported number is reproducible.
+  </p>
+
+  <!-- Flagship -->
+  <article class="dataset dataset--flagship reveal">
+    <div class="dataset__meta">
+      <span class="badge badge--flag">Flagship dataset</span>
+      <span class="badge">v11 · September 2026</span>
+      <span class="badge">Dataset article in submission</span>
+    </div>
+    <h3 class="dataset__name">CTSpinoPelvic1K</h3>
+    <p class="dataset__desc">
+      802 abdominal CT records with the spine, sacrum, hips, femora, per-level ribs and
+      surgical hardware segmented in one coordinate frame. Built from three public
+      collections and annotated for lumbosacral and thoracolumbar transitional anatomy,
+      the levels where conventional pipelines most often fail.
+    </p>
+    <ul class="dataset__specs">
+      <li><span class="spec-k">Source collections</span><span class="spec-v">CTSpine1K · CTPelvic1K · TCIA CT&nbsp;COLONOG</span></li>
+      <li><span class="spec-k">Label scheme</span><span class="spec-v">67 identifiers: VerSe vertebrae, sacrum, hips, femora, thirteen ribs per side, lumbar ribs, hardware</span></li>
+      <li><span class="spec-k">Transitional anatomy</span><span class="spec-v">33 records with two-reader Castellvi grades · 18 with an L6 · 16 with a lumbar rib</span></li>
+      <li><span class="spec-k">Splits</span><span class="spec-v">Patient-grouped, LSTV-stratified five-fold</span></li>
+      <li><span class="spec-k">Distribution</span><span class="spec-v">Zenodo archive of record (CC BY-NC-SA 4.0) · Hugging Face mirror</span></li>
+    </ul>
+    <div class="dataset__links">
+      <a href="https://doi.org/10.5281/zenodo.22139642" target="_blank" rel="noopener">Zenodo archive</a>
+      <a href="https://huggingface.co/datasets/OpenSpineConsortium/CTSpinoPelvic1K" target="_blank" rel="noopener">Hugging Face mirror</a>
+      <a href="https://github.com/OpenSpineConsortium/CTSpinoPelvic1K" target="_blank" rel="noopener">Code and build chain</a>
+      <a href="https://arxiv.org/abs/2609.22760" target="_blank" rel="noopener">Dataset paper (arXiv)</a>
+    </div>
+  </article>
+
+  <!-- Reference atlas: the flagship's numbers, published as a usable resource -->
+  <article class="dataset dataset--flagship reveal">
+    <div class="dataset__meta">
+      <span class="badge">Reference resource</span>
+    </div>
+    <h3 class="dataset__name"><a href="/atlas/">Lumbar reference atlas, with the spread</a></h3>
+    <p class="dataset__desc">
+      The morphometry a surgeon looks up &mdash; body height, endplate width, canal
+      dimensions, pedicle width, disc height, bone density &mdash; measured across 802 CT
+      records and published <em>with its distribution</em>, in the same axes the standard
+      reference figures use. The classical curves come from cadaveric series of a few
+      dozen specimens and show no spread, so they cannot tell you whether a given patient
+      is unusual. Values downloadable as CSV.
+    </p>
+  </article>
+
+  <!-- Supporting resources -->
+  <div class="dataset__row">
+    <article class="dataset reveal">
+      <span class="badge">Benchmark</span>
+      <h3 class="dataset__name dataset__name--sm">TotalSegmentator Spine Audit</h3>
+      <p class="dataset__desc">
+        A structured evaluation of a widely used segmentation tool on transitional
+        and variant anatomy &mdash; quantifying where automated labels diverge from
+        expert ground truth.
+      </p>
+    </article>
+    <article class="dataset reveal">
+      <span class="badge">Pipeline</span>
+      <h3 class="dataset__name dataset__name--sm">LSTV Detection Ensemble</h3>
+      <p class="dataset__desc">
+        A multi-model reference pipeline for detecting lumbosacral transitional
+        vertebrae and Castellvi morphology, released to support variant-aware
+        research and replication.
+      </p>
+    </article>
+    <article class="dataset reveal">
+      <span class="badge">Methodology</span>
+      <h3 class="dataset__name dataset__name--sm">LSTV-Aware Training Recipe</h3>
+      <p class="dataset__desc">
+        An open training methodology &mdash; variant-aware oversampling and
+        per-subgroup evaluation &mdash; that makes models accountable for rare
+        anatomy rather than averaging it away.
+      </p>
+    </article>
+  </div>
+
+  <div class="dataset__note reveal">
+    <p>
+      <strong>Built on the shoulders of open science.</strong>
+      OpenSpineConsortium resources derive from publicly available collections and
+      are redistributed under the terms of their original licenses. Each dataset
+      card documents origin, consent basis, and intended use.
+    </p>
+  </div>
+
+  <div class="callout reveal">
+    <h2 class="dataset__name dataset__name--sm" style="margin-top:0">Use the datasets</h2>
+    <p>The resources are free to use under their stated licenses. We only ask
+       that you cite the dataset and report on the standard splits.</p>
+  </div>
+</section>

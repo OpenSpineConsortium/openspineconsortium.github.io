@@ -6,6 +6,9 @@ The .md files are the single source of truth; this regenerates the .html pages
 tutorial:
 
     python _build.py
+
+then, from the site root, `python -X utf8 tools/build_site.py`, which swaps the header below for
+the site's own (header, section strip, breadcrumb and footer) and stamps the assets.
 """
 import re
 import subprocess
@@ -34,7 +37,7 @@ TEMPLATE = """<!DOCTYPE html>
 </head>
 <body class="tut">
 <header class="tut__top">
-  <a href="../index.html#workshop">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
+  <a href="/research/workshop/">&larr; OpenSpineConsortium &middot; AI Imaging Workshop</a>
 </header>
 <div class="tut__layout">
   <nav class="tut__nav">{nav}</nav>

@@ -1,0 +1,67 @@
+---
+title: For reviewers and security offices · Beethoven
+description: What Beethoven is, what it never does, the permissions it asks for, and how it checks for withdrawn versions without running remote code.
+---
+<section class="section">
+  <header class="page-head">
+    <span class="eyebrow">Beethoven</span>
+    <h1>For reviewers and security offices</h1>
+  </header>
+
+  <div class="prose">
+    <p>Beethoven is a browser extension that starts, watches and stops a Claude Code worker in your own account on your
+    university's cluster, through the Open OnDemand portal you already use. When the worker connects, it hands you the link
+    that opens that session at claude.ai and in the Claude app. It talks to one website, your portal: it has no access to
+    claude.ai, never sees your Claude sign-in, and runs no code it did not ship with.</p>
+
+    <h2 id="never">What it never does</h2>
+    <ul>
+      <li>Beethoven has no access to claude.ai or any Anthropic page. It does not run on those sites, does not read them and
+      does not change them. It opens an Anthropic page in a new tab in two cases (the sign-in page Claude Code printed during
+      a sitting you started; your session's claude.ai/code link when your worker connects) and the connectors settings page
+      for the optional Google Drive step, as a bookmark would; nothing of the extension runs there.</li>
+      <li>Beethoven never sees your Claude sign-in. You sign in to Claude Code yourself, on Anthropic's own page; the
+      one-time code you paste into the extension's box is typed once into your own job's terminal on your cluster and is not
+      stored, not logged and not sent anywhere else; the extension reads only whether Claude Code says it is signed in.</li>
+      <li>Beethoven runs no code it did not ship with. Its daily update check downloads a signed list, not a program.</li>
+      <li>Beethoven works with one website: the Open OnDemand portal you connect. It requests access to that site when you
+      click its icon on that site's tab, and to nothing else. Its only other requests go to the maintainer: the approval
+      check, which sends the account name your portal shows for you, your portal's address, the product name and its
+      version, so the maintainer's access service can answer whether that account is approved; and a daily download, from
+      the maintainer's website, of that service's address and the signed list of withdrawn versions, which carries nothing
+      about you.</li>
+      <li>Beethoven does not read your portal cookie and does not sign in for you. When your portal asks for a sign-in, the
+      extension asks you to sign in in a tab. There is no key and nothing to paste: your institution's own sign-in
+      identifies you.</li>
+      <li>Beethoven sends its maintainer no usage data, no error reports and no activation request; the approval check is the
+      only thing it sends about you. Its audit log of what it asked your portal never contains what you typed to sign in and
+      is never transmitted.</li>
+    </ul>
+
+    <h2 id="permissions">Permissions and code</h2>
+    <div class="callout">
+      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>activeTab</code>, and
+      <code>sidePanel</code> in the Chrome and Edge builds (the Firefox build uses its sidebar instead). One optional host
+      permission, <code>https://*/*</code>, which the extension asks your browser to grant for the one portal website you
+      click from, and it refuses to work until that is granted; no host permission at install time, and none on any
+      Anthropic domain. Never requested: <code>cookies</code>, <code>tabs</code>, <code>webRequest</code>,
+      <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>nativeMessaging</code>,
+      <code>debugger</code>, <code>identity</code>, <code>clipboardRead</code>.</p>
+      <p>No remote code: the daily update check downloads one signed list
+      (<a href="/beethoven/killlist.json">killlist.json</a>) and checks its signature against a key built into the extension;
+      the list can withdraw a version and nothing else. No licence key: the one request that carries anything about the
+      person is the approval check, which sends the account name the portal shows, the portal's hostname, the product and
+      the version to the maintainer's access service (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
+      <a href="/beethoven/services.json">services.json</a>) and is answered yes or no. The bundle is minified for size and not
+      obfuscated; the Firefox source package carries build instructions. Security reports go to the notice address on the
+      <a href="/beethoven/support.html">support page</a>.</p>
+    </div>
+
+    <p class="note">Beethoven's use of information received from your browser complies with the Chrome Web Store User Data
+    Policy, including the Limited Use requirements.</p>
+
+    <p class="note">Beethoven runs Claude Code and is not an Anthropic product; "Claude" and "Claude Code" are Anthropic's
+    marks, used here to say what it runs; "Open OnDemand" is the mark of its publisher. Beethoven is licensed to individuals
+    and is not provided by or on behalf of any university. Vendor: Gregory Schwing, trading as OpenSpineConsortium.</p>
+  </div>
+</section>

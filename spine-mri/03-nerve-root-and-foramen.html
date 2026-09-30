@@ -7,8 +7,8 @@
 <meta name="description" content="Two zones, two grading systems, two sequences: Pfirrmann in the lateral recess, Lee in the foramen, and the muscle finding that localises the level.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css?v=202609300531">
 <style>
   :root{
     --ink:#1A1C18; --muted:#585B50; --faint:#8C8E82; --rule:#DCD7C8;
@@ -122,39 +122,55 @@
   @media (max-width:900px){ .card{grid-template-columns:1fr;} .card .body{padding:0 22px 22px;}
     .ph{border-right:none;border-bottom:1.6px dashed var(--rule);} }
 </style>
-<link rel="stylesheet" href="series.css?v=20260801e">
+<link rel="stylesheet" href="series.css?v=202609300531">
+<!-- site:head -->
+<script>
+  /* https before anything else: the access service refuses a request from http://, and
+     GitHub Pages serves the apex over http without redirecting. localhost is exempt. */
+  (function () {
+    var h = location.hostname;
+    if (location.protocol === "http:" && h !== "localhost" && h !== "127.0.0.1" && h !== "[::1]") {
+      location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+    }
+  })();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%230E5F58' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5'/%3E%3Cline x1='8.5' y1='6.2' x2='19.5' y2='6.2'/%3E%3Cline x1='8.5' y1='12.5' x2='19.5' y2='12.5'/%3E%3Cline x1='8.5' y1='18.8' x2='19.5' y2='18.8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/css/site.css?v=202609300531">
+<!-- /site:head -->
 </head>
-<body class="sm">
-  <header class="nav" id="nav">
-    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
-      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
-          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
-          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
-          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
-        </g>
-      </svg>
-      <span>Open<strong>Spine</strong>Consortium</span>
-    </a>
-
-    <nav class="nav__links" aria-label="Primary">
-      <a href="../index.html#project">Project</a>
-      <a href="../index.html#datasets">Datasets</a>
-      <a href="../index.html#people">People</a>
-      <a href="../index.html#organization">Organization</a>
-      <a href="../index.html#education">Education</a>
-      <a href="../index.html#workshop">Workshop</a>
-      <a href="../index.html#goals">Goals</a>
-      <a href="index.html" class="is-active">Spine MRI</a>
-      <a href="../pacs/">Demo</a>
-      <a href="../index.html#join" class="nav__cta">Get Involved</a>
-    </nav>
-
-    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-  </header>
+<body class="sm" data-shell="sub">
+  <!-- site:header -->
+<header class="nav" id="nav">
+  <a href="/" class="nav__brand" aria-label="OpenSpineConsortium home">
+    <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+        <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+        <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+        <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+      </g>
+    </svg>
+    <span>Open<strong>Spine</strong>Consortium</span>
+  </a>
+  <nav class="nav__links" id="navLinks" aria-label="Primary">
+    <a href="/">Home</a>
+    <a href="/onboarding/">Onboarding</a>
+    <a href="/research/">Research</a>
+    <a href="/data/" aria-current="true">Data &amp; Tools</a>
+    <a href="/people/">People</a>
+    <a href="/beethoven/request.html" class="nav__cta">Get Involved</a>
+  </nav>
+  <button class="nav__toggle" id="navToggle" type="button" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="subnav" aria-label="Data &amp; Tools">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/data/">Data &amp; Tools</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/data/">Overview</a><a class="subnav__pill" href="/data/datasets/">Datasets</a><a class="subnav__pill" href="/atlas/">Atlas</a><a class="subnav__pill" href="/data/gallery/">Gallery</a><a class="subnav__pill" href="/data/hardware/">Hardware</a><a class="subnav__pill" href="/spine-mri/" aria-current="true">Spine MRI</a><a class="subnav__pill" href="/pacs/ct.html">CT</a><a class="subnav__pill" href="/pacs/">X-ray</a></div>
+  </div>
+</nav>
+<!-- /site:header -->
   <div class="sm-bar">
     <div class="sm-bar__in">
       <a class="sm-bar__hub" href="index.html">Reading Spine MRI</a>
@@ -260,7 +276,7 @@ a sequence of four verbs: <b>nothing, touching, pushing, squashing.</b></p>
 </div>
 
 <div class="card g">
-  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig1_grade0_normal.jpg" alt="Diagram and axial T2 showing a normal nerve root" data-cap="Grade 0, normal. Diagram left, transverse T2 right. No compromise of the nerve root. There is no contact between disc material and the root, and the epidural fat layer between them is preserved."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig1_grade0_normal.jpg?v=202609300531" alt="Diagram and axial T2 showing a normal nerve root" data-cap="Grade 0, normal. Diagram left, transverse T2 right. No compromise of the nerve root. There is no contact between disc material and the root, and the epidural fat layer between them is preserved."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 1 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade 0 &#8212; normal</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -270,7 +286,7 @@ a sequence of four verbs: <b>nothing, touching, pushing, squashing.</b></p>
 </div>
 
 <div class="card o">
-  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig2_grade1_contact.jpg" alt="Diagram and axial T2 showing disc material contacting the nerve root" data-cap="Grade 1, contact. Disc material (arrowheads) is in visible contact with the right nerve root (arrow). The normal epidural fat layer between the two is no longer evident, but the root is in a normal position with no dorsal deviation."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 2 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig2_grade1_contact.jpg?v=202609300531" alt="Diagram and axial T2 showing disc material contacting the nerve root" data-cap="Grade 1, contact. Disc material (arrowheads) is in visible contact with the right nerve root (arrow). The normal epidural fat layer between the two is no longer evident, but the root is in a normal position with no dorsal deviation."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 2 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade 1 &#8212; contact</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -280,7 +296,7 @@ a sequence of four verbs: <b>nothing, touching, pushing, squashing.</b></p>
 </div>
 
 <div class="card o">
-  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig3_grade2_deviation.jpg" alt="Diagram and axial T2 showing the nerve root deviated dorsally" data-cap="Grade 2, deviation. The right nerve root (arrow) has been displaced dorsally by contact with disc material (arrowheads). The root has moved from its normal position but is not compressed."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 3 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig3_grade2_deviation.jpg?v=202609300531" alt="Diagram and axial T2 showing the nerve root deviated dorsally" data-cap="Grade 2, deviation. The right nerve root (arrow) has been displaced dorsally by contact with disc material (arrowheads). The root has moved from its normal position but is not compressed."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 3 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade 2 &#8212; deviation</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -290,7 +306,7 @@ a sequence of four verbs: <b>nothing, touching, pushing, squashing.</b></p>
 </div>
 
 <div class="card r">
-  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig4_grade3_compression.jpg" alt="Diagram and axial T2 showing the nerve root compressed and flattened" data-cap="Grade 3, compression. The right nerve root (arrow) is compressed between disc material (arrowheads) and the wall of the spinal canal. The root may appear flattened, or become indistinguishable from the disc material itself."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 4 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/pfirr_fig4_grade3_compression.jpg?v=202609300531" alt="Diagram and axial T2 showing the nerve root compressed and flattened" data-cap="Grade 3, compression. The right nerve root (arrow) is compressed between disc material (arrowheads) and the wall of the spinal canal. The root may appear flattened, or become indistinguishable from the disc material itself."><div class="attrib">Pfirrmann et al., Radiology 2004, Figure 4 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade 3 &#8212; compression</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -314,7 +330,7 @@ a sequence of four verbs: <b>nothing, touching, pushing, squashing.</b></p>
 </div>
 
 <figure class="wide">
-  <img class="zoom" src="figures/panels/lee_compare_all.jpg"
+  <img class="zoom" src="figures/panels/lee_compare_all.jpg?v=202609300531"
        alt="All five Lee grades side by side: schematic above, zoomed MRI below"
        data-cap="The complete Lee system. Top row: the schematic for each grade. Bottom row: the matching sagittal T1, cropped to the foramen so the root and its fat cuff are actually visible. Read left to right - fat present on all sides, then squeezed from two directions, then from four, then the root itself giving way.">
   <figcaption><b>Click this one first, and read it left to right.</b> The whole system is one question asked five
@@ -433,7 +449,7 @@ level is live &#8212; but the <b>muscle</b> sometimes can.</p>
 </figure>
 
 <div class="card o">
-  <div class="imgcell"><img class="zoom" src="figures/panels/denerv_axial_unilateral.jpg"
+  <div class="imgcell"><img class="zoom" src="figures/panels/denerv_axial_unilateral.jpg?v=202609300531"
     alt="Axial T2 fat-saturated showing unilateral muscle oedema with both sides in frame"
     data-cap="Axial T2 with fat suppression through the hips. A 53-year-old with a right foot drop after a fall. The tensor fascia lata (wavy arrow) and gluteus minimus (star) on the right are diffusely bright - acute denervation. The identical muscles on the left are dark. Both sides are in the frame, which is the only reason the asymmetry is obvious.">
     <div class="attrib">Acute denervation in a lumbosacral myotome, one side only.<br>
@@ -507,7 +523,7 @@ level is live &#8212; but the <b>muscle</b> sometimes can.</p>
 </figure>
 
 <div class="card r">
-  <div class="imgcell"><img class="zoom" src="figures/from_web/denerv_entrap_fig2_T2_vs_T1.jpg"
+  <div class="imgcell"><img class="zoom" src="figures/from_web/denerv_entrap_fig2_T2_vs_T1.jpg?v=202609300531"
     alt="T2 fat-saturated and T1 images of the same denervated muscles"
     data-cap="The same two muscles on two sequences. (a) T2 with fat saturation: supraspinatus and infraspinatus are bright - oedema. (b) T1: the same muscles show fatty infiltration and volume loss. This patient has both, because the denervation has lasted long enough to move from one stage into the next. Suprascapular denervation, confirmed on EMG.">
     <div class="attrib">Chahal et al., <i>Radiol Res Pract</i> 2012;2012:230679, Fig 2 <span class="lic">CC BY</span></div></div>
@@ -605,21 +621,59 @@ Figures reproduced from those two papers pending permission. Every image on this
 </script>
 <footer class="sm-foot">
   <div class="sm-pnwrap"><a class="sm-pn" href="02-lumbar-central-stenosis.html"><span class="sm-pn__k">&larr; Previous</span><span class="sm-pn__t">Part 2 &middot; Lumbar central stenosis</span></a><a class="sm-pn sm-pn--next" href="04-anatomic-checkpoints.html"><span class="sm-pn__k">Next &rarr;</span><span class="sm-pn__t">Part 4 &middot; Anatomic checkpoints</span></a></div>
-  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="../index.html">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
+  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="/">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
 </footer>
 
-<script>
-(function(){
-  var nav=document.getElementById('nav');
-  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
-  window.addEventListener('scroll', s, {passive:true}); s();
-  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
-  t.addEventListener('click', function(){
-    var o=l.classList.toggle('is-open');
-    t.classList.toggle('is-open', o);
-    t.setAttribute('aria-expanded', o?'true':'false');
-  });
-})();
-</script>
+<!-- site:footer -->
+<div class="crumbs-band"><nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li><a href="/data/">Data &amp; Tools</a></li><li><a href="/spine-mri/">Spine MRI</a></li><li><span aria-current="page">Part 3 · Nerve root and foramen</span></li></ol></nav></div>
+<footer class="footer">
+  <div class="footer__top">
+    <a href="/" class="footer__brand">
+      <svg viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+    <p class="footer__tag">Open research, openly licensed.</p>
+  </div>
+  <nav class="footer__dir" aria-label="Every page">
+    <div class="footer__col"><h2><a href="/beethoven/">Beethoven</a></h2><ul><li><a href="/beethoven/">Product</a></li><li><a href="/beethoven/terms.html">Agreement</a></li><li><a href="/beethoven/privacy.html">Privacy</a></li><li><a href="/beethoven/support.html">Support</a></li><li><a href="/beethoven/request.html">Ask for access</a></li><li><a href="/beethoven/reviewers.html">Reviewers</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/onboarding/">Onboarding</a></h2><ul><li><a href="/onboarding/">Start here</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/research/">Research</a></h2><ul><li><a href="/research/">Overview</a></li><li><a href="/research/conferences/">Conferences</a></li><li><a href="/research/workshop/">Workshop</a></li><li><a href="/tutorials/">Tutorials</a></li><li><a href="/research/goals/">Goals</a></li><li><a href="/research/outside/">Outside work</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/data/">Data &amp; Tools</a></h2><ul><li><a href="/data/">Overview</a></li><li><a href="/data/datasets/">Datasets</a></li><li><a href="/atlas/">Atlas</a></li><li><a href="/data/gallery/">Gallery</a></li><li><a href="/data/hardware/">Hardware</a></li><li><a href="/spine-mri/">Spine MRI</a></li><li><a href="/pacs/ct.html">CT</a></li><li><a href="/pacs/">X-ray</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/people/">People</a></h2><ul><li><a href="/people/">Team</a></li><li><a href="/people/organization/">Organization</a></li><li><a href="/people/education/">Education</a></li><li><a href="/celebrate-life/">Celebrate Life</a></li></ul></div>
+  </nav>
+  <div class="footer__connect">
+    <span class="footer__connect-label">Connect with us</span>
+    <ul class="footer__social" aria-label="Social links">
+      <li>
+        <a href="https://github.com/OpenSpineConsortium" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.54-.01 2.78-.01 3.16 0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://www.instagram.com/openspineconsortium/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" stroke="none"/></g></svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://huggingface.co/OpenSpineConsortium" target="_blank" rel="noopener" aria-label="HuggingFace" title="HuggingFace">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.2 14.2c1 1.9 2.3 2.7 3.8 2.7s2.8-.8 3.8-2.7"/><circle cx="9" cy="9.6" r="0.7" fill="currentColor" stroke="none"/><circle cx="15" cy="9.6" r="0.7" fill="currentColor" stroke="none"/></g></svg>
+        </a>
+      </li>
+    </ul>
+  </div>
+  <div class="footer__bottom">
+    <p>&copy; <span id="year">2026</span> OpenSpineConsortium. Open research, openly licensed.</p>
+    <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
+  </div>
+</footer>
+<script src="/assets/js/main.js?v=202609300531"></script>
+<!-- /site:footer -->
 </body>
 </html>

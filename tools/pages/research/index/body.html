@@ -1,0 +1,109 @@
+---
+title: Research · OpenSpineConsortium
+description: OpenSpineConsortium builds openly licensed datasets and reproducible benchmarks for spine and pelvis medical imaging, with a focus on anatomical variants and clinically grounded AI.
+---
+<section class="hero" id="mission">
+  <div class="hero__grid"></div>
+
+  <div class="hero__content">
+    <p class="eyebrow reveal">An open research initiative · est. 2026</p>
+    <h1 class="hero__title">
+      <span class="reveal" style="--d:1">Open data and</span>
+      <span class="reveal" style="--d:2">reproducible <em>benchmarks</em></span>
+      <span class="reveal" style="--d:3">for spine imaging AI.</span>
+    </h1>
+    <p class="hero__lede reveal" style="--d:4">
+      The OpenSpineConsortium unifies fragmented public imaging collections into
+      carefully documented, openly licensed datasets &mdash; so that anatomy-aware
+      machine learning for the spine and pelvis can be built, audited, and trusted.
+    </p>
+    <div class="hero__actions reveal" style="--d:5">
+      <a href="/data/datasets/" class="btn btn--solid">Explore the datasets</a>
+      <a href="/onboarding/" class="btn btn--ghost">Join the consortium</a>
+    </div>
+
+    <dl class="hero__stats reveal" style="--d:6">
+      <div><dt>802</dt><dd>annotated CT records</dd></div>
+      <div><dt>3</dt><dd>source collections unified</dd></div>
+      <div><dt>12</dt><dd>abstracts &middot; CNS&nbsp;2026</dd></div>
+      <div><dt>19</dt><dd>research contributors</dd></div>
+    </dl>
+  </div>
+
+  <!-- Decorative anatomical column -->
+  <div class="hero__spine" aria-hidden="true">
+    <svg viewBox="0 0 240 760" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <g id="vertebra">
+          <rect x="46" y="14" width="148" height="40" rx="19" />
+          <path d="M46 34 q -22 -4 -30 -16 M46 34 q -22 4 -30 16" />
+          <circle cx="120" cy="34" r="4.5" class="v-core" />
+        </g>
+      </defs>
+      <g class="spine-col">
+        <use href="#vertebra" transform="translate(2 0)" />
+        <use href="#vertebra" transform="translate(12 76) rotate(-3 120 34)" />
+        <use href="#vertebra" transform="translate(18 152) rotate(-5 120 34)" />
+        <use href="#vertebra" transform="translate(16 228) rotate(-3 120 34)" />
+        <use href="#vertebra" transform="translate(6 304) rotate(2 120 34)" />
+        <use href="#vertebra" transform="translate(-6 380) rotate(5 120 34)" />
+        <use href="#vertebra" transform="translate(-12 456) rotate(4 120 34)" />
+        <use href="#vertebra" transform="translate(-8 532) rotate(1 120 34)" />
+        <use href="#vertebra" transform="translate(4 608) rotate(-3 120 34)" />
+        <path class="sacrum" d="M30 690 q 60 -16 120 0 q 6 44 -34 60 q -52 14 -78 -16 q -14 -22 -8 -44 Z" />
+      </g>
+    </svg>
+  </div>
+</section>
+
+<section class="section" id="project">
+  <div class="section__head reveal">
+    <h2 class="section__title">The Project</h2>
+  </div>
+
+  <div class="project__layout">
+    <div class="project__lead reveal">
+      <p class="lead-para">
+        Spine imaging AI has a quiet reliability problem. Most published models are
+        trained and validated on collections that are small, inconsistently
+        annotated, or closed &mdash; and they routinely stumble on the anatomy that
+        matters most clinically: <em>transitional vertebrae, segmentation
+        ambiguity, and rare structural variants</em>.
+      </p>
+      <p>
+        The OpenSpineConsortium exists to fix the foundation. We take existing
+        public CT collections, harmonize their labels under a single coherent
+        scheme, audit them against widely used segmentation tools, and re-release
+        them as documented, openly licensed datasets with fixed cross-validation
+        splits. The goal is simple: make spine and pelvis imaging research
+        <strong>reproducible by default</strong>.
+      </p>
+    </div>
+
+    <ul class="project__pillars">
+      <li class="reveal">
+        <span class="pillar__tag">Harmonize</span>
+        <h3>One label scheme, many sources</h3>
+        <p>Fuse spine and pelvis collections under a unified, collision-free
+           labelmap that resolves L5/L6 and lumbarization edge cases.</p>
+      </li>
+      <li class="reveal">
+        <span class="pillar__tag">Audit</span>
+        <h3>Trust, but verify</h3>
+        <p>Systematically benchmark off-the-shelf tools to surface where they
+           silently disagree with ground truth.</p>
+      </li>
+      <li class="reveal">
+        <span class="pillar__tag">Release</span>
+        <h3>Open and citable</h3>
+        <p>Permissive licensing, machine-readable metadata, and frozen splits so
+           results can actually be compared.</p>
+      </li>
+    </ul>
+  </div>
+
+  <div class="sindex-wrap">
+    <span class="tile__k">Lessons</span>
+    <!-- build:section-index -->
+  </div>
+</section>

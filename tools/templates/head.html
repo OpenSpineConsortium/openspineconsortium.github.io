@@ -1,0 +1,26 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  /* https before anything else: the access service refuses a request from http://, and
+     GitHub Pages serves the apex over http without redirecting. localhost is exempt. */
+  (function () {
+    var h = location.hostname;
+    if (location.protocol === "http:" && h !== "localhost" && h !== "127.0.0.1" && h !== "[::1]") {
+      location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+    }
+  })();
+</script>
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<link rel="canonical" href="{{canonical}}">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#F1EEE3">
+<link rel="icon" href="{{icon}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{{fonts}}" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="stylesheet" href="/assets/css/site.css">{{extra_css}}

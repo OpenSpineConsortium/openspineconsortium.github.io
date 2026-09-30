@@ -1,0 +1,68 @@
+---
+title: Surgical hardware · Data & Tools · OpenSpineConsortium
+description: The surgical implants in CTSpinoPelvic1K, each labelled as its own structure and rendered from the released segmentation.
+---
+<section class="section" id="hardware">
+  <div class="section__head reveal">
+    <h1 class="section__title">Surgical hardware</h1>
+  </div>
+
+  <p class="section__intro reveal">
+    11 of the 802 records carry surgical instrumentation, in
+    four kinds. Every implant is labelled as its own structure rather than left inside the
+    bone that a segmenter had absorbed it into &mdash; each one below is rendered from the
+    released segmentation.
+  </p>
+
+  <div class="hwg__grid">
+    <figure class="hwg__card reveal">
+      <img src="/assets/img/hardware/hw_80.png" alt="Hip arthroplasty, rendered in three dimensions from
+           the released segmentation" loading="lazy" />
+      <figcaption>
+        <span class="hwg__id">80</span>
+        <h3>Hip arthroplasty</h3>
+        <p class="hwg__n">8 cases</p>
+        <p>Stem, head and acetabular cup. Seven total hips and one hemiarthroplasty; on one the cup is anchored by screws passing through it into the ilium.</p>
+      </figcaption>
+    </figure>
+    <figure class="hwg__card reveal">
+      <img src="/assets/img/hardware/hw_77.png" alt="Interbody cage, rendered in three dimensions from
+           the released segmentation" loading="lazy" />
+      <figcaption>
+        <span class="hwg__id">77</span>
+        <h3>Interbody cage</h3>
+        <p class="hwg__n">1 case</p>
+        <p>Paired threaded cylinders, 27&nbsp;&times;&nbsp;14&nbsp;mm each, screwed into the L5&ndash;L6 disc space. Hollow, so bone can grow through them.</p>
+      </figcaption>
+    </figure>
+    <figure class="hwg__card reveal">
+      <img src="/assets/img/hardware/hw_82.png" alt="Cannulated screws, rendered in three dimensions from
+           the released segmentation" loading="lazy" />
+      <figcaption>
+        <span class="hwg__id">82</span>
+        <h3>Cannulated screws</h3>
+        <p class="hwg__n">1 case</p>
+        <p>Three parallel screws, 7&nbsp;mm across and up to 93&nbsp;mm long, in the inverted-triangle configuration used to fix a femoral neck fracture.</p>
+      </figcaption>
+    </figure>
+    <figure class="hwg__card reveal">
+      <img src="/assets/img/hardware/hw_81.png" alt="Sacroiliac screws, rendered in three dimensions from
+           the released segmentation" loading="lazy" />
+      <figcaption>
+        <span class="hwg__id">81</span>
+        <h3>Sacroiliac screws</h3>
+        <p class="hwg__n">1 case</p>
+        <p>Iliosacral fixation crossing the joint from the ilium into the sacrum.</p>
+      </figcaption>
+    </figure>
+  </div>
+
+  <p class="hwg__foot reveal">
+    Every case was read by a radiologist before it was labelled. Filter on
+    <code>hardware_labelled</code> in the manifest before any measurement that depends on
+    a gap between bones: a cage-bridged interspace reads as &ldquo;no gap&rdquo; exactly as
+    a congenitally fused transitional vertebra does. In
+    9 cases the femoral head itself is an implant,
+    which is the landmark pelvic incidence and pelvic tilt are measured from.
+  </p>
+</section>

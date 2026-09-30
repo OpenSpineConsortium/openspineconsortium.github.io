@@ -7,8 +7,8 @@
 <meta name="description" content="Grading the dural sac by what is inside it: the Schizas system, why morphology beats measuring area, and a drill.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css?v=202609300531">
 <style>
   :root{
     --ink:#1A1C18; --muted:#585B50; --faint:#8C8E82; --rule:#DCD7C8;
@@ -122,39 +122,55 @@
   @media (max-width:900px){ .card{grid-template-columns:1fr;} .card .body{padding:0 22px 22px;}
     .ph{border-right:none;border-bottom:1.6px dashed var(--rule);} }
 </style>
-<link rel="stylesheet" href="series.css?v=20260801e">
+<link rel="stylesheet" href="series.css?v=202609300531">
+<!-- site:head -->
+<script>
+  /* https before anything else: the access service refuses a request from http://, and
+     GitHub Pages serves the apex over http without redirecting. localhost is exempt. */
+  (function () {
+    var h = location.hostname;
+    if (location.protocol === "http:" && h !== "localhost" && h !== "127.0.0.1" && h !== "[::1]") {
+      location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+    }
+  })();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%230E5F58' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5'/%3E%3Cline x1='8.5' y1='6.2' x2='19.5' y2='6.2'/%3E%3Cline x1='8.5' y1='12.5' x2='19.5' y2='12.5'/%3E%3Cline x1='8.5' y1='18.8' x2='19.5' y2='18.8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/css/site.css?v=202609300531">
+<!-- /site:head -->
 </head>
-<body class="sm">
-  <header class="nav" id="nav">
-    <a href="../index.html" class="nav__brand" aria-label="OpenSpineConsortium home">
-      <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
-          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
-          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
-          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
-        </g>
-      </svg>
-      <span>Open<strong>Spine</strong>Consortium</span>
-    </a>
-
-    <nav class="nav__links" aria-label="Primary">
-      <a href="../index.html#project">Project</a>
-      <a href="../index.html#datasets">Datasets</a>
-      <a href="../index.html#people">People</a>
-      <a href="../index.html#organization">Organization</a>
-      <a href="../index.html#education">Education</a>
-      <a href="../index.html#workshop">Workshop</a>
-      <a href="../index.html#goals">Goals</a>
-      <a href="index.html" class="is-active">Spine MRI</a>
-      <a href="../pacs/">Demo</a>
-      <a href="../index.html#join" class="nav__cta">Get Involved</a>
-    </nav>
-
-    <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-  </header>
+<body class="sm" data-shell="sub">
+  <!-- site:header -->
+<header class="nav" id="nav">
+  <a href="/" class="nav__brand" aria-label="OpenSpineConsortium home">
+    <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+        <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+        <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+        <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+      </g>
+    </svg>
+    <span>Open<strong>Spine</strong>Consortium</span>
+  </a>
+  <nav class="nav__links" id="navLinks" aria-label="Primary">
+    <a href="/">Home</a>
+    <a href="/onboarding/">Onboarding</a>
+    <a href="/research/">Research</a>
+    <a href="/data/" aria-current="true">Data &amp; Tools</a>
+    <a href="/people/">People</a>
+    <a href="/beethoven/request.html" class="nav__cta">Get Involved</a>
+  </nav>
+  <button class="nav__toggle" id="navToggle" type="button" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="subnav" aria-label="Data &amp; Tools">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/data/">Data &amp; Tools</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/data/">Overview</a><a class="subnav__pill" href="/data/datasets/">Datasets</a><a class="subnav__pill" href="/atlas/">Atlas</a><a class="subnav__pill" href="/data/gallery/">Gallery</a><a class="subnav__pill" href="/data/hardware/">Hardware</a><a class="subnav__pill" href="/spine-mri/" aria-current="true">Spine MRI</a><a class="subnav__pill" href="/pacs/ct.html">CT</a><a class="subnav__pill" href="/pacs/">X-ray</a></div>
+  </div>
+</nav>
+<!-- /site:header -->
   <div class="sm-bar">
     <div class="sm-bar__in">
       <a class="sm-bar__hub" href="index.html">Reading Spine MRI</a>
@@ -276,7 +292,7 @@ fluid inside the dural sac?</b> Nothing is measured. Nothing is calculated.</p>
 </div>
 
 <figure class="wide" style="max-width:760px;margin:1.6em auto;">
-  <img class="zoom" src="figures/from_papers/schizas2010_p02_984x1770.jpeg"
+  <img class="zoom" src="figures/from_papers/schizas2010_p02_984x1770.jpeg?v=202609300531"
        alt="The complete Schizas classification: schematic and matched MRI for grades A1 to D"
        data-cap="The complete Schizas classification. Left column: schematic of the dural sac contents. Right column: a matched axial T2 for each grade. A1 to A4 all have clearly visible cerebrospinal fluid and differ only in where the rootlets have settled. B has rootlets filling the sac but still individually countable, giving a grainy look. C is a homogeneous grey sac with no fluid signal at all, but posterior epidural fat is still present. D is the same with the posterior epidural fat gone as well.">
   <figcaption><b>Read it top to bottom as one continuous process:</b> the rootlets start settled dorsally in a
@@ -292,7 +308,7 @@ knowing exists, and not worth drilling. <b>Learn the four letters.</b></p>
 </div>
 
 <div class="card o">
-  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_A1.jpg" alt="Axial T2, Schizas grade A" data-cap="Cerebrospinal fluid is obvious inside the sac and individual rootlets can be picked out. The four subtypes (A1&#8211;A4) describe only where the rootlets have settled &#8212; dorsally, in a horseshoe, or centrally."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_A1.jpg?v=202609300531" alt="Axial T2, Schizas grade A" data-cap="Cerebrospinal fluid is obvious inside the sac and individual rootlets can be picked out. The four subtypes (A1&#8211;A4) describe only where the rootlets have settled &#8212; dorsally, in a horseshoe, or centrally."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade A &#8212; fluid clearly visible</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -301,7 +317,7 @@ knowing exists, and not worth drilling. <b>Learn the four letters.</b></p>
   </div>
 </div>
 <div class="card o">
-  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_B.jpg" alt="Axial T2, Schizas grade B" data-cap="The rootlets occupy the whole sac and are no longer separated by a clear pool of fluid, but you can still make out individual roots. Some fluid remains, giving the sac a grainy texture rather than a smooth one."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_B.jpg?v=202609300531" alt="Axial T2, Schizas grade B" data-cap="The rootlets occupy the whole sac and are no longer separated by a clear pool of fluid, but you can still make out individual roots. Some fluid remains, giving the sac a grainy texture rather than a smooth one."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade B &#8212; rootlets fill the sac, but still countable</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -310,7 +326,7 @@ knowing exists, and not worth drilling. <b>Learn the four letters.</b></p>
   </div>
 </div>
 <div class="card r">
-  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_C.jpg" alt="Axial T2, Schizas grade C" data-cap="No rootlets can be identified. The sac is a homogeneous grey disc with no fluid signal anywhere inside. Posterior epidural fat is still visible behind it."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_C.jpg?v=202609300531" alt="Axial T2, Schizas grade C" data-cap="No rootlets can be identified. The sac is a homogeneous grey disc with no fluid signal anywhere inside. Posterior epidural fat is still visible behind it."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade C &#8212; no fluid at all, fat still present</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -319,7 +335,7 @@ knowing exists, and not worth drilling. <b>Learn the four letters.</b></p>
   </div>
 </div>
 <div class="card r">
-  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_D.jpg" alt="Axial T2, Schizas grade D" data-cap="As grade C &#8212; a homogeneous grey sac &#8212; and in addition the posterior epidural fat has been squeezed out. Nothing is left between the sac and the posterior arch."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_mri_D.jpg?v=202609300531" alt="Axial T2, Schizas grade D" data-cap="As grade C &#8212; a homogeneous grey sac &#8212; and in addition the posterior epidural fat has been squeezed out. Nothing is left between the sac and the posterior arch."><div class="attrib">Schizas et al., Spine 2010, Figure 1 <span class="lic">permission pending</span></div></div>
   <div class="body">
     <h3>Grade D &#8212; no fluid, no posterior fat either</h3>
     <p class="where">Axial T2 at the disc level</p>
@@ -375,7 +391,7 @@ relative stenosis, under 75&#8239;mm&#178; absolute. Schizas tested that against
 </figure>
 
 <div class="card r">
-  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_fig3_66mm_gradeA.jpg"
+  <div class="imgcell"><img class="zoom" src="figures/panels/schizas_fig3_66mm_gradeA.jpg?v=202609300531"
     alt="Axial T2 at L4-L5, dural sac area 66 square millimetres but grade A morphology"
     data-cap="Axial T2 at L4-L5. The measured dural sac cross-sectional area is 66 square millimetres, which is below the 75 square millimetre threshold for 'absolute stenosis'. But the morphology is grade A: cerebrospinal fluid is plainly visible and the rootlets are not impinged. The number would have sent this patient toward an operation.">
     <div class="attrib">Schizas et al., Spine 2010, Figure 3 <span class="lic">permission pending</span></div></div>
@@ -394,7 +410,7 @@ relative stenosis, under 75&#8239;mm&#178; absolute. Schizas tested that against
 </div>
 
 <figure class="wide" style="max-width:900px;margin:1.6em auto;">
-  <img class="zoom" src="figures/from_papers/schizas2010_p03_984x608.jpeg"
+  <img class="zoom" src="figures/from_papers/schizas2010_p03_984x608.jpeg?v=202609300531"
        alt="Dural sac area ranges for each Schizas grade, showing wide overlap"
        data-cap="Measured dural sac cross-sectional area plotted against morphologic grade. Each grade spans a wide range of areas and the ranges overlap heavily. Grade A extends past 300 square millimetres; grade C reaches well above 100. There is no area threshold that cleanly separates the grades.">
   <figcaption><b>The same data as a picture.</b> Every grade spans a wide range of areas, and the ranges overlap
@@ -490,7 +506,7 @@ fluid inside the sac?</b> &#8212; then, if not, <b>is there still fat behind it?
 <div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
   <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 1</div>
   <div style="padding:12px;background:#EFEADC;">
-    <img class="zoom" src="figures/panels/schizas_fig3_66mm_gradeA.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 1"
+    <img class="zoom" src="figures/panels/schizas_fig3_66mm_gradeA.jpg?v=202609300531" alt="Axial T2 lumbar spine, unlabelled drill case 1"
          data-cap="Drill case 1 &#8212; grade it before opening the answer."
          style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
   </div>
@@ -504,7 +520,7 @@ fluid inside the sac?</b> &#8212; then, if not, <b>is there still fat behind it?
 <div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
   <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 2</div>
   <div style="padding:12px;background:#EFEADC;">
-    <img class="zoom" src="figures/panels/drill_2.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 2"
+    <img class="zoom" src="figures/panels/drill_2.jpg?v=202609300531" alt="Axial T2 lumbar spine, unlabelled drill case 2"
          data-cap="Drill case 2 &#8212; grade it before opening the answer."
          style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
   </div>
@@ -518,7 +534,7 @@ fluid inside the sac?</b> &#8212; then, if not, <b>is there still fat behind it?
 <div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
   <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 3</div>
   <div style="padding:12px;background:#EFEADC;">
-    <img class="zoom" src="figures/panels/drill_1.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 3"
+    <img class="zoom" src="figures/panels/drill_1.jpg?v=202609300531" alt="Axial T2 lumbar spine, unlabelled drill case 3"
          data-cap="Drill case 3 &#8212; grade it before opening the answer."
          style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
   </div>
@@ -532,7 +548,7 @@ fluid inside the sac?</b> &#8212; then, if not, <b>is there still fat behind it?
 <div style="border:1.6px solid var(--rule);border-radius:9px;overflow:hidden;">
   <div style="padding:10px 14px;background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:15px;">Case 4</div>
   <div style="padding:12px;background:#EFEADC;">
-    <img class="zoom" src="figures/panels/drill_3.jpg" alt="Axial T2 lumbar spine, unlabelled drill case 4"
+    <img class="zoom" src="figures/panels/drill_3.jpg?v=202609300531" alt="Axial T2 lumbar spine, unlabelled drill case 4"
          data-cap="Drill case 4 &#8212; grade it before opening the answer."
          style="width:100%;height:auto;display:block;border-radius:5px;background:#111;">
   </div>
@@ -546,7 +562,7 @@ fluid inside the sac?</b> &#8212; then, if not, <b>is there still fat behind it?
 </div>
 
 <figure class="wide" style="max-width:520px;margin:2em auto 1.6em;">
-  <img class="zoom" src="figures/panels/schizas_myelogram.jpg"
+  <img class="zoom" src="figures/panels/schizas_myelogram.jpg?v=202609300531"
        alt="Coronal MR myelogram showing the cerebrospinal fluid column interrupted at two levels"
        data-cap="Coronal MR myelographic sequence from the same patient as drill cases 2, 3 and 4. The bright cerebrospinal fluid column is interrupted at the two levels graded C and D, and continues at the level graded A3. The grade and the block are the same observation seen two ways.">
   <figcaption><b>The same patient, seen whole.</b> This is the coronal myelographic sequence from cases 2&#8211;4.
@@ -734,21 +750,59 @@ Figures reproduced from the same paper pending permission. Every image on this p
 </script>
 <footer class="sm-foot">
   <div class="sm-pnwrap"><a class="sm-pn" href="01-cervical-cord-compression.html"><span class="sm-pn__k">&larr; Previous</span><span class="sm-pn__t">Part 1 &middot; Reading the compressed cord</span></a><a class="sm-pn sm-pn--next" href="03-nerve-root-and-foramen.html"><span class="sm-pn__k">Next &rarr;</span><span class="sm-pn__t">Part 3 &middot; Nerve root and foramen</span></a></div>
-  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="../index.html">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
+  <p class="sm-foot__note">Part of <a href="index.html">Reading Spine MRI</a>, an open teaching series from <a href="/">OpenSpineConsortium</a>. Figures are credited individually in their captions.</p>
 </footer>
 
-<script>
-(function(){
-  var nav=document.getElementById('nav');
-  function s(){ nav.classList.toggle('is-scrolled', window.scrollY>24); }
-  window.addEventListener('scroll', s, {passive:true}); s();
-  var t=document.getElementById('navToggle'), l=document.querySelector('.nav__links');
-  t.addEventListener('click', function(){
-    var o=l.classList.toggle('is-open');
-    t.classList.toggle('is-open', o);
-    t.setAttribute('aria-expanded', o?'true':'false');
-  });
-})();
-</script>
+<!-- site:footer -->
+<div class="crumbs-band"><nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li><a href="/data/">Data &amp; Tools</a></li><li><a href="/spine-mri/">Spine MRI</a></li><li><span aria-current="page">Part 2 · Lumbar central stenosis</span></li></ol></nav></div>
+<footer class="footer">
+  <div class="footer__top">
+    <a href="/" class="footer__brand">
+      <svg viewBox="0 0 28 28" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+        </g>
+      </svg>
+      <span>Open<strong>Spine</strong>Consortium</span>
+    </a>
+    <p class="footer__tag">Open research, openly licensed.</p>
+  </div>
+  <nav class="footer__dir" aria-label="Every page">
+    <div class="footer__col"><h2><a href="/beethoven/">Beethoven</a></h2><ul><li><a href="/beethoven/">Product</a></li><li><a href="/beethoven/terms.html">Agreement</a></li><li><a href="/beethoven/privacy.html">Privacy</a></li><li><a href="/beethoven/support.html">Support</a></li><li><a href="/beethoven/request.html">Ask for access</a></li><li><a href="/beethoven/reviewers.html">Reviewers</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/onboarding/">Onboarding</a></h2><ul><li><a href="/onboarding/">Start here</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/research/">Research</a></h2><ul><li><a href="/research/">Overview</a></li><li><a href="/research/conferences/">Conferences</a></li><li><a href="/research/workshop/">Workshop</a></li><li><a href="/tutorials/">Tutorials</a></li><li><a href="/research/goals/">Goals</a></li><li><a href="/research/outside/">Outside work</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/data/">Data &amp; Tools</a></h2><ul><li><a href="/data/">Overview</a></li><li><a href="/data/datasets/">Datasets</a></li><li><a href="/atlas/">Atlas</a></li><li><a href="/data/gallery/">Gallery</a></li><li><a href="/data/hardware/">Hardware</a></li><li><a href="/spine-mri/">Spine MRI</a></li><li><a href="/pacs/ct.html">CT</a></li><li><a href="/pacs/">X-ray</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/people/">People</a></h2><ul><li><a href="/people/">Team</a></li><li><a href="/people/organization/">Organization</a></li><li><a href="/people/education/">Education</a></li><li><a href="/celebrate-life/">Celebrate Life</a></li></ul></div>
+  </nav>
+  <div class="footer__connect">
+    <span class="footer__connect-label">Connect with us</span>
+    <ul class="footer__social" aria-label="Social links">
+      <li>
+        <a href="https://github.com/OpenSpineConsortium" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.17-.02-2.12-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.54-.01 2.78-.01 3.16 0 .3.2.66.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://www.instagram.com/openspineconsortium/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" stroke="none"/></g></svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://huggingface.co/OpenSpineConsortium" target="_blank" rel="noopener" aria-label="HuggingFace" title="HuggingFace">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.2 14.2c1 1.9 2.3 2.7 3.8 2.7s2.8-.8 3.8-2.7"/><circle cx="9" cy="9.6" r="0.7" fill="currentColor" stroke="none"/><circle cx="15" cy="9.6" r="0.7" fill="currentColor" stroke="none"/></g></svg>
+        </a>
+      </li>
+    </ul>
+  </div>
+  <div class="footer__bottom">
+    <p>&copy; <span id="year">2026</span> OpenSpineConsortium. Open research, openly licensed.</p>
+    <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
+  </div>
+</footer>
+<script src="/assets/js/main.js?v=202609300531"></script>
+<!-- /site:footer -->
 </body>
 </html>

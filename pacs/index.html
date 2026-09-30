@@ -46,12 +46,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spinopelvic X-ray demo — OpenSpineConsortium</title>
   <meta name="description" content="Lateral radiograph tab of the OpenSpineConsortium spinopelvic demo: vertebral corner landmarks, sacral slope and lumbar lordosis, with a YOLO-Pose model running in your own browser on your own film." />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="pacs.css?v=20260911b" />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="pacs.css?v=202609300531" />
+<!-- site:head -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%230E5F58' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5'/%3E%3Cline x1='8.5' y1='6.2' x2='19.5' y2='6.2'/%3E%3Cline x1='8.5' y1='12.5' x2='19.5' y2='12.5'/%3E%3Cline x1='8.5' y1='18.8' x2='19.5' y2='18.8'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/css/site.css?v=202609300531">
+<!-- /site:head -->
 </head>
-<body>
+<body data-shell="app">
+<!-- site:header -->
+<header class="nav" id="nav">
+  <a href="/" class="nav__brand" aria-label="OpenSpineConsortium home">
+    <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5" />
+        <line x1="8.5" y1="6.2" x2="19.5" y2="6.2" />
+        <line x1="8.5" y1="12.5" x2="19.5" y2="12.5" />
+        <line x1="8.5" y1="18.8" x2="19.5" y2="18.8" />
+      </g>
+    </svg>
+    <span>Open<strong>Spine</strong>Consortium</span>
+  </a>
+  <nav class="nav__links" id="navLinks" aria-label="Primary">
+    <a href="/">Home</a>
+    <a href="/onboarding/">Onboarding</a>
+    <a href="/research/">Research</a>
+    <a href="/data/" aria-current="true">Data &amp; Tools</a>
+    <a href="/people/">People</a>
+    <a href="/beethoven/request.html" class="nav__cta">Get Involved</a>
+  </nav>
+  <button class="nav__toggle" id="navToggle" type="button" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<!-- /site:header -->
   <header class="topbar">
-    <a class="topbar__brand" href="../index.html">Open<strong>Spine</strong>Consortium</a>
+    <a class="topbar__brand" href="/">Open<strong>Spine</strong>Consortium</a>
     <span class="topbar__tag">Spinopelvic demo</span>
     <nav class="modetabs" aria-label="Modality">
       <a class="modetab" href="ct.html">CT</a>
@@ -231,7 +261,7 @@ Trained on 76,104 vertebrae across 13,781 radiographs from five sources.">
           the true centre.
         </p>
         <figure class="teachfig">
-          <img src="data/xr/femoral_head_reference.png"
+          <img src="data/xr/femoral_head_reference.png?v=202609300531"
                alt="Three panels: where the femoral head is on a lateral film, the
                     concentric-circle construction on its centre, and the two-head case."
                loading="lazy">
@@ -279,7 +309,10 @@ Trained on 76,104 vertebrae across 13,781 radiographs from five sources.">
        SharedArrayBuffer exists; without it onnxruntime-web is capped at one CPU thread.
        Must load BEFORE the module that starts the session, and is a no-op where the
        browser already isolates the page or cannot register a worker. -->
-  <script src="coi-serviceworker.js?v=20260911b"></script>
-  <script type="module" src="xr.js?v=20260911b"></script>
+  <script src="coi-serviceworker.js?v=202609300531"></script>
+  <script type="module" src="xr.js?v=202609300531"></script>
+<!-- site:footer -->
+<script src="/assets/js/main.js?v=202609300531"></script>
+<!-- /site:footer -->
 </body>
 </html>

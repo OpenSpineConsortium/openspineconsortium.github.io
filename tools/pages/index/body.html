@@ -1,0 +1,403 @@
+---
+title: Beethoven · Your grid, from claude.ai
+description: Ask in claude.ai and a Claude Code worker on the Wayne State grid does the work, on an H200 when it needs one.
+css: /assets/css/hero.css
+canonical: https://openspineconsortium.com/beethoven/
+body_class: page-home
+---
+<section class="bh" aria-labelledby="bh-title">
+  <h1 class="bh__title" id="bh-title">Your grid. <em>From claude.ai.</em></h1>
+  <p class="bh__lede">Ask in claude.ai. Your worker on the grid does the work.</p>
+
+<!-- flow:start -->
+<figure class="flow" aria-label="How a question travels: from claude.ai to Claude servers, or to your worker on the Wayne State grid, which calls the model and uses an H200 GPU">
+<div class="flow__stage">
+<svg class="flow__art flow__art--wide" viewBox="0 0 1200 560" aria-hidden="true" focusable="false">
+<defs><marker id="fh-tw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="fh-ow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><filter id="fshw" x="-12%" y="-8%" width="124%" height="126%"><feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#0A423D" flood-opacity=".16"/></filter></defs>
+<rect class="b-win" x="8" y="24" width="540" height="512" rx="16" filter="url(#fshw)"/>
+<path class="b-bar" d="M8,68 V40 A16,16 0 0 1 24,24 H532 A16,16 0 0 1 548,40 V68 Z"/>
+<line class="b-rule" x1="8" y1="68.5" x2="548" y2="68.5"/>
+<circle class="b-dot" cx="32" cy="46" r="5.5"/>
+<circle class="b-dot" cx="50" cy="46" r="5.5"/>
+<circle class="b-dot" cx="68" cy="46" r="5.5"/>
+<rect class="b-url" x="150" y="34" width="256" height="24" rx="12"/>
+<g class="b-lock"><rect x="233" y="42.5" width="9" height="7.5" rx="1.6"/><path d="M235,42.8 v-2.3 a2.5,2.5 0 0 1 5,0 v2.3"/></g>
+<path class="b-rail" d="M8,69 H60 V536 H24 A16,16 0 0 1 8,520 Z"/>
+<line class="b-railrule" x1="60" y1="69" x2="60" y2="536"/>
+<rect class="b-ico" x="22" y="86" width="24" height="24" rx="7"/><path class="b-ico-l" d="M34,92.5 v11 M28.5,98 h11"/>
+<rect class="b-bars" x="22" y="130" width="24" height="4" rx="2"/>
+<rect class="b-bars" x="22" y="144" width="19" height="4" rx="2"/>
+<rect class="b-bars" x="22" y="158" width="14" height="4" rx="2"/>
+<circle class="b-av" cx="88" cy="176" r="8"/>
+<rect class="b-sk" x="106" y="170" width="318" height="7" rx="3.5"/>
+<rect class="b-sk" x="106" y="185" width="372" height="7" rx="3.5"/>
+<rect class="b-sk" x="106" y="200" width="236" height="7" rx="3.5"/>
+<rect class="b-card" x="106" y="222" width="392" height="168" rx="10"/>
+<line class="b-ax" x1="117.8" y1="369.5" x2="229.9" y2="369.5"/>
+<circle class="b-jit" cx="153.2" cy="302.4" r="1.7"/>
+<circle class="b-jit" cx="140.5" cy="316.9" r="1.7"/>
+<circle class="b-jit" cx="140.2" cy="289.6" r="1.7"/>
+<circle class="b-jit" cx="150" cy="303.2" r="1.7"/>
+<circle class="b-jit" cx="140.5" cy="326.8" r="1.7"/>
+<circle class="b-jit" cx="140.9" cy="311.9" r="1.7"/>
+<circle class="b-jit" cx="141.7" cy="275.7" r="1.7"/>
+<circle class="b-jit" cx="143.8" cy="323.4" r="1.7"/>
+<circle class="b-jit" cx="151.6" cy="275.2" r="1.7"/>
+<line class="b-wh" x1="149.9" y1="355.2" x2="149.9" y2="259.2"/>
+<line class="b-wh" x1="142.6" y1="355.2" x2="157.2" y2="355.2"/>
+<line class="b-wh" x1="142.6" y1="259.2" x2="157.2" y2="259.2"/>
+<rect class="b-box" x="136.9" y="295" width="26" height="25.5"/>
+<line class="b-med" x1="136.9" y1="307.2" x2="162.9" y2="307.2"/>
+<circle class="b-jit" cx="195.7" cy="265.7" r="1.7"/>
+<circle class="b-jit" cx="205.7" cy="301.3" r="1.7"/>
+<circle class="b-jit" cx="193.3" cy="295.2" r="1.7"/>
+<circle class="b-jit" cx="193.7" cy="301.4" r="1.7"/>
+<circle class="b-jit" cx="204.8" cy="302.9" r="1.7"/>
+<circle class="b-jit" cx="200.9" cy="305.7" r="1.7"/>
+<circle class="b-jit" cx="195.1" cy="316.8" r="1.7"/>
+<circle class="b-jit" cx="188.3" cy="290" r="1.7"/>
+<circle class="b-jit" cx="191.5" cy="294.1" r="1.7"/>
+<line class="b-wh" x1="197.9" y1="342" x2="197.9" y2="252.1"/>
+<line class="b-wh" x1="190.6" y1="342" x2="205.2" y2="342"/>
+<line class="b-wh" x1="190.6" y1="252.1" x2="205.2" y2="252.1"/>
+<rect class="b-box" x="184.9" y="283.7" width="26" height="23.5"/>
+<line class="b-med" x1="184.9" y1="296" x2="210.9" y2="296"/>
+<line class="b-ax" x1="245.9" y1="369.5" x2="358.1" y2="369.5"/>
+<circle class="b-jit" cx="273.9" cy="297.8" r="1.7"/>
+<circle class="b-jit" cx="279.8" cy="290.2" r="1.7"/>
+<circle class="b-jit" cx="284.4" cy="292.5" r="1.7"/>
+<circle class="b-jit" cx="282.3" cy="308.1" r="1.7"/>
+<circle class="b-jit" cx="278.5" cy="305.2" r="1.7"/>
+<circle class="b-jit" cx="286.2" cy="323.9" r="1.7"/>
+<circle class="b-jit" cx="288.5" cy="302.9" r="1.7"/>
+<circle class="b-jit" cx="269.6" cy="292.3" r="1.7"/>
+<circle class="b-jit" cx="270.4" cy="282.7" r="1.7"/>
+<line class="b-wh" x1="278" y1="339.1" x2="278" y2="269.8"/>
+<line class="b-wh" x1="270.7" y1="339.1" x2="285.3" y2="339.1"/>
+<line class="b-wh" x1="270.7" y1="269.8" x2="285.3" y2="269.8"/>
+<rect class="b-box" x="265" y="295.3" width="26" height="20.1"/>
+<line class="b-med" x1="265" y1="304.5" x2="291" y2="304.5"/>
+<circle class="b-jit" cx="325.8" cy="322.7" r="1.7"/>
+<circle class="b-jit" cx="331.8" cy="333.4" r="1.7"/>
+<circle class="b-jit" cx="327.6" cy="314.5" r="1.7"/>
+<circle class="b-jit" cx="330.3" cy="318.9" r="1.7"/>
+<circle class="b-jit" cx="328.1" cy="297.4" r="1.7"/>
+<circle class="b-jit" cx="333.4" cy="291.1" r="1.7"/>
+<circle class="b-jit" cx="335.7" cy="298.8" r="1.7"/>
+<circle class="b-jit" cx="316.4" cy="282.5" r="1.7"/>
+<circle class="b-jit" cx="330.4" cy="312.3" r="1.7"/>
+<line class="b-wh" x1="326" y1="346.4" x2="326" y2="271.6"/>
+<line class="b-wh" x1="318.7" y1="346.4" x2="333.3" y2="346.4"/>
+<line class="b-wh" x1="318.7" y1="271.6" x2="333.3" y2="271.6"/>
+<rect class="b-box" x="313" y="297.2" width="26" height="23.7"/>
+<line class="b-med" x1="313" y1="308.1" x2="339" y2="308.1"/>
+<line class="b-ax" x1="374.1" y1="369.5" x2="486.2" y2="369.5"/>
+<circle class="b-jit" cx="413.1" cy="256.5" r="1.7"/>
+<circle class="b-jit" cx="401.4" cy="246.8" r="1.7"/>
+<circle class="b-jit" cx="395.7" cy="269.9" r="1.7"/>
+<circle class="b-jit" cx="405.2" cy="305.8" r="1.7"/>
+<circle class="b-jit" cx="396.5" cy="293.3" r="1.7"/>
+<circle class="b-jit" cx="411.9" cy="296.5" r="1.7"/>
+<circle class="b-jit" cx="403.7" cy="298" r="1.7"/>
+<circle class="b-jit" cx="414.2" cy="298.5" r="1.7"/>
+<circle class="b-jit" cx="407.2" cy="305.4" r="1.7"/>
+<line class="b-wh" x1="406.1" y1="330.6" x2="406.1" y2="246.8"/>
+<line class="b-wh" x1="398.8" y1="330.6" x2="413.4" y2="330.6"/>
+<line class="b-wh" x1="398.8" y1="246.8" x2="413.4" y2="246.8"/>
+<rect class="b-box" x="393.1" y="277.1" width="26" height="23.1"/>
+<line class="b-med" x1="393.1" y1="289.1" x2="419.1" y2="289.1"/>
+<circle class="b-jit" cx="462.5" cy="325.3" r="1.7"/>
+<circle class="b-jit" cx="449.3" cy="330.6" r="1.7"/>
+<circle class="b-jit" cx="452.3" cy="285.2" r="1.7"/>
+<circle class="b-jit" cx="464.1" cy="293.7" r="1.7"/>
+<circle class="b-jit" cx="446.5" cy="343.8" r="1.7"/>
+<circle class="b-jit" cx="448.3" cy="321.8" r="1.7"/>
+<circle class="b-jit" cx="453.8" cy="327.3" r="1.7"/>
+<circle class="b-jit" cx="443.3" cy="304.9" r="1.7"/>
+<circle class="b-jit" cx="452.4" cy="309.1" r="1.7"/>
+<line class="b-wh" x1="454.1" y1="354.5" x2="454.1" y2="284.3"/>
+<line class="b-wh" x1="446.8" y1="354.5" x2="461.4" y2="354.5"/>
+<line class="b-wh" x1="446.8" y1="284.3" x2="461.4" y2="284.3"/>
+<rect class="b-box" x="441.1" y="305" width="26" height="23.1"/>
+<line class="b-med" x1="441.1" y1="316.2" x2="467.1" y2="316.2"/>
+<rect class="b-sk" x="106" y="406" width="290" height="7" rx="3.5"/>
+<rect class="b-sk" x="106" y="421" width="200" height="7" rx="3.5"/>
+<rect class="b-comp" x="76" y="446" width="456" height="72" rx="16"/>
+<line class="b-caret" x1="97" y1="462" x2="97" y2="480"/>
+<circle class="b-ico" cx="101" cy="500" r="9.5"/><path class="b-ico-l" d="M101,495.5 v9 M96.5,500 h9"/>
+<circle class="b-send" cx="506" cy="494" r="15"/><path class="b-send-a" d="M506,501 V487 M500,493 L506,487 L512,493"/>
+<g transform="translate(922 15) scale(1.15)"><path class="n-cloud" vector-effect="non-scaling-stroke" d="M44,104 A28,28 0 0 1 40,50 A34,34 0 0 1 100,26 A40,40 0 0 1 170,44 A31,31 0 0 1 178,104 Z"/></g>
+<rect class="n-rack" x="968" y="252" width="152" height="188" rx="8"/>
+<rect class="n-foot" x="978" y="440" width="14" height="5" rx="1.5"/>
+<rect class="n-foot" x="1096" y="440" width="14" height="5" rx="1.5"/>
+<rect class="n-unit" x="978" y="268" width="132" height="26" rx="4"/>
+<circle class="n-led" cx="987" cy="281" r="2.6"/>
+<circle class="n-led n-led--blink" cx="995" cy="281" r="2.6"/>
+<line class="n-vent" x1="1054.6" y1="275.8" x2="1054.6" y2="286.2"/>
+<line class="n-vent" x1="1070.4" y1="275.8" x2="1070.4" y2="286.2"/>
+<line class="n-vent" x1="1086.2" y1="275.8" x2="1086.2" y2="286.2"/>
+<line class="n-vent" x1="1102" y1="275.8" x2="1102" y2="286.2"/>
+<rect class="n-unit n-unit--me" x="978" y="302" width="132" height="26" rx="4"/>
+<circle class="n-led n-led--on" cx="987" cy="315" r="2.6"/>
+<circle class="n-led" cx="995" cy="315" r="2.6"/>
+<path class="n-prompt" d="M1006,311 l4,4 l-4,4 M1013,319 h6"/>
+<line class="n-vent" x1="1054.6" y1="309.8" x2="1054.6" y2="320.2"/>
+<line class="n-vent" x1="1070.4" y1="309.8" x2="1070.4" y2="320.2"/>
+<line class="n-vent" x1="1086.2" y1="309.8" x2="1086.2" y2="320.2"/>
+<line class="n-vent" x1="1102" y1="309.8" x2="1102" y2="320.2"/>
+<rect class="n-unit" x="978" y="336" width="132" height="26" rx="4"/>
+<circle class="n-led" cx="987" cy="349" r="2.6"/>
+<circle class="n-led" cx="995" cy="349" r="2.6"/>
+<line class="n-vent" x1="1054.6" y1="343.8" x2="1054.6" y2="354.2"/>
+<line class="n-vent" x1="1070.4" y1="343.8" x2="1070.4" y2="354.2"/>
+<line class="n-vent" x1="1086.2" y1="343.8" x2="1086.2" y2="354.2"/>
+<line class="n-vent" x1="1102" y1="343.8" x2="1102" y2="354.2"/>
+<rect class="n-unit" x="978" y="370" width="132" height="26" rx="4"/>
+<circle class="n-led" cx="987" cy="383" r="2.6"/>
+<circle class="n-led n-led--blink" cx="995" cy="383" r="2.6"/>
+<line class="n-vent" x1="1054.6" y1="377.8" x2="1054.6" y2="388.2"/>
+<line class="n-vent" x1="1070.4" y1="377.8" x2="1070.4" y2="388.2"/>
+<line class="n-vent" x1="1086.2" y1="377.8" x2="1086.2" y2="388.2"/>
+<line class="n-vent" x1="1102" y1="377.8" x2="1102" y2="388.2"/>
+<rect class="n-unit" x="978" y="404" width="132" height="26" rx="4"/>
+<circle class="n-led" cx="987" cy="417" r="2.6"/>
+<circle class="n-led" cx="995" cy="417" r="2.6"/>
+<line class="n-vent" x1="1054.6" y1="411.8" x2="1054.6" y2="422.2"/>
+<line class="n-vent" x1="1070.4" y1="411.8" x2="1070.4" y2="422.2"/>
+<line class="n-vent" x1="1086.2" y1="411.8" x2="1086.2" y2="422.2"/>
+<line class="n-vent" x1="1102" y1="411.8" x2="1102" y2="422.2"/>
+<rect class="n-brk" x="584" y="360" width="12" height="88" rx="3"/>
+<rect class="n-board" x="596" y="368" width="184" height="72" rx="8"/>
+<rect class="n-gold" x="618" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="625" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="632" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="639" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="646" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="660" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="667" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="674" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="681" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="688" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="695" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="702" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="709" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="716" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="723" y="440" width="4.4" height="8.6" rx="1"/>
+<rect class="n-gold" x="730" y="440" width="4.4" height="8.6" rx="1"/>
+<circle class="n-fan" cx="651.2" cy="404" r="23"/><g class="n-spin"><path class="n-blade" d="M658.1,404 Q665.9,409.4 663.1,420.7 M655.5,409.4 Q656.2,418.8 645.6,423.7 M649.7,410.7 Q642.7,417.1 632.3,411.9 M645,407 Q635.6,405.5 633.2,394.2 M645,401 Q640.3,392.8 647.7,383.8 M649.7,397.3 Q653.2,388.5 664.8,388.7 M655.5,398.6 Q664.6,395.9 671.7,405.1"/><circle class="n-hub" cx="651.2" cy="404" r="6.9"/></g>
+<circle class="n-fan" cx="724.8" cy="404" r="23"/><g class="n-spin"><path class="n-blade" d="M731.7,404 Q739.5,409.4 736.7,420.7 M729.1,409.4 Q729.8,418.8 719.2,423.7 M723.3,410.7 Q716.3,417.1 705.9,411.9 M718.6,407 Q709.2,405.5 706.8,394.2 M718.6,401 Q713.9,392.8 721.3,383.8 M723.3,397.3 Q726.8,388.5 738.4,388.7 M729.1,398.6 Q738.2,395.9 745.3,405.1"/><circle class="n-hub" cx="724.8" cy="404" r="6.9"/></g>
+<path class="fl-a " d="M553,280 C690,280 745,104 934,104" marker-end="url(#fh-tw)"/><path class="fl-d " d="M553,280 C690,280 745,104 934,104" pathLength="100"/>
+<path class="fl-a " d="M553,280 C690,280 780,315 955,315" marker-end="url(#fh-tw)"/><path class="fl-d " d="M553,280 C690,280 780,315 955,315" pathLength="100"/>
+<path class="fl-a " d="M1044,244 V144" marker-end="url(#fh-tw)"/><path class="fl-d fl-d--late" d="M1044,244 V144" pathLength="100"/>
+<path class="fl-a fl-a--o" d="M961,404 H790" marker-end="url(#fh-ow)"/><path class="fl-d fl-d--o fl-d--late" d="M961,404 H790" pathLength="100"/>
+<circle class="fl-port" cx="549" cy="280" r="5"/>
+</svg>
+<svg class="flow__art flow__art--tall" viewBox="0 0 360 626" aria-hidden="true" focusable="false">
+<defs><marker id="fh-tp" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="fh-op" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><filter id="fshp" x="-12%" y="-8%" width="124%" height="126%"><feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#0A423D" flood-opacity=".16"/></filter></defs>
+<rect class="b-win" x="8" y="8" width="344" height="296" rx="14" filter="url(#fshp)"/>
+<path class="b-bar" d="M8,40 V22 A14,14 0 0 1 22,8 H338 A14,14 0 0 1 352,22 V40 Z"/>
+<line class="b-rule" x1="8" y1="40.5" x2="352" y2="40.5"/>
+<circle class="b-dot" cx="25" cy="24" r="4"/>
+<circle class="b-dot" cx="38" cy="24" r="4"/>
+<circle class="b-dot" cx="51" cy="24" r="4"/>
+<rect class="b-url" x="104" y="15" width="152" height="18" rx="9"/>
+<g class="b-lock"><rect x="146" y="21.2" width="7" height="6" rx="1.3"/><path d="M147.6,21.4 v-1.8 a1.9,1.9 0 0 1 3.8,0 v1.8"/></g>
+<circle class="b-av" cx="26" cy="126" r="6"/>
+<rect class="b-sk" x="40" y="121" width="200" height="6" rx="3"/>
+<rect class="b-sk" x="40" y="133" width="258" height="6" rx="3"/>
+<rect class="b-card" x="40" y="150" width="266" height="86" rx="8.6"/>
+<line class="b-ax" x1="49.3" y1="227" x2="123.8" y2="227"/>
+<circle class="b-jit" cx="72.2" cy="191.2" r="1.2"/>
+<circle class="b-jit" cx="64" cy="198.6" r="1.2"/>
+<circle class="b-jit" cx="63.7" cy="184.6" r="1.2"/>
+<circle class="b-jit" cx="70.2" cy="191.6" r="1.2"/>
+<circle class="b-jit" cx="63.9" cy="203.7" r="1.2"/>
+<circle class="b-jit" cx="64.2" cy="196" r="1.2"/>
+<circle class="b-jit" cx="64.7" cy="177.5" r="1.2"/>
+<circle class="b-jit" cx="66.1" cy="201.9" r="1.2"/>
+<circle class="b-jit" cx="71.2" cy="177.3" r="1.2"/>
+<line class="b-wh" x1="70.1" y1="218.2" x2="70.1" y2="169.1"/>
+<line class="b-wh" x1="65.3" y1="218.2" x2="74.8" y2="218.2"/>
+<line class="b-wh" x1="65.3" y1="169.1" x2="74.8" y2="169.1"/>
+<rect class="b-box" x="61.6" y="187.4" width="17" height="13.1"/>
+<line class="b-med" x1="61.6" y1="193.6" x2="78.6" y2="193.6"/>
+<circle class="b-jit" cx="101.6" cy="172.3" r="1.2"/>
+<circle class="b-jit" cx="108.2" cy="190.6" r="1.2"/>
+<circle class="b-jit" cx="100" cy="187.5" r="1.2"/>
+<circle class="b-jit" cx="100.3" cy="190.6" r="1.2"/>
+<circle class="b-jit" cx="107.6" cy="191.4" r="1.2"/>
+<circle class="b-jit" cx="105" cy="192.8" r="1.2"/>
+<circle class="b-jit" cx="101.2" cy="198.5" r="1.2"/>
+<circle class="b-jit" cx="96.7" cy="184.8" r="1.2"/>
+<circle class="b-jit" cx="98.8" cy="186.9" r="1.2"/>
+<line class="b-wh" x1="103" y1="211.4" x2="103" y2="165.4"/>
+<line class="b-wh" x1="98.3" y1="211.4" x2="107.8" y2="211.4"/>
+<line class="b-wh" x1="98.3" y1="165.4" x2="107.8" y2="165.4"/>
+<rect class="b-box" x="94.5" y="181.6" width="17" height="12"/>
+<line class="b-med" x1="94.5" y1="187.9" x2="111.5" y2="187.9"/>
+<line class="b-ax" x1="135.8" y1="227" x2="210.2" y2="227"/>
+<circle class="b-jit" cx="153.9" cy="188.8" r="1.2"/>
+<circle class="b-jit" cx="157.7" cy="184.9" r="1.2"/>
+<circle class="b-jit" cx="160.7" cy="186.1" r="1.2"/>
+<circle class="b-jit" cx="159.4" cy="194.1" r="1.2"/>
+<circle class="b-jit" cx="156.9" cy="192.6" r="1.2"/>
+<circle class="b-jit" cx="161.9" cy="202.2" r="1.2"/>
+<circle class="b-jit" cx="163.4" cy="191.4" r="1.2"/>
+<circle class="b-jit" cx="151.1" cy="186" r="1.2"/>
+<circle class="b-jit" cx="151.5" cy="181.1" r="1.2"/>
+<line class="b-wh" x1="156.5" y1="210" x2="156.5" y2="174.5"/>
+<line class="b-wh" x1="151.7" y1="210" x2="161.3" y2="210"/>
+<line class="b-wh" x1="151.7" y1="174.5" x2="161.3" y2="174.5"/>
+<rect class="b-box" x="148" y="187.5" width="17" height="10.3"/>
+<line class="b-med" x1="148" y1="192.2" x2="165" y2="192.2"/>
+<circle class="b-jit" cx="189.3" cy="201.5" r="1.2"/>
+<circle class="b-jit" cx="193.3" cy="207" r="1.2"/>
+<circle class="b-jit" cx="190.5" cy="197.3" r="1.2"/>
+<circle class="b-jit" cx="192.3" cy="199.6" r="1.2"/>
+<circle class="b-jit" cx="190.8" cy="188.6" r="1.2"/>
+<circle class="b-jit" cx="194.3" cy="185.4" r="1.2"/>
+<circle class="b-jit" cx="195.8" cy="189.3" r="1.2"/>
+<circle class="b-jit" cx="183.2" cy="181" r="1.2"/>
+<circle class="b-jit" cx="192.4" cy="196.2" r="1.2"/>
+<line class="b-wh" x1="189.5" y1="213.7" x2="189.5" y2="175.4"/>
+<line class="b-wh" x1="184.7" y1="213.7" x2="194.3" y2="213.7"/>
+<line class="b-wh" x1="184.7" y1="175.4" x2="194.3" y2="175.4"/>
+<rect class="b-box" x="181" y="188.5" width="17" height="12.1"/>
+<line class="b-med" x1="181" y1="194.1" x2="198" y2="194.1"/>
+<line class="b-ax" x1="222.2" y1="227" x2="296.7" y2="227"/>
+<circle class="b-jit" cx="247.6" cy="167.7" r="1.2"/>
+<circle class="b-jit" cx="239.9" cy="162.7" r="1.2"/>
+<circle class="b-jit" cx="236.1" cy="174.5" r="1.2"/>
+<circle class="b-jit" cx="242.4" cy="192.9" r="1.2"/>
+<circle class="b-jit" cx="236.7" cy="186.5" r="1.2"/>
+<circle class="b-jit" cx="246.8" cy="188.1" r="1.2"/>
+<circle class="b-jit" cx="241.4" cy="188.9" r="1.2"/>
+<circle class="b-jit" cx="248.3" cy="189.1" r="1.2"/>
+<circle class="b-jit" cx="243.7" cy="192.7" r="1.2"/>
+<line class="b-wh" x1="243" y1="205.6" x2="243" y2="162.7"/>
+<line class="b-wh" x1="238.2" y1="205.6" x2="247.7" y2="205.6"/>
+<line class="b-wh" x1="238.2" y1="162.7" x2="247.7" y2="162.7"/>
+<rect class="b-box" x="234.5" y="178.2" width="17" height="11.8"/>
+<line class="b-med" x1="234.5" y1="184.3" x2="251.5" y2="184.3"/>
+<circle class="b-jit" cx="281.4" cy="202.9" r="1.2"/>
+<circle class="b-jit" cx="272.8" cy="205.6" r="1.2"/>
+<circle class="b-jit" cx="274.7" cy="182.3" r="1.2"/>
+<circle class="b-jit" cx="282.5" cy="186.7" r="1.2"/>
+<circle class="b-jit" cx="271" cy="212.4" r="1.2"/>
+<circle class="b-jit" cx="272.1" cy="201.1" r="1.2"/>
+<circle class="b-jit" cx="275.7" cy="203.9" r="1.2"/>
+<circle class="b-jit" cx="268.9" cy="192.4" r="1.2"/>
+<circle class="b-jit" cx="274.8" cy="194.6" r="1.2"/>
+<line class="b-wh" x1="275.9" y1="217.8" x2="275.9" y2="181.9"/>
+<line class="b-wh" x1="271.2" y1="217.8" x2="280.7" y2="217.8"/>
+<line class="b-wh" x1="271.2" y1="181.9" x2="280.7" y2="181.9"/>
+<rect class="b-box" x="267.4" y="192.5" width="17" height="11.8"/>
+<line class="b-med" x1="267.4" y1="198.2" x2="284.4" y2="198.2"/>
+<rect class="b-comp" x="20" y="250" width="320" height="42" rx="14"/>
+<line class="b-caret" x1="36" y1="263" x2="36" y2="279"/>
+<circle class="b-send" cx="318" cy="271" r="11"/><path class="b-send-a" d="M318,276 V266 M314,270 L318,266 L322,270"/>
+<g transform="translate(1 378) scale(0.72)"><path class="n-cloud" vector-effect="non-scaling-stroke" d="M44,104 A28,28 0 0 1 40,50 A34,34 0 0 1 100,26 A40,40 0 0 1 170,44 A31,31 0 0 1 178,104 Z"/></g>
+<rect class="n-rack" x="232" y="382" width="88" height="124" rx="8"/>
+<rect class="n-foot" x="242" y="506" width="14" height="5" rx="1.5"/>
+<rect class="n-foot" x="296" y="506" width="14" height="5" rx="1.5"/>
+<rect class="n-unit" x="242" y="394" width="68" height="20" rx="4"/>
+<circle class="n-led" cx="251" cy="404" r="2.6"/>
+<circle class="n-led n-led--blink" cx="259" cy="404" r="2.6"/>
+<line class="n-vent" x1="281.4" y1="400" x2="281.4" y2="408"/>
+<line class="n-vent" x1="288.3" y1="400" x2="288.3" y2="408"/>
+<line class="n-vent" x1="295.1" y1="400" x2="295.1" y2="408"/>
+<line class="n-vent" x1="302" y1="400" x2="302" y2="408"/>
+<rect class="n-unit n-unit--me" x="242" y="421" width="68" height="20" rx="4"/>
+<circle class="n-led n-led--on" cx="251" cy="431" r="2.6"/>
+<circle class="n-led" cx="259" cy="431" r="2.6"/>
+<path class="n-prompt" d="M270,427 l4,4 l-4,4 M277,435 h6"/>
+<line class="n-vent" x1="281.4" y1="427" x2="281.4" y2="435"/>
+<line class="n-vent" x1="288.3" y1="427" x2="288.3" y2="435"/>
+<line class="n-vent" x1="295.1" y1="427" x2="295.1" y2="435"/>
+<line class="n-vent" x1="302" y1="427" x2="302" y2="435"/>
+<rect class="n-unit" x="242" y="448" width="68" height="20" rx="4"/>
+<circle class="n-led" cx="251" cy="458" r="2.6"/>
+<circle class="n-led" cx="259" cy="458" r="2.6"/>
+<line class="n-vent" x1="281.4" y1="454" x2="281.4" y2="462"/>
+<line class="n-vent" x1="288.3" y1="454" x2="288.3" y2="462"/>
+<line class="n-vent" x1="295.1" y1="454" x2="295.1" y2="462"/>
+<line class="n-vent" x1="302" y1="454" x2="302" y2="462"/>
+<rect class="n-unit" x="242" y="475" width="68" height="20" rx="4"/>
+<circle class="n-led" cx="251" cy="485" r="2.6"/>
+<circle class="n-led n-led--blink" cx="259" cy="485" r="2.6"/>
+<line class="n-vent" x1="281.4" y1="481" x2="281.4" y2="489"/>
+<line class="n-vent" x1="288.3" y1="481" x2="288.3" y2="489"/>
+<line class="n-vent" x1="295.1" y1="481" x2="295.1" y2="489"/>
+<line class="n-vent" x1="302" y1="481" x2="302" y2="489"/>
+<rect class="n-brk" x="22" y="514" width="12" height="62" rx="3"/>
+<rect class="n-board" x="34" y="522" width="100" height="46" rx="8"/>
+<rect class="n-gold" x="56" y="568" width="4.4" height="6" rx="1"/>
+<rect class="n-gold" x="63" y="568" width="4.4" height="6" rx="1"/>
+<rect class="n-gold" x="70" y="568" width="4.4" height="6" rx="1"/>
+<rect class="n-gold" x="77" y="568" width="4.4" height="6" rx="1"/>
+<rect class="n-gold" x="84" y="568" width="4.4" height="6" rx="1"/>
+<rect class="n-gold" x="98" y="568" width="4.4" height="6" rx="1"/>
+<rect class="n-gold" x="105" y="568" width="4.4" height="6" rx="1"/>
+<circle class="n-fan" cx="64" cy="545" r="14"/><g class="n-spin"><path class="n-blade" d="M68.2,545 Q72.9,548.3 70.7,554.4 M66.6,548.3 Q67,554 60.9,556.1 M63.1,549.1 Q58.8,553 53.4,549.4 M60.2,546.8 Q54.5,545.9 53.9,539.5 M60.2,543.2 Q57.4,538.2 62,533.7 M63.1,540.9 Q65.2,535.6 71.6,536.4 M66.6,541.7 Q72.1,540 75.5,545.6"/><circle class="n-hub" cx="64" cy="545" r="4.2"/></g>
+<circle class="n-fan" cx="104" cy="545" r="14"/><g class="n-spin"><path class="n-blade" d="M108.2,545 Q112.9,548.3 110.7,554.4 M106.6,548.3 Q107,554 100.9,556.1 M103.1,549.1 Q98.8,553 93.4,549.4 M100.2,546.8 Q94.5,545.9 93.9,539.5 M100.2,543.2 Q97.4,538.2 102,533.7 M103.1,540.9 Q105.2,535.6 111.6,536.4 M106.6,541.7 Q112.1,540 115.5,545.6"/><circle class="n-hub" cx="104" cy="545" r="4.2"/></g>
+<path class="fl-a " d="M180,309 C180,346 76,340 76,384" marker-end="url(#fh-tp)"/><path class="fl-d " d="M180,309 C180,346 76,340 76,384" pathLength="100"/>
+<path class="fl-a " d="M180,309 C180,346 276,338 276,374" marker-end="url(#fh-tp)"/><path class="fl-d " d="M180,309 C180,346 276,338 276,374" pathLength="100"/>
+<path class="fl-a " d="M226,434 H151" marker-end="url(#fh-tp)"/><path class="fl-d fl-d--late" d="M226,434 H151" pathLength="100"/>
+<path class="fl-a fl-a--o" d="M226,490 C186,490 186,545 142,545" marker-end="url(#fh-op)"/><path class="fl-d fl-d--o fl-d--late" d="M226,490 C186,490 186,545 142,545" pathLength="100"/>
+<circle class="fl-port" cx="180" cy="305" r="4"/>
+</svg>
+<span class="flow__t t-url t-s" style="--x:248;--y:46.5;--fs:12.5;--px:159;--py:24.6;--pfs:10">claude.ai</span>
+<p class="flow__t t-ask t-e" style="--x:530;--y:116;--fs:15.5;--px:338;--py:74;--pfs:13.5">Is the female pelvis <br class="ph">relatively wider?</p>
+<span class="flow__t t-arrow t-e" style="--x:706;--y:172;--fs:13.5;--px:118;--py:334;--pfs:11">a chat</span>
+<span class="flow__t t-node" style="--x:1044;--y:92;--fs:21;--px:77;--py:428;--pfs:14">Claude servers</span>
+<span class="flow__t t-arrow t-ps" style="--x:772;--y:336;--fs:13.5;--px:234;--py:334;--pfs:11">a Code session</span>
+<span class="flow__t t-node" style="--x:1044;--y:474;--fs:21;--px:276;--py:526;--pfs:15">Wayne State grid</span>
+<span class="flow__t t-me" style="--x:1044;--y:499;--fs:13;--px:276;--py:546;--pfs:10.5">your Claude Code worker</span>
+<span class="flow__t t-arrow t-s t-pm" style="--x:1058;--y:196;--fs:13.5;--px:188;--py:421;--pfs:10.5">the model</span>
+<span class="flow__t t-arrow t-o t-pe t-lift" style="--x:872;--y:426;--fs:13.5;--px:177;--py:499;--pfs:10.5">the heavy lifting</span>
+<span class="flow__t t-node" style="--x:688;--y:476;--fs:21;--px:84;--py:598;--pfs:14">H200 GPU</span>
+</div>
+</figure>
+<!-- flow:end -->
+
+  <p class="bh__need"><span class="bh__need-k">You need:</span>
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Category/877/AccessID-and-accounts" target="_blank" rel="noopener">a Wayne State AccessID</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20199/How-to-apply-for-a-Grid-account" target="_blank" rel="noopener">a grid account</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20314/Wayne-State-VPN-and-the-Global-Protect-client" target="_blank" rel="noopener">GlobalProtect VPN</a><span class="bh__sep" aria-hidden="true">·</span>
+    <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">Claude Pro or Max</a>
+    <a class="bh__how" href="/onboarding/">How it works <span aria-hidden="true">→</span></a></p>
+</section>
+
+<section class="bh-sec" id="access" aria-labelledby="access-title">
+  <h2 class="bh__h2" id="access-title">Ask for access</h2>
+<!-- build:request-form services=/beethoven/services.json fine=short -->
+</section>
+
+<section class="bh-sec bh-sec--get" id="install" aria-labelledby="install-title">
+  <h2 class="bh__h2" id="install-title">Install</h2>
+  <!-- The four cards come from BROWSERS in tools/build_site.py: set a browser's store_url there when its
+       store approves the listing, and its card switches from the direct download to the store. -->
+<!-- build:browsers -->
+  <p class="bh__fine">Beethoven runs Claude Code and is not an Anthropic product. <a href="/beethoven/terms.html">Agreement</a></p>
+</section>
+
+<script>
+/* Old links into the one-page site (openspineconsortium.com/#datasets and the like) land here; send
+   each to the page that now holds that section. Only on the site root, never on /beethoven/. */
+(function () {
+  if (location.pathname !== '/' && location.pathname !== '/index.html') return;
+  var moved = {
+    home: '/research/', project: '/research/', datasets: '/data/datasets/', people: '/people/',
+    organization: '/people/organization/', education: '/people/education/', workshop: '/research/workshop/',
+    goals: '/research/goals/', conferences: '/research/conferences/', gallery: '/data/gallery/',
+    hardware: '/data/hardware/', outside: '/research/outside/', join: '/onboarding/#involved'
+  };
+  function go() {
+    var to = moved[location.hash.slice(1)];
+    if (to) location.replace(to);
+  }
+  go();
+  // an old link followed while this page is already open changes only the hash, and reloads nothing
+  window.addEventListener('hashchange', go);
+})();
+</script>
