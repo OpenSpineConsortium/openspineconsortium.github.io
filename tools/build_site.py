@@ -201,8 +201,10 @@ REDIRECTS = {
 # exact texts people accepted). The build never writes them; a different SHA-256 is a failure.
 # Remove one only when no installed build that reads it is left.
 KEPT_FILES = {
-    # Ashley for VS Code 3.0.0 reads it (servicesUrl default); Beethoven 4.0.0 to 6.0.0 read access_check from it
-    "ashley/services.json": "7ea4dc447dd51ae27f2f68ad98f96c0f7304f8c21782d88859ef909f50c02d78",
+    # Ashley for VS Code 3.0.0 reads it (servicesUrl default); Beethoven 4.0.0 to 6.0.0 read access_check from it.
+    # Changed once, on 2026-10-01: the allowlist key is gone (the approved list is not published; with no list
+    # address 3.0.0 lets /trial decide), every other byte as it was
+    "ashley/services.json": "efebb91ed0c7f219f608b6ecc80acee5f564f916a62209e3e4a18d90d02ae5b1",
     # Beethoven 4.0.0 to 6.0.0's withdrawn-versions list (ASHLEYREV1; never re-signed)
     "ashley/bridge-killlist.json": "f7ec6b8b0774bb52352791ba4960386e6df77cd6c0528b0ff4af3c3535142a81",
     # the VS Code edition's agreements and privacy statement, version 4, as 3.0.0 users accepted them
@@ -215,10 +217,14 @@ KEPT_FILES = {
 }
 LEGACY = set(REDIRECTS) | set(KEPT_FILES)
 # The routes the two editions read from /beethoven/services.json: the browser edition's
-# access_check, request and revocation, and the VS Code edition's license_service, allowlist,
-# revocation and report; both show request_page and support_page
-SERVICES_KEYS = ("access_check", "request", "revocation", "allowlist", "license_service", "report",
+# access_check, request and revocation, and the VS Code edition's license_service, revocation and
+# report; both show request_page and support_page. No allowlist since 2026-10-01: the access service no
+# longer publishes the approved AccessIDs (the browser edition's privacy statement, version 8, says it
+# answers about one account and nothing about anyone else), and with no list address both VS Code
+# builds let /trial decide. NO_SERVICES_KEYS must not come back in either services file.
+SERVICES_KEYS = ("access_check", "request", "revocation", "license_service", "report",
                  "request_page", "support_page")
+NO_SERVICES_KEYS = ("allowlist",)
 SERVICE_HOST = "beethoven-access.openspineconsortium.workers.dev"
 
 # The retired one-page anchors, for links in the sub-sites that pointed at them.
@@ -1102,7 +1108,18 @@ def check_legacy(problems):
 
 
 def check_services(problems):
-    """/beethoven/services.json carries every route both editions read, on the access service."""
+    """/beethoven/services.json carries every route both editions read, on the access service, and
+    neither services file names the approved list."""
+    for rel in ("beethoven/services.json", "ashley/services.json"):
+        g = OUT / rel
+        try:
+            keys = json.loads(read(g)) if g.exists() else {}
+        except ValueError:
+            keys = {}
+        for k in NO_SERVICES_KEYS:
+            if k in keys:
+                problems.append(f"{rel}: names '{k}', which is not published (since 2026-10-01 the access "
+                                f"service gives no list of approved AccessIDs)")
     f = OUT / "beethoven/services.json"
     if not f.exists():
         problems.append("beethoven/services.json: missing (both editions fetch it)")

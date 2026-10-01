@@ -1,6 +1,5 @@
 {
   "license_service": "https://ashley-service.openspineconsortium.workers.dev/trial",
-  "allowlist": "https://ashley-service.openspineconsortium.workers.dev/allowlist",
   "revocation": "https://ashley-service.openspineconsortium.workers.dev/revoked",
   "report": "https://ashley-service.openspineconsortium.workers.dev/report",
   "request_page": "https://openspineconsortium.com/ashley/request.html",
