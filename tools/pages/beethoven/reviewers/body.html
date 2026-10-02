@@ -1,6 +1,6 @@
 ---
 title: For reviewers and security offices · Beethoven
-description: What Beethoven is, what it never does, the permissions it asks for, and how it checks for withdrawn versions without running remote code.
+description: What Beethoven is, what it never does, the permissions it asks for, its helper and its key on the grid, and how it checks for withdrawn versions without running remote code.
 ---
 <section class="section">
   <header class="page-head">
@@ -10,70 +10,111 @@ description: What Beethoven is, what it never does, the permissions it asks for,
 
   <div class="prose">
     <p>Beethoven is a browser extension that starts, watches and stops a Claude Code worker in your own account on your
-    university's cluster, through the Open OnDemand portal you already use. When the worker connects, it hands you the link
-    that opens that session at claude.ai and in the Claude app. It talks to one website, your portal: it holds no site
-    permission on claude.ai and never asks for one, never sees your Claude sign-in, and runs no code it did not ship
-    with.</p>
+    university's cluster. When the worker connects, it hands you the link that opens that session at claude.ai and in the
+    Claude app. It reaches the cluster in one of two ways: directly over ssh to the cluster's login node, through a small
+    helper you install from inside the extension (no VPN), or through the Open OnDemand portal you already use. It holds
+    no site permission on claude.ai and never asks for one, never sees your Claude sign-in, never keeps your cluster
+    password or code, and runs no code it did not ship with.</p>
 
     <h2 id="never">What it never does</h2>
     <ul>
       <li>Beethoven has no site permission on claude.ai or any Anthropic page and never asks for one. It does not run on
-      those sites, does not read them and does not change them; a click on its button on such a tab reads only the tab's
-      address, to refuse it. It opens an Anthropic page in a new tab in two cases (the sign-in page Claude Code printed during
-      a sitting you started; your session's claude.ai/code link when your worker connects) and the connectors settings page
-      for the optional Google Drive step, as a bookmark would; nothing of the extension runs there.</li>
+      those sites, does not read them and does not change them. It opens an Anthropic page in a new tab only as a bookmark
+      would (the sign-in page Claude Code printed during a sitting you started, your session's claude.ai/code link, the
+      connectors settings page for the optional Google Drive step, the plans page); nothing of the extension runs
+      there.</li>
       <li>Beethoven never sees your Claude sign-in. You sign in to Claude Code yourself, on Anthropic's own page; the
-      one-time code you paste into the extension's box is typed once into your own job's terminal on your cluster and is not
-      stored, not logged and not sent anywhere else; the extension reads only whether Claude Code says it is signed in.</li>
+      one-time code you paste into the extension's box is typed once into your own job's terminal on your cluster and is
+      not stored, not logged and not sent anywhere else.</li>
+      <li>Beethoven never keeps your cluster password or verification code. On the direct way you type them into its own
+      sign-in sheet once; it sends them only to your cluster, inside the encrypted ssh session, after the cluster's host
+      key matched the one it carries, and never stores, logs or sends them to its maintainer. On the portal path you type
+      them into your browser's or your portal's own pages, which it never reads.</li>
+      <li>Beethoven's key in your browser can never sign a worker in to Claude, open a terminal, transfer files or forward
+      ports: its one line in your cluster account forces every use through a gate with eight fixed commands. Protecting it
+      with Windows Hello or Touch ID is optional; Forget this computer removes it and its line.</li>
+      <li>Beethoven's helper, which you install from inside the extension, connects only to your cluster's ssh port, holds
+      no credential, keeps no log of what it carries and sends nothing to the maintainer.</li>
       <li>Beethoven runs no code it did not ship with. Its daily update check fetches a signed list, not a program.</li>
-      <li>Beethoven works with one website: the Open OnDemand portal you connect. It requests access to that site, and to
-      nothing else, only from a click: its icon on that site's tab, a Connect or Allow button in its panel, or Connect on its
-      setup page, where you can type the site's address. It refuses an address on claude.ai, claude.com or anthropic.com
-      before asking the browser for anything. Its only other requests go to the maintainer: the approval
-      check, which sends the account name your portal shows for you, your portal's address, the product name and its
-      version, and the installation identifier (a random number the extension makes when its agreement is accepted, not derived
-      from the device), so the maintainer's access service can answer whether that account is approved on this
-      installation; and a daily fetch, from the maintainer's website, of that service's address and the signed list of
-      withdrawn versions, which carries nothing about you.</li>
-      <li>Beethoven does not read your portal cookie and does not sign in for you. When your portal asks for a sign-in, the
-      extension asks you to sign in in a tab. There is no licence key: your institution's own sign-in identifies you, and
-      the only thing you paste is the one-time code Claude Code's own sign-in gives you, which goes to your own job.</li>
-      <li>Beethoven sends its maintainer no usage data, no error reports and no activation request; the approval check is the
-      only thing it sends about you. Its audit log of what it asked your portal never contains what you typed to sign in and
-      is never transmitted.</li>
+      <li>Beethoven asks for a website only from a click, one at a time: your university's Open OnDemand portal. It refuses
+      an address on claude.ai, claude.com or anthropic.com before asking the browser for anything. Its only other requests
+      go to the maintainer: the approval check (the account name your cluster accepted, your portal's address, the product
+      name and its version, and the installation identifier, a random number made when its agreement is accepted, not
+      derived from the device), sent only after your cluster accepted your sign-in; and a daily fetch of the service's
+      address and the signed list of withdrawn versions, which carries nothing about you.</li>
+      <li>Beethoven sends its maintainer no usage data, no error reports and no activation request; the approval check is
+      the only thing it sends about you. Its audit log never contains what you typed to sign in and is never
+      transmitted.</li>
     </ul>
 
     <h2 id="permissions">Permissions and code</h2>
     <div class="callout">
-      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>activeTab</code> and
-      <code>sidePanel</code>. One optional host
-      permission, <code>https://*/*</code>, which the extension asks your browser to grant for the one portal website you
-      click from or type on its setup page, and it refuses to work until that is granted; no host permission at install
-      time, and none on any Anthropic domain: it refuses an address on claude.ai, claude.com or anthropic.com before asking
-      for anything. Never requested: <code>cookies</code>, <code>tabs</code>, <code>webRequest</code>,
-      <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>nativeMessaging</code>,
-      <code>debugger</code>, <code>identity</code>, <code>clipboardRead</code>.</p>
+      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>sidePanel</code> and
+      <code>nativeMessaging</code>. One optional host permission, <code>https://*/*</code>, which the extension asks your
+      browser to grant for the one portal website, only inside a click (<em>Agree and continue</em> on its welcome page,
+      <em>Allow again</em> in its panel, <em>Change</em> in its Settings); no host permission at install time, and none on
+      any Anthropic domain: it refuses an address on claude.ai, claude.com or anthropic.com before asking for anything.
+      Never requested: <code>activeTab</code>, <code>cookies</code>, <code>tabs</code>, <code>webRequest</code>,
+      <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>debugger</code>, <code>identity</code>,
+      <code>clipboardRead</code>.</p>
+      <p><code>nativeMessaging</code> reaches only the extension's own helper: Chrome lets an extension talk to a program
+      on the computer only when that program has registered itself for that extension, and the helper exists only after
+      the user saved and ran its installer, which is a file inside the extension's package. <code>scripting</code> loads
+      the extension's page script only into a tab it opened itself on the granted portal; no page script is registered.</p>
       <p>No remote code: the daily update check fetches one signed list
       (<a href="/beethoven/killlist.json">killlist.json</a>) and checks its signature against a key built into the extension;
       the list can withdraw a version and nothing else. No licence key: the one request that carries anything about the
-      person is the approval check, which sends the account name the portal shows, the portal's hostname, the product, the
-      version and the installation identifier to the maintainer's access service
+      person is the approval check, which sends the account name the cluster accepted, the portal's hostname, the product,
+      the version and the installation identifier to the maintainer's access service
       (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
       <a href="/beethoven/services.json">services.json</a>) and is answered yes or no. The bundle is minified for size and not
       obfuscated. Security reports go to the notice address on the <a href="/beethoven/support.html">support page</a>.</p>
     </div>
 
+    <h2 id="direct">The direct way: the helper, the sign-in and the key</h2>
+    <p><strong>The helper.</strong> A browser extension has no raw sockets, so the direct way uses a native messaging host
+    (<code>com.openspineconsortium.beethoven.bridge</code>) that ships inside the package as a plain script: Windows
+    PowerShell behind a <code>.cmd</code> launcher on Windows, Perl on macOS and Linux (Python 3 where Perl is absent). The
+    user installs it once, in their own user account, with no administrator rights; the page that offers it writes the
+    extension's own ID into the copy it saves, so the host's registration names only that extension. It opens TCP only to the addresses on
+    its allowlist (<code>grid.wayne.edu:22</code>, built in), carries base64 bytes both ways, never logs them, holds no
+    credential, has no shell, starts no other program and exits when Chrome closes it. It is unsigned, so the operating
+    system warns the first time it is opened.</p>
+    <p><strong>The sign-in.</strong> The extension's own ssh client (WebCrypto, no third-party code) checks the server's
+    host key against the fingerprint the site profile carries before it sends anything. The first sign-in uses the
+    cluster's own keyboard-interactive prompts (the password, then the Google Authenticator code), which the user answers
+    in the extension's own sign-in sheet; the answers are held in memory only until they are sent into the session, and
+    are dropped once sent: never stored, logged or offered to be remembered. After three refusals in a row the extension
+    stops and asks the cluster nothing more for that account for fifteen minutes, so the account is not locked. The
+    signed-in session of a first sign-in is held, in memory, for up to ten minutes, so the user's first Claude sign-in
+    can run in it.</p>
+    <p><strong>The key.</strong> In that session the extension makes a key in the browser (kept in the extension's
+    IndexedDB, wrapped by a non-extractable browser key kept beside it, or by a key derived from the user's passkey if the
+    user opts in to Windows Hello or Touch ID; the signing key is always used non-extractable, in memory) and adds one
+    line to the user's <code>~/.ssh/authorized_keys</code>:
+    <code>restrict,command="&lt;the lab's shared copy&gt;/bin/hpcworker gate" &lt;key&gt; beethoven-browser &lt;date&gt;</code>.
+    The gate accepts eight fixed verbs (version, status, watch, connect, stop, restrict, read of four named run files,
+    forget), refuses any other character or word, caps each key at three worker names in any seven days, twelve starts
+    an hour and two watches at once, and starts a worker only with <code>--login never</code>: the key can never run the
+    Claude sign-in. The gate, and everything the extension runs on the login node, is bash with coreutils, grep, sed and
+    awk; no Python. The cluster-side tool refuses to add a key unless the lab's shared copy, and every folder above it,
+    can be changed by its owner alone, since every key's forced command runs that copy. <em>Forget this computer</em>
+    deletes the key and, through the gate, the line; withdrawing a user's approval does not remove the line. A relay
+    server is used only if a university's site profile names one; none does, and the privacy statement would name it
+    first. No other extension can serve as the bridge: Chromium allows sockets to Google's Secure Shell alone, and it
+    offers other extensions none.</p>
+
     <h2 id="distribution">Distribution and installations</h2>
     <p>Beethoven is published only as a private listing in the Chrome Web Store: the listing opens for the Google accounts
     in the lab's group of testers, which the maintainer adds one by one after approving a request. There is no public
-    listing, no other store and no download from this site. The access service ties each approved account to one
-    installation, identified by the random installation identifier the extension makes when its agreement is accepted and keeps in
-    its own storage (it is not derived from the device, and a reinstall makes a new one). A check from a second
-    installation of the same account is refused, and the maintainer is told; the maintainer can move the approval or
-    withdraw it. The service keeps the identifier and when it was first and last seen; of refused checks it keeps a
-    count, the time of the last one and the first eight characters of a one-way hash of the refused installation's
-    identifier. This is an access rule the extension and the service keep between them, not copy protection: it makes casual
-    sharing fail, and the agreement makes sharing a breach.</p>
+    listing, no other store and no download from this site: the helper's installers are files inside the extension's
+    package. The access service ties each approved account to one installation, identified by the random installation
+    identifier the extension makes when its agreement is accepted and keeps in its own storage (it is not derived from the
+    device, and a reinstall makes a new one). A check from a second installation of the same account is refused, and the
+    maintainer is told; the maintainer can move the approval or withdraw it. The service keeps the identifier and when it
+    was first and last seen; of refused checks it keeps a count, the time of the last one and the first eight characters
+    of a one-way hash of the refused installation's identifier. This is an access rule the extension and the service keep
+    between them, not copy protection: it makes casual sharing fail, and the agreement makes sharing a breach.</p>
 
     <p class="note">Beethoven's use of information received from your browser complies with the Chrome Web Store User Data
     Policy, including the Limited Use requirements.</p>

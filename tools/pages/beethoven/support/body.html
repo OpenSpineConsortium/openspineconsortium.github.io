@@ -1,6 +1,6 @@
 ---
 title: Support and notices · Beethoven
-description: Getting help with Beethoven, how it works step by step, the notice address, disputes, refunds and outages, security reports and your records.
+description: Getting help with Beethoven, how it works step by step, the helper, your grid code, the key on your computer, the notice address, disputes, refunds and outages, security reports and your records.
 ---
 <section class="section">
   <header class="page-head">
@@ -10,38 +10,45 @@ description: Getting help with Beethoven, how it works step by step, the notice 
 
   <div class="prose">
     <h2 id="help">Getting help</h2>
-    <p>Start with the panel: under <em>Details</em>, <em>Run the checks</em> names the piece that is not working and says in
-    one sentence what to do about it. When you write for help, send the one line the panel shows, the list of checks as it
-    stands (a screenshot is fine) and, if you like, the audit log exported from <em>Details</em> or the setup page; it holds
-    one line per request the extension made to your portal and never what you typed.</p>
+    <p>Start with the panel: open <em>More</em> (the <em>⋯</em> button), then <em>Details for your lab lead</em>.
+    <em>Run the checks</em> names the piece that is not working and says in one sentence what to do about it. When you
+    write for help, send the one line the panel shows, the list of checks as it stands (a screenshot is fine) and, if you
+    like, the audit log exported from <em>Settings</em>; it holds one line per request the extension made to your portal
+    and never what you typed: no password, no code and no key.</p>
     <p>Students: the Trial Edition is free for approved institutional accounts (<a href="/beethoven/request.html">ask for
     access</a>); your lab lead is the first line of support. Beyond that, the maintainer may help through the address below,
     at his discretion and without a response-time promise (agreement, section 9(b)).</p>
 
     <h2 id="how">How it works</h2>
-    <p>After installing the extension and accepting the agreement once on its setup page (and once your account is
-    approved):</p>
+    <p>Beethoven reaches the Wayne State grid in one of two ways, and tries the first one first:</p>
+    <ul>
+      <li><strong>The direct way</strong>, with no VPN: Beethoven talks to the grid's login node over ssh, through a small
+      helper on your computer that comes inside Beethoven.</li>
+      <li><strong>GlobalProtect</strong>, as in earlier versions: Beethoven works through the grid's Open OnDemand
+      website, which needs the VPN.</li>
+    </ul>
+    <p>After installing the extension (and once your account is approved):</p>
     <ol>
-      <li><strong>Open your portal tab.</strong> Sign in to your university's Open OnDemand portal the usual way (VPN first
-      if your university requires it) and keep the tab open.</li>
-      <li><strong>Click the Beethoven icon.</strong> The first click asks your browser once for access to that one site.
-      Then the extension does the rest by itself, in order, and says in one line what it is doing: it wakes the portal up,
-      checks you are signed in, confirms your account is approved for this installation, points your cluster account at
-      the lab's shared copy of Beethoven's tools (the lab lead keeps that copy set up on the cluster), shows you where your
-      work goes and takes your statement about it, starts your worker through the portal's own shell, and waits for Claude
-      Code to connect.</li>
-      <li><strong>Sign in to Claude once, when the panel asks.</strong> The extension opens Anthropic's sign-in page in a
-      new tab; you sign in with your own Claude account, click <em>Authorize</em>, and paste the code that page shows into
-      the one box in the panel. The code is typed once into your own job's terminal and is not kept. When your worker
-      connects, your session's claude.ai page opens in a new tab (you can turn that off), and the panel's <em>Open in
-      Claude</em> button opens it again any time.</li>
+      <li><strong>Accept the agreement</strong> on the welcome page that opens: tick the box, then <em>Agree and
+      continue</em>. <em>Show terms</em> opens the full text, which you can save and print.</li>
+      <li><strong>Install the helper, once.</strong> The panel says <em>One small download, once</em> and offers the file
+      for your computer. It is a short script inside Beethoven: nothing comes from this website. Save it, open it, and
+      answer your computer's warning (below). Or choose <em>Use GlobalProtect instead</em>.</li>
+      <li><strong>Sign in to the grid, once.</strong> In Beethoven's own sign-in sheet, type your AccessID, then your
+      password and the grid's code from <strong>Google</strong> Authenticator (not Microsoft Authenticator, which Wayne
+      State uses for everything else) when the grid asks for them. Beethoven sends them only to the grid, inside the
+      encrypted connection, and never keeps them. It then says <em>This computer is set up.</em>: from now on it reaches
+      the grid directly, with no VPN. It asks for your password and code again only when Claude on the grid needs signing
+      in again, or after you sign in from another computer.</li>
+      <li><strong>Sign in to Claude once, when the panel asks.</strong> A Claude tab opens; sign in with your own Claude
+      account, approve, and paste the code it shows into the panel. The code is typed once into your own job's terminal on
+      the grid and is not kept.</li>
+      <li><strong>Open my session.</strong> Your worker runs until you press <em>Stop</em>.</li>
     </ol>
-    <p>The worker is a job on the cluster, not a program on your computer. Once the panel shows <em>Open in Claude</em>,
-    close the panel, the portal tab, the browser or the laptop as you like: open
-    <a href="https://claude.ai/code">claude.ai/code</a> or <em>Code</em> in the Claude app from any device, pick the
-    environment named after your site, and carry on. The job queues its own successor before its time is up, and the
-    successor continues the same session. The portal is needed again only to stop the worker, to start one after you
-    stopped it, or if the cluster ended the chain.</p>
+    <p>The worker is a job on the grid, not a program on your computer. Once the panel shows <em>Open my session</em>,
+    close the panel, the browser or the laptop as you like: open <a href="https://claude.ai/code">claude.ai/code</a> or
+    <em>Code</em> in the Claude app from any device, pick the environment named after your grid, and carry on. The job
+    queues its own successor before its time is up, and the successor continues the same session.</p>
     <p>What the worker makes (figures, tables, files) shows in that claude.ai session. If you want results in Google
     Drive, Docs or Sheets, turn on Claude's Google connectors yourself in claude.ai's settings; Beethoven does not do it
     for you.</p>
@@ -54,8 +61,85 @@ description: Getting help with Beethoven, how it works step by step, the notice 
     <p>One approved account, one installation. The first time Beethoven checks your approval, that installation becomes
     the one your account is tied to. It is identified by a random number Beethoven makes when you accept its agreement, not by
     anything about your computer. A second computer, a second Chrome profile or a reinstall is a new installation: the
-    panel says <em>This account is already set up on another computer</em>, and your lab lead can move the approval to
-    the new one. Beethoven works only for the AccessID that was approved.</p>
+    panel says your account is set up on another computer, and your lab lead can move the approval to the new one.
+    Beethoven works only for the AccessID that was approved.</p>
+
+    <h2 id="helper">The helper</h2>
+    <p>A browser extension cannot open an ssh connection by itself, so the direct way needs a small helper on your
+    computer. It comes inside Beethoven, so nothing is downloaded from a website; you install it once per computer, with
+    no administrator rights. It connects only to the grid's ssh port (<code>grid.wayne.edu</code>, port 22), carries
+    Beethoven's encrypted connection there and back, never sees your password or your code, holds no key, keeps no log of
+    what it carries and runs nothing else. It is a short script that your system already knows how to run (Windows
+    PowerShell on Windows, Perl on a Mac and on Linux), and it is not signed by a company, so your computer warns you the
+    first time. The download is a small zip file:</p>
+    <ul>
+      <li><strong>Windows:</strong> right-click the zip, choose <em>Extract All</em>, then double-click
+      <code>install.cmd</code> in the folder that opens. Windows warns you: on <em>Open File - Security Warning</em>
+      ("Unknown Publisher") click <em>Run</em>; on <em>Windows protected your PC</em> click <em>More info</em>, then
+      <em>Run anyway</em>. If Smart App Control blocks it with no way to run it, right-click the zip, choose
+      <em>Properties</em>, tick <em>Unblock</em>, click <em>OK</em>, and extract it again. If your organization's security
+      software stops it, use GlobalProtect instead.</li>
+      <li><strong>Mac:</strong> double-click the zip, then open <code>install.command</code> in the folder that appears.
+      On macOS 15 or later, click <em>Done</em> when the Mac stops it, then open <em>System Settings</em>, <em>Privacy
+      &amp; Security</em>, and click <em>Open Anyway</em> beside the blocked file; on macOS 14 or earlier, Control-click
+      the file, choose <em>Open</em>, then <em>Open</em> again. Or, on any macOS, type <code>bash</code> and a space in
+      Terminal, drag <code>install.command</code> in, and press Return, which usually avoids the warning. Nothing about
+      the helper has been tried on a Mac yet.</li>
+      <li><strong>Linux:</strong> unzip it, then run <code>bash install.sh</code> in the folder it made. Chrome
+      installed as a Snap or a Flatpak cannot start the helper; use GlobalProtect there.</li>
+    </ul>
+    <p>The installer asks you to press Enter (or Return), then says the helper is installed. Go back to Beethoven:
+    it finds the helper by itself, or press <em>Check again</em>. The zip is made out to the Beethoven you saved it from,
+    so use the one your own panel offers. To remove the helper, run the uninstaller the installer put beside it. A
+    Chromebook cannot run the helper; use GlobalProtect.</p>
+
+    <h2 id="code">Your grid code</h2>
+    <p>The grid asks for a Google Authenticator code whenever you sign in with your password. When it does not accept
+    one, its message names two causes, so Beethoven asks you which: <em>Type the code again</em> if you have a grid entry
+    in Google Authenticator, or <em>I don't have a grid code yet</em>. Only then does it show <em>Set up your grid code
+    first</em>, with two ways to set it up with the grid's own 2FA Setup app, which needs GlobalProtect once (approved in
+    Microsoft Authenticator): <em>Use this computer</em>, or <em>Use my phone</em> for when GlobalProtect won't install
+    on your computer. The phone way shows square codes for the GlobalProtect and Google Authenticator apps and for Wayne
+    State's own instructions, each with its address printed under it. In 2FA Setup, press <em>Launch</em>, and when the
+    job has started, <em>Launch 2FA Setup</em>: a new tab shows the square code to scan.</p>
+    <div class="callout">
+      <p><strong>Already have a grid code? Don't run 2FA Setup: it replaces your code, and the old one stops
+      working.</strong> The grid's own page says: "NOTICE: Running this app will destroy any existing Google Authenticator
+      credentials already in place."</p>
+    </div>
+    <p>Wayne State's guides: <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20242/How-do-I-set-up-and-use-Google-Authenticator-for-the-Grid">Google
+    Authenticator for the grid (KB 20242)</a> and
+    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20314/Wayne-State-VPN-and-the-Global-Protect-client">GlobalProtect
+    (KB 20314)</a>. Beethoven never sees your code's secret, and never makes a code itself.</p>
+
+    <h2 id="key">The key on your computer</h2>
+    <p>After your first direct sign-in, Beethoven keeps a key of its own in this browser, encrypted under a second key
+    the browser keeps beside it, and your grid account gets one line that lets that key do only a short list of things:
+    start, watch and stop your worker. It cannot open a terminal, read your other files or sign a worker in to Claude.
+    The key never leaves your browser; someone who could use this browser, or copy its files, could use it within that
+    list.</p>
+    <ul>
+      <li><strong>Windows Hello or Touch ID is optional, and off unless you turn it on.</strong> Turned on (on the sign-in
+      sheet, when Beethoven offers it once, or in <em>Settings</em>, <em>Connection</em>, <em>Protect my key with Windows
+      Hello / Touch ID</em>), Beethoven asks for your fingerprint, face or PIN once each time you open the browser. Turn
+      it off again in the same place. Ticked on the sign-in sheet, before the key exists, it protects the key from the
+      start; turned on later, an older unprotected copy can stay in the browser's files for a while.</li>
+      <li><strong>Forget this computer</strong>, in <em>Settings</em>, <em>Connection</em>, removes the key from Beethoven
+      and its line from your grid account (a protected key is unlocked first, so the grid is told). Do it before you
+      leave a computer or remove Beethoven. If the grid can't be reached, the line stays until you remove it from a
+      terminal on the grid with <code>hpcworker browser-key remove</code> (your lab lead can help). The line is what lets
+      a key in: once it is gone, a copy of the key is of no use.</li>
+    </ul>
+
+    <h2 id="vpn">When GlobalProtect is the only way</h2>
+    <p>Beethoven works through GlobalProtect, as before, when there is no helper for your computer, when your computer
+    won't run it, when your network blocks the grid's ssh port (<em>Can't reach the grid directly</em>; some hospital,
+    hotel and public networks do), or when you choose <em>GlobalProtect only</em> in <em>Settings</em>,
+    <em>Connection</em>. Choose <em>Use GlobalProtect instead</em>, turn on GlobalProtect and connect to
+    <code>protect.wayne.edu</code> (approve in Microsoft Authenticator), press <em>Continue</em>, and sign in to the grid
+    in the box Chrome shows; Beethoven never sees what you type there. <em>Try the direct way again</em> goes back.</p>
+    <p>If Beethoven says <em>Stopped: the grid's identity didn't match</em>, it sent nothing: no password, no code, no
+    key. Tell your lab lead, and use GlobalProtect meanwhile.</p>
 
     <h2 id="vscode">Beethoven for VS Code</h2>
     <p>Start with the troubleshooter inside the extension: click Beethoven in VS Code's status bar, then <em>Troubleshoot
@@ -83,10 +167,10 @@ description: Getting help with Beethoven, how it works step by step, the notice 
 
     <h2 id="disputes">Disputes</h2>
     <p>Section 19 of the agreement: before any lawsuit, the party with a claim sends the other a signed written notice
-    (name, the e-mail in the access record, the install id shown with your acceptance record on the extension's setup page,
-    the problem, the outcome wanted) and both sides have 60 days to resolve it, with a call if either asks. Claims are
-    individual (class-action waiver), heard by a judge (jury waiver) in Wayne County, Michigan or the Eastern District of
-    Michigan, or in small-claims court where you live. There is no arbitration clause in this version. Nothing in the
+    (name, the e-mail in the access record, the install id shown with your acceptance record on Beethoven's settings
+    page, the problem, the outcome wanted) and both sides have 60 days to resolve it, with a call if either asks. Claims
+    are individual (class-action waiver), heard by a judge (jury waiver) in Wayne County, Michigan or the Eastern District
+    of Michigan, or in small-claims court where you live. There is no arbitration clause in this version. Nothing in the
     agreement takes away a right your state's law does not allow to be waived.</p>
 
     <h2 id="refunds">Refunds and outages</h2>
@@ -102,9 +186,10 @@ description: Getting help with Beethoven, how it works step by step, the notice 
     the problem, and please do not publish it until it is fixed. Good-faith research within the law is welcome.</p>
 
     <h2 id="records">Your records</h2>
-    <p>Your acceptance of the agreement (version, text hashes, what you ticked, your typed name, the time) is kept in the
-    extension's own storage in your browser with the exact texts beside it; the setup page lets you save and print them.
-    Licensor keeps access records for the life of your access and six years after.</p>
+    <p>Your acceptance of the agreement (its version, the hashes of the texts, the summary and the sentence you ticked,
+    the button's label, the time and the installation identifier) is kept in the extension's own storage in your browser
+    with the exact texts beside it; <em>Settings</em> lets you save and print them. Licensor keeps access records for the
+    life of your access and six years after.</p>
     <p>Texts: <a href="/beethoven/terms.html">Trial Edition License Agreement</a>,
     <a href="/beethoven/privacy.html">Privacy statement</a>.</p>
   </div>
