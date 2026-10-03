@@ -28,8 +28,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610022115">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610022115">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610030009">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610030009">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -78,6 +78,15 @@
 
   <div id="app" class="hidden">
     <p class="admin__bar"><button id="refresh" type="button" class="quiet">Refresh</button> <button id="signout" type="button" class="quiet">Forget the token</button> <small id="counts"></small></p>
+
+    <div class="admin__box" id="seatRule">
+      <strong>One installation per account:</strong> <span id="seatRuleState" class="admin__tag" aria-live="polite">Checking</span>
+      <button id="seatRuleFlip" type="button" class="quiet" disabled>Turn off</button>
+      <small>Off lets every approved account work from any number of installations, with nobody refused as a second
+      installation and no seat bound or moved; it is meant for a short while, such as while people replace an old
+      copy, and the seats bound before hold again once it is back on.</small>
+      <small id="seatRuleSet"></small>
+    </div>
 
     <div class="admin__box admin__next hidden" id="next" aria-live="polite"></div>
 
@@ -174,6 +183,35 @@
   }
   // the store reviewers' mock account is never invited to the group (the daily reminder skips it too)
   function awaitingInvite(a) { return stageOf(a) === 'approved' && a.any_installation !== true; }
+
+  // The service-wide seat rule (GET and POST /admin/settings): "one" is On, "any" is Off. null while it is
+  // not known (a service built before the route answers 404); the rest of the page works without it.
+  var seatRule = null;
+  function seatRuleOff() { return !!seatRule && seatRule.seat_rule === 'any'; }
+  function showSeatRule(s) {
+    s = s && (s.seat_rule === 'one' || s.seat_rule === 'any') ? s : null;
+    // KV can answer the value before a switch for about a minute: every switch stamps set_at, so the
+    // newest stamp this page has seen is the truth
+    if (seatRule && seatRule.set_at && (!s || !s.set_at || s.set_at < seatRule.set_at)) s = seatRule;
+    seatRule = s;
+    var state = $('seatRuleState'), flip = $('seatRuleFlip'), set = $('seatRuleSet');
+    set.textContent = '';
+    if (!seatRule) {
+      state.textContent = 'Unknown'; state.className = 'admin__tag'; flip.textContent = 'Turn off'; flip.disabled = true;
+      set.textContent = 'The access service did not say; it may be a build without this setting.';
+      return;
+    }
+    var on = seatRule.seat_rule === 'one';
+    state.textContent = on ? 'On' : 'Off';
+    state.className = 'admin__tag ' + (on ? 'admin__tag--ok' : 'admin__tag--wait');
+    flip.textContent = on ? 'Turn off' : 'Turn on';
+    flip.disabled = false;
+    if (seatRule.set_at) add(set, (on ? 'On' : 'Off') + ' since ', timeEl(seatRule.set_at), seatRule.set_by ? ' (' + seatRule.set_by + ')' : '', on ? '.' : '. Turn it back on when the old copies are gone.');
+    else set.textContent = 'Never changed: on is the default.';
+  }
+  function loadSeatRule() {
+    return api('GET', '/admin/settings').then(showSeatRule, function (e) { if (e.message === '401') throw e; showSeatRule(null); });
+  }
 
   function remember(t) { token = t; try { sessionStorage.setItem(KEY, t); } catch (e) { /* private window: the token lives in memory only */ } }
   function forget() { token = ''; try { sessionStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } $('app').className = 'hidden'; $('gate').className = 'admin__box'; $('token').value = ''; hideNext(); }
@@ -332,8 +370,9 @@
     var inst;
     if (a.any_installation === true) inst = lines('Any installation', faint('binds none: the store reviewers’ mock account, on a localhost portal only'));
     else if (seat) inst = lines('Bound: yes', add(faint(''), 'first seen ', timeEl(seat.first_seen)), add(faint(''), 'last seen ', timeEl(seat.last_seen)),
-      seat.version ? faint('version ' + seat.version) : null, seat.moved_at ? add(faint(''), 'moved ', timeEl(seat.moved_at, day(seat.moved_at))) : null);
-    else inst = lines('Bound: no', faint(ext ? 'the next installation to check takes it' : 'a lab member has no Beethoven'));
+      seat.version ? faint('version ' + seat.version) : null, seat.moved_at ? add(faint(''), 'moved ', timeEl(seat.moved_at, day(seat.moved_at))) : null,
+      ext && seatRuleOff() ? faint('kept, not enforced while one installation per account is off') : null);
+    else inst = lines('Bound: no', faint(!ext ? 'a lab member has no Beethoven' : seatRuleOff() ? 'nothing binds while one installation per account is off' : 'the next installation to check takes it'));
     inst.appendChild(add(el('div', refused ? 'admin__warn' : 'admin__faint'), 'Refused checks: ' + refused, refused && refusedAt ? ', last ' : '', refused && refusedAt ? timeEl(refusedAt, day(refusedAt)) : null));
     td(tr, 'Installation', inst);
     var cell = td(tr, 'Actions', null); cell.className = 'admin__act';
@@ -351,8 +390,10 @@
 
   function none(tbody, cols, text) { var tr = el('tr'); var c = el('td', 'admin__none', text); c.colSpan = cols; tr.appendChild(c); tbody.appendChild(tr); }
 
+  // the lists and the seat rule together, so the Installation column can say what the rule does
   function load() {
-    return api('GET', '/admin/list').then(function (d) {
+    return Promise.all([api('GET', '/admin/list'), loadSeatRule()]).then(function (res) {
+      var d = res[0];
       $('gate').className = 'admin__box hidden';
       $('app').className = '';
       serverNow = d.now ? new Date(d.now).getTime() || 0 : 0;
@@ -405,6 +446,23 @@
   $('token').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') $('open').click(); });
   $('refresh').addEventListener('click', function () { say(''); load(); });
   $('signout').addEventListener('click', function () { forget(); say('Token forgotten.'); });
+  $('seatRuleFlip').addEventListener('click', function () {
+    if (!seatRule) return;
+    var turnOff = seatRule.seat_rule === 'one';
+    if (!window.confirm(turnOff
+      ? 'Turn off one installation per account? Until you turn it back on, every approved account works from any installation: nobody is refused as a second installation, no seat is bound or moved, and no e-mail about a second installation is sent. The seats bound now stay as they are.'
+      : 'Turn one installation per account back on? The seats bound before still hold: an installation that is not its account’s seat is refused from its next check, and an account without a seat is bound by the next installation that checks.')) return;
+    say('Working...');
+    // the answer is the new setting; shown before the lists reload, so a read KV has not caught up on yet
+    // cannot put the old state back on the page
+    api('POST', '/admin/settings', { seat_rule: turnOff ? 'any' : 'one' })
+      .then(function (j) {
+        say(j.changed === false ? 'It was already so; nothing changed.' : (j.seat_rule === 'any' ? 'Turned off' : 'Turned on') + '. It can take about a minute to reach every access check.');
+        showSeatRule(j);
+        return load();
+      })
+      .catch(function (e) { if (e.message !== '401') say('Not done: ' + e.message); });
+  });
   $('add').addEventListener('click', function () {
     var id = $('addId').value.trim().toLowerCase();
     if (!/^[a-z]{2}[0-9]{4}$/.test(id)) return say('The AccessID is two letters and four digits, like ab1234.');
@@ -480,7 +538,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610022115"></script>
+<script src="/assets/js/main.js?v=202610030009"></script>
 <!-- /site:footer -->
 
 </body>
