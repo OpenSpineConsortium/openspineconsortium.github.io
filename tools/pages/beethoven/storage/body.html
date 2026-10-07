@@ -9,9 +9,9 @@ strip: no
     <span class="eyebrow">Lab storage</span>
     <h1>Ask to read lab storage</h1>
     <p>For people working with the lab who need to read data kept in the lab&rsquo;s storage on the Wayne State grid,
-    <code>/rs/rs_grp_oschome</code>. Name the folders you need and say what for. The lab lead decides. An approval lets
-    your grid account read those folders, and everything inside them, and nothing more: you cannot change or delete
-    anything there, and other folders stay closed.</p>
+    <code>/rs/rs_grp_oschome</code>. Name the folders you need, or ask for all of it, and say what for. The lab lead
+    decides. An approval lets your grid account read those folders, and everything inside them, and nothing more: you
+    cannot change or delete anything there, and other folders stay closed.</p>
   </header>
 
   <div class="request-form">
@@ -34,6 +34,11 @@ strip: no
     <small>One a line, eight at most, each written as the part after <code>/rs/rs_grp_oschome/</code>. Ask the person
     you work with which folders hold what you need.</small>
 
+    <label class="check" for="whole"><input id="whole" name="whole" type="checkbox"> All of the lab storage</label>
+    <small>Instead of named folders: everything in <code>/rs/rs_grp_oschome</code> that the lab group may read. Folders
+    that belong to other people stay as their owners set them. Tick it only if the person you work with says you need
+    all of it.</small>
+
     <label for="note">What do you need them for?</label>
     <textarea id="note" name="note" maxlength="500" required placeholder="The project, and who you are working with."></textarea>
     <small>Up to 500 characters.</small>
@@ -53,8 +58,8 @@ strip: no
       <li>The lab lead reads the request and approves the folders you named, approves some of them, or says no. The
       lab lead lets you know; the service does not e-mail you.</li>
       <li>Once you are approved, it can take a while to reach the grid. Then sign in to the grid as you usually do and go
-      straight to a folder by its full path, for example <code>ls /rs/rs_grp_oschome/shared/data</code>. Listing
-      <code>/rs/rs_grp_oschome</code> itself stays closed to you; that is expected.</li>
+      straight to a folder by its full path, for example <code>ls /rs/rs_grp_oschome/shared/data</code>. If you asked
+      for named folders, listing <code>/rs/rs_grp_oschome</code> itself stays closed to you; that is expected.</li>
       <li>If you still cannot read a folder the next day, tell the lab lead.</li>
     </ol>
     <p>This takes the place of asking C&amp;IT to add you to the lab&rsquo;s Unix group: the lab lead approves folders
@@ -73,8 +78,14 @@ strip: no
   var accessId = document.getElementById('accessId');
   var email = document.getElementById('email');
   var folders = document.getElementById('folders');
+  var whole = document.getElementById('whole');
   var note = document.getElementById('note');
   var target = '';
+  // all of the lab storage is one folder to the service, spelled "."; the tick sets the box aside and keeps
+  // what was typed in it, so unticking brings the named folders back
+  function setWhole() { folders.disabled = whole.checked; }
+  whole.addEventListener('change', setWhole);
+  setWhole();
 
   function say(text) {
     status.textContent = text;
@@ -102,13 +113,13 @@ strip: no
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     if (!target || send.disabled) return;
-    var list = folders.value.split(/[\r\n,]+/).map(function (f) { return f.trim(); }).filter(Boolean);
+    var list = whole.checked ? ['.'] : folders.value.split(/[\r\n,]+/).map(function (f) { return f.trim(); }).filter(Boolean);
     var body = { v: 1, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), folders: list, purpose: note.value.trim() };
     var bad = null;
     if (!/^[a-z]{2}[0-9]{4}$/.test(body.access_id)) bad = [accessId, 'The AccessID is two letters and four digits, like ab1234.'];
     else if (body.name.length < 2 || body.name.length > 80) bad = [document.getElementById('name'), 'Please give your name (2 to 80 characters).'];
     else if (body.email !== body.access_id + '@wayne.edu') bad = [email, 'The WSU e-mail must be ' + body.access_id + '@wayne.edu.'];
-    else if (!list.length) bad = [folders, 'Please name at least one folder, one a line, like shared/data.'];
+    else if (!list.length) bad = [folders, 'Please name at least one folder, one a line, like shared/data, or tick All of the lab storage.'];
     else if (list.length > 8) bad = [folders, 'Eight folders at most. If you need more, ask for the folder above them.'];
     else if (body.purpose.length < 2) bad = [note, 'Please say in a sentence what you need the folders for.'];
     else if (body.purpose.length > 500) bad = [note, 'What you need them for is too long (500 characters at most).'];
@@ -120,7 +131,7 @@ strip: no
     }).then(function (r) {
       var j = r.body;
       if (r.status === 202) return say('Sent. The lab lead decides and lets you know.');
-      if (r.status === 200 && j.status === 'approved') return say('You are already approved to read every folder you named. If the grid still refuses one tomorrow, tell your lab lead.');
+      if (r.status === 200 && j.status === 'approved') return say(list[0] === '.' ? 'You are already approved to read all of the lab storage. If the grid still refuses you tomorrow, tell your lab lead.' : 'You are already approved to read every folder you named. If the grid still refuses one tomorrow, tell your lab lead.');
       if (r.status === 200 && j.status === 'denied') return say('This request was not approved. If you think that is a mistake, talk to your lab lead.');
       if (r.status === 429) return say('Too many requests from this connection today. Try again tomorrow.');
       // the service's own sentence (a folder name it does not take, the page not open yet) says what to do

@@ -61,9 +61,11 @@ strip: no
     <div id="storage" class="hidden">
       <h2>Lab storage, read only</h2>
       <p class="admin__lead">People who asked to read named folders of the lab&rsquo;s storage on the grid
-      (<code id="storageRoot">/rs/rs_grp_oschome</code>), apart from Beethoven. A reader gets the lab group&rsquo;s read on
-      their folders and nothing more: never write, never another folder. The grid tool on your PC applies the list at
-      its next run; the Unix group stays C&amp;IT&rsquo;s. The person is not e-mailed: tell them yourself.</p>
+      (<code id="storageRoot">/rs/rs_grp_oschome</code>), or all of it, apart from Beethoven. A reader gets the lab
+      group&rsquo;s read on their folders and nothing more: never write, never another folder. All of the lab storage is
+      everything in it that the group may read and the volume&rsquo;s owner owns; a folder another person owns stays as
+      they set it. The grid tool on your PC applies the list at its next run; the Unix group stays C&amp;IT&rsquo;s. The
+      person is not e-mailed: tell them yourself.</p>
       <p class="admin__warn hidden" id="storageProblem"></p>
       <div id="storagePending" class="admin__cards"></div>
 
@@ -74,11 +76,13 @@ strip: no
         <div class="admin__row">
           <div><label for="stId">AccessID</label><input id="stId" placeholder="ab1234" maxlength="6" autocapitalize="off" spellcheck="false"></div>
           <div><label for="stName">Name</label><input id="stName" maxlength="80"></div>
-          <div><label for="stFolders">Folders, one a line</label><textarea id="stFolders" rows="3" placeholder="shared/data" autocapitalize="off" spellcheck="false"></textarea></div>
+          <div><label for="stFolders">Folders, one a line</label><textarea id="stFolders" rows="3" placeholder="shared/data" autocapitalize="off" spellcheck="false"></textarea>
+            <div class="admin__checks admin__whole"><label><input id="stWhole" type="checkbox"> All of the lab storage</label></div></div>
           <div><button id="stAdd" type="button">Save</button></div>
         </div>
         <small>The folders replace what the reader reads now, and a request or a denial on record for them goes. Write
-        each folder as the part after the root, like <code>shared/data</code>; eight at most.</small>
+        each folder as the part after the root, like <code>shared/data</code>; eight at most. All of the lab storage
+        takes the place of every folder.</small>
       </div>
 
       <h3>Not approved</h3>
@@ -366,17 +370,31 @@ strip: no
   // section stays hidden; the rest of the page works without it ----
   var storageRoot = '/rs/rs_grp_oschome';
   var storageSummary = '';
+  // The whole volume is one folder, spelled "." by the service, admin.mjs readers and the grid tool; with it
+  // a reader has no other folder, since it covers every one. The page says it in words, never a bare dot.
+  var WHOLE = '.';
+  var WHOLE_TOO = 'They get the lab group’s read on everything in it that the group may read and the volume’s owner owns, never write; a folder another person owns stays as they set it.';
+  function isWhole(fs) { return (fs || []).indexOf(WHOLE) >= 0; }
+  // folders as a sentence names them, without the root (named) and with it (where), as storage.js does
+  function named(fs) { return isWhole(fs) ? 'all of the lab storage (' + storageRoot + ')' : (fs || []).join(', '); }
+  function where(fs) { return isWhole(fs) ? named(fs) : named(fs) + ' in ' + storageRoot; }
+  function wholeLabel() { return add(el('span'), 'All of the lab storage (', el('code', '', storageRoot), ')'); }
   function folderList(fs) {
+    if (isWhole(fs)) return lines('All of the lab storage', el('code', '', storageRoot));
     return (fs || []).length ? lines.apply(null, fs.map(function (f) { return el('code', '', f); })) : faint('none');
   }
   function union(a, b) {
     var seen = {}, out = [];
     (a || []).concat(b || []).forEach(function (f) { if (!seen[f]) { seen[f] = true; out.push(f); } });
-    return out.sort();
+    return isWhole(out) ? [WHOLE] : out.sort();
   }
+  // the tick keeps what was typed in the box, so unticking it brings the named folders back
+  function setWhole(on) { $('stWhole').checked = on; $('stFolders').disabled = on; }
   function fillReader(r) {
-    $('stId').value = r.accessId; $('stName').value = r.name || ''; $('stFolders').value = (r.folders || []).join('\n');
-    $('stFolders').focus();
+    var whole = isWhole(r.folders);
+    $('stId').value = r.accessId; $('stName').value = r.name || ''; $('stFolders').value = whole ? '' : (r.folders || []).join('\n');
+    setWhole(whole);
+    (whole ? $('stWhole') : $('stFolders')).focus();
   }
 
   function storageCard(p, reader) {
@@ -385,11 +403,11 @@ strip: no
     if (reader) add(head, ' ', el('span', 'admin__tag admin__tag--mid', 'Reads already'));
     card.appendChild(head);
     var dl = el('dl', 'admin__facts');
-    // every folder asked for, ticked: untick one to approve fewer
+    // every folder asked for, ticked: untick one to approve fewer. The whole volume comes alone, as one tick
     var ticks = el('div', 'admin__checks');
-    (p.folders || []).forEach(function (f) {
+    (isWhole(p.folders) ? [WHOLE] : p.folders || []).forEach(function (f) {
       var box = el('input'); box.type = 'checkbox'; box.checked = true; box.value = f;
-      add(ticks, add(el('label'), box, el('code', '', f)));
+      add(ticks, add(el('label'), box, f === WHOLE ? wholeLabel() : el('code', '', f)));
     });
     fact(dl, 'Folders', ticks);
     if (reader) fact(dl, 'Reads now', folderList(reader.folders));
@@ -404,8 +422,9 @@ strip: no
       btn('Approve read access', false, function () {
         var chosen = Array.prototype.filter.call(ticks.querySelectorAll('input'), function (b) { return b.checked; }).map(function (b) { return b.value; });
         if (!chosen.length) return say('Tick at least one folder, or deny the request.');
-        act('Let ' + who + ' read ' + chosen.join(', ') + ' in ' + storageRoot + '? They get the lab group’s read there, never write.' +
-          (reader ? ' They keep what they read now.' : '') + '\n\nThe mailbox is not verified: anyone can type an AccessID.',
+        var all = isWhole(chosen);
+        act('Let ' + who + ' read ' + where(chosen) + '? ' + (all ? WHOLE_TOO : 'They get the lab group’s read there, never write.') +
+          (reader ? (all ? ' It covers what they read now.' : ' They keep what they read now.') : '') + '\n\nThe mailbox is not verified: anyone can type an AccessID.',
           '/admin/storage-approve', { accessId: p.accessId, folders: chosen });
       }),
       btn('Deny', true, function () {
@@ -426,7 +445,7 @@ strip: no
     var cell = td(tr, 'Actions', null); cell.className = 'admin__act';
     add(cell, btn('Change folders', true, function () { fillReader(r); }),
       btn('Remove', true, function () {
-        act('Take ' + r.accessId + ' off the readers? Their read on ' + (r.folders || []).join(', ') + ' goes at the grid tool’s next run.' +
+        act('Take ' + r.accessId + ' off the readers? Their read on ' + named(r.folders) + ' goes at the grid tool’s next run.' +
           (denial ? ' The denial on record goes too.' : ''), '/admin/storage-remove', { accessId: r.accessId });
       }));
     return tr;
@@ -439,7 +458,7 @@ strip: no
     var c = td(tr, 'Actions', null); c.className = 'admin__act';
     var all = union(reader && reader.folders, x.folders);
     add(c, btn('Approve after all', false, function () {
-      act('Let ' + x.accessId + ' read ' + all.join(', ') + ' in ' + storageRoot + ' after all? They get the lab group’s read there, never write.',
+      act('Let ' + x.accessId + ' read ' + where(all) + ' after all? ' + (isWhole(all) ? WHOLE_TOO : 'They get the lab group’s read there, never write.'),
         '/admin/storage-add', { accessId: x.accessId, folders: all });
     }));
     // storage-remove takes every storage record of the person, so a reader's denial is cleared by Change folders instead
@@ -573,11 +592,17 @@ strip: no
     var id = $('stId').value.trim().toLowerCase();
     if (!/^[a-z]{2}[0-9]{4}$/.test(id)) return say('The AccessID is two letters and four digits, like ab1234.');
     var folders = $('stFolders').value.split(/[\r\n,]+/).map(function (f) { return f.trim(); }).filter(Boolean);
-    if (!folders.length) return say('Name at least one folder, one a line. To take every folder away, use Remove on the reader’s row.');
-    act('Let ' + id + ' read exactly ' + folders.join(', ') + ' in ' + storageRoot + '? Folders they read now that are not in this list go, and so does a request or a denial on record for them.',
+    // the root typed in the box, or a dot, is the whole volume to the service too: the question says so
+    if ($('stWhole').checked || folders.some(function (f) { var b = f.replace(/\/+$/, ''); return b === WHOLE || b === storageRoot; })) folders = [WHOLE];
+    if (!folders.length) return say('Name at least one folder, one a line, or tick All of the lab storage. To take every folder away, use Remove on the reader’s row.');
+    act(isWhole(folders)
+      ? 'Let ' + id + ' read ' + named(folders) + '? It takes the place of the folders they read now, and a request or a denial on record for them goes. ' + WHOLE_TOO
+      : 'Let ' + id + ' read exactly ' + where(folders) + '? Folders they read now that are not in this list go, and so does a request or a denial on record for them.',
       '/admin/storage-add', { accessId: id, name: $('stName').value.trim(), folders: folders },
-      function () { $('stId').value = ''; $('stName').value = ''; $('stFolders').value = ''; });
+      function () { $('stId').value = ''; $('stName').value = ''; $('stFolders').value = ''; setWhole(false); });
   });
+  $('stWhole').addEventListener('change', function () { setWhole($('stWhole').checked); });
+  setWhole($('stWhole').checked);
   $('revoke').addEventListener('click', function () {
     var lid = $('lid').value.trim();
     if (!/^L-[A-Za-z0-9_-]{6,64}$/.test(lid)) return say('A license id looks like L-... (Beethoven for VS Code shows it with the license).');
