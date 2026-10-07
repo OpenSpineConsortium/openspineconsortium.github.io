@@ -306,6 +306,9 @@ SITE = [
         ]),
         # the maintainer's page: generated and checked, never in the navigation or the sitemap
         node("Access admin", "/beethoven/admin.html", hidden=True),
+        # asking to read named folders of the lab's storage: the lab lead sends its address, so it is
+        # generated and checked but not in the navigation or the sitemap either
+        node("Lab storage", "/beethoven/storage.html", hidden=True),
     ]),
     node("Onboarding", "/onboarding/", overview="Start here", children=[
         node("By hand", "/onboarding/by-hand.html", optional=True),
@@ -1533,6 +1536,12 @@ def main():
         for must in ("fetch('services.json'", '<meta name="robots" content="noindex">'):
             if must not in r:
                 problems.append(f"beethoven/admin.html: '{must}' is gone (it finds the access service through services.json and stays out of search)")
+    sto = OUT / "beethoven/storage.html"
+    if sto.exists():
+        r = read(sto)
+        for must in ("fetch('services.json'", "/storage_request", '<meta name="robots" content="noindex">'):
+            if must not in r:
+                problems.append(f"beethoven/storage.html: '{must}' is gone (it finds the access service through services.json and stays out of search)")
     if not (OUT / "beethoven/killlist.json").exists():
         problems.append("beethoven/killlist.json: missing (the extension fetches it)")
     check_services(problems)

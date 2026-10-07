@@ -8,7 +8,7 @@ strip: no
   <header class="page-head">
     <span class="eyebrow">Beethoven</span>
     <h1>Access admin</h1>
-    <p>Requests, approvals and installations of Beethoven, both editions. For the maintainer only.</p>
+    <p>Requests, approvals and installations of Beethoven, both editions, and who reads the lab&rsquo;s storage. For the maintainer only.</p>
   </header>
 
   <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
@@ -57,6 +57,33 @@ strip: no
 
     <h2>Not approved</h2>
     <div class="table-scroll"><table id="denied" class="admin__stack"><thead><tr><th>AccessID</th><th>Name</th><th>Reason</th><th>Denied</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+
+    <div id="storage" class="hidden">
+      <h2>Lab storage, read only</h2>
+      <p class="admin__lead">People who asked to read named folders of the lab&rsquo;s storage on the grid
+      (<code id="storageRoot">/rs/rs_grp_oschome</code>), apart from Beethoven. A reader gets the lab group&rsquo;s read on
+      their folders and nothing more: never write, never another folder. The grid tool on your PC applies the list at
+      its next run; the Unix group stays C&amp;IT&rsquo;s. The person is not e-mailed: tell them yourself.</p>
+      <p class="admin__warn hidden" id="storageProblem"></p>
+      <div id="storagePending" class="admin__cards"></div>
+
+      <h3>Readers</h3>
+      <div class="table-scroll"><table id="storageReaders" class="admin__stack"><thead><tr><th>Reader</th><th>Folders</th><th>Approved</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+      <div class="admin__box">
+        <strong>Add a reader, or set a reader&rsquo;s folders</strong>
+        <div class="admin__row">
+          <div><label for="stId">AccessID</label><input id="stId" placeholder="ab1234" maxlength="6" autocapitalize="off" spellcheck="false"></div>
+          <div><label for="stName">Name</label><input id="stName" maxlength="80"></div>
+          <div><label for="stFolders">Folders, one a line</label><textarea id="stFolders" rows="3" placeholder="shared/data" autocapitalize="off" spellcheck="false"></textarea></div>
+          <div><button id="stAdd" type="button">Save</button></div>
+        </div>
+        <small>The folders replace what the reader reads now, and a request or a denial on record for them goes. Write
+        each folder as the part after the root, like <code>shared/data</code>; eight at most.</small>
+      </div>
+
+      <h3>Not approved</h3>
+      <div class="table-scroll"><table id="storageDenied" class="admin__stack"><thead><tr><th>AccessID</th><th>Name</th><th>Folders asked for</th><th>Reason</th><th>Denied</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+    </div>
 
     <h2>Withdrawn keys</h2>
     <p id="revoked"><small>None yet.</small></p>
@@ -334,9 +361,137 @@ strip: no
 
   function none(tbody, cols, text) { var tr = el('tr'); var c = el('td', 'admin__none', text); c.colSpan = cols; tr.appendChild(c); tbody.appendChild(tr); }
 
-  // the lists and the seat rule together, so the Installation column can say what the rule does
+  // ---- Lab storage, read only: GET /admin/storage-list and the four storage-* writes (ACCESS_CHECK.md in
+  // the service's repository, "Lab storage, read only"). A service deployed before them answers 404 and the
+  // section stays hidden; the rest of the page works without it ----
+  var storageRoot = '/rs/rs_grp_oschome';
+  var storageSummary = '';
+  function folderList(fs) {
+    return (fs || []).length ? lines.apply(null, fs.map(function (f) { return el('code', '', f); })) : faint('none');
+  }
+  function union(a, b) {
+    var seen = {}, out = [];
+    (a || []).concat(b || []).forEach(function (f) { if (!seen[f]) { seen[f] = true; out.push(f); } });
+    return out.sort();
+  }
+  function fillReader(r) {
+    $('stId').value = r.accessId; $('stName').value = r.name || ''; $('stFolders').value = (r.folders || []).join('\n');
+    $('stFolders').focus();
+  }
+
+  function storageCard(p, reader) {
+    var card = el('article', 'admin__card');
+    var head = add(el('div', 'admin__card-head'), el('strong', '', p.name || '(no name)'), ' ', el('code', '', p.accessId));
+    if (reader) add(head, ' ', el('span', 'admin__tag admin__tag--mid', 'Reads already'));
+    card.appendChild(head);
+    var dl = el('dl', 'admin__facts');
+    // every folder asked for, ticked: untick one to approve fewer
+    var ticks = el('div', 'admin__checks');
+    (p.folders || []).forEach(function (f) {
+      var box = el('input'); box.type = 'checkbox'; box.checked = true; box.value = f;
+      add(ticks, add(el('label'), box, el('code', '', f)));
+    });
+    fact(dl, 'Folders', ticks);
+    if (reader) fact(dl, 'Reads now', folderList(reader.folders));
+    fact(dl, 'What for', p.note ? el('span', 'admin__text', p.note) : faint('Nothing written'));
+    fact(dl, 'E-mail', p.email || (p.accessId + '@wayne.edu'));
+    fact(dl, 'Mailbox', add(el('span'), 'Not verified. ', faint('Anyone can type an AccessID; check with the person before approving.')));
+    var sent = submittedAt(p);
+    fact(dl, 'Sent', add(el('span'), ago(sent) + ' ', faint('(' + stamp(sent) + ')'), p.requested_at && p.requested_at !== sent ? faint(' first asked ' + day(p.requested_at)) : null));
+    card.appendChild(dl);
+    var who = p.accessId + ' (' + (p.name || 'no name') + ')';
+    add(card, add(el('div', 'admin__act'),
+      btn('Approve read access', false, function () {
+        var chosen = Array.prototype.filter.call(ticks.querySelectorAll('input'), function (b) { return b.checked; }).map(function (b) { return b.value; });
+        if (!chosen.length) return say('Tick at least one folder, or deny the request.');
+        act('Let ' + who + ' read ' + chosen.join(', ') + ' in ' + storageRoot + '? They get the lab group’s read there, never write.' +
+          (reader ? ' They keep what they read now.' : '') + '\n\nThe mailbox is not verified: anyone can type an AccessID.',
+          '/admin/storage-approve', { accessId: p.accessId, folders: chosen });
+      }),
+      btn('Deny', true, function () {
+        var reason = window.prompt('Deny the storage request of ' + p.accessId + '. Reason (kept for you; they do not see it):', '');
+        if (reason === null) return;
+        act('Deny the storage request of ' + p.accessId + '?' + (reader ? ' They keep what they read now.' : ''), '/admin/storage-deny', { accessId: p.accessId, reason: reason });
+      })));
+    return card;
+  }
+
+  function readerRow(r, denial) {
+    var tr = el('tr');
+    td(tr, 'Reader', lines(el('strong', '', r.name || '(no name)'), el('code', '', r.accessId), r.note ? el('span', 'admin__faint admin__text', r.note) : null));
+    td(tr, 'Folders', folderList(r.folders));
+    td(tr, 'Approved', lines(r.approved_at ? timeEl(r.approved_at, day(r.approved_at)) : null,
+      r.decided_at && r.decided_at !== r.approved_at ? add(faint(''), 'changed ', timeEl(r.decided_at, day(r.decided_at))) : null,
+      r.by === 'e-mail link' ? faint('from the e-mail') : null, denial ? faint('a later request was denied') : null));
+    var cell = td(tr, 'Actions', null); cell.className = 'admin__act';
+    add(cell, btn('Change folders', true, function () { fillReader(r); }),
+      btn('Remove', true, function () {
+        act('Take ' + r.accessId + ' off the readers? Their read on ' + (r.folders || []).join(', ') + ' goes at the grid tool’s next run.' +
+          (denial ? ' The denial on record goes too.' : ''), '/admin/storage-remove', { accessId: r.accessId });
+      }));
+    return tr;
+  }
+
+  function storageDeniedRow(x, reader) {
+    var tr = el('tr');
+    td(tr, 'AccessID', el('code', '', x.accessId)); td(tr, 'Name', x.name || ''); td(tr, 'Folders asked for', folderList(x.folders));
+    td(tr, 'Reason', x.reason || ''); td(tr, 'Denied', day(x.denied_at || x.decided_at));
+    var c = td(tr, 'Actions', null); c.className = 'admin__act';
+    var all = union(reader && reader.folders, x.folders);
+    add(c, btn('Approve after all', false, function () {
+      act('Let ' + x.accessId + ' read ' + all.join(', ') + ' in ' + storageRoot + ' after all? They get the lab group’s read there, never write.',
+        '/admin/storage-add', { accessId: x.accessId, folders: all });
+    }));
+    // storage-remove takes every storage record of the person, so a reader's denial is cleared by Change folders instead
+    if (reader) add(c, faint('Also a reader: Change folders on their row clears this.'));
+    else add(c, btn('Clear', true, function () { act('Clear the storage record of ' + x.accessId + '? They can ask again.', '/admin/storage-remove', { accessId: x.accessId }); }));
+    return tr;
+  }
+
+  function showStorage(d, problem) {
+    var sec = $('storage');
+    storageSummary = '';
+    if (!d && !problem) { sec.className = 'hidden'; return; }
+    sec.className = '';
+    var pr = $('storageProblem');
+    pr.textContent = problem ? 'Could not load the lab storage list: ' + problem : '';
+    pr.className = problem ? 'admin__warn' : 'admin__warn hidden';
+    d = d || {};
+    storageRoot = d.root || storageRoot;
+    $('storageRoot').textContent = storageRoot;
+    var pending = d.pending || [], readers = d.readers || [], denied = d.denied || [];
+    var readerOf = {}, deniedOf = {};
+    readers.forEach(function (r) { readerOf[r.accessId] = r; });
+    denied.forEach(function (x) { deniedOf[x.accessId] = x; });
+    if (!problem) storageSummary = 'lab storage: ' + pending.length + ' waiting, ' + readers.length + ' reader' + (readers.length === 1 ? '' : 's');
+
+    var box = $('storagePending'); box.textContent = '';
+    if (!pending.length) box.appendChild(el('p', 'admin__box admin__none', problem ? 'Not loaded.' : 'No one is waiting.'));
+    pending.slice().sort(function (x, y) { return String(submittedAt(y)).localeCompare(String(submittedAt(x))); })
+      .forEach(function (p) { box.appendChild(storageCard(p, readerOf[p.accessId])); });
+
+    var tb = $('storageReaders').tBodies[0]; tb.textContent = '';
+    if (!readers.length) none(tb, 4, problem ? 'Not loaded.' : 'No reader yet.');
+    readers.forEach(function (r) { tb.appendChild(readerRow(r, deniedOf[r.accessId])); });
+
+    tb = $('storageDenied').tBodies[0]; tb.textContent = '';
+    if (!denied.length) none(tb, 6, problem ? 'Not loaded.' : 'None.');
+    denied.forEach(function (x) { tb.appendChild(storageDeniedRow(x, readerOf[x.accessId])); });
+  }
+  function loadStorage() {
+    return call('GET', '/admin/storage-list').then(function (r) {
+      if (r.status === 404) return showStorage(null);
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        showStorage(j);
+      });
+    }).catch(function (e) { if (e.message === '401') throw e; showStorage(null, e.message); });
+  }
+
+  // the lists, the seat rule and the storage section together, so the Installation column can say what
+  // the rule does
   function load() {
-    return Promise.all([api('GET', '/admin/list'), loadSeatRule()]).then(function (res) {
+    return Promise.all([api('GET', '/admin/list'), loadSeatRule(), loadStorage()]).then(function (res) {
       var d = res[0];
       $('gate').className = 'admin__box hidden';
       $('app').className = '';
@@ -347,7 +502,8 @@ strip: no
       var waiting = pending.filter(unconfirmed).length;
       var notInvited = approved.filter(awaitingInvite).length;
       $('counts').textContent = pending.length + ' waiting' + (waiting ? ' (' + waiting + ' mailbox not confirmed)' : '') + ', ' + approved.length + ' approved' +
-        (notInvited ? ' (' + notInvited + ' not invited yet)' : '') + ', ' + denied.length + ' not approved, ' + revoked.length + ' keys withdrawn';
+        (notInvited ? ' (' + notInvited + ' not invited yet)' : '') + ', ' + denied.length + ' not approved, ' + revoked.length + ' keys withdrawn' +
+        (storageSummary ? '; ' + storageSummary : '');
       var seats = {}, conflicts = {};
       (d.seats || []).forEach(function (x) { seats[x.accessId] = x; });
       (d.conflicts || []).forEach(function (x) { conflicts[x.accessId] = x; });
@@ -412,6 +568,15 @@ strip: no
     if (!/^[a-z]{2}[0-9]{4}$/.test(id)) return say('The AccessID is two letters and four digits, like ab1234.');
     act('Add ' + id + ' to the approved list?', '/admin/add', { accessId: id, name: $('addName').value.trim(), note: $('addNote').value.trim() });
     $('addId').value = ''; $('addName').value = ''; $('addNote').value = '';
+  });
+  $('stAdd').addEventListener('click', function () {
+    var id = $('stId').value.trim().toLowerCase();
+    if (!/^[a-z]{2}[0-9]{4}$/.test(id)) return say('The AccessID is two letters and four digits, like ab1234.');
+    var folders = $('stFolders').value.split(/[\r\n,]+/).map(function (f) { return f.trim(); }).filter(Boolean);
+    if (!folders.length) return say('Name at least one folder, one a line. To take every folder away, use Remove on the reader’s row.');
+    act('Let ' + id + ' read exactly ' + folders.join(', ') + ' in ' + storageRoot + '? Folders they read now that are not in this list go, and so does a request or a denial on record for them.',
+      '/admin/storage-add', { accessId: id, name: $('stName').value.trim(), folders: folders },
+      function () { $('stId').value = ''; $('stName').value = ''; $('stFolders').value = ''; });
   });
   $('revoke').addEventListener('click', function () {
     var lid = $('lid').value.trim();

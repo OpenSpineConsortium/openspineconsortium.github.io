@@ -1,0 +1,133 @@
+---
+title: Ask to read lab storage · Beethoven
+description: Ask the lab lead for read access to named folders of the lab's storage on the Wayne State grid.
+robots: noindex
+strip: no
+---
+<section class="section">
+  <header class="page-head">
+    <span class="eyebrow">Lab storage</span>
+    <h1>Ask to read lab storage</h1>
+    <p>For people working with the lab who need to read data kept in the lab&rsquo;s storage on the Wayne State grid,
+    <code>/rs/rs_grp_oschome</code>. Name the folders you need and say what for. The lab lead decides. An approval lets
+    your grid account read those folders, and everything inside them, and nothing more: you cannot change or delete
+    anything there, and other folders stay closed.</p>
+  </header>
+
+  <div class="request-form">
+  <div class="box" id="status" role="status"></div>
+
+  <form id="form" novalidate>
+    <label for="accessId">AccessID</label>
+    <input id="accessId" name="accessId" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="ab1234" maxlength="6" required>
+    <small>Two letters and four digits, the one you sign in to the grid with.</small>
+
+    <label for="name">Your name</label>
+    <input id="name" name="name" autocomplete="name" maxlength="80" required>
+
+    <label for="email">WSU e-mail</label>
+    <input id="email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="ab1234@wayne.edu" required>
+    <small>Your AccessID followed by <code>@wayne.edu</code>.</small>
+
+    <label for="folders">Folders</label>
+    <textarea id="folders" name="folders" required autocapitalize="off" spellcheck="false" placeholder="shared/data"></textarea>
+    <small>One a line, eight at most, each written as the part after <code>/rs/rs_grp_oschome/</code>. Ask the person
+    you work with which folders hold what you need.</small>
+
+    <label for="note">What do you need them for?</label>
+    <textarea id="note" name="note" maxlength="500" required placeholder="The project, and who you are working with."></textarea>
+    <small>Up to 500 characters.</small>
+
+    <button id="send" type="submit" class="btn btn--solid">Send the request</button>
+  </form>
+
+  <p class="fineprint">What this page sends: the fields above (your AccessID, name, WSU e-mail, the folders and what you
+  need them for) to the lab&rsquo;s own access service. The lab lead reads them to decide, and the service keeps them, with
+  the decision, until the lab lead removes them. The connection you send from is kept only as a hash for up to two
+  days, to limit repeats. Nothing is sent to C&amp;IT. <a href="/beethoven/support.html">Support</a></p>
+  </div>
+
+  <div class="prose" style="margin-top:56px">
+    <h2>What happens next</h2>
+    <ol>
+      <li>The lab lead reads the request and approves the folders you named, approves some of them, or says no. The
+      lab lead lets you know; the service does not e-mail you.</li>
+      <li>Once you are approved, it can take a while to reach the grid. Then sign in to the grid as you usually do and go
+      straight to a folder by its full path, for example <code>ls /rs/rs_grp_oschome/shared/data</code>. Listing
+      <code>/rs/rs_grp_oschome</code> itself stays closed to you; that is expected.</li>
+      <li>If you still cannot read a folder the next day, tell the lab lead.</li>
+    </ol>
+    <p>This takes the place of asking C&amp;IT to add you to the lab&rsquo;s Unix group: the lab lead approves folders
+    here instead. You can send the same request again to see where it stands, or to ask for more folders.</p>
+  </div>
+</section>
+
+<script>
+(function () {
+  // The access service's /storage_request (storage.js in the service's repository): {v: 1, access_id, name,
+  // email, folders, purpose}. Its address is the access_check service's origin, from services.json beside
+  // this page. The answer is 202 pending, or 200 approved (every folder named is read already) or denied.
+  var form = document.getElementById('form');
+  var status = document.getElementById('status');
+  var send = document.getElementById('send');
+  var accessId = document.getElementById('accessId');
+  var email = document.getElementById('email');
+  var folders = document.getElementById('folders');
+  var note = document.getElementById('note');
+  var target = '';
+
+  function say(text) {
+    status.textContent = text;
+    status.className = 'box show';
+    try { status.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { status.scrollIntoView(); }
+  }
+  function fail(field, text) { say(text); if (field) field.focus(); }
+  function id() { return accessId.value.trim().toLowerCase(); }
+
+  fetch('services.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (s) {
+    var url = s && s.access_check && new URL(s.access_check).origin + '/storage_request';
+    if (url && /^https:\/\//.test(url)) { target = url; return; }
+    say('Requests are not open yet. Ask your lab lead.');
+    send.disabled = true;
+  }).catch(function () {
+    say('This page could not find the lab’s access service. Ask your lab lead.');
+    send.disabled = true;
+  });
+
+  // typing the AccessID fills the e-mail, which must match it
+  accessId.addEventListener('input', function () {
+    if (!email.value || /^[a-z]{0,2}[0-9]{0,4}@wayne\.edu$/.test(email.value.trim().toLowerCase())) email.value = id() ? id() + '@wayne.edu' : '';
+  });
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!target || send.disabled) return;
+    var list = folders.value.split(/[\r\n,]+/).map(function (f) { return f.trim(); }).filter(Boolean);
+    var body = { v: 1, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), folders: list, purpose: note.value.trim() };
+    var bad = null;
+    if (!/^[a-z]{2}[0-9]{4}$/.test(body.access_id)) bad = [accessId, 'The AccessID is two letters and four digits, like ab1234.'];
+    else if (body.name.length < 2 || body.name.length > 80) bad = [document.getElementById('name'), 'Please give your name (2 to 80 characters).'];
+    else if (body.email !== body.access_id + '@wayne.edu') bad = [email, 'The WSU e-mail must be ' + body.access_id + '@wayne.edu.'];
+    else if (!list.length) bad = [folders, 'Please name at least one folder, one a line, like shared/data.'];
+    else if (list.length > 8) bad = [folders, 'Eight folders at most. If you need more, ask for the folder above them.'];
+    else if (body.purpose.length < 2) bad = [note, 'Please say in a sentence what you need the folders for.'];
+    else if (body.purpose.length > 500) bad = [note, 'What you need them for is too long (500 characters at most).'];
+    if (bad) return fail(bad[0], bad[1]);
+    send.disabled = true;
+    say('Sending...');
+    fetch(target, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j || {} }; });
+    }).then(function (r) {
+      var j = r.body;
+      if (r.status === 202) return say('Sent. The lab lead decides and lets you know.');
+      if (r.status === 200 && j.status === 'approved') return say('You are already approved to read every folder you named. If the grid still refuses one tomorrow, tell your lab lead.');
+      if (r.status === 200 && j.status === 'denied') return say('This request was not approved. If you think that is a mistake, talk to your lab lead.');
+      if (r.status === 429) return say('Too many requests from this connection today. Try again tomorrow.');
+      // the service's own sentence (a folder name it does not take, the page not open yet) says what to do
+      say(j.error ? 'Not sent: ' + j.error + '.' : 'Not sent: the service answered HTTP ' + r.status + '. Try again later or ask your lab lead.');
+    }).catch(function () {
+      say('Not sent: the service could not be reached. Check your connection and try again, or ask your lab lead.');
+    }).then(function () { send.disabled = false; });
+  });
+})();
+</script>
