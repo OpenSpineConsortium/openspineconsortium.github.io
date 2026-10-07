@@ -64,7 +64,7 @@ strip: no
       (<code id="storageRoot">/rs/rs_grp_oschome</code>), or all of it, apart from Beethoven. A reader gets the lab
       group&rsquo;s read on their folders and nothing more: never write, never another folder. All of the lab storage is
       everything in it that the group may read and the volume&rsquo;s owner owns; a folder another person owns stays as
-      they set it. The grid tool on your PC applies the list at its next run; the Unix group stays C&amp;IT&rsquo;s. The
+      they set it. The grid tool applies the list at its next run; the Unix group stays C&amp;IT&rsquo;s. The
       person is not e-mailed: tell them yourself.</p>
       <p class="admin__warn hidden" id="storageProblem"></p>
       <div id="storagePending" class="admin__cards"></div>
@@ -87,6 +87,17 @@ strip: no
 
       <h3>Not approved</h3>
       <div class="table-scroll"><table id="storageDenied" class="admin__stack"><thead><tr><th>AccessID</th><th>Name</th><th>Folders asked for</th><th>Reason</th><th>Denied</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+
+      <div id="gridToken" class="hidden">
+        <h3>The grid&rsquo;s token</h3>
+        <p class="admin__lead">The grid copies the approved list and the readers itself, with a token of its own that can
+        read those two lists and nothing else. It is given once, as a file, and the service keeps only a fingerprint of it.</p>
+        <div class="admin__box">
+          <div id="gridTokenState" aria-live="polite">Checking</div>
+          <div><button id="gridTokenMake" type="button">Make a grid token</button> <button id="gridTokenWithdraw" type="button" class="quiet hidden">Withdraw the grid token</button></div>
+        </div>
+        <div class="admin__box admin__next hidden" id="gridTokenSaved" aria-live="polite"></div>
+      </div>
     </div>
 
     <h2>Withdrawn keys</h2>
@@ -189,7 +200,7 @@ strip: no
   }
 
   function remember(t) { token = t; try { sessionStorage.setItem(KEY, t); } catch (e) { /* private window: the token lives in memory only */ } }
-  function forget() { token = ''; try { sessionStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } $('app').className = 'hidden'; $('gate').className = 'admin__box'; $('token').value = ''; hideNext(); }
+  function forget() { token = ''; try { sessionStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } $('app').className = 'hidden'; $('gate').className = 'admin__box'; $('token').value = ''; hideNext(); hideGridSaved(); }
 
   function call(method, path, body) {
     var init = { method: method, headers: { authorization: 'Bearer ' + token }, credentials: 'include' };
@@ -507,10 +518,74 @@ strip: no
     }).catch(function (e) { if (e.message === '401') throw e; showStorage(null, e.message); });
   }
 
-  // the lists, the seat rule and the storage section together, so the Installation column can say what
-  // the rule does
+  // ---- The grid's token: GET and POST /admin/grid-token, POST /admin/grid-token-withdraw (ACCESS_CHECK.md in
+  // the service's repository). It reads roster.txt and readers.txt and nothing else, so the grid can copy both
+  // lists without the admin token. A service deployed before it answers 404 and the panel stays hidden ----
+  // what the panel shows: { made_at, last_read_at } and never the token, which no variable keeps
+  var gridToken = null;
+  // KV can answer the record from before a make or a withdrawal for about a minute: what this tab made or
+  // withdrew wins over an older answer
+  var gridMade = '', gridGone = '';
+  var GRID_COPY = "ssh YOUR-ID@YOUR-GRID 'umask 077; mkdir -p ~/.beethoven-vendor && cat > ~/.beethoven-vendor/grid_token' < ~/Downloads/grid_token";
+  var GRID_RM = 'rm ~/Downloads/grid_token';
+  function showGridToken(s, problem) {
+    var box = $('gridToken'), state = $('gridTokenState');
+    if (!s && !problem) { box.className = 'hidden'; gridToken = null; return; }
+    box.className = '';
+    state.textContent = '';
+    if (problem) {
+      gridToken = null;
+      add(state, el('p', 'admin__warn', 'Could not load the grid token’s state: ' + problem));
+      $('gridTokenWithdraw').className = 'quiet hidden';
+      return;
+    }
+    s = { made_at: s.made_at || null, last_read_at: s.last_read_at || null };
+    if (gridMade && (!s.made_at || s.made_at < gridMade)) s = { made_at: gridMade, last_read_at: null };
+    if (gridGone && s.made_at && s.made_at <= gridGone) s = { made_at: null, last_read_at: null };
+    gridToken = s;
+    if (!s.made_at) add(state, el('p', '', 'No grid token yet.'));
+    else add(state, add(el('p'), 'Made ', timeEl(s.made_at), '; the grid last read the lists ', s.last_read_at ? timeEl(s.last_read_at) : 'not yet', '.'),
+      el('small', '', 'The service records a read once an hour at most.'));
+    $('gridTokenWithdraw').className = s.made_at ? 'quiet' : 'quiet hidden';
+  }
+  function loadGridToken() {
+    return call('GET', '/admin/grid-token').then(function (r) {
+      if (r.status === 404) return showGridToken(null);
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        showGridToken(j);
+      });
+    }).catch(function (e) { if (e.message === '401') throw e; showGridToken(null, e.message); });
+  }
+  // the token goes from the answer straight into the file the browser saves: never the page, the console or
+  // storage, and the answer lets go of it before the file is handed over
+  function saveGridToken(j) {
+    var url;
+    try {
+      if (!j || typeof j.token !== 'string' || !/^[0-9a-f]{64}$/.test(j.token)) throw new Error('the answer held no token; make another');
+      // not text/plain: Chrome adds .txt to a name without an extension of that type, and the commands name grid_token
+      url = URL.createObjectURL(new Blob([j.token + '\n'], { type: 'application/octet-stream' }));
+    } finally { if (j) delete j.token; }
+    var a = el('a'); a.href = url; a.download = 'grid_token'; document.body.appendChild(a); a.click(); a.remove();
+    // revoked once the browser has the file: at once can cancel the save in some browsers
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+  function hideGridSaved() { var box = $('gridTokenSaved'); box.className = 'admin__box admin__next hidden'; box.textContent = ''; }
+  function showGridSaved() {
+    var box = $('gridTokenSaved'); box.textContent = '';
+    add(box, add(el('p', 'admin__next-head'), el('strong', '', 'Saved as grid_token in your Downloads. '), 'Copy it to the grid from Git Bash, then delete the download:'));
+    add(box, add(el('div'), copyBox(GRID_COPY, 'command that copies it to the grid')), add(el('div'), copyBox(GRID_RM, 'command that deletes the download')));
+    add(box, el('p', 'admin__faint', 'YOUR-ID is your account on the grid and YOUR-GRID its address. If the browser saved the file under another name, such as grid_token (1) when an older download was still there, use that name in both commands.'));
+    add(box, add(el('div', 'admin__act'), btn('Done', true, hideGridSaved)));
+    box.className = 'admin__box admin__next';
+    box.scrollIntoView({ block: 'nearest' });
+  }
+  function gridBusy(on) { $('gridTokenMake').disabled = on; $('gridTokenWithdraw').disabled = on; }
+
+  // the lists, the seat rule, the storage section and the grid's token together, so the Installation column
+  // can say what the rule does
   function load() {
-    return Promise.all([api('GET', '/admin/list'), loadSeatRule(), loadStorage()]).then(function (res) {
+    return Promise.all([api('GET', '/admin/list'), loadSeatRule(), loadStorage(), loadGridToken()]).then(function (res) {
       var d = res[0];
       $('gate').className = 'admin__box hidden';
       $('app').className = '';
@@ -611,6 +686,31 @@ strip: no
     if (!/^L-[A-Za-z0-9_-]{6,64}$/.test(lid)) return say('A license id looks like L-... (Beethoven for VS Code shows it with the license).');
     act('Withdraw key ' + lid + '? Installations pick the list up within a day.', '/admin/revoke-lid', { lid: lid });
     $('lid').value = '';
+  });
+  // a state that did not load may hide a token, so the question is asked then too
+  $('gridTokenMake').addEventListener('click', function () {
+    if ((!gridToken || gridToken.made_at) && !window.confirm('Make a new grid token? This replaces the grid’s token. The grid stops reading the lists until you copy the new one there.')) return;
+    gridBusy(true);
+    say('Working...');
+    api('POST', '/admin/grid-token', {}).then(function (j) {
+      var made = typeof j.made_at === 'string' ? j.made_at : '';
+      saveGridToken(j);
+      if (made > gridMade) gridMade = made;
+      say('');
+      return load().then(showGridSaved);
+    }).catch(function (e) { if (e.message !== '401') say('Not done: ' + e.message); }).then(function () { gridBusy(false); });
+  });
+  $('gridTokenWithdraw').addEventListener('click', function () {
+    if (!window.confirm('Withdraw the grid token? The grid stops reading the lists until you make a new one.')) return;
+    var was = (gridToken && gridToken.made_at) || '';
+    gridBusy(true);
+    say('Working...');
+    api('POST', '/admin/grid-token-withdraw', {}).then(function (j) {
+      if (was > gridGone) gridGone = was;
+      hideGridSaved();
+      say(j.withdrawn === false ? 'There was no grid token to withdraw.' : 'The grid token is withdrawn. It can take about a minute to be refused everywhere.');
+      return load();
+    }).catch(function (e) { if (e.message !== '401') say('Not done: ' + e.message); }).then(function () { gridBusy(false); });
   });
 
   // the access service's address is in services.json beside this page (beethoven-access); the token,
