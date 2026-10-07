@@ -786,6 +786,23 @@ body[data-shell="app"] .nav__links a { white-space: nowrap; }
   #approved td:nth-child(4) { min-width: 8.5em; }
   #approved td:nth-child(5) { min-width: 12em; }
 }
+/* the lab storage section: the folders asked for as ticks, and the box for a reader's folders */
+.admin h3 { font-size: 1.1rem; font-weight: 600; margin: 26px 0 10px; }
+.admin textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  min-height: 4.6em;
+  resize: vertical;
+}
+.admin textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 95, 88, 0.16); }
+.admin__checks { display: grid; gap: 2px; }
+.admin .admin__checks label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; font-size: inherit; }
+.admin .admin__checks input { width: auto; margin: 0; }
 .admin__next { border-color: rgba(14, 95, 88, 0.45); background: rgba(14, 95, 88, 0.05); }
 .admin__next p { margin: 0 0 10px; }
 .admin__next .admin__copy { margin-bottom: 10px; }
