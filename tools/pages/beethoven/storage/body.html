@@ -85,6 +85,9 @@ strip: no
   // what was typed in it, so unticking brings the named folders back
   function setWhole() { folders.disabled = whole.checked; }
   whole.addEventListener('change', setWhole);
+  // a Back the browser does not serve whole from its cache puts the tick back after this script has run, with
+  // no change event; pageshow comes after that, so the box follows the tick again there
+  window.addEventListener('pageshow', setWhole);
   setWhole();
 
   function say(text) {

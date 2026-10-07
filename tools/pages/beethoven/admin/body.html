@@ -602,6 +602,9 @@ strip: no
       function () { $('stId').value = ''; $('stName').value = ''; $('stFolders').value = ''; setWhole(false); });
   });
   $('stWhole').addEventListener('change', function () { setWhole($('stWhole').checked); });
+  // a Back the browser does not serve whole from its cache puts the tick back after this script has run, with
+  // no change event; pageshow comes after that, so the box follows the tick again there
+  window.addEventListener('pageshow', function () { setWhole($('stWhole').checked); });
   setWhole($('stWhole').checked);
   $('revoke').addEventListener('click', function () {
     var lid = $('lid').value.trim();
