@@ -28,8 +28,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610072128">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610072128">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610072207">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610072207">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -579,10 +579,13 @@
   // lists without the admin token. A service deployed before it answers 404 and the panel stays hidden ----
   // what the panel shows: { made_at, last_read_at } and never the token, which no variable keeps
   var gridToken = null;
-  // KV can answer the record from before a make or a withdrawal for about a minute: what this tab made or
-  // withdrew wins over an older answer
-  var gridMade = '', gridGone = '';
-  var GRID_COPY = "ssh YOUR-ID@YOUR-GRID 'umask 077; mkdir -p ~/.beethoven-vendor && cat > ~/.beethoven-vendor/grid_token' < ~/Downloads/grid_token";
+  // KV can answer the record from before a make or a withdrawal for about a minute: for a minute and a half
+  // after this tab made or withdrew one, what it did wins over an older answer, and then the service's stands
+  var GRID_OWN_MS = 90000;
+  var gridMade = '', gridGone = '', gridOwnUntil = 0;
+  // the chmod too: the umask makes a new file the owner's alone, but cat keeps the mode of one already there, and
+  // the grid's tool refuses a token others can read
+  var GRID_COPY = "ssh YOUR-ID@YOUR-GRID 'umask 077; mkdir -p ~/.beethoven-vendor && cat > ~/.beethoven-vendor/grid_token && chmod 600 ~/.beethoven-vendor/grid_token' < ~/Downloads/grid_token";
   var GRID_RM = 'rm ~/Downloads/grid_token';
   function showGridToken(s, problem) {
     var box = $('gridToken'), state = $('gridTokenState');
@@ -596,6 +599,7 @@
       return;
     }
     s = { made_at: s.made_at || null, last_read_at: s.last_read_at || null };
+    if (Date.now() > gridOwnUntil) gridMade = gridGone = '';
     if (gridMade && (!s.made_at || s.made_at < gridMade)) s = { made_at: gridMade, last_read_at: null };
     if (gridGone && s.made_at && s.made_at <= gridGone) s = { made_at: null, last_read_at: null };
     gridToken = s;
@@ -613,12 +617,19 @@
       });
     }).catch(function (e) { if (e.message === '401') throw e; showGridToken(null, e.message); });
   }
+  // 64 lower-case hex digits, checked without a regular expression: one that matches leaves the string it
+  // matched in RegExp.$_ for every script of the page until another match
+  function isGridToken(t) {
+    if (typeof t !== 'string' || t.length !== 64) return false;
+    for (var i = 0; i < 64; i++) { var c = t.charCodeAt(i); if (!((c >= 48 && c <= 57) || (c >= 97 && c <= 102))) return false; }
+    return true;
+  }
   // the token goes from the answer straight into the file the browser saves: never the page, the console or
   // storage, and the answer lets go of it before the file is handed over
   function saveGridToken(j) {
     var url;
     try {
-      if (!j || typeof j.token !== 'string' || !/^[0-9a-f]{64}$/.test(j.token)) throw new Error('the answer held no token; make another');
+      if (!j || !isGridToken(j.token)) throw new Error('the answer held no token; make another');
       // not text/plain: Chrome adds .txt to a name without an extension of that type, and the commands name grid_token
       url = URL.createObjectURL(new Blob([j.token + '\n'], { type: 'application/octet-stream' }));
     } finally { if (j) delete j.token; }
@@ -631,7 +642,7 @@
     var box = $('gridTokenSaved'); box.textContent = '';
     add(box, add(el('p', 'admin__next-head'), el('strong', '', 'Saved as grid_token in your Downloads. '), 'Copy it to the grid from Git Bash, then delete the download:'));
     add(box, add(el('div'), copyBox(GRID_COPY, 'command that copies it to the grid')), add(el('div'), copyBox(GRID_RM, 'command that deletes the download')));
-    add(box, el('p', 'admin__faint', 'YOUR-ID is your account on the grid and YOUR-GRID its address. If the browser saved the file under another name, such as grid_token (1) when an older download was still there, use that name in both commands.'));
+    add(box, add(el('p', 'admin__faint'), 'YOUR-ID is your account on the grid and YOUR-GRID its address. If the browser saved the file under another name, such as grid_token (1) when an older download was still there, use that name in both commands, in quotes: ', el('code', '', "~/Downloads/'grid_token (1)'"), '.'));
     add(box, add(el('div', 'admin__act'), btn('Done', true, hideGridSaved)));
     box.className = 'admin__box admin__next';
     box.scrollIntoView({ block: 'nearest' });
@@ -752,6 +763,7 @@
       var made = typeof j.made_at === 'string' ? j.made_at : '';
       saveGridToken(j);
       if (made > gridMade) gridMade = made;
+      gridOwnUntil = Date.now() + GRID_OWN_MS;
       say('');
       return load().then(showGridSaved);
     }).catch(function (e) { if (e.message !== '401') say('Not done: ' + e.message); }).then(function () { gridBusy(false); });
@@ -763,6 +775,7 @@
     say('Working...');
     api('POST', '/admin/grid-token-withdraw', {}).then(function (j) {
       if (was > gridGone) gridGone = was;
+      gridOwnUntil = Date.now() + GRID_OWN_MS;
       hideGridSaved();
       say(j.withdrawn === false ? 'There was no grid token to withdraw.' : 'The grid token is withdrawn. It can take about a minute to be refused everywhere.');
       return load();
@@ -831,7 +844,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610072128"></script>
+<script src="/assets/js/main.js?v=202610072207"></script>
 <!-- /site:footer -->
 
 </body>
