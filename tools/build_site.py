@@ -252,6 +252,10 @@ KEPT = re.compile(
     r"|\b[Oo]pen[Ss]pine[Cc]onsortium\.ashley\b"  # the old Marketplace id
     r"|\bashley-service\b"                      # the access service's old name, still deployed
     r"|\bashley-cli\.js\b"                      # a bundled file name
+    # the VS Code edition's earlier, separately installed product: its agreement and privacy text
+    # (version 7) tell the reader to delete a key stored there, which only its own name can point at
+    r"|\bAshley\s+for\s+VS\s+Code\b"
+    r"|\bAshley(?:'|’|&#x27;|&#39;)s\s+own\s+storage\b"
 )
 
 
