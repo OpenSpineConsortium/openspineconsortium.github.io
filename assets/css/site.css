@@ -484,6 +484,10 @@ body[data-shell="page"] .hero { padding-top: 96px; min-height: 0; }
 .request-form .opt { font-weight: 400; color: var(--ink-faint); }
 .request-form .consent { margin-top: 18px; font-size: 0.88rem; line-height: 1.5; color: var(--ink-soft); }
 .request-form .consent a { color: var(--teal); text-decoration: underline; text-underline-offset: 2px; }
+/* a tick beside its words (the storage page's "All of the lab storage"), which sets a box aside while it holds */
+.request-form label.check { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.request-form label.check input { flex: 0 0 auto; width: auto; margin: 0; padding: 0; }
+.request-form textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* the CV box: the file input is the box's control, hidden from sight but not from the keyboard (Tab
    reaches it, Enter or Space opens the file dialog, and the box shows the focus ring) */
@@ -803,6 +807,9 @@ body[data-shell="app"] .nav__links a { white-space: nowrap; }
 .admin__checks { display: grid; gap: 2px; }
 .admin .admin__checks label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; font-size: inherit; }
 .admin .admin__checks input { width: auto; margin: 0; }
+/* the tick under a reader's folders for all of the lab storage, which sets the box aside while it holds */
+.admin .admin__whole { margin-top: 6px; }
+.admin textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .admin__next { border-color: rgba(14, 95, 88, 0.45); background: rgba(14, 95, 88, 0.05); }
 .admin__next p { margin: 0 0 10px; }
 .admin__next .admin__copy { margin-bottom: 10px; }
