@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610030009">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610030009">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610071542">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610071542">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -70,11 +70,11 @@
     <h1 id="beethoven-for-vs-code-privacy-statement">Beethoven for VS Code privacy statement</h1>
 
     <p class="note"><strong>Save a copy.</strong> Press Ctrl+S (&#8984;S on a Mac) to keep this page as a file, or print it
-    to PDF. This is version 5; it is part of the
+    to PDF. This is version 7; it is part of the
     <a href="/beethoven/vscode/terms.html">Trial Edition License Agreement</a> and of the
     <a href="/beethoven/vscode/terms-full.html">Full Edition License Agreement</a>.</p>
 
-    <p>Version 5, 2026-09-30. Part of the Beethoven for VS Code Trial Edition License Agreement (LICENSE.txt) and of the Beethoven for VS Code Full Edition License Agreement (LICENSE-FULL.txt). You can save and print this text; it is also on the Beethoven support page.</p>
+    <p>Version 7, 2026-10-04. Part of the Beethoven for VS Code Trial Edition License Agreement (LICENSE.txt) and of the Beethoven for VS Code Full Edition License Agreement (LICENSE-FULL.txt). You can save and print this text; it is also on the Beethoven support page.</p>
 <p>Who collects: Gregory Schwing, trading as OpenSpineConsortium (“Licensor”), the maintainer of Beethoven for VS Code. Questions and requests: the notice address on the Beethoven support page (in VS Code: Beethoven: Support page). Beethoven for VS Code is licensed to individuals; it is not provided by or on behalf of any school, and Licensor is not acting for one.</p>
 <h2 id="what-stays-on-your-laptop">What stays on your laptop</h2>
 <div class="table-scroll"><table>
@@ -85,7 +85,7 @@
 <col style="width: 25%" />
 </colgroup>
 <thead>
-<tr>
+<tr class="header">
 <th>Data</th>
 <th>Where</th>
 <th>Why</th>
@@ -93,37 +93,43 @@
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>Beethoven for VS Code settings (AccessID, hostnames, worker defaults)</td>
+<tr class="odd">
+<td>Beethoven for VS Code settings (AccessID, hostnames, worker defaults, the label of the Claude account you chose)</td>
 <td>VS Code settings</td>
-<td>to reach your grid account</td>
+<td>to reach your grid account; to pick which of your own Claude accounts Claude Code uses in every integrated terminal of a Visual Studio Code window on your laptop (not in a remote window)</td>
 <td>editing Settings, or Beethoven: Reset</td>
 </tr>
-<tr>
-<td>Your GitHub and Hugging Face tokens, and an optional Anthropic Console key</td>
+<tr class="even">
+<td>Your Claude account list, if the engine’s <code>bee</code> command keeps one on this computer (<code>~/.beethoven/engine/accounts.json</code>, or where the engine’s <code>BEE_REGISTRY_DIR</code> or <code>BEETHOVEN_HOME</code> puts it: the labels and folder paths of your own Claude sign-ins, which are on and which rest; nothing from inside a sign-in folder)</td>
+<td>the engine’s folder, written by the engine only</td>
+<td>read, so that the setting <code>beethoven.account</code> can name one of them; Beethoven for VS Code never writes it and never reads inside a sign-in folder</td>
+<td>the <code>bee</code> command; the setting <code>beethoven.account</code></td>
+</tr>
+<tr class="odd">
+<td>Your GitHub and Hugging Face tokens</td>
 <td>your operating system’s credential store (VS Code SecretStorage)</td>
 <td>so your own tools can use them on your laptop and, copied, in your grid account</td>
 <td>Beethoven: Manage stored tokens; revoking the token at the service</td>
 </tr>
-<tr>
+<tr class="even">
 <td>Your license key and the institutional identity you signed in with (AccessID, e-mail)</td>
 <td><code>~/.beethoven-local</code> (on a computer that ran an earlier release: <code>~/.ashley-local</code>) and VS Code’s state</td>
 <td>to check that the license names you</td>
 <td>Beethoven: License (remove the key); Beethoven: Reset</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>Your acceptance of the agreement: its version and text hashes, the statements you ticked with their wording, your typed name, the time, and the exact texts shown</td>
 <td><code>terms.json</code> and <code>terms/&lt;version&gt;/</code> in the same folder; VS Code’s state</td>
 <td>to prove the agreement and its terms, for you and for Licensor</td>
 <td>it is yours to read, copy and print; Beethoven: Reset removes it</td>
 </tr>
-<tr>
+<tr class="even">
 <td>Copies of every error report Beethoven for VS Code prepared, sent or not</td>
 <td>the extension’s storage folder</td>
 <td>so you can read exactly what left your laptop</td>
 <td>Beethoven: Error reports</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>Troubleshooter reports and the Beethoven for VS Code log</td>
 <td>the extension’s storage folder; the Output panel</td>
 <td>diagnosis</td>
@@ -131,9 +137,10 @@
 </tr>
 </tbody>
 </table></div>
-<p>Beethoven for VS Code never reads, stores, copies or relays a Claude credential. Claude Code keeps its own sign-in, on your laptop and in your grid account (<code>~/.beethoven/claude</code>); Beethoven for VS Code reads only Claude Code’s yes-or-no answer about whether it is signed in.</p>
+<p>Beethoven for VS Code never reads, stores, copies or relays a Claude credential. Claude Code keeps its own sign-in, on your laptop (in its own folder, or in the folder of the one of your own accounts you chose in the setting <code>beethoven.account</code>) and in your grid account (<code>~/.beethoven/claude</code>); Beethoven for VS Code reads only Claude Code’s own report of it (whether it is signed in; whether with a Claude subscription, a token, a cloud provider or an API key behind it, never the key itself; the e-mail and plan it names, to show them to you), counts only your own Claude subscription with no API key behind it, never copies or moves a sign-in between your accounts, and never deletes a sign-in or signs one out (to sign out, run <code>claude auth logout</code> yourself).</p>
+<p>Beethoven for VS Code asks for no Anthropic API key and uses no paid usage. It cannot see or change the billing settings of your Claude account: if extra usage (usage credits) is turned on there, Claude Code may draw on it, so keep it off. An Anthropic Console key that Beethoven for VS Code 4.0.0 stored in the credential store, or that an earlier version stored in your grid account (<code>~/.beethoven/accounts/apikey</code>), stays where it was and is never used or sent: Beethoven for VS Code only checks whether it is there, and the first time it reaches your grid account it puts an empty file named <code>disabled</code> beside the grid copy, so that a worker the earlier version started cannot use it. Beethoven: Manage stored tokens (or Beethoven: Reset) deletes the laptop copy, and <code>beethoven accounts remove --yes</code>, typed in a terminal on the grid, the other. If you used the command-line edition, its copy is in <code>~/.beethoven-local/secrets.json</code> (or <code>~/.ashley-local/secrets.json</code>); delete it there by hand. A key that Ashley for VS Code stored on your laptop is in Ashley’s own storage, which Beethoven for VS Code cannot reach: delete it in Ashley for VS Code, or revoke the key in the Anthropic Console, which makes every copy useless.</p>
 <h2 id="what-goes-to-your-own-grid-account">What goes to your own grid account</h2>
-<p>With your consent in each step: your GitHub and Hugging Face tokens and optional Console key (a file readable only by you), your license key, and the settings needed for the worker. Everything there is in your own account under your institution’s rules; Licensor has no access to it.</p>
+<p>With your consent in each step: your GitHub and Hugging Face tokens (a file readable only by you), your license key, and the settings needed for the worker. Everything there is in your own account under your institution’s rules; Licensor has no access to it. Beethoven: Reset (Beethoven on the grid), or <code>beethoven uninstall --yes</code> typed in a terminal there, removes what Beethoven for VS Code installed in your grid account (its scripts, settings, logs, worker folders and its block in <code>~/.bashrc</code>) and nothing else: your Claude sign-ins, your other accounts, your session history and your work folder stay, as do the copies of your tokens and license key until you delete them.</p>
 <h2 id="what-goes-to-services-you-already-use">What goes to services you already use</h2>
 <p>Your own accounts’ services receive what your use of them entails: Anthropic (your Claude conversations, through Claude Code; while your phone is connected through Remote Control, the session transcript is stored on Anthropic’s servers), GitHub, Hugging Face, Microsoft (the institutional sign-in), and your institution’s grid. Those parties’ privacy terms apply to that data, not this statement.</p>
 <p><strong>Address lookups.</strong> About once an hour Beethoven for VS Code reads <code>services.json</code> from the Beethoven website (openspineconsortium.com/beethoven, on GitHub Pages), and about once a day the signed list of withdrawn keys and the list of approved AccessIDs from the lab’s access service. These requests carry nothing about you beyond what any web request carries (your network address); the files hold addresses and lists only, and Beethoven for VS Code makes none of these requests before you have accepted the agreement.</p>
@@ -213,7 +220,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610030009"></script>
+<script src="/assets/js/main.js?v=202610071542"></script>
 <!-- /site:footer -->
 
 </body>
