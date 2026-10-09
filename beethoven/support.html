@@ -16,10 +16,10 @@
   })();
 </script>
 <title>Support and notices · Beethoven</title>
-<meta name="description" content="Getting help with Beethoven, how it works step by step, letting Chrome remember your grid sign-in, when the grid is out of reach, your grid code, what an earlier version may have left, the notice address, disputes, refunds and outages, security reports and your records.">
+<meta name="description" content="Getting help with Beethoven, how it works step by step, your grid sign-in (typing it, saving it under Windows Hello or Touch ID or not, unlocking, forgetting it, Chrome&#x27;s own box), when the grid is out of reach, your grid code, what an earlier version may have left, the notice address, disputes, refunds and outages, security reports and your records.">
 <link rel="canonical" href="https://openspineconsortium.com/beethoven/support.html">
 <meta property="og:title" content="Support and notices · Beethoven">
-<meta property="og:description" content="Getting help with Beethoven, how it works step by step, letting Chrome remember your grid sign-in, when the grid is out of reach, your grid code, what an earlier version may have left, the notice address, disputes, refunds and outages, security reports and your records.">
+<meta property="og:description" content="Getting help with Beethoven, how it works step by step, your grid sign-in (typing it, saving it under Windows Hello or Touch ID or not, unlocking, forgetting it, Chrome&#x27;s own box), when the grid is out of reach, your grid code, what an earlier version may have left, the notice address, disputes, refunds and outages, security reports and your records.">
 <meta property="og:url" content="https://openspineconsortium.com/beethoven/support.html">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#F1EEE3">
@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610090245">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610090245">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610091633">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610091633">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -84,8 +84,10 @@
 
     <h2 id="how">How it works</h2>
     <p>Beethoven reaches the Wayne State grid one way: with <strong>GlobalProtect</strong>, Wayne State's VPN, on,
-    through the grid's own website in your own signed-in Chrome. Nothing else is installed on your computer, and
-    Beethoven never asks for your grid password: you type it only into the sign-in box Chrome itself shows.</p>
+    through the grid's own website in your own Chrome. Nothing else is installed on your computer. When the grid needs
+    your sign-in, Beethoven asks for your AccessID and password on its own sheet in the panel and sends them only to the
+    grid; if you prefer, you sign in in the box Chrome itself shows instead (<a href="#password">your grid
+    sign-in</a>).</p>
     <p>After installing the extension (and once your account is approved):</p>
     <ol>
       <li><strong>Accept the agreement</strong> on the welcome page that opens: tick the box, then <em>Agree and
@@ -95,12 +97,17 @@
       approve the sign-in in <strong>Microsoft</strong> Authenticator. The panel says <em>Looking for the grid…</em>,
       then <em>Connected.</em> A browser extension cannot open or connect GlobalProtect for you; Beethoven notices by
       itself, within a few seconds, when it is on.</li>
-      <li><strong>Sign in to the grid</strong> in the box Chrome shows, with your AccessID and password. Beethoven
-      brings that box to the front and never sees what you type there. Chrome can remember it for you (below).</li>
+      <li><strong>Sign in to the grid.</strong> The panel shows <em>Sign in to the grid</em>: "Type your AccessID and
+      password. Beethoven signs in to the grid for you, in the background." Type your AccessID (not your e-mail address)
+      and your password, leave <em>Remember it on this computer</em> unticked (<a href="#password">below</a>), and press
+      <em>Sign in</em>. No tab opens; the panel says <em>Signed in as</em> your AccessID. If the grid says the password is
+      wrong, Beethoven stops at once and does not try it again until you type it again. <em>Use Chrome's sign-in box
+      instead</em> is the other way: Beethoven brings the grid's own box to the front, you sign in there, and Beethoven
+      never sees what you type.</li>
       <li><strong>One more thing, once.</strong> The first time, the grid may ask for your password a second time, in
-      its own terminal. The panel says so and opens it; type your password there (and the grid's code from
-      <strong>Google</strong> Authenticator if it asks), click <em>I'm in</em>, and Beethoven types one line that
-      stops it asking again.</li>
+      its own terminal. The panel says so and opens it; type your password there yourself (Beethoven types no password
+      there, not even the one you gave it), and the grid's code from <strong>Google</strong> Authenticator if it asks,
+      click <em>I'm in</em>, and Beethoven types one line that stops it asking again.</li>
       <li><strong>Where your work goes.</strong> Read it, tick the box, then <em>Connect</em>.</li>
       <li><strong>Sign in to Claude once, when the panel asks.</strong> A Claude tab opens; sign in with your own Claude
       account, approve, and paste the code it shows into the panel. The code is typed once into your own job's terminal
@@ -115,14 +122,80 @@
     Drive, Docs or Sheets, turn on Claude's Google connectors yourself in claude.ai's settings; Beethoven does not do it
     for you.</p>
 
-    <h2 id="password">Letting Chrome remember your grid sign-in</h2>
-    <p>The grid's sign-in box is Chrome's own, so Chrome's password manager can remember your AccessID and password.
-    When Chrome offers to save them after you sign in, choose <em>Save</em>; the next time the box appears, Chrome fills
-    them in and you press <em>Sign in</em>. To have Chrome ask for Windows Hello (on a Mac, Touch ID or your Mac's
-    password) before it fills them in, open <em>Password settings</em> under <em>Your grid</em> in Beethoven's
-    <em>Settings</em> (or <code>chrome://password-manager/settings</code>) and turn on <em>Use Windows Hello when filling
-    passwords</em> (on a Mac, <em>Use your screen lock when filling passwords</em>). The password stays in Chrome's
-    password manager: Beethoven never reads it, stores it or fills it in.</p>
+    <h2 id="password">Your grid sign-in</h2>
+    <p><strong>Where your password goes.</strong> What you type on <em>Sign in to the grid</em> goes only to the grid's
+    website: Beethoven answers only the grid's request for a sign-in that its own background check receives, never one
+    that a tab, a proxy or another website asks for (a tab gets Chrome's own box). It never sends your password to us and
+    never writes it into a log or the audit log. Beethoven never fills in Wayne State's sign-in pages, never touches
+    Microsoft Authenticator or your grid code, and never types your password into a terminal. The sign-in sheet does not
+    replace GlobalProtect: you still need it.</p>
+    <p><strong>One wrong try.</strong> When the grid turns a password down, Beethoven stops and sends nothing more by
+    itself, saved or typed, until you type the password again; the panel says "That password didn't work, and Beethoven
+    stopped. Check it before you try again: after a few wrong tries your university may lock your AccessID. A password
+    changed in the last half hour may not work yet." Wayne State disables an AccessID after the fifth wrong password,
+    and getting it back can take up to three business days
+    (<a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20082/Reasons-why-a-Wayne-State-account-AccessID-Academica-etc-may-be-disabled-and-how-to-get-help">KB
+    20082</a>). Beethoven itself sends a wrong password at most once; in detail: Chrome re-sends its cached copy once
+    for each request already started with it before the first refusal comes back; Beethoven then sends at most one; when
+    the answered request is abandoned before the grid replies, Chrome may re-send that copy once. How many of these the
+    grid counts is not yet measured. If the panel says "Two tries haven't worked.", stop trying and ask the C&amp;IT
+    Help Desk; they can turn a disabled AccessID back on. If Beethoven can't tell whether a password it sent worked
+    (Chrome closed before the grid replied, or a portal tab asked you to sign in or loaded a page while Beethoven's
+    sign-in was on its way), it counts that try as neither right nor wrong, but it doesn't send a saved password again
+    until a password you type on the sheet works, or you save one again.</p>
+    <p><strong>Unticked</strong>, as the box always starts, Beethoven keeps the password in Chrome's memory for that one
+    sign-in only and removes it once the sign-in has been tried, whether or not it worked, and at the latest two minutes
+    after you pressed <em>Sign in</em>.</p>
+    <div class="callout">
+      <p><strong>At Wayne State, type your password each time.</strong> Wayne State's
+      <a href="https://tech.wayne.edu/policies/password-standard">Strong Password Standard</a> says: "Never save passwords
+      in web browsers or computer programs; instead, type them in each time you need them." Beethoven is a program in your
+      browser, so at Wayne State leave <em>Remember it on this computer</em> unticked, and don't let Chrome save the
+      password either when you use its box. The sheet says the same: "Off unless you tick it. Your university may ask you
+      to type your password each time; if it does, leave this off."</p>
+    </div>
+    <p><strong>Remember it on this computer.</strong> The box reads <em>Remember it on this computer, unlocked with
+    Windows Hello</em> (on a Mac, Touch ID; elsewhere, your screen lock) and is never ticked for you. If you tick it where
+    your university allows that, Windows Hello or Touch ID asks you, when you press <em>Sign in</em>, to make a passkey
+    with your AccessID followed by <em>(grid)</em> as its user name, for example <em>ab1234 (grid)</em>. Beethoven then
+    keeps your password only in this Chrome profile on this computer, encrypted so that only that passkey can open it,
+    and never sends it to us. If your computer can't lock a saved password that way, the panel says so, signs you in that
+    once and stops offering the box; if you cancel the passkey, it says "Not saved, but signing you in this once."</p>
+    <p><strong>Unlocking.</strong> Each time you open Chrome, the first time Beethoven needs the grid, the panel shows
+    <em>Unlock your grid sign-in</em>: click <em>Unlock with Windows Hello</em> (or Touch ID), or <em>Type it
+    instead</em>. Once it is unlocked, Beethoven signs in by itself whenever the grid asks, until you close Chrome, also
+    while the panel is closed, so that a press you made or <em>Keep my worker running</em> can go ahead. Until you
+    unlock it, the <em>Grid</em> line says <em>Signed out</em> with <em>Unlock</em>, and Beethoven sends no password to
+    the grid. A saved password the grid turned down (after you changed it, for example) is not tried again, even after
+    Chrome restarts: <em>Settings</em> says "Saved, but it didn't work last time. Forget it, or type the new one when
+    Beethoven asks." If the password you type then works, Beethoven forgets the old saved one by itself, unless it can
+    tell that it is the same password; then it keeps it and uses it again.</p>
+    <p><strong>Where the passkey lives.</strong> The passkey is kept by Windows Hello, your Mac's Passwords app (iCloud
+    Keychain) or Chrome's password manager, not by Beethoven; that store may keep it in your Google account or in iCloud
+    and offer it on your other devices, but the saved password itself stays only in this Chrome profile on this computer.
+    Someone who can use this Chrome profile while your sign-in is unlocked, or who can unlock your passkey, could sign in
+    to the grid with it.</p>
+    <p><strong>Forget.</strong> In Beethoven's <em>Settings</em>, under <em>Your grid</em>, <em>Grid sign-in</em> says
+    "Saved on this computer for ab1234. It opens with Windows Hello." Click <em>Forget</em> and confirm <em>Forget the
+    saved sign-in?</em>: Beethoven deletes the saved password and everything it keeps about it. <em>Disconnect</em> does
+    the same, and so do changing the grid's address in <em>Settings</em> and uninstalling. Your list of passkeys may still
+    show <em>ab1234 (grid)</em>; you can delete it there, after Forget.</p>
+    <p><strong>Two passkeys, told apart.</strong> The old passkey of Beethoven 12.0.0 to 15.0.0 is named with your AccessID
+    alone, or <em>beethoven</em>, and can go (<a href="#earlier">below</a>). The one 19.0.0 uses for your grid sign-in is named
+    <em>&lt;AccessID&gt; (grid)</em>, for example <em>ab1234 (grid)</em>; delete that one only after Forget.</p>
+    <p><strong>Chrome stays signed in.</strong> Once the grid has accepted a password Beethoven gave it, Chrome keeps it
+    in memory, as it keeps one you type into its own box, and uses it for the grid's pages you open yourself too, until
+    you close Chrome or clear its browsing data with cookies; <em>Forget</em> and <em>Disconnect</em> don't end that.</p>
+    <p><strong>Chrome's own box.</strong> <em>Use Chrome's sign-in box instead</em>, on the sheet, opens the grid's website
+    in a tab and brings Chrome's own sign-in box to the front, as Beethoven 18.0.0 did; you sign in there, Beethoven never
+    sees what you type, and the tab closes by itself once you are signed in and have moved on. Where Beethoven can't
+    answer the grid's sign-in itself, this is the only way. Chrome may offer to save the password in its password
+    manager; that is Chrome's, not Beethoven's: Beethoven never reads it, stores it or fills it in, and Wayne State's
+    standard above applies to it the same way.</p>
+    <p>This sign-in came with Beethoven 19.0.0 and has been tried only in our own tests, against a stand-in for the grid
+    and for a passkey, not yet on the real grid or with a real Windows Hello or Touch ID. If it does something this page
+    does not say, open <em>More</em>, click <em>Copy debug log</em> and send it to your lab lead; it never holds your
+    password.</p>
 
     <h2 id="install">Installing</h2>
     <p>Beethoven is for Chrome, on a private listing in the Chrome Web Store that opens only for invited Google accounts.
@@ -134,15 +207,18 @@
     anything about your computer. A second computer, a second Chrome profile or a reinstall is a new installation: the
     panel says your account is set up on another computer, and your lab lead can move the approval to the new one.
     Beethoven works only for the AccessID that was approved.</p>
+    <p>When Beethoven updates to 19.0.0, it asks you to accept its agreement once more, because the agreement now
+    describes the grid sign-in.</p>
 
     <h2 id="vpn">When the grid is out of reach</h2>
     <p>GlobalProtect must be on each time you start, watch or stop your worker; your worker itself keeps running
     without it, and <em>Open my session</em> works without it. If you press <em>Connect</em>, <em>Stop</em> or
     anything else that needs the grid while GlobalProtect is off, Beethoven keeps your press and shows <em>Turn on
     GlobalProtect.</em> with <em>How to set it up</em> (Wayne State's own page). Connect GlobalProtect and wait:
-    Beethoven carries on by itself as soon as the grid answers, and you need not press again. If <em>Keep my worker
-    running</em> is on in <em>Settings</em> and Beethoven finds your worker ended without your <em>Stop</em>, it starts
-    it again by itself, at most three times in a row.</p>
+    Beethoven carries on by itself as soon as the grid answers, and you need not press again. If the grid then needs
+    your sign-in, the panel shows <em>Sign in to the grid</em> (or <em>Unlock your grid sign-in</em>, if you saved it).
+    If <em>Keep my worker running</em> is on in <em>Settings</em> and Beethoven finds your worker ended without your
+    <em>Stop</em>, it starts it again by itself, at most three times in a row.</p>
 
     <h2 id="code">Your grid code</h2>
     <p>The grid's own terminal, the one time Beethoven sends you there, may ask for a code from
@@ -160,8 +236,9 @@
 
     <h2 id="earlier">What an earlier version may have left</h2>
     <p>Beethoven 12.0.0 to 15.0.0 also had a direct way to the grid, with a small helper on your computer, a sign-in
-    sheet of its own and a key in your browser. It is gone: today's Beethoven has none of them and never asks for your
-    password or code on a page of its own.</p>
+    sheet of its own and a key in your browser. It is gone: today's Beethoven has none of them. The sign-in sheet of
+    19.0.0 is a different thing: no helper, no key in your browser, no code, and GlobalProtect is still needed
+    (<a href="#password">your grid sign-in</a>).</p>
     <ul>
       <li><strong>The key.</strong> Such a version added a key for this computer to your grid account. Today's Beethoven
       removes what it left in your browser, without reading the key, and <em>Settings</em> says once that the key is
@@ -177,8 +254,11 @@
       in a terminal: <code>bash ~/.local/share/beethoven/bridge/uninstall.sh</code>. A helper installed from a zip with
       Beethoven 14.0.0 or earlier is removed on Windows by <em>uninstall.cmd</em> in
       <code>%LOCALAPPDATA%\Beethoven\bridge</code>.</li>
-      <li><strong>A passkey.</strong> If you turned on Windows Hello or Touch ID protection then, the passkey named
-      <em>Beethoven</em> is still in your system's or your browser's passkey list; delete it there.</li>
+      <li><strong>The old passkey.</strong> If you turned on Windows Hello or Touch ID protection then, that passkey is
+      still in your system's or your browser's passkey list, named with your AccessID alone, or <em>beethoven</em>. Today's Beethoven
+      never uses it, and it can go: delete it there. It is not the passkey 19.0.0 makes when you tick <em>Remember it on
+      this computer</em>, which has your AccessID followed by <em>(grid)</em> as its user name (for example <em>ab1234
+      (grid)</em>); delete that one only after <em>Forget</em>.</li>
     </ul>
 
     <h2 id="vscode">Beethoven for VS Code</h2>
@@ -232,6 +312,9 @@
     life of your access and six years after.</p>
     <p>Texts: <a href="/beethoven/terms.html">Trial Edition License Agreement</a>,
     <a href="/beethoven/privacy.html">Privacy statement</a>.</p>
+
+    <p class="note">Beethoven runs Claude Code and is not an Anthropic product; "Claude" and "Claude Code" are Anthropic's
+    marks, used here to say what it runs; "Open OnDemand" is the mark of its publisher.</p>
   </div>
 </section>
 </main>
@@ -284,7 +367,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610090245"></script>
+<script src="/assets/js/main.js?v=202610091633"></script>
 <!-- /site:footer -->
 
 </body>
