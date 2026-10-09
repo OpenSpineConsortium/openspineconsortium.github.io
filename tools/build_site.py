@@ -101,7 +101,9 @@ OUT = ROOT
 def sibling_repo(env, names, marker):
     """A repository beside this one: $env if set, else the first of `names` holding `marker`.
     The folders are renamed after 2026-09-30 (ashley-bridge -> beethoven, ashley ->
-    beethoven-vscode); the old names stay in the list so the build works on either side of that."""
+    beethoven-vscode), and since the split of 2026-10-03 the browser edition is its own repository,
+    beethoven-extension, which comes first; the old names stay in the list so the build works on
+    either side of that."""
     if os.environ.get(env):
         return Path(os.environ[env])
     for name in names:
@@ -111,7 +113,7 @@ def sibling_repo(env, names, marker):
 
 
 # The browser edition's repository (override with BEETHOVEN_REPO)
-BEETHOVEN_REPO = sibling_repo("BEETHOVEN_REPO", ("beethoven", "ashley-bridge"), "extension/src/licensing")
+BEETHOVEN_REPO = sibling_repo("BEETHOVEN_REPO", ("beethoven-extension", "beethoven", "ashley-bridge"), "extension/src/licensing")
 # its version ({{version}}) is read from its extension/package.json on every run; the site offers no
 # package of it (see BROWSERS)
 BEETHOVEN_EXT = BEETHOVEN_REPO / "extension"

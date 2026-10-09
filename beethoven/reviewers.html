@@ -16,10 +16,10 @@
   })();
 </script>
 <title>For reviewers and security offices · Beethoven</title>
-<meta name="description" content="What Beethoven is, what it never does, the permissions it asks for, how it reaches the cluster through the university&#x27;s portal behind its VPN, and how it checks for withdrawn versions without running remote code.">
+<meta name="description" content="What Beethoven is, what it never does, the permissions it asks for (webRequest and webRequestAuthProvider for the grid sign-in among them) and exactly what its one sign-in listener answers, how it reaches the cluster through the university&#x27;s portal behind its VPN, how it checks for withdrawn versions without running remote code, and how to try it against the mock portal.">
 <link rel="canonical" href="https://openspineconsortium.com/beethoven/reviewers.html">
 <meta property="og:title" content="For reviewers and security offices · Beethoven">
-<meta property="og:description" content="What Beethoven is, what it never does, the permissions it asks for, how it reaches the cluster through the university&#x27;s portal behind its VPN, and how it checks for withdrawn versions without running remote code.">
+<meta property="og:description" content="What Beethoven is, what it never does, the permissions it asks for (webRequest and webRequestAuthProvider for the grid sign-in among them) and exactly what its one sign-in listener answers, how it reaches the cluster through the university&#x27;s portal behind its VPN, how it checks for withdrawn versions without running remote code, and how to try it against the mock portal.">
 <meta property="og:url" content="https://openspineconsortium.com/beethoven/reviewers.html">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#F1EEE3">
@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610090245">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610090245">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610091536">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610091536">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -74,10 +74,12 @@
   <div class="prose">
     <p>Beethoven is a browser extension that starts, watches and stops a Claude Code worker in your own account on your
     university's cluster. When the worker connects, it hands you the link that opens that session at claude.ai and in the
-    Claude app. It reaches the cluster one way: through the university's Open OnDemand portal, in your own browser
-    session, behind the university's VPN (GlobalProtect at Wayne State). It holds no site permission on claude.ai and never
-    asks for one, never sees your Claude sign-in or your cluster password, installs nothing outside the browser, and runs
-    no code it did not ship with.</p>
+    Claude app. It reaches the cluster one way: through the university's Open OnDemand portal, behind the university's VPN
+    (GlobalProtect at Wayne State), in a browser session signed in there, by you in your browser's own sign-in box or by
+    the extension with the account name and password you type into its own sign-in sheet. It holds no site permission on
+    claude.ai and never asks for one, never sees your Claude sign-in, sends your cluster password nowhere but your portal
+    and keeps it only if you ask (encrypted, behind a passkey), installs nothing outside the browser, and runs no code it
+    did not ship with.</p>
 
     <h2 id="never">What it never does</h2>
     <ul>
@@ -89,21 +91,35 @@
       <li>Beethoven never sees your Claude sign-in. You sign in to Claude Code yourself, on Anthropic's own page; the
       one-time code you paste into the extension's box is typed once into your own job's terminal on your cluster and is
       not stored, not logged and not sent anywhere else.</li>
-      <li>Beethoven never sees your cluster password or verification code. You type them into your browser's own sign-in
-      box or the portal's own pages, which it never reads; it never signs in for you and never touches a multi-factor
-      step. Your browser's password manager may remember the password, as it would for any website; Beethoven never
-      reads, stores or fills it.</li>
+      <li>Beethoven sends your cluster password nowhere but your university's portal. When you type your AccessID and
+      password into Beethoven's own sign-in sheet, it answers only the HTTP sign-in your portal asks of Beethoven's own
+      background request, on the one portal site you allowed, once per check; it never answers a sign-in that a tab, a
+      proxy or another site asks for (a tab gets your browser's own box). When the portal turns the password down,
+      Beethoven stops and does not send it again until you type it again: Beethoven itself sends a password the portal
+      turns down at most once. Chrome re-sends its cached copy once for each request already started with it before the
+      first refusal comes back; Beethoven then sends at most one; when the answered request is abandoned before the grid
+      replies, Chrome may re-send that copy once. How many of these the grid counts is not yet measured. Beethoven never
+      fills in a sign-in page or an identity provider's page, never touches a multi-factor step, never types a password
+      into a shell, never writes the password to a log or its audit log, and never sends it to the maintainer.</li>
+      <li>Beethoven keeps your cluster password only if you tick "Remember it on this computer", which is never ticked for
+      you, and then only encrypted (AES-GCM) in the extension's own storage on this computer, under a key that only your
+      passkey releases, opened with Windows Hello, Touch ID or your screen lock (the passkey stays with your computer or
+      your password manager, which may sync it as it syncs any passkey). Unticked, the password is held in the browser's
+      memory for one sign-in and at most two minutes. "Forget" in Settings deletes the saved copy. Chrome itself keeps the
+      sign-in it was given until it closes.</li>
       <li>Beethoven installs nothing outside the browser: no helper, no native program, no installer. Versions 12.0.0 to
-      15.0.0 had a direct way over ssh through such a helper; 16.0.0 removed it whole, with its permission.</li>
+      15.0.0 had a direct way over ssh through such a helper; 16.0.0 removed it whole, with its permission. The sign-in
+      sheet of 19.0.0 is not that way: no ssh, no helper, and the university's VPN is still needed.</li>
       <li>Beethoven runs no code it did not ship with. Its daily update check fetches a signed list, not a program.</li>
-      <li>Beethoven asks for a website only from a click, one at a time: your university's Open OnDemand portal. It refuses
-      an address on claude.ai, claude.com or anthropic.com before asking the browser for anything. To learn whether the
-      portal is reachable, it sends the portal's address a request that carries no sign-in or cookie and learns only
-      whether an answer came (every three seconds at most while it waits for the VPN with one of its pages open). Its only
-      other requests go to the maintainer: the approval check (the account name your portal showed, your portal's
-      address, the product name and its version, and the installation identifier, a random number made when its
-      agreement is accepted, not derived from the device), sent only after the portal accepted your sign-in; and a daily
-      fetch of the service's address and the signed list of withdrawn versions, which carries nothing about you.</li>
+      <li>Beethoven asks for a website only from a click, one at a time: your university's Open OnDemand portal. It
+      refuses an address on claude.ai, claude.com or anthropic.com before asking the browser for anything. To learn
+      whether the portal is reachable, it sends the portal's address a request that carries no sign-in or cookie and
+      learns only whether an answer came (every three seconds at most while it waits for the VPN with one of its pages
+      open). Its only other requests go to the maintainer: the approval check (the account name your portal's dashboard
+      showed, never the one you typed to sign in; your portal's address; the product name and its version; and the
+      installation identifier, a random number made when its agreement is accepted, not derived from the device), sent
+      only after the portal accepted your sign-in; and a daily fetch of the service's address and the signed list of
+      withdrawn versions, which carries nothing about you.</li>
       <li>Beethoven sends its maintainer no usage data, no error reports and no activation request; the approval check is
       the only thing it sends about you. Its audit log never contains what you typed to sign in and is never
       transmitted.</li>
@@ -111,40 +127,110 @@
 
     <h2 id="permissions">Permissions and code</h2>
     <div class="callout">
-      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code> and <code>sidePanel</code>. One
-      optional host permission, <code>https://*/*</code>, which the extension asks your browser to grant for the one portal
-      website, only inside a click (<em>Agree and continue</em> on its welcome page, <em>Allow again</em> in its panel,
-      <em>Change</em> in its Settings); no host permission at install time, and none on any Anthropic domain: it refuses an
-      address on claude.ai, claude.com or anthropic.com before asking for anything. Never requested: <code>activeTab</code>,
-      <code>cookies</code>, <code>tabs</code>, <code>webRequest</code>, <code>webRequestBlocking</code>,
-      <code>declarativeNetRequest</code>, <code>debugger</code>, <code>identity</code>, <code>nativeMessaging</code>
-      (requested from 12.0.0 to 15.0.0 for the direct way's helper, removed with it in 16.0.0),
-      <code>clipboardRead</code>.</p>
+      <p>Permissions: <code>storage</code>, <code>alarms</code>, <code>scripting</code>, <code>sidePanel</code>,
+      <code>webRequest</code> and <code>webRequestAuthProvider</code> (the last two since 19.0.0, for the grid sign-in
+      below; neither shows an install warning). One optional host permission, <code>https://*/*</code>, which the
+      extension asks your browser to grant for the one portal website, only inside a click (<em>Agree and continue</em> on
+      its welcome page, <em>Allow again</em> in its panel, <em>Change</em> in its Settings); no host permission at install
+      time, and none on any Anthropic domain: it refuses an address on claude.ai, claude.com or anthropic.com before asking
+      for anything. Never requested: <code>activeTab</code>, <code>cookies</code>, <code>tabs</code>,
+      <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>debugger</code>, <code>identity</code>,
+      <code>nativeMessaging</code> (requested from 12.0.0 to 15.0.0 for the direct way's helper, removed with it in
+      16.0.0), <code>clipboardRead</code>. <code>webRequest</code> was on this list until 18.0.0.</p>
       <p><code>scripting</code> loads the extension's page script only into a tab it opened itself on the granted portal:
       where the portal does not share its sign-in with the extension's own requests, and on the portal's terminal page for
-      its one-time key step, where it reads only the page's title and types one line. No page script is registered.</p>
+      its one-time key step, where it reads only the page's title and types one line. No page script is registered, and
+      the sign-in below uses none.</p>
       <p>No remote code: the daily update check fetches one signed list
-      (<a href="/beethoven/killlist.json?v=202610090245">killlist.json</a>) and checks its signature against a key built into the extension;
-      the list can withdraw a version and nothing else. No licence key: the one request that carries anything about the
-      person is the approval check, which sends the account name the portal showed, the portal's hostname, the product,
-      the version and the installation identifier to the maintainer's access service
-      (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
-      <a href="/beethoven/services.json?v=202610090245">services.json</a>) and is answered yes or no. The bundle is minified for size and not
+      (<a href="/beethoven/killlist.json?v=202610091536">killlist.json</a>) and checks its signature against a key built into the extension;
+      the list can withdraw a version and nothing else. No licence key: the one request to the maintainer that carries
+      anything about the person is the approval check, which sends the account name the portal's dashboard showed (never
+      the one typed to sign in), the portal's hostname, the product, the version and the installation identifier to the
+      maintainer's access service (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
+      <a href="/beethoven/services.json?v=202610091536">services.json</a>) and is answered yes or no. The bundle is minified for size and not
       obfuscated. Security reports go to the notice address on the <a href="/beethoven/support.html">support page</a>.</p>
     </div>
 
+    <h2 id="signin">The grid sign-in: what the listener answers</h2>
+    <p><code>webRequest</code> and <code>webRequestAuthProvider</code> serve one <code>webRequest.onAuthRequired</code>
+    listener in the extension's service worker, registered with <code>asyncBlocking</code> (with <code>onCompleted</code>
+    and <code>onErrorOccurred</code> on the same filter, to learn how a request it answered ended). It answers with the
+    account name and password the student typed into the extension's own sheet, <em>Sign in to the grid</em>, only when
+    every one of these holds:</p>
+    <ul>
+      <li>the request is the extension's own background GET of the portal's dashboard page, made inside a check of
+      whether the student is signed in that the extension armed for a sign-in (<code>tabId</code> -1, the extension's
+      own origin as the initiator; a request with no initiator does not qualify), on the one granted portal origin;</li>
+      <li>the challenge is HTTP Basic, comes from the portal's own host and port and not from a proxy, and, once a
+      password the extension gave has worked, in this browser session or, for the saved password, at any time since it
+      was saved, names the same realm as that one (a sign-in in the browser's own box records no realm; <em>Forget</em>,
+      <em>Disconnect</em> and a change of portal remove the one on record);</li>
+      <li>no other request of that check has been answered, and no answer of an earlier check is still waiting for its
+      outcome;</li>
+      <li>the portal has not turned the password down since the student last typed it.</li>
+    </ul>
+    <p>Every other challenge gets an empty answer and goes on as it would without the extension: a tab's challenge gets
+    the browser's own box, and a proxy's, another origin's or another realm's challenge gets nothing from the extension.
+    The checks of whether the portal answers carry no sign-in or cookie and are never answered either. The one exception
+    is a second challenge for a request the listener answered: it means the portal turned the password down, the
+    listener cancels it, and every sign-in the extension would make by itself stops until the student types the password
+    again. Beethoven itself sends a
+    password the portal turns down at most once. Chrome re-sends its cached copy once for each request already started
+    with it before the first refusal comes back; Beethoven then sends at most one; when the answered request is abandoned
+    before the grid replies, Chrome may re-send that copy once. How many of these the grid counts is not yet measured.</p>
+    <p>The same permissions tell the extension of the sign-in requests of the student's own portal tabs and of when
+    requests to the portal end. It leaves the tabs' requests to the browser's box and keeps one mark of them only, and
+    only while an answer it gave still waits for its outcome: that a portal tab asked for a sign-in, or had a request
+    answered by the portal (not from the browser's cache) with neither 401 nor 403, meanwhile; never which tab, which
+    request or which page, and no debug line. What the box is given goes into the HTTP authentication cache the
+    extension's answer went into, and Chrome may finish the extension's own request with it, so a marked answer is
+    counted neither as worked nor as turned down: it is held, and a saved password is not sent again until a password
+    the student types on the sheet works or one is saved again. An answer whose outcome had not come when the browser
+    closed, or the extension updated or reloaded, is held the same way, and no refusal is counted for either. The
+    listener's debug line names a request's address only for one it answered or cancelled (the portal's dashboard
+    address), never a user name or a password, and an answered challenge gets no audit line of its own. Credentials it
+    gives enter Chrome's HTTP authentication cache, in memory, as the browser's own box would put them there, so the
+    student's own portal tabs are signed in with them too, until Chrome closes or its browsing data with cookies is
+    cleared.</p>
+    <p>Where the password is kept. Typed without the box <em>Remember it on this computer</em> ticked (it is never
+    ticked for the student), it is held in <code>storage.session</code>, in memory, for one attempt and removed
+    afterwards, whether or not it worked, and at the latest two minutes after it was typed. Ticked, the extension's own
+    page has the computer make a platform passkey, with user verification (Windows Hello, Touch ID or the screen lock),
+    the extension's own origin as its relying party and the AccessID followed by "(grid)" as its user name, and keeps
+    the password in the extension's IndexedDB only as AES-GCM ciphertext under a 256-bit key derived with HKDF-SHA-256
+    from the passkey's PRF output, which is never written to disk: it is held in <code>storage.session</code>, in memory
+    and closed to the portal page's script, until the browser closes or the extension reloads, and the background opens
+    the password with it for each answer. <code>storage.local</code> holds only a note without a secret (the portal's
+    origin, the AccessID, the passkey's credential identifier, when the password was saved, the times of its last try,
+    success and refusal, when its use was put on hold without a refusal, when a password the student typed while it was
+    saved was tried, until that try's outcome comes, the refusal count and the portal's realm; and, where a passkey
+    could not lock a password, when that happened and the name of the operating system). The password never appears in a
+    message between the extension's pages and its background, in <code>storage.local</code>, in a log, the audit log or
+    argv, and never reaches the maintainer. <em>Forget</em> in Settings, <em>Disconnect</em> and a change to another
+    portal delete all of it; the passkey itself may stay in the computer's or the password manager's list of passkeys,
+    where the student can delete it.</p>
+
     <h2 id="oneway">The one way: the portal behind the VPN</h2>
-    <p>The extension reaches the cluster only through the university's Open OnDemand portal, from its own background where
-    the browser shares the portal's sign-in with it, and otherwise through a portal tab it opened itself. When the portal
-    does not answer (the VPN is off), the panel shows the VPN step with a link to the university's own page about it and
-    keeps the student's press; it goes ahead by itself once the portal answers. When the portal asks for a sign-in, the
-    extension opens the portal in a tab, in front, for the student to sign in in the browser's own box, and closes that tab
-    once the student is signed in and has moved on (at most fifteen seconds later), so the browser can offer to save the
-    password. A browser extension cannot open or connect the university's VPN, and this one does not try.</p>
+    <p>The extension reaches the cluster only through the university's Open OnDemand portal, from its own background
+    where the browser shares the portal's sign-in with it, and otherwise through a portal tab it opened itself. When the
+    portal does not answer (the VPN is off), the panel shows the VPN step with a link to the university's own page about
+    it and keeps the student's press; it goes ahead by itself once the portal answers. When the portal wants a sign-in,
+    in Chrome the panel shows the extension's sheet, <em>Sign in to the grid</em>, and on a portal that signs in with
+    HTTP Basic, as Wayne State's does, the background answers the portal's challenge to its next check of the dashboard,
+    as the section above says, with no tab. <em>Use Chrome's sign-in box instead</em> keeps the way of 18.0.0: the
+    extension opens the portal in a tab, in front, for the student to sign in in the browser's own box, and closes that
+    tab once the student is signed in and has moved on (at most fifteen seconds later). Where the extension cannot
+    answer a sign-in, that tab is the only way: on a portal that sends the browser to an identity provider's page
+    instead of an HTTP Basic challenge, the sheet still appears, but no challenge reaches the extension and a password
+    typed on it is never sent (no such portal has been tried). The extension never fills in a sign-in page. The sheet is
+    not the direct way of 12.0.0 to 15.0.0: no ssh, no helper, no one-time code, and the VPN is still needed. A browser
+    extension cannot open or connect the university's VPN, and this one does not try.</p>
     <p>The commands it gives the cluster are a small fixed vocabulary of the lab's shared copy of the cluster-side tool,
     typed into the portal's own shell, and the lines the cluster prints are parsed as text and never executed. The only key
-    involved is made on the cluster, by the student's one-time step in the portal's terminal, so that the portal's own
-    shell stops asking for the password; nothing of it is in the browser.</p>
+    the cluster holds for it is made on the cluster, by the student's one-time step in the portal's terminal, so that the
+    portal's own shell stops asking for the password; nothing of it is in the browser, and the extension types no
+    password into that shell, not even one it was given for the sign-in. The only key in the browser is the one that
+    encrypts a saved password, derived from what the passkey releases and never written to disk.</p>
 
     <h2 id="distribution">Distribution and installations</h2>
     <p>Beethoven is published only as a private listing in the Chrome Web Store: the listing opens for the Google accounts
@@ -157,6 +243,55 @@
     was first and last seen; of refused checks it keeps a count, the time of the last one and the first eight characters
     of a one-way hash of the refused installation's identifier. This is an access rule the extension and the service keep
     between them, not copy protection: it makes casual sharing fail, and the agreement makes sharing a breach.</p>
+
+    <h2 id="mock">Trying it against the mock portal</h2>
+    <p>No live test account can be given: the extension works only against a university cluster, which needs a university
+    account, its second factor and its VPN. No reviewer can be issued one, and we cannot lend ours (one person, one
+    account is a term of the university and of Anthropic's service).</p>
+    <p>What can be run instead, with the extension installed from its listing, is our mock portal,
+    <code>beethoven-mock-portal.zip</code>: <code>server.mjs</code> (a Node 22 server that serves the same routes the
+    extension uses on the portal: dashboard, Files, Active Jobs, the Shell WebSocket), a stand-in scheduler, a stand-in
+    for the cluster-side tool and the server's one dependency (<code>ws</code>). It holds no extension code, and nothing
+    needs installing or building. A store review gets it attached to our reply, and a security office can ask for it
+    through the <a href="/beethoven/support.html#security">support page</a>; it is not offered for download here. You
+    need Node 22, bash and openssl. We have run it end to end only on Windows, with Git for Windows. The mock runs in
+    <code>--auth basic</code>, the HTTP Basic sign-in Wayne State's portal answers with, so the sign-in sheet does there
+    what it does on the grid.</p>
+    <ol>
+      <li>Unzip <code>beethoven-mock-portal.zip</code> and open bash in the <code>beethoven-mock-portal</code> folder it
+      makes.</li>
+      <li>Make a localhost certificate there (in Git Bash, put <code>MSYS_NO_PATHCONV=1</code> in front of the command):
+      <pre><code>openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -subj /CN=localhost -days 30 -addext subjectAltName=DNS:localhost</code></pre></li>
+      <li>Start the mock as the reviewer account <code>st1234</code>, with the HTTP Basic sign-in the university's portal
+      uses (the mock's password is <code>mockpass</code>, a made-up one):
+      <pre><code>MOCK_LOGGED_IN=false node server.mjs --port 8443 --host localhost --user st1234 --auth basic --cert cert.pem --key key.pem</code></pre></li>
+      <li>In Chrome, open <code>https://localhost:8443/</code>, choose <em>Advanced</em>, <em>Proceed to localhost
+      (unsafe)</em> (the certificate is the one you just made). The mock's public start page appears; leave it there and
+      do not press its <em>LOGIN</em> link (that would sign Chrome in through its own box, and the extension would find
+      the grid already signed in).</li>
+      <li>On the extension's welcome page (it opens on install), press <em>Another university? Use another portal</em>,
+      type <code>https://localhost:8443</code> and press <em>Use this portal</em>. Tick the box and press <em>Agree and
+      continue</em>. Chrome asks to allow <code>https://localhost:8443</code>; allow it.</li>
+      <li>The panel shows <em>Sign in to the grid</em>. Type <code>st1234</code> as the AccessID and <code>mockpass</code>
+      as the password and press <em>Sign in</em>: the extension signs in from its background, with no tab. Leave
+      <em>Remember it on this computer</em> unticked; if you tick it, Chrome asks to make a passkey named <em>st1234
+      (grid)</em> with Windows Hello, Touch ID or your screen lock, and Settings, <em>Your grid</em>, <em>Forget</em>
+      deletes the saved sign-in again. A wrong password shows "That password didn't work, and Beethoven stopped." and is
+      not sent again until you type one again. <em>Use Chrome's sign-in box instead</em> opens the mock in a tab with
+      Chrome's own box, the other way.</li>
+      <li>The panel then works by itself: it looks for the grid (localhost answers at once), reads the account name the
+      mock's dashboard shows (<code>st1234</code>), asks our access service whether that account is approved (it is:
+      <code>st1234</code> is approved for exactly this recipe, from any installation, when the portal is localhost), shows
+      the data statement (tick it, press <em>Connect</em>), opens the sign-in step (the mock prints a real-looking
+      claude.ai authorize link with a mock client id, which Anthropic's page declines: close that tab, type any six
+      letters or digits into the panel's box, press <em>Continue</em>), waits in line, and says <em>You're online.</em>
+      with <em>Open my session</em> (a made-up claude.ai/code link; no real session). Under the menu (the <em>More</em>
+      button), <em>Details for your lab lead</em>, <em>Run the checks</em> runs the extension's checks against the
+      mock.</li>
+    </ol>
+    <p>Please start the mock with <code>--user st1234</code> and no other name: the extension sends the name the mock shows
+    to our access service, which refuses any other and records the check. For a refused account the panel's one button is
+    <em>Ask for access</em>, which opens our request page with that name filled in.</p>
 
     <p class="note">Beethoven's use of information received from your browser complies with the Chrome Web Store User Data
     Policy, including the Limited Use requirements.</p>
@@ -216,7 +351,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610090245"></script>
+<script src="/assets/js/main.js?v=202610091536"></script>
 <!-- /site:footer -->
 
 </body>
