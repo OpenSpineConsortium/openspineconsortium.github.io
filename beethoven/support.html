@@ -16,10 +16,10 @@
   })();
 </script>
 <title>Support and notices · Beethoven</title>
-<meta name="description" content="Getting help with Beethoven, how it works step by step, the helper, your grid code, the key on your computer, the notice address, disputes, refunds and outages, security reports and your records.">
+<meta name="description" content="Getting help with Beethoven, how it works step by step, letting Chrome remember your grid sign-in, when the grid is out of reach, your grid code, what an earlier version may have left, the notice address, disputes, refunds and outages, security reports and your records.">
 <link rel="canonical" href="https://openspineconsortium.com/beethoven/support.html">
 <meta property="og:title" content="Support and notices · Beethoven">
-<meta property="og:description" content="Getting help with Beethoven, how it works step by step, the helper, your grid code, the key on your computer, the notice address, disputes, refunds and outages, security reports and your records.">
+<meta property="og:description" content="Getting help with Beethoven, how it works step by step, letting Chrome remember your grid sign-in, when the grid is out of reach, your grid code, what an earlier version may have left, the notice address, disputes, refunds and outages, security reports and your records.">
 <meta property="og:url" content="https://openspineconsortium.com/beethoven/support.html">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#F1EEE3">
@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610071542">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610071542">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610090245">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610090245">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -76,36 +76,35 @@
     <p>Start with the panel: open <em>More</em> (the <em>⋯</em> button), then <em>Details for your lab lead</em>.
     <em>Run the checks</em> names the piece that is not working and says in one sentence what to do about it. When you
     write for help, send the one line the panel shows, the list of checks as it stands (a screenshot is fine) and, if you
-    like, the audit log exported from <em>Settings</em>; it holds one line per request the extension made to your portal
+    like, the audit log exported from <em>Settings</em>; it holds one line per request the extension made to your grid
     and never what you typed: no password, no code and no key.</p>
     <p>Students: the Trial Edition is free for approved institutional accounts (<a href="/beethoven/request.html">ask for
     access</a>); your lab lead is the first line of support. Beyond that, the maintainer may help through the address below,
     at his discretion and without a response-time promise (agreement, section 9(b)).</p>
 
     <h2 id="how">How it works</h2>
-    <p>Beethoven reaches the Wayne State grid in one of two ways, and tries the first one first:</p>
-    <ul>
-      <li><strong>The direct way</strong>, with no VPN: Beethoven talks to the grid's login node over ssh, through a small
-      helper on your computer that comes inside Beethoven.</li>
-      <li><strong>GlobalProtect</strong>, as in earlier versions: Beethoven works through the grid's Open OnDemand
-      website, which needs the VPN.</li>
-    </ul>
+    <p>Beethoven reaches the Wayne State grid one way: with <strong>GlobalProtect</strong>, Wayne State's VPN, on,
+    through the grid's own website in your own signed-in Chrome. Nothing else is installed on your computer, and
+    Beethoven never asks for your grid password: you type it only into the sign-in box Chrome itself shows.</p>
     <p>After installing the extension (and once your account is approved):</p>
     <ol>
       <li><strong>Accept the agreement</strong> on the welcome page that opens: tick the box, then <em>Agree and
-      continue</em>. <em>Show terms</em> opens the full text, which you can save and print.</li>
-      <li><strong>Install the helper, once.</strong> The panel says <em>One small download, once</em> and offers the file
-      for your computer. It is a short script inside Beethoven: nothing comes from this website. Save it, open it, and
-      answer your computer's warning (below). Or choose <em>Use GlobalProtect instead</em>.</li>
-      <li><strong>Sign in to the grid, once.</strong> In Beethoven's own sign-in sheet, type your AccessID, then your
-      password and the grid's code from <strong>Google</strong> Authenticator (not Microsoft Authenticator, which Wayne
-      State uses for everything else) when the grid asks for them. Beethoven sends them only to the grid, inside the
-      encrypted connection, and never keeps them. It then says <em>This computer is set up.</em>: from now on it reaches
-      the grid directly, with no VPN. It asks for your password and code again only when Claude on the grid needs signing
-      in again, or after you sign in from another computer.</li>
+      continue</em>. <em>Show terms</em> opens the full text, which you can save and print. Chrome then asks to let
+      Beethoven reach the grid's website: choose <em>Allow</em>.</li>
+      <li><strong>Turn on GlobalProtect.</strong> Open GlobalProtect, connect to <code>protect.wayne.edu</code> and
+      approve the sign-in in <strong>Microsoft</strong> Authenticator. The panel says <em>Looking for the grid…</em>,
+      then <em>Connected.</em> A browser extension cannot open or connect GlobalProtect for you; Beethoven notices by
+      itself, within a few seconds, when it is on.</li>
+      <li><strong>Sign in to the grid</strong> in the box Chrome shows, with your AccessID and password. Beethoven
+      brings that box to the front and never sees what you type there. Chrome can remember it for you (below).</li>
+      <li><strong>One more thing, once.</strong> The first time, the grid may ask for your password a second time, in
+      its own terminal. The panel says so and opens it; type your password there (and the grid's code from
+      <strong>Google</strong> Authenticator if it asks), click <em>I'm in</em>, and Beethoven types one line that
+      stops it asking again.</li>
+      <li><strong>Where your work goes.</strong> Read it, tick the box, then <em>Connect</em>.</li>
       <li><strong>Sign in to Claude once, when the panel asks.</strong> A Claude tab opens; sign in with your own Claude
-      account, approve, and paste the code it shows into the panel. The code is typed once into your own job's terminal on
-      the grid and is not kept.</li>
+      account, approve, and paste the code it shows into the panel. The code is typed once into your own job's terminal
+      on the grid and is not kept.</li>
       <li><strong>Open my session.</strong> Your worker runs until you press <em>Stop</em>.</li>
     </ol>
     <p>The worker is a job on the grid, not a program on your computer. Once the panel shows <em>Open my session</em>,
@@ -115,6 +114,15 @@
     <p>What the worker makes (figures, tables, files) shows in that claude.ai session. If you want results in Google
     Drive, Docs or Sheets, turn on Claude's Google connectors yourself in claude.ai's settings; Beethoven does not do it
     for you.</p>
+
+    <h2 id="password">Letting Chrome remember your grid sign-in</h2>
+    <p>The grid's sign-in box is Chrome's own, so Chrome's password manager can remember your AccessID and password.
+    When Chrome offers to save them after you sign in, choose <em>Save</em>; the next time the box appears, Chrome fills
+    them in and you press <em>Sign in</em>. To have Chrome ask for Windows Hello (on a Mac, Touch ID or your Mac's
+    password) before it fills them in, open <em>Password settings</em> under <em>Your grid</em> in Beethoven's
+    <em>Settings</em> (or <code>chrome://password-manager/settings</code>) and turn on <em>Use Windows Hello when filling
+    passwords</em> (on a Mac, <em>Use your screen lock when filling passwords</em>). The password stays in Chrome's
+    password manager: Beethoven never reads it, stores it or fills it in.</p>
 
     <h2 id="install">Installing</h2>
     <p>Beethoven is for Chrome, on a private listing in the Chrome Web Store that opens only for invited Google accounts.
@@ -127,44 +135,19 @@
     panel says your account is set up on another computer, and your lab lead can move the approval to the new one.
     Beethoven works only for the AccessID that was approved.</p>
 
-    <h2 id="helper">The helper</h2>
-    <p>A browser extension cannot open an ssh connection by itself, so the direct way needs a small helper on your
-    computer. It comes inside Beethoven, so nothing is downloaded from a website; you install it once per computer, with
-    no administrator rights. It connects only to the grid's ssh port (<code>grid.wayne.edu</code>, port 22), carries
-    Beethoven's encrypted connection there and back, never sees your password or your code, holds no key, keeps no log of
-    what it carries and runs nothing else. It is a short script that your system already knows how to run (Windows
-    PowerShell on Windows, Perl on a Mac and on Linux), and it is not signed by a company, so your computer warns you the
-    first time. The download is a small zip file:</p>
-    <ul>
-      <li><strong>Windows:</strong> right-click the zip, choose <em>Extract All</em>, then double-click
-      <code>install.cmd</code> in the folder that opens. Windows warns you: on <em>Open File - Security Warning</em>
-      ("Unknown Publisher") click <em>Run</em>; on <em>Windows protected your PC</em> click <em>More info</em>, then
-      <em>Run anyway</em>. If Smart App Control blocks it with no way to run it, right-click the zip, choose
-      <em>Properties</em>, tick <em>Unblock</em>, click <em>OK</em>, and extract it again. If your organization's security
-      software stops it, use GlobalProtect instead.</li>
-      <li><strong>Mac:</strong> double-click the zip, then open <code>install.command</code> in the folder that appears.
-      On macOS 15 or later, click <em>Done</em> when the Mac stops it, then open <em>System Settings</em>, <em>Privacy
-      &amp; Security</em>, and click <em>Open Anyway</em> beside the blocked file; on macOS 14 or earlier, Control-click
-      the file, choose <em>Open</em>, then <em>Open</em> again. Or, on any macOS, type <code>bash</code> and a space in
-      Terminal, drag <code>install.command</code> in, and press Return, which usually avoids the warning. Nothing about
-      the helper has been tried on a Mac yet.</li>
-      <li><strong>Linux:</strong> unzip it, then run <code>bash install.sh</code> in the folder it made. Chrome
-      installed as a Snap or a Flatpak cannot start the helper; use GlobalProtect there.</li>
-    </ul>
-    <p>The installer asks you to press Enter (or Return), then says the helper is installed. Go back to Beethoven:
-    it finds the helper by itself, or press <em>Check again</em>. The zip is made out to the Beethoven you saved it from,
-    so use the one your own panel offers. To remove the helper, run the uninstaller the installer put beside it. A
-    Chromebook cannot run the helper; use GlobalProtect.</p>
+    <h2 id="vpn">When the grid is out of reach</h2>
+    <p>GlobalProtect must be on each time you start, watch or stop your worker; your worker itself keeps running
+    without it, and <em>Open my session</em> works without it. If you press <em>Connect</em>, <em>Stop</em> or
+    anything else that needs the grid while GlobalProtect is off, Beethoven keeps your press and shows <em>Turn on
+    GlobalProtect.</em> with <em>How to set it up</em> (Wayne State's own page). Connect GlobalProtect and wait:
+    Beethoven carries on by itself as soon as the grid answers, and you need not press again. If <em>Keep my worker
+    running</em> is on in <em>Settings</em> and Beethoven finds your worker ended without your <em>Stop</em>, it starts
+    it again by itself, at most three times in a row.</p>
 
     <h2 id="code">Your grid code</h2>
-    <p>The grid asks for a Google Authenticator code whenever you sign in with your password. When it does not accept
-    one, its message names two causes, so Beethoven asks you which: <em>Type the code again</em> if you have a grid entry
-    in Google Authenticator, or <em>I don't have a grid code yet</em>. Only then does it show <em>Set up your grid code
-    first</em>, with two ways to set it up with the grid's own 2FA Setup app, which needs GlobalProtect once (approved in
-    Microsoft Authenticator): <em>Use this computer</em>, or <em>Use my phone</em> for when GlobalProtect won't install
-    on your computer. The phone way shows square codes for the GlobalProtect and Google Authenticator apps and for Wayne
-    State's own instructions, each with its address printed under it. In 2FA Setup, press <em>Launch</em>, and when the
-    job has started, <em>Launch 2FA Setup</em>: a new tab shows the square code to scan.</p>
+    <p>The grid's own terminal, the one time Beethoven sends you there, may ask for a code from
+    <strong>Google</strong> Authenticator (not Microsoft Authenticator, which Wayne State uses for everything else).
+    Beethoven itself never asks for it, never sees its secret and never makes a code.</p>
     <div class="callout">
       <p><strong>Already have a grid code? Don't run 2FA Setup: it replaces your code, and the old one stops
       working.</strong> The grid's own page says: "NOTICE: Running this app will destroy any existing Google Authenticator
@@ -173,36 +156,30 @@
     <p>Wayne State's guides: <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20242/How-do-I-set-up-and-use-Google-Authenticator-for-the-Grid">Google
     Authenticator for the grid (KB 20242)</a> and
     <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20314/Wayne-State-VPN-and-the-Global-Protect-client">GlobalProtect
-    (KB 20314)</a>. Beethoven never sees your code's secret, and never makes a code itself.</p>
+    (KB 20314)</a>.</p>
 
-    <h2 id="key">The key on your computer</h2>
-    <p>After your first direct sign-in, Beethoven keeps a key of its own in this browser, encrypted under a second key
-    the browser keeps beside it, and your grid account gets one line that lets that key do only a short list of things:
-    start, watch and stop your worker. It cannot open a terminal, read your other files or sign a worker in to Claude.
-    The key never leaves your browser; someone who could use this browser, or copy its files, could use it within that
-    list.</p>
+    <h2 id="earlier">What an earlier version may have left</h2>
+    <p>Beethoven 12.0.0 to 15.0.0 also had a direct way to the grid, with a small helper on your computer, a sign-in
+    sheet of its own and a key in your browser. It is gone: today's Beethoven has none of them and never asks for your
+    password or code on a page of its own.</p>
     <ul>
-      <li><strong>Windows Hello or Touch ID is optional, and off unless you turn it on.</strong> Turned on (on the sign-in
-      sheet, when Beethoven offers it once, or in <em>Settings</em>, <em>Connection</em>, <em>Protect my key with Windows
-      Hello / Touch ID</em>), Beethoven asks for your fingerprint, face or PIN once each time you open the browser. Turn
-      it off again in the same place. Ticked on the sign-in sheet, before the key exists, it protects the key from the
-      start; turned on later, an older unprotected copy can stay in the browser's files for a while.</li>
-      <li><strong>Forget this computer</strong>, in <em>Settings</em>, <em>Connection</em>, removes the key from Beethoven
-      and its line from your grid account (a protected key is unlocked first, so the grid is told). Do it before you
-      leave a computer or remove Beethoven. If the grid can't be reached, the line stays until you remove it from a
-      terminal on the grid with <code>hpcworker browser-key remove</code> (your lab lead can help). The line is what lets
-      a key in: once it is gone, a copy of the key is of no use.</li>
+      <li><strong>The key.</strong> Such a version added a key for this computer to your grid account. Today's Beethoven
+      removes what it left in your browser, without reading the key, and <em>Settings</em> says once that the key is
+      still in your grid account; <em>Forget</em> hides that note. Beethoven touches nothing on the grid for it: your lab
+      lead can take the key off your account (or run <code>hpcworker browser-key remove</code> in a terminal on the
+      grid).</li>
+      <li><strong>The helper.</strong> Such a version also installed a small program, the Beethoven bridge. Today's
+      Beethoven does not use it and cannot start it; you can leave it or remove it, and removing it changes nothing on
+      the grid. On Windows, open <em>Settings</em>, then <em>Apps</em> (<em>Installed apps</em> on Windows 11,
+      <em>Apps &amp; features</em> on Windows 10), find <em>Beethoven bridge</em> and choose <em>Uninstall</em>. On a Mac,
+      in the Finder choose <em>Go</em>, then <em>Go to Folder</em>, paste
+      <code>~/Library/Application Support/Beethoven/bridge</code> and double-click <em>uninstall.command</em>. On Linux,
+      in a terminal: <code>bash ~/.local/share/beethoven/bridge/uninstall.sh</code>. A helper installed from a zip with
+      Beethoven 14.0.0 or earlier is removed on Windows by <em>uninstall.cmd</em> in
+      <code>%LOCALAPPDATA%\Beethoven\bridge</code>.</li>
+      <li><strong>A passkey.</strong> If you turned on Windows Hello or Touch ID protection then, the passkey named
+      <em>Beethoven</em> is still in your system's or your browser's passkey list; delete it there.</li>
     </ul>
-
-    <h2 id="vpn">When GlobalProtect is the only way</h2>
-    <p>Beethoven works through GlobalProtect, as before, when there is no helper for your computer, when your computer
-    won't run it, when your network blocks the grid's ssh port (<em>Can't reach the grid directly</em>; some hospital,
-    hotel and public networks do), or when you choose <em>GlobalProtect only</em> in <em>Settings</em>,
-    <em>Connection</em>. Choose <em>Use GlobalProtect instead</em>, turn on GlobalProtect and connect to
-    <code>protect.wayne.edu</code> (approve in Microsoft Authenticator), press <em>Continue</em>, and sign in to the grid
-    in the box Chrome shows; Beethoven never sees what you type there. <em>Try the direct way again</em> goes back.</p>
-    <p>If Beethoven says <em>Stopped: the grid's identity didn't match</em>, it sent nothing: no password, no code, no
-    key. Tell your lab lead, and use GlobalProtect meanwhile.</p>
 
     <h2 id="vscode">Beethoven for VS Code</h2>
     <p>Start with the troubleshooter inside the extension: click Beethoven in VS Code's status bar, then <em>Troubleshoot
@@ -307,7 +284,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610071542"></script>
+<script src="/assets/js/main.js?v=202610090245"></script>
 <!-- /site:footer -->
 
 </body>
