@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610112034">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610112034">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610112106">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610112106">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -71,10 +71,10 @@
     <h1 id="symphony-privacy-statement">Symphony privacy statement</h1>
 
     <p class="note"><strong>Save a copy.</strong> Press Ctrl+S (&#8984;S on a Mac) to keep this page as a file, or print it
-    to PDF. This is version 3 of the statement for Symphony for Chrome; the extension
+    to PDF. This is version 4 of the statement for Symphony for Chrome; the extension
     ships the same text.</p>
 
-    <p>Version 3, 2026-10-11. This text is also at https://openspineconsortium.com/symphony/privacy.html.</p>
+    <p>Version 4, 2026-10-11. This text is also at https://openspineconsortium.com/symphony/privacy.html.</p>
 <p>Who makes Symphony: Gregory Schwing, trading as OpenSpineConsortium (“the developer”). Questions: the contact on https://openspineconsortium.com/symphony/.</p>
 <p>Symphony, the browser extension, adds two buttons and two banners to pages on github.com so that installing the two Symphony GitHub Apps on a repository is one click away each. This statement is short because the extension does little: it collects nothing, sends nothing, and keeps two short-lived notes on your own device.</p>
 <h2 id="what-the-extension-collects">What the extension collects</h2>
@@ -85,7 +85,7 @@
 <p>Two notes, in the extension’s own storage (<code>storage.local</code>), and nothing else:</p>
 <ul>
 <li><code>symphony.pending</code>, written only when you press <strong>Create Symphony repository</strong> on GitHub’s new-repository page: the repository name you typed, the owner shown in the form when the page lets it be read, and the time. Its one use is to recognise the repository page you land on next, so the banner <strong>Finish setting up Symphony</strong> can be shown there. It is removed the moment it is used, and it is removed when found older than 15 minutes.</li>
-<li><code>symphony.migrate</code>, written only when you press <strong>Migrate to Symphony</strong> in a repository’s header or <strong>Install the Symphony Apps</strong> on that banner: the repository’s owner and name, the two numeric ids the page prints for them (the owner’s account id and the repository’s id), the step reached (the first App’s install or the second’s) and the time of the press. Its one use is to carry you from the first App’s install page to the second’s, and then to the form with the repository filled in. It is advanced when the form is reached after the first install, or when you press the Setup App’s button on an installation’s settings page; it is removed when the form is reached the second time, and it is removed when found older than 30 minutes.</li>
+<li><code>symphony.migrate</code>, written only when you press <strong>Migrate to Symphony</strong> in a repository’s header or <strong>Install the Symphony Apps</strong> on that banner: the repository’s owner and name, the two numeric ids the page prints for them (the owner’s account id and the repository’s id), the step reached (the first App’s install or the second’s) and the time of the press. Its one use is to carry you from the first App’s install page to the second’s, and then to the form with the repository filled in. It is advanced when the second App’s account-picker page, or the form, is reached after the first install, or when you press the Setup App’s button on an installation’s settings page; it is removed when the form is reached after the second install, and it is removed when found older than 30 minutes.</li>
 </ul>
 <p>Nothing survives uninstalling the extension.</p>
 <h2 id="what-the-extension-reads-from-a-page">What the extension reads from a page</h2>
@@ -94,11 +94,12 @@
 <li>On GitHub’s new-repository page, the repository name typed into the form, at the moment you press Symphony’s own button.</li>
 <li>On a repository’s main page, the meta tags GitHub prints that name the repository owner’s login and account id, and the repository’s id and its owner/name. The two ids and the owner/name go into the address of the GitHub install page the button opens, where the account and the repository are then preselected and the owner/name travels as the link’s <code>state</code>, which GitHub hands back to the form, and nowhere else.</li>
 <li>On a repository’s main page, the topic links in its About sidebar, read only to see whether the topic <code>symphony</code> is among them, which the adoption sets on a repository: when it is, the header’s button reads <strong>Ready for Symphony</strong> and opens the repository’s board instead of an install page. Which topics a repository has is read for nothing else, and nothing of it is kept.</li>
-<li>On the front door’s form page, the page the Setup URL of both Apps sends you to, the page’s own query string: whether GitHub put an installation’s number in it (<code>installation_id</code>), which says an install just happened, and whether it holds the repository (<code>state</code>).</li>
+<li>On the front door’s form page, the page the second App’s Setup URL sends you to, the page’s own query string: whether GitHub put an installation’s number in it (<code>installation_id</code>), which says an install just happened, and whether it holds the repository (<code>state</code>).</li>
+<li>On Symphony Setup’s account-picker page, GitHub’s own install page for the second App, where the first App’s install lands you, nothing but its address, which says it is that page.</li>
 <li>On an installation’s settings page, nothing but its address, which says it is one.</li>
 </ul>
 <h2 id="when-the-extension-moves-the-page">When the extension moves the page</h2>
-<p>In two cases, both on the front door’s form page, and never anywhere else: after the first App’s install has landed there, on to the second App’s install page, so that the second install follows the first without a search for it; and, when GitHub left the repository out of the form’s address, to the same form page with it added, so that the Repository field is filled in. Every other move is your own click on a link to one of GitHub’s pages, and the buttons remain such links. Nothing is pressed, submitted or sent for you, and nothing is sent to anyone.</p>
+<p>In three cases, and never anywhere else. From Symphony Setup’s account-picker page, reached from SymphonyBoard’s install, to the same App’s install page with the noted repository preselected, so that you need not pick the account and the repository by hand. And two on the front door’s form page: after the first App’s install has landed there instead, on to the second App’s install page, so that the second install follows the first without a search for it; and, when GitHub left the repository out of the form’s address, to the same form page with it added, so that the Repository field is filled in. Every other move is your own click on a link to one of GitHub’s pages, and the buttons remain such links. Nothing is pressed, submitted or sent for you, and nothing is sent to anyone.</p>
 <h2 id="permissions">Permissions</h2>
 <ul>
 <li><code>storage</code>: the two notes above.</li>
@@ -108,7 +109,7 @@
 <h2 id="children">Children</h2>
 <p>Symphony is for people who administer GitHub repositories. It is not directed at children.</p>
 <h2 id="changes">Changes</h2>
-<p>A new version of this statement ships with the version of the extension it applies to, and the page at https://openspineconsortium.com/symphony/privacy.html is updated with it. Version 3 (extension 1.2.0) added the About sidebar’s topic links among what is read, for the one topic that marks an adopted repository; version 2 (extension 1.1.0) added the second note, the second banner, the repository’s tags and the form page’s query string among what is read, and the two cases in which the page is moved; version 1 shipped with extension 1.0.0.</p>
+<p>A new version of this statement ships with the version of the extension it applies to, and the page at https://openspineconsortium.com/symphony/privacy.html is updated with it. Version 4 (extension 1.3.0) added the third case in which the page is moved, from the second App’s account-picker page, where the first App’s install now lands, to its install page with the repository preselected, and that page’s address among what is read; version 3 (extension 1.2.0) added the About sidebar’s topic links among what is read, for the one topic that marks an adopted repository; version 2 (extension 1.1.0) added the second note, the second banner, the repository’s tags and the form page’s query string among what is read, and the two cases in which the page is moved; version 1 shipped with extension 1.0.0.</p>
 <p>Symphony is not a GitHub or Anthropic product. “GitHub” is GitHub’s mark; “Claude” and “Claude Code” are Anthropic’s marks, used here to say what Symphony works with.</p>
 
     <hr>
@@ -167,7 +168,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610112034"></script>
+<script src="/assets/js/main.js?v=202610112106"></script>
 <!-- /site:footer -->
 
 </body>
