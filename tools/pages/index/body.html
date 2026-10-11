@@ -342,7 +342,8 @@ body_class: page-home page-lab
 </section>
 
 <script>
-/* Old links into the one-page site (openspineconsortium.com/#datasets and the like) land here; send
+/* Old links into the one-page site (openspineconsortium.com/#datasets and the like), and into the
+   Beethoven page's sections while it was the home page (#access, #install, #symphony), land here; send
    each to the page that now holds that section. Only on the site root. */
 (function () {
   if (location.pathname !== '/' && location.pathname !== '/index.html') return;
@@ -350,7 +351,9 @@ body_class: page-home page-lab
     home: '/research/', project: '/research/', datasets: '/data/datasets/', people: '/people/',
     organization: '/people/organization/', education: '/people/education/', workshop: '/research/workshop/',
     goals: '/research/goals/', conferences: '/research/conferences/', gallery: '/data/gallery/',
-    hardware: '/data/hardware/', outside: '/research/outside/', join: '/onboarding/#involved'
+    hardware: '/data/hardware/', outside: '/research/outside/', join: '/onboarding/#involved',
+    // the sections of the Beethoven page while it was the home page, until 2026-10-11
+    access: '/beethoven/#access', install: '/beethoven/#install', symphony: '/symphony/'
   };
   function go() {
     var to = moved[location.hash.slice(1)];
