@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="512" height="512">
+  <!-- SymphonyBoard's mark: a ring of eight players, the small circles, around GitHub's mark in the
+       middle, holding a conductor's baton in Symphony orange (the owner's choice, 2026-10-11), on a dark slate tile. Drawn for this extension; it borrows no other mark. The ring is the
+       Symphony orange (#D97757), the tile the dark slate (#1F2328), the point a warm white so it reads
+       on the slate at 16 px. Rasterised to public/icon/{16,32,48,128}.png by scripts/build-assets.mjs,
+       which draws the 16 and 32 px sizes from the simpler geometry in that script's SMALL variant. -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#1F2328"/>
+  <g fill="#D97757">
+    <circle cx="64" cy="22" r="9"/>
+    <circle cx="93.7" cy="34.3" r="9"/>
+    <circle cx="106" cy="64" r="9"/>
+    <circle cx="93.7" cy="93.7" r="9"/>
+    <circle cx="64" cy="106" r="9"/>
+    <circle cx="34.3" cy="93.7" r="9"/>
+    <circle cx="22" cy="64" r="9"/>
+    <circle cx="34.3" cy="34.3" r="9"/>
+  </g>
+  <g transform="translate(44 44) scale(1.66667)" fill="#FFF4EC">
+    <path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/>
+  </g>
+  <path d="M50.6 74.8 L41.8 63.2" stroke="#D97757" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="41.3" cy="62.4" r="2.3" fill="#D97757"/>
+</svg>

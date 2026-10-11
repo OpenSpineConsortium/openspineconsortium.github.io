@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610111535">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610111535">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610111927">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610111927">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -61,7 +61,7 @@
 <nav class="subnav" aria-label="Symphony">
   <div class="subnav__in">
     <a class="subnav__title" href="/symphony/">Symphony</a>
-    <div class="subnav__pills"><a class="subnav__pill" href="/symphony/">Overview</a><a class="subnav__pill" href="/symphony/privacy.html" aria-current="page">Privacy</a></div>
+    <div class="subnav__pills"><a class="subnav__pill" href="/symphony/">Overview</a><a class="subnav__pill" href="/symphony/privacy.html" aria-current="page">Privacy</a><a class="subnav__pill" href="/symphony/apps-privacy.html">Apps privacy</a></div>
   </div>
 </nav>
 <!-- /site:header -->
@@ -71,30 +71,43 @@
     <h1 id="symphony-privacy-statement">Symphony privacy statement</h1>
 
     <p class="note"><strong>Save a copy.</strong> Press Ctrl+S (&#8984;S on a Mac) to keep this page as a file, or print it
-    to PDF. This is version 1 of the statement for Symphony for Chrome; the extension
+    to PDF. This is version 2 of the statement for Symphony for Chrome; the extension
     ships the same text.</p>
 
-    <p>Version 1, 2026-10-11. This text is also at https://openspineconsortium.com/symphony/privacy.html.</p>
+    <p>Version 2, 2026-10-11. This text is also at https://openspineconsortium.com/symphony/privacy.html.</p>
 <p>Who makes Symphony: Gregory Schwing, trading as OpenSpineConsortium (“the developer”). Questions: the contact on https://openspineconsortium.com/symphony/.</p>
-<p>Symphony, the browser extension, adds two buttons and one banner to pages on github.com so that installing the Symphony GitHub App on a repository is one click away. This statement is short because the extension does little: it collects nothing, sends nothing, and keeps one short-lived note on your own device.</p>
+<p>Symphony, the browser extension, adds two buttons and two banners to pages on github.com so that installing the two Symphony GitHub Apps on a repository is one click away each. This statement is short because the extension does little: it collects nothing, sends nothing, and keeps two short-lived notes on your own device.</p>
 <h2 id="what-the-extension-collects">What the extension collects</h2>
-<p>Nothing. It has no account, no identifier, no analytics, no error reporting and no usage report. It does not read your GitHub sign-in, cookies or tokens, and it does not read the contents of any page beyond the two things below.</p>
+<p>Nothing. It has no account, no identifier, no analytics, no error reporting and no usage report. It does not read your GitHub sign-in, cookies or tokens, and it does not read the contents of any page beyond the few things listed below.</p>
 <h2 id="what-the-extension-sends">What the extension sends</h2>
-<p>Nothing, to anyone. It makes no network request of its own: no fetch, no WebSocket, no beacon, no update check. Its buttons are ordinary links that open GitHub’s own install page for the Symphony App in a new tab, as a bookmark would; GitHub sees that visit as it sees any visit, and the extension learns nothing of it. The developer receives nothing from the extension.</p>
+<p>Nothing, to anyone. It makes no network request of its own: no fetch, no WebSocket, no beacon, no update check. Its buttons are ordinary links that open GitHub’s own install pages for the Symphony Apps, as a bookmark would; GitHub sees that visit as it sees any visit, and the extension learns nothing of it. The developer receives nothing from the extension.</p>
 <h2 id="what-stays-on-your-device">What stays on your device</h2>
-<p>One note, in the extension’s own storage (<code>storage.local</code>, under the key <code>symphony.pending</code>), written only when you press <strong>Create Symphony repository</strong> on GitHub’s new-repository page: the repository name you typed, the owner shown in the form when the page lets it be read, and the time. Its one use is to recognise the repository page you land on next, so the banner <strong>Finish setting up Symphony</strong> can be shown there. It is removed the moment it is used, and it is removed when found older than 15 minutes. Nothing else is stored, and nothing survives uninstalling the extension.</p>
+<p>Two notes, in the extension’s own storage (<code>storage.local</code>), and nothing else:</p>
+<ul>
+<li><code>symphony.pending</code>, written only when you press <strong>Create Symphony repository</strong> on GitHub’s new-repository page: the repository name you typed, the owner shown in the form when the page lets it be read, and the time. Its one use is to recognise the repository page you land on next, so the banner <strong>Finish setting up Symphony</strong> can be shown there. It is removed the moment it is used, and it is removed when found older than 15 minutes.</li>
+<li><code>symphony.migrate</code>, written only when you press <strong>Migrate to Symphony</strong> in a repository’s header or <strong>Install the Symphony Apps</strong> on that banner: the repository’s owner and name, the two numeric ids the page prints for them (the owner’s account id and the repository’s id), the step reached (the first App’s install or the second’s) and the time of the press. Its one use is to carry you from the first App’s install page to the second’s, and then to the form with the repository filled in. It is advanced when the form is reached after the first install, or when you press the Setup App’s button on an installation’s settings page; it is removed when the form is reached the second time, and it is removed when found older than 30 minutes.</li>
+</ul>
+<p>Nothing survives uninstalling the extension.</p>
 <h2 id="what-the-extension-reads-from-a-page">What the extension reads from a page</h2>
-<p>Two things, on github.com only: the repository name typed into GitHub’s new-repository form, at the moment you press Symphony’s own button; and, on a repository’s main page, the two meta tags GitHub prints that name the repository owner’s login and account id, so that the install page can be opened with that account pre-selected. The id goes into the address of the GitHub page the button opens, and nowhere else.</p>
+<p>On github.com only:</p>
+<ul>
+<li>On GitHub’s new-repository page, the repository name typed into the form, at the moment you press Symphony’s own button.</li>
+<li>On a repository’s main page, the meta tags GitHub prints that name the repository owner’s login and account id, and the repository’s id and its owner/name. The two ids and the owner/name go into the address of the GitHub install page the button opens, where the account and the repository are then preselected and the owner/name travels as the link’s <code>state</code>, which GitHub hands back to the form, and nowhere else.</li>
+<li>On the front door’s form page, the page the Setup URL of both Apps sends you to, the page’s own query string: whether GitHub put an installation’s number in it (<code>installation_id</code>), which says an install just happened, and whether it holds the repository (<code>state</code>).</li>
+<li>On an installation’s settings page, nothing but its address, which says it is one.</li>
+</ul>
+<h2 id="when-the-extension-moves-the-page">When the extension moves the page</h2>
+<p>In two cases, both on the front door’s form page, and never anywhere else: after the first App’s install has landed there, on to the second App’s install page, so that the second install follows the first without a search for it; and, when GitHub left the repository out of the form’s address, to the same form page with it added, so that the Repository field is filled in. Every other move is your own click on a link to one of GitHub’s pages, and the buttons remain such links. Nothing is pressed, submitted or sent for you, and nothing is sent to anyone.</p>
 <h2 id="permissions">Permissions</h2>
 <ul>
-<li><code>storage</code>: the one note above.</li>
-<li>The host <code>https://github.com/*</code>: to add the two buttons and the banner on github.com pages, and for nothing else. The extension runs on no other site, asks for no other site, and has no permission on claude.ai, anthropic.com or any Anthropic domain.</li>
+<li><code>storage</code>: the two notes above.</li>
+<li>The host <code>https://github.com/*</code>: to add the two buttons and the two banners on github.com pages, and for nothing else. The extension runs on no other site, asks for no other site, and has no permission on claude.ai, anthropic.com or any Anthropic domain.</li>
 </ul>
 <p>It requests no <code>tabs</code>, <code>cookies</code>, <code>scripting</code>, <code>activeTab</code>, <code>webRequest</code>, <code>identity</code> or <code>nativeMessaging</code> permission, no optional permission, and it runs no code it did not ship with.</p>
 <h2 id="children">Children</h2>
 <p>Symphony is for people who administer GitHub repositories. It is not directed at children.</p>
 <h2 id="changes">Changes</h2>
-<p>A new version of this statement ships with the version of the extension it applies to, and the page at https://openspineconsortium.com/symphony/privacy.html is updated with it.</p>
+<p>A new version of this statement ships with the version of the extension it applies to, and the page at https://openspineconsortium.com/symphony/privacy.html is updated with it. Version 2 (extension 1.1.0) added the second note, the second banner, the repository’s tags and the form page’s query string among what is read, and the two cases in which the page is moved; version 1 shipped with extension 1.0.0.</p>
 <p>Symphony is not a GitHub or Anthropic product. “GitHub” is GitHub’s mark; “Claude” and “Claude Code” are Anthropic’s marks, used here to say what Symphony works with.</p>
 
     <hr>
@@ -122,7 +135,7 @@
   </div>
   <nav class="footer__dir" aria-label="Every page">
     <div class="footer__col"><h2><a href="/beethoven/">Beethoven</a></h2><ul><li><a href="/beethoven/">Product</a></li><li><a href="/beethoven/terms.html">Agreement</a></li><li><a href="/beethoven/privacy.html">Privacy</a></li><li><a href="/beethoven/support.html">Support</a></li><li><a href="/beethoven/request.html">Ask for access</a></li><li><a href="/beethoven/reviewers.html">Reviewers</a></li><li><a href="/beethoven/vscode/">For VS Code</a></li></ul></div>
-    <div class="footer__col"><h2><a href="/symphony/">Symphony</a></h2><ul><li><a href="/symphony/">Overview</a></li><li><a href="/symphony/privacy.html">Privacy</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/symphony/">Symphony</a></h2><ul><li><a href="/symphony/">Overview</a></li><li><a href="/symphony/privacy.html">Privacy</a></li><li><a href="/symphony/apps-privacy.html">Apps privacy</a></li></ul></div>
     <div class="footer__col"><h2><a href="/onboarding/">Onboarding</a></h2><ul><li><a href="/onboarding/">Start here</a></li></ul></div>
     <div class="footer__col"><h2><a href="/research/">Research</a></h2><ul><li><a href="/research/">Overview</a></li><li><a href="/research/conferences/">Conferences</a></li><li><a href="/research/workshop/">Workshop</a></li><li><a href="/tutorials/">Tutorials</a></li><li><a href="/research/goals/">Goals</a></li><li><a href="/research/outside/">Outside work</a></li></ul></div>
     <div class="footer__col"><h2><a href="/data/">Data &amp; Tools</a></h2><ul><li><a href="/data/">Overview</a></li><li><a href="/data/datasets/">Datasets</a></li><li><a href="/atlas/">Atlas</a></li><li><a href="/data/gallery/">Gallery</a></li><li><a href="/data/hardware/">Hardware</a></li><li><a href="/spine-mri/">Spine MRI</a></li><li><a href="/pacs/ct.html">CT</a></li><li><a href="/pacs/">X-ray</a></li></ul></div>
@@ -153,7 +166,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610111535"></script>
+<script src="/assets/js/main.js?v=202610111927"></script>
 <!-- /site:footer -->
 
 </body>

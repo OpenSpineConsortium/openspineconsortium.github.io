@@ -39,3 +39,7 @@
 .sy-get .sy-pending { color: var(--ink); font-weight: 500; }
 @media (max-width: 960px) { .bh-sec .sy-get { grid-template-columns: 1fr; max-width: 520px; margin-left: auto; margin-right: auto; } }
 @media (prefers-reduced-motion: reduce) { .sy-film__video { box-shadow: none; } }
+
+/* ---------- the two Apps' logos above their install buttons ---------- */
+.sy-apps { display: flex; justify-content: center; gap: 12px; margin: 0 0 14px; }
+.sy-apps img { width: 44px; height: 44px; border-radius: 10px; }

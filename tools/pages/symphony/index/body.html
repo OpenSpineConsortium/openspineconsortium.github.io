@@ -28,12 +28,12 @@ body_class: page-home page-symphony
   <h2 class="bh__h2" id="how-title">Three presses</h2>
   <ol class="obd-steps sy-steps">
     <li>
-      <h3>Install the App</h3>
-      <p>On GitHub, install the Symphony App on the repository, new or old. For the repository's settings too (a ruleset, auto-merge, secret scanning), install the Setup App first: it holds Administration for the one run and uninstalls itself when done.</p>
+      <h3>Install the two Apps</h3>
+      <p>On GitHub, install SymphonyBoard on the repository, new or old, and Symphony Setup on it too: the first opens the pull request, the second applies the repository's settings (a ruleset, auto-merge, secret scanning) for the one run and uninstalls itself when done. From the Chrome extension's button, both install pages open in a row with that repository already selected.</p>
     </li>
     <li>
       <h3>Press Create</h3>
-      <p>GitHub sends you to a form with your installation already filled in. Press Create: the kind of repository is read from its files, an empty one gets the whole template and one with files gets the claim protocol alone.</p>
+      <p>GitHub sends you to a form with your installation, and from the extension your repository, already filled in. Press Create: the kind of repository is read from its files, an empty one gets the whole template and one with files gets the claim protocol alone.</p>
     </li>
     <li>
       <h3>Merge the pull request</h3>
@@ -47,14 +47,15 @@ body_class: page-home page-symphony
   <div class="browsers sy-get">
     <article class="browser">
       <h3 class="browser__name">On GitHub</h3>
-      <a class="btn btn--solid" href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">Install the Symphony App</a>
-      <a class="btn btn--ghost" href="https://github.com/apps/symphony-setup/installations/new" target="_blank" rel="noopener">Install the Setup App too</a>
-      <p class="browser__note">The App opens pull requests and reads your repository; it never holds Administration. The Setup App applies the settings for one run, then uninstalls itself.</p>
+      <p class="sy-apps"><img src="/symphony/symphonyboard-logo.png" alt="SymphonyBoard" width="44" height="44"><img src="/symphony/symphony-setup-logo.png" alt="Symphony Setup" width="44" height="44"></p>
+      <a class="btn btn--solid" href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">Install SymphonyBoard</a>
+      <a class="btn btn--ghost" href="https://github.com/apps/symphony-setup/installations/new" target="_blank" rel="noopener">Install Symphony Setup too</a>
+      <p class="browser__note">Both are needed. SymphonyBoard opens pull requests and reads your repository; it never holds Administration. Symphony Setup applies the settings for one run, then uninstalls itself. <a href="/symphony/apps-privacy.html">Privacy statement for the Apps</a></p>
     </article>
     <article class="browser">
       <h3 class="browser__name">In Chrome</h3>
       <p class="browser__note sy-pending">Symphony for Chrome: Chrome Web Store listing pending review.</p>
-      <p class="browser__note">It adds one button to GitHub's new-repository page, "Create Symphony repository", and one to every repository's header, "Migrate to Symphony", each opening the App's install page. It runs on github.com only, sends nothing to anyone and keeps nothing but a fifteen-minute note of the repository you just made. <a href="/symphony/privacy.html">Privacy statement</a></p>
+      <p class="browser__note">It adds one button to GitHub's new-repository page, "Create Symphony repository", and one to every repository's header, "Migrate to Symphony", which open the Apps' install pages with that repository already selected and carry its name to the form. It runs on github.com only, sends nothing to anyone and keeps nothing but two short-lived notes of the repository you pressed the button on. <a href="/symphony/privacy.html">Privacy statement</a></p>
     </article>
     <article class="browser">
       <h3 class="browser__name">In Claude Code</h3>
@@ -62,7 +63,8 @@ body_class: page-home page-symphony
     </article>
   </div>
   <p class="bh__fine">What is shared: counts, durations and rates of the protocol at work, never code, text or names, with one switch off. Symphony is not a GitHub or Anthropic product. "GitHub" is GitHub's mark; "Claude" and "Claude Code" are Anthropic's marks, used here to say what Symphony works with.<br>
-  <a href="/symphony/privacy.html">Privacy</a><span class="bh__sep" aria-hidden="true">·</span>
+  <a href="/symphony/privacy.html">Privacy (Chrome)</a><span class="bh__sep" aria-hidden="true">·</span>
+  <a href="/symphony/apps-privacy.html">Privacy (Apps)</a><span class="bh__sep" aria-hidden="true">·</span>
   <a href="https://github.com/OpenSpineConsortium/symphony-start/issues/new?template=adopt.yml" target="_blank" rel="noopener">The form</a><span class="bh__sep" aria-hidden="true">·</span>
   <a href="https://github.com/OpenSpineConsortium/symphony-protocol/blob/main/spec/PROTOCOL.md" target="_blank" rel="noopener">The protocol</a></p>
 </section>

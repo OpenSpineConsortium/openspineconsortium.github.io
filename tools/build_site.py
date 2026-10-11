@@ -17,7 +17,8 @@ WHAT IT DOES, IN ORDER
         <!-- build:<text>-title -->  <!-- build:<text>-toc -->  <!-- build:<text>-text -->
             for each <text> in TEXTS: license, privacy (the browser edition), vscode-license,
             vscode-full, vscode-privacy, vscode-third-party (Beethoven for VS Code),
-            symphony-privacy (Symphony for Chrome); -toc only for the agreements
+            symphony-privacy (Symphony for Chrome), symphony-apps-privacy (the Symphony GitHub
+            Apps); -toc only for the agreements
         <!-- build:request-form services=<url> [fine=short] -->   the access form and its script
         <!-- build:browsers -->                      the one install card: Chrome, the private listing
         <!-- build:vscode-install -->                the Beethoven for VS Code install card
@@ -26,9 +27,9 @@ WHAT IT DOES, IN ORDER
         {{version}} {{vscode_version}} and {{<text>_version}} for each versioned text
         ({{license_version}}, {{privacy_version}}, {{vscode_license_version}}, ...)
     The agreements, the privacy statements and the VS Code edition's third-party notices are
-    rendered from the two Beethoven repositories' own texts, and Symphony for Chrome's privacy
-    statement from its repository's (TEXTS below), on every run, and checked word for word against
-    them.
+    rendered from the two Beethoven repositories' own texts, Symphony for Chrome's privacy
+    statement from its repository's and the Symphony GitHub Apps' from the front door's (TEXTS
+    below), on every run, and checked word for word against them.
  3. Gives the pages that are not generated (the atlas, the Spine MRI series, the tutorials,
     Celebrate Life, the PACS demo) the same header and footer, between <!-- site:... --> markers,
     so a second run replaces rather than adds. Their content is not touched; only the old header,
@@ -125,6 +126,10 @@ VSCODE_EXT = VSCODE_REPO / "extension"
 # Symphony for Chrome's repository (override with SYMPHONY_REPO): its PRIVACY.md is rendered at
 # /symphony/privacy.html, the address the extension's listing and popup name
 SYMPHONY_REPO = sibling_repo("SYMPHONY_REPO", ("symphony-extension",), "PRIVACY.md")
+# The front door's repository (override with SYMPHONY_START_REPO): its PRIVACY.md, the statement
+# for the two GitHub Apps, is rendered at /symphony/apps-privacy.html, the address the Apps'
+# descriptions on GitHub name
+START_REPO = sibling_repo("SYMPHONY_START_REPO", ("symphony-start", "sdlc-start"), "PRIVACY.md")
 # The Marketplace listing's address once it is published under OpenSpineConsortium.beethoven; None
 # shows "Listing pending" (the maintainer uploads the new id by hand)
 VSCODE_STORE_URL = None
@@ -141,6 +146,8 @@ TEXTS = {
     "vscode-third-party": {"src": VSCODE_EXT / "THIRD_PARTY_NOTICES.md", "kind": "markdown", "versioned": False,
                            "page": "beethoven/vscode/third-party.html"},
     "symphony-privacy": {"src": SYMPHONY_REPO / "PRIVACY.md", "kind": "markdown", "page": "symphony/privacy.html"},
+    "symphony-apps-privacy": {"src": START_REPO / "PRIVACY.md", "kind": "markdown",
+                              "page": "symphony/apps-privacy.html"},
 }
 # The agreements as plain text too, byte for byte (the VS Code edition's README and Marketplace
 # listing link a .txt, as /ashley/license.txt was)
@@ -323,9 +330,11 @@ SITE = [
     ]),
     # Symphony, the GitHub App and its Chrome extension: one page in the Beethoven home's style, with
     # the promo film in the diagram's place, and the extension's privacy statement rendered from its
-    # repository (TEXTS: symphony-privacy), at the address the Chrome Web Store listing names
+    # repository (TEXTS: symphony-privacy), at the address the Chrome Web Store listing names, and
+    # the two GitHub Apps' statement from the front door's (TEXTS: symphony-apps-privacy)
     node("Symphony", "/symphony/", overview="Overview", children=[
         node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
+        node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
     ]),
     node("Onboarding", "/onboarding/", overview="Start here", children=[
         node("By hand", "/onboarding/by-hand.html", optional=True),
@@ -632,7 +641,7 @@ def load_texts(problems):
         src = t["src"]
         name = f"{src.parent.name}/{src.name}"
         if not src.exists():
-            raise SystemExit(f"{src}: not there (set BEETHOVEN_REPO, BEETHOVEN_VSCODE_REPO or SYMPHONY_REPO)")
+            raise SystemExit(f"{src}: not there (set BEETHOVEN_REPO, BEETHOVEN_VSCODE_REPO, SYMPHONY_REPO or SYMPHONY_START_REPO)")
         text = read(src)
         if BANNED.search(text):
             raise SystemExit(f"{src}: the banned word is in the source text")
