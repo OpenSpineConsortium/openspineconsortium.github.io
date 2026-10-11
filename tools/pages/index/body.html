@@ -1,395 +1,349 @@
 ---
-title: Beethoven · Your grid, from claude.ai
-description: Ask in claude.ai and a Claude Code worker on the Wayne State grid does the work, on an H200 when it needs one.
-css: /assets/css/hero.css
-canonical: https://openspineconsortium.com/beethoven/
-body_class: page-home
+title: OpenSpineConsortium · A digital lab where people and AI code together
+description: One shared repository, any number of Claude Code sessions, driven by students or running on their own. OpenSpineConsortium builds the protocol and the tools that keep them from colliding, and runs its spine imaging research on them.
+css: /assets/css/hero.css, /assets/css/lab.css
+body_class: page-home page-lab
 ---
-<section class="bh" aria-labelledby="bh-title">
-  <h1 class="bh__title" id="bh-title">Your grid. <em>From claude.ai.</em></h1>
-  <p class="bh__lede">Ask in claude.ai. Your worker on the grid does the work.</p>
+<section class="bh lab-hero" aria-labelledby="lab-title">
+  <span class="eyebrow lab-eyebrow reveal">OpenSpineConsortium &middot; a digital lab</span>
+  <h1 class="bh__title" id="lab-title"><span class="reveal" style="--d:1">Where people and AI</span> <span class="reveal" style="--d:2"><em>code together.</em></span></h1>
+  <p class="bh__lede reveal" style="--d:3">One shared repository. Any number of Claude Code sessions, a student at a keyboard or a session running on its own, each claiming an issue, working in the open and landing it by pull request. The protocol does not care who is driving.</p>
 
-<!-- flow:start -->
-<figure class="flow" aria-label="How a question travels: from claude.ai to Claude servers, or to your worker on the Wayne State grid, which calls the model and uses an H200 GPU">
-<div class="flow__stage">
-<svg class="flow__art flow__art--wide" viewBox="0 0 1200 560" aria-hidden="true" focusable="false">
-<defs><marker id="fh-tw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="fh-ow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><filter id="fshw" x="-12%" y="-8%" width="124%" height="126%"><feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#0A423D" flood-opacity=".16"/></filter></defs>
-<rect class="b-win" x="8" y="24" width="540" height="512" rx="16" filter="url(#fshw)"/>
-<path class="b-bar" d="M8,68 V40 A16,16 0 0 1 24,24 H532 A16,16 0 0 1 548,40 V68 Z"/>
-<line class="b-rule" x1="8" y1="68.5" x2="548" y2="68.5"/>
-<circle class="b-dot" cx="32" cy="46" r="5.5"/>
-<circle class="b-dot" cx="50" cy="46" r="5.5"/>
-<circle class="b-dot" cx="68" cy="46" r="5.5"/>
-<rect class="b-url" x="150" y="34" width="256" height="24" rx="12"/>
-<g class="b-lock"><rect x="233" y="42.5" width="9" height="7.5" rx="1.6"/><path d="M235,42.8 v-2.3 a2.5,2.5 0 0 1 5,0 v2.3"/></g>
-<path class="b-rail" d="M8,69 H60 V536 H24 A16,16 0 0 1 8,520 Z"/>
-<line class="b-railrule" x1="60" y1="69" x2="60" y2="536"/>
-<rect class="b-ico" x="22" y="86" width="24" height="24" rx="7"/><path class="b-ico-l" d="M34,92.5 v11 M28.5,98 h11"/>
-<rect class="b-bars" x="22" y="130" width="24" height="4" rx="2"/>
-<rect class="b-bars" x="22" y="144" width="19" height="4" rx="2"/>
-<rect class="b-bars" x="22" y="158" width="14" height="4" rx="2"/>
-<circle class="b-av" cx="88" cy="176" r="8"/>
-<rect class="b-sk" x="106" y="170" width="318" height="7" rx="3.5"/>
-<rect class="b-sk" x="106" y="185" width="372" height="7" rx="3.5"/>
-<rect class="b-sk" x="106" y="200" width="236" height="7" rx="3.5"/>
-<rect class="b-card" x="106" y="222" width="392" height="168" rx="10"/>
-<line class="b-ax" x1="117.8" y1="369.5" x2="229.9" y2="369.5"/>
-<circle class="b-jit" cx="153.2" cy="302.4" r="1.7"/>
-<circle class="b-jit" cx="140.5" cy="316.9" r="1.7"/>
-<circle class="b-jit" cx="140.2" cy="289.6" r="1.7"/>
-<circle class="b-jit" cx="150" cy="303.2" r="1.7"/>
-<circle class="b-jit" cx="140.5" cy="326.8" r="1.7"/>
-<circle class="b-jit" cx="140.9" cy="311.9" r="1.7"/>
-<circle class="b-jit" cx="141.7" cy="275.7" r="1.7"/>
-<circle class="b-jit" cx="143.8" cy="323.4" r="1.7"/>
-<circle class="b-jit" cx="151.6" cy="275.2" r="1.7"/>
-<line class="b-wh" x1="149.9" y1="355.2" x2="149.9" y2="259.2"/>
-<line class="b-wh" x1="142.6" y1="355.2" x2="157.2" y2="355.2"/>
-<line class="b-wh" x1="142.6" y1="259.2" x2="157.2" y2="259.2"/>
-<rect class="b-box" x="136.9" y="295" width="26" height="25.5"/>
-<line class="b-med" x1="136.9" y1="307.2" x2="162.9" y2="307.2"/>
-<circle class="b-jit" cx="195.7" cy="265.7" r="1.7"/>
-<circle class="b-jit" cx="205.7" cy="301.3" r="1.7"/>
-<circle class="b-jit" cx="193.3" cy="295.2" r="1.7"/>
-<circle class="b-jit" cx="193.7" cy="301.4" r="1.7"/>
-<circle class="b-jit" cx="204.8" cy="302.9" r="1.7"/>
-<circle class="b-jit" cx="200.9" cy="305.7" r="1.7"/>
-<circle class="b-jit" cx="195.1" cy="316.8" r="1.7"/>
-<circle class="b-jit" cx="188.3" cy="290" r="1.7"/>
-<circle class="b-jit" cx="191.5" cy="294.1" r="1.7"/>
-<line class="b-wh" x1="197.9" y1="342" x2="197.9" y2="252.1"/>
-<line class="b-wh" x1="190.6" y1="342" x2="205.2" y2="342"/>
-<line class="b-wh" x1="190.6" y1="252.1" x2="205.2" y2="252.1"/>
-<rect class="b-box" x="184.9" y="283.7" width="26" height="23.5"/>
-<line class="b-med" x1="184.9" y1="296" x2="210.9" y2="296"/>
-<line class="b-ax" x1="245.9" y1="369.5" x2="358.1" y2="369.5"/>
-<circle class="b-jit" cx="273.9" cy="297.8" r="1.7"/>
-<circle class="b-jit" cx="279.8" cy="290.2" r="1.7"/>
-<circle class="b-jit" cx="284.4" cy="292.5" r="1.7"/>
-<circle class="b-jit" cx="282.3" cy="308.1" r="1.7"/>
-<circle class="b-jit" cx="278.5" cy="305.2" r="1.7"/>
-<circle class="b-jit" cx="286.2" cy="323.9" r="1.7"/>
-<circle class="b-jit" cx="288.5" cy="302.9" r="1.7"/>
-<circle class="b-jit" cx="269.6" cy="292.3" r="1.7"/>
-<circle class="b-jit" cx="270.4" cy="282.7" r="1.7"/>
-<line class="b-wh" x1="278" y1="339.1" x2="278" y2="269.8"/>
-<line class="b-wh" x1="270.7" y1="339.1" x2="285.3" y2="339.1"/>
-<line class="b-wh" x1="270.7" y1="269.8" x2="285.3" y2="269.8"/>
-<rect class="b-box" x="265" y="295.3" width="26" height="20.1"/>
-<line class="b-med" x1="265" y1="304.5" x2="291" y2="304.5"/>
-<circle class="b-jit" cx="325.8" cy="322.7" r="1.7"/>
-<circle class="b-jit" cx="331.8" cy="333.4" r="1.7"/>
-<circle class="b-jit" cx="327.6" cy="314.5" r="1.7"/>
-<circle class="b-jit" cx="330.3" cy="318.9" r="1.7"/>
-<circle class="b-jit" cx="328.1" cy="297.4" r="1.7"/>
-<circle class="b-jit" cx="333.4" cy="291.1" r="1.7"/>
-<circle class="b-jit" cx="335.7" cy="298.8" r="1.7"/>
-<circle class="b-jit" cx="316.4" cy="282.5" r="1.7"/>
-<circle class="b-jit" cx="330.4" cy="312.3" r="1.7"/>
-<line class="b-wh" x1="326" y1="346.4" x2="326" y2="271.6"/>
-<line class="b-wh" x1="318.7" y1="346.4" x2="333.3" y2="346.4"/>
-<line class="b-wh" x1="318.7" y1="271.6" x2="333.3" y2="271.6"/>
-<rect class="b-box" x="313" y="297.2" width="26" height="23.7"/>
-<line class="b-med" x1="313" y1="308.1" x2="339" y2="308.1"/>
-<line class="b-ax" x1="374.1" y1="369.5" x2="486.2" y2="369.5"/>
-<circle class="b-jit" cx="413.1" cy="256.5" r="1.7"/>
-<circle class="b-jit" cx="401.4" cy="246.8" r="1.7"/>
-<circle class="b-jit" cx="395.7" cy="269.9" r="1.7"/>
-<circle class="b-jit" cx="405.2" cy="305.8" r="1.7"/>
-<circle class="b-jit" cx="396.5" cy="293.3" r="1.7"/>
-<circle class="b-jit" cx="411.9" cy="296.5" r="1.7"/>
-<circle class="b-jit" cx="403.7" cy="298" r="1.7"/>
-<circle class="b-jit" cx="414.2" cy="298.5" r="1.7"/>
-<circle class="b-jit" cx="407.2" cy="305.4" r="1.7"/>
-<line class="b-wh" x1="406.1" y1="330.6" x2="406.1" y2="246.8"/>
-<line class="b-wh" x1="398.8" y1="330.6" x2="413.4" y2="330.6"/>
-<line class="b-wh" x1="398.8" y1="246.8" x2="413.4" y2="246.8"/>
-<rect class="b-box" x="393.1" y="277.1" width="26" height="23.1"/>
-<line class="b-med" x1="393.1" y1="289.1" x2="419.1" y2="289.1"/>
-<circle class="b-jit" cx="462.5" cy="325.3" r="1.7"/>
-<circle class="b-jit" cx="449.3" cy="330.6" r="1.7"/>
-<circle class="b-jit" cx="452.3" cy="285.2" r="1.7"/>
-<circle class="b-jit" cx="464.1" cy="293.7" r="1.7"/>
-<circle class="b-jit" cx="446.5" cy="343.8" r="1.7"/>
-<circle class="b-jit" cx="448.3" cy="321.8" r="1.7"/>
-<circle class="b-jit" cx="453.8" cy="327.3" r="1.7"/>
-<circle class="b-jit" cx="443.3" cy="304.9" r="1.7"/>
-<circle class="b-jit" cx="452.4" cy="309.1" r="1.7"/>
-<line class="b-wh" x1="454.1" y1="354.5" x2="454.1" y2="284.3"/>
-<line class="b-wh" x1="446.8" y1="354.5" x2="461.4" y2="354.5"/>
-<line class="b-wh" x1="446.8" y1="284.3" x2="461.4" y2="284.3"/>
-<rect class="b-box" x="441.1" y="305" width="26" height="23.1"/>
-<line class="b-med" x1="441.1" y1="316.2" x2="467.1" y2="316.2"/>
-<rect class="b-sk" x="106" y="406" width="290" height="7" rx="3.5"/>
-<rect class="b-sk" x="106" y="421" width="200" height="7" rx="3.5"/>
-<rect class="b-comp" x="76" y="446" width="456" height="72" rx="16"/>
-<line class="b-caret" x1="97" y1="462" x2="97" y2="480"/>
-<circle class="b-ico" cx="101" cy="500" r="9.5"/><path class="b-ico-l" d="M101,495.5 v9 M96.5,500 h9"/>
-<circle class="b-send" cx="506" cy="494" r="15"/><path class="b-send-a" d="M506,501 V487 M500,493 L506,487 L512,493"/>
-<g transform="translate(922 15) scale(1.15)"><path class="n-cloud" vector-effect="non-scaling-stroke" d="M44,104 A28,28 0 0 1 40,50 A34,34 0 0 1 100,26 A40,40 0 0 1 170,44 A31,31 0 0 1 178,104 Z"/></g>
-<rect class="n-rack" x="968" y="252" width="152" height="188" rx="8"/>
-<rect class="n-foot" x="978" y="440" width="14" height="5" rx="1.5"/>
-<rect class="n-foot" x="1096" y="440" width="14" height="5" rx="1.5"/>
-<rect class="n-unit" x="978" y="268" width="132" height="26" rx="4"/>
-<circle class="n-led" cx="987" cy="281" r="2.6"/>
-<circle class="n-led n-led--blink" cx="995" cy="281" r="2.6"/>
-<line class="n-vent" x1="1054.6" y1="275.8" x2="1054.6" y2="286.2"/>
-<line class="n-vent" x1="1070.4" y1="275.8" x2="1070.4" y2="286.2"/>
-<line class="n-vent" x1="1086.2" y1="275.8" x2="1086.2" y2="286.2"/>
-<line class="n-vent" x1="1102" y1="275.8" x2="1102" y2="286.2"/>
-<rect class="n-unit n-unit--me" x="978" y="302" width="132" height="26" rx="4"/>
-<circle class="n-led n-led--on" cx="987" cy="315" r="2.6"/>
-<circle class="n-led" cx="995" cy="315" r="2.6"/>
-<path class="n-prompt" d="M1006,311 l4,4 l-4,4 M1013,319 h6"/>
-<line class="n-vent" x1="1054.6" y1="309.8" x2="1054.6" y2="320.2"/>
-<line class="n-vent" x1="1070.4" y1="309.8" x2="1070.4" y2="320.2"/>
-<line class="n-vent" x1="1086.2" y1="309.8" x2="1086.2" y2="320.2"/>
-<line class="n-vent" x1="1102" y1="309.8" x2="1102" y2="320.2"/>
-<rect class="n-unit" x="978" y="336" width="132" height="26" rx="4"/>
-<circle class="n-led" cx="987" cy="349" r="2.6"/>
-<circle class="n-led" cx="995" cy="349" r="2.6"/>
-<line class="n-vent" x1="1054.6" y1="343.8" x2="1054.6" y2="354.2"/>
-<line class="n-vent" x1="1070.4" y1="343.8" x2="1070.4" y2="354.2"/>
-<line class="n-vent" x1="1086.2" y1="343.8" x2="1086.2" y2="354.2"/>
-<line class="n-vent" x1="1102" y1="343.8" x2="1102" y2="354.2"/>
-<rect class="n-unit" x="978" y="370" width="132" height="26" rx="4"/>
-<circle class="n-led" cx="987" cy="383" r="2.6"/>
-<circle class="n-led n-led--blink" cx="995" cy="383" r="2.6"/>
-<line class="n-vent" x1="1054.6" y1="377.8" x2="1054.6" y2="388.2"/>
-<line class="n-vent" x1="1070.4" y1="377.8" x2="1070.4" y2="388.2"/>
-<line class="n-vent" x1="1086.2" y1="377.8" x2="1086.2" y2="388.2"/>
-<line class="n-vent" x1="1102" y1="377.8" x2="1102" y2="388.2"/>
-<rect class="n-unit" x="978" y="404" width="132" height="26" rx="4"/>
-<circle class="n-led" cx="987" cy="417" r="2.6"/>
-<circle class="n-led" cx="995" cy="417" r="2.6"/>
-<line class="n-vent" x1="1054.6" y1="411.8" x2="1054.6" y2="422.2"/>
-<line class="n-vent" x1="1070.4" y1="411.8" x2="1070.4" y2="422.2"/>
-<line class="n-vent" x1="1086.2" y1="411.8" x2="1086.2" y2="422.2"/>
-<line class="n-vent" x1="1102" y1="411.8" x2="1102" y2="422.2"/>
-<rect class="n-brk" x="584" y="360" width="12" height="88" rx="3"/>
-<rect class="n-board" x="596" y="368" width="184" height="72" rx="8"/>
-<rect class="n-gold" x="618" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="625" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="632" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="639" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="646" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="660" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="667" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="674" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="681" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="688" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="695" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="702" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="709" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="716" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="723" y="440" width="4.4" height="8.6" rx="1"/>
-<rect class="n-gold" x="730" y="440" width="4.4" height="8.6" rx="1"/>
-<circle class="n-fan" cx="651.2" cy="404" r="23"/><g class="n-spin"><path class="n-blade" d="M658.1,404 Q665.9,409.4 663.1,420.7 M655.5,409.4 Q656.2,418.8 645.6,423.7 M649.7,410.7 Q642.7,417.1 632.3,411.9 M645,407 Q635.6,405.5 633.2,394.2 M645,401 Q640.3,392.8 647.7,383.8 M649.7,397.3 Q653.2,388.5 664.8,388.7 M655.5,398.6 Q664.6,395.9 671.7,405.1"/><circle class="n-hub" cx="651.2" cy="404" r="6.9"/></g>
-<circle class="n-fan" cx="724.8" cy="404" r="23"/><g class="n-spin"><path class="n-blade" d="M731.7,404 Q739.5,409.4 736.7,420.7 M729.1,409.4 Q729.8,418.8 719.2,423.7 M723.3,410.7 Q716.3,417.1 705.9,411.9 M718.6,407 Q709.2,405.5 706.8,394.2 M718.6,401 Q713.9,392.8 721.3,383.8 M723.3,397.3 Q726.8,388.5 738.4,388.7 M729.1,398.6 Q738.2,395.9 745.3,405.1"/><circle class="n-hub" cx="724.8" cy="404" r="6.9"/></g>
-<path class="fl-a " d="M553,280 C690,280 745,104 934,104" marker-end="url(#fh-tw)"/><path class="fl-d " d="M553,280 C690,280 745,104 934,104" pathLength="100"/>
-<path class="fl-a " d="M553,280 C690,280 780,315 955,315" marker-end="url(#fh-tw)"/><path class="fl-d " d="M553,280 C690,280 780,315 955,315" pathLength="100"/>
-<path class="fl-a " d="M1044,244 V144" marker-end="url(#fh-tw)"/><path class="fl-d fl-d--late" d="M1044,244 V144" pathLength="100"/>
-<path class="fl-a fl-a--o" d="M961,404 H790" marker-end="url(#fh-ow)"/><path class="fl-d fl-d--o fl-d--late" d="M961,404 H790" pathLength="100"/>
-<circle class="fl-port" cx="549" cy="280" r="5"/>
+<figure class="lab reveal" style="--d:4" aria-label="The lab: a student in claude.ai, an autonomous cloud session and a teammate on their own account each claim an issue on one repository's board, work in the open and land by pull request; every merge on main closes an issue">
+<!-- lab:start -->
+<svg class="lab__art lab__art--wide" viewBox="0 0 1200 540" aria-hidden="true" focusable="false">
+<defs><marker id="lw-t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="lw-o" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><filter id="lw-sh" x="-12%" y="-12%" width="124%" height="136%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#0A423D" flood-opacity=".12"/></filter></defs>
+<rect class="lb-tile" x="28" y="62" width="300" height="108" rx="16" filter="url(#lw-sh)"/>
+<g transform="translate(46 92) scale(1)"><rect class="lb-ib" x="2" y="7" width="44" height="34" rx="5"/><path class="lb-ibar" d="M2,16 V12 a5,5 0 0 1 5,-5 H41 a5,5 0 0 1 5,5 V16 Z"/><circle class="lb-idot" cx="8" cy="11.5" r="1.5"/><circle class="lb-idot" cx="13" cy="11.5" r="1.5"/><circle class="lb-idot" cx="18" cy="11.5" r="1.5"/><circle class="lb-iav" cx="10" cy="25" r="3"/><rect class="lb-isk" x="16" y="22.5" width="22" height="3" rx="1.5"/><rect class="lb-isk" x="16" y="28.5" width="16" height="3" rx="1.5"/><rect class="lb-ibub" x="22" y="33.5" width="20" height="5" rx="2.5"/></g>
+<text class="lb-title" x="110" y="110" font-size="18">A student</text>
+<text class="lb-sub" x="110" y="134" font-size="11.5">in claude.ai, in a browser</text>
+<circle class="fl-port" cx="328" cy="116" r="5"/>
+<rect class="lb-tile" x="28" y="216" width="300" height="108" rx="16" filter="url(#lw-sh)"/>
+<g transform="translate(46 246) scale(1)"><g transform="translate(1 12) scale(0.25)"><path class="lb-icloud" vector-effect="non-scaling-stroke" d="M44,104 A28,28 0 0 1 40,50 A34,34 0 0 1 100,26 A40,40 0 0 1 170,44 A31,31 0 0 1 178,104 Z"/></g><path class="lb-iprompt" d="M17,26 l4,4 l-4,4 M24,34 h7"/></g>
+<text class="lb-title" x="110" y="264" font-size="18">An autonomous session</text>
+<text class="lb-sub" x="110" y="288" font-size="11.5">nobody at the keyboard</text>
+<circle class="fl-port" cx="328" cy="270" r="5"/>
+<rect class="lb-tile" x="28" y="370" width="300" height="108" rx="16" filter="url(#lw-sh)"/>
+<g transform="translate(46 400) scale(1)"><circle class="lb-ihead" cx="24" cy="15" r="7"/><path class="lb-ibody" d="M8,44 a16,15 0 0 1 32,0 Z"/></g>
+<text class="lb-title" x="110" y="418" font-size="18">A teammate</text>
+<text class="lb-sub" x="110" y="442" font-size="11.5">their own account and plan</text>
+<circle class="fl-port" cx="328" cy="424" r="5"/>
+<rect class="lb-repo" x="492" y="62" width="326" height="400" rx="18" filter="url(#lw-sh)"/>
+<path class="lb-head" d="M492,108 V80 a18,18 0 0 1 18,-18 H800 a18,18 0 0 1 18,18 V108 Z"/>
+<line class="lb-rule" x1="492" y1="108.5" x2="818" y2="108.5"/>
+<circle class="lb-rdot" cx="516" cy="85" r="5"/>
+<text class="lb-title" x="532" y="92" font-size="19">your repository</text>
+<text class="lb-k" x="800" y="91" font-size="11" text-anchor="end">STATE.md</text>
+<text class="lb-k" x="512" y="138" font-size="10.5" letter-spacing="1.6">THE BOARD</text>
+<text class="lb-num" x="512" y="181" font-size="13">#12</text>
+<rect class="lb-sk" x="550" y="172" width="136" height="9" rx="4.5"/>
+<rect class="lb-pill lb-pill--todo" x="714" y="163" width="94" height="26" rx="13" style="--r:-0s"/>
+<text class="lb-s lb-s0 lb-s--on" x="761" y="180.14" font-size="11.5" text-anchor="middle" style="--r:-0s">todo</text>
+<text class="lb-s lb-s1" x="761" y="180.14" font-size="11.5" text-anchor="middle" style="--r:-0s">claimed</text>
+<text class="lb-s lb-s2" x="761" y="180.14" font-size="11.5" text-anchor="middle" style="--r:-0s">in review</text>
+<text class="lb-s lb-s3" x="761" y="180.14" font-size="11.5" text-anchor="middle" style="--r:-0s">merged</text>
+<line class="lb-rule" x1="512" y1="202.5" x2="798" y2="202.5"/>
+<text class="lb-num" x="512" y="237" font-size="13">#13</text>
+<rect class="lb-sk" x="550" y="228" width="104" height="9" rx="4.5"/>
+<rect class="lb-pill lb-pill--claimed" x="714" y="219" width="94" height="26" rx="13" style="--r:-3s"/>
+<text class="lb-s lb-s0" x="761" y="236.14" font-size="11.5" text-anchor="middle" style="--r:-3s">todo</text>
+<text class="lb-s lb-s1 lb-s--on" x="761" y="236.14" font-size="11.5" text-anchor="middle" style="--r:-3s">claimed</text>
+<text class="lb-s lb-s2" x="761" y="236.14" font-size="11.5" text-anchor="middle" style="--r:-3s">in review</text>
+<text class="lb-s lb-s3" x="761" y="236.14" font-size="11.5" text-anchor="middle" style="--r:-3s">merged</text>
+<line class="lb-rule" x1="512" y1="258.5" x2="798" y2="258.5"/>
+<text class="lb-num" x="512" y="293" font-size="13">#14</text>
+<rect class="lb-sk" x="550" y="284" width="118" height="9" rx="4.5"/>
+<rect class="lb-pill lb-pill--in-review" x="714" y="275" width="94" height="26" rx="13" style="--r:-6s"/>
+<text class="lb-s lb-s0" x="761" y="292.14" font-size="11.5" text-anchor="middle" style="--r:-6s">todo</text>
+<text class="lb-s lb-s1" x="761" y="292.14" font-size="11.5" text-anchor="middle" style="--r:-6s">claimed</text>
+<text class="lb-s lb-s2 lb-s--on" x="761" y="292.14" font-size="11.5" text-anchor="middle" style="--r:-6s">in review</text>
+<text class="lb-s lb-s3" x="761" y="292.14" font-size="11.5" text-anchor="middle" style="--r:-6s">merged</text>
+<line class="lb-rule" x1="512" y1="314.5" x2="798" y2="314.5"/>
+<text class="lb-num" x="512" y="349" font-size="13">#15</text>
+<rect class="lb-sk" x="550" y="340" width="92" height="9" rx="4.5"/>
+<rect class="lb-pill lb-pill--merged" x="714" y="331" width="94" height="26" rx="13" style="--r:-9s"/>
+<text class="lb-s lb-s0" x="761" y="348.14" font-size="11.5" text-anchor="middle" style="--r:-9s">todo</text>
+<text class="lb-s lb-s1" x="761" y="348.14" font-size="11.5" text-anchor="middle" style="--r:-9s">claimed</text>
+<text class="lb-s lb-s2" x="761" y="348.14" font-size="11.5" text-anchor="middle" style="--r:-9s">in review</text>
+<text class="lb-s lb-s3 lb-s--on" x="761" y="348.14" font-size="11.5" text-anchor="middle" style="--r:-9s">merged</text>
+<text class="lb-cap" x="655" y="442" font-size="11.5" text-anchor="middle">one issue · one branch · one pull request</text>
+<path class="fl-a" d="M328,116 C410,116 410,176 488,176" marker-end="url(#lw-t)"/><path class="fl-d" d="M328,116 C410,116 410,176 488,176" pathLength="100"/>
+<path class="fl-a" d="M328,270 C410,270 410,232 488,232" marker-end="url(#lw-t)"/><path class="fl-d" d="M328,270 C410,270 410,232 488,232" pathLength="100" style="animation-delay:1.05s"/>
+<path class="fl-a" d="M328,424 C410,424 410,344 488,344" marker-end="url(#lw-t)"/><path class="fl-d" d="M328,424 C410,424 410,344 488,344" pathLength="100" style="animation-delay:2.10s"/>
+<text class="lb-lab" x="336" y="103" font-size="11.5">claims an issue</text>
+<text class="lb-lab" x="336" y="292" font-size="11.5">works in the open</text>
+<text class="lb-lab" x="336" y="445" font-size="11.5">lands by pull request</text>
+<path class="fl-a fl-a--o" d="M818,270 H1046" marker-end="url(#lw-o)"/><path class="fl-d fl-d--o" d="M818,270 H1046" pathLength="100" style="animation-delay:1.6s"/>
+<text class="lb-lab lb-lab--o" x="932" y="258" font-size="11.5" text-anchor="middle">merges</text>
+<text class="lb-cap" x="932" y="291" font-size="11" text-anchor="middle">the check decides</text>
+<line class="lb-main" x1="1060" y1="92" x2="1060" y2="452"/>
+<text class="lb-title" x="1060" y="72" font-size="20" text-anchor="middle">main</text>
+<g class="lb-commit lb-c0">
+<circle class="lb-cdot" cx="1060" cy="118" r="10"/>
+<path class="lb-check" d="M1055,118 l3.5,3.5 l6.5,-6.5"/>
+</g>
+<text class="lb-close lb-l0" x="1080" y="122" font-size="11">closes #15</text>
+<g class="lb-commit lb-c1">
+<circle class="lb-cdot" cx="1060" cy="194" r="10"/>
+<path class="lb-check" d="M1055,194 l3.5,3.5 l6.5,-6.5"/>
+</g>
+<text class="lb-close lb-l1" x="1080" y="198" font-size="11">closes #14</text>
+<g class="lb-commit lb-c2">
+<circle class="lb-cdot" cx="1060" cy="270" r="10"/>
+<path class="lb-check" d="M1055,270 l3.5,3.5 l6.5,-6.5"/>
+</g>
+<text class="lb-close lb-l2" x="1080" y="274" font-size="11">closes #13</text>
+<g class="lb-commit lb-c3">
+<circle class="lb-cdot" cx="1060" cy="346" r="10"/>
+<path class="lb-check" d="M1055,346 l3.5,3.5 l6.5,-6.5"/>
+</g>
+<text class="lb-close lb-l3" x="1080" y="350" font-size="11">closes #12</text>
+<text class="lb-cap" x="1060" y="486" font-size="11.5" text-anchor="middle">every merge closes an issue</text>
 </svg>
-<svg class="flow__art flow__art--tall" viewBox="0 0 360 626" aria-hidden="true" focusable="false">
-<defs><marker id="fh-tp" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="fh-op" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><filter id="fshp" x="-12%" y="-8%" width="124%" height="126%"><feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#0A423D" flood-opacity=".16"/></filter></defs>
-<rect class="b-win" x="8" y="8" width="344" height="296" rx="14" filter="url(#fshp)"/>
-<path class="b-bar" d="M8,40 V22 A14,14 0 0 1 22,8 H338 A14,14 0 0 1 352,22 V40 Z"/>
-<line class="b-rule" x1="8" y1="40.5" x2="352" y2="40.5"/>
-<circle class="b-dot" cx="25" cy="24" r="4"/>
-<circle class="b-dot" cx="38" cy="24" r="4"/>
-<circle class="b-dot" cx="51" cy="24" r="4"/>
-<rect class="b-url" x="104" y="15" width="152" height="18" rx="9"/>
-<g class="b-lock"><rect x="146" y="21.2" width="7" height="6" rx="1.3"/><path d="M147.6,21.4 v-1.8 a1.9,1.9 0 0 1 3.8,0 v1.8"/></g>
-<circle class="b-av" cx="26" cy="126" r="6"/>
-<rect class="b-sk" x="40" y="121" width="200" height="6" rx="3"/>
-<rect class="b-sk" x="40" y="133" width="258" height="6" rx="3"/>
-<rect class="b-card" x="40" y="150" width="266" height="86" rx="8.6"/>
-<line class="b-ax" x1="49.3" y1="227" x2="123.8" y2="227"/>
-<circle class="b-jit" cx="72.2" cy="191.2" r="1.2"/>
-<circle class="b-jit" cx="64" cy="198.6" r="1.2"/>
-<circle class="b-jit" cx="63.7" cy="184.6" r="1.2"/>
-<circle class="b-jit" cx="70.2" cy="191.6" r="1.2"/>
-<circle class="b-jit" cx="63.9" cy="203.7" r="1.2"/>
-<circle class="b-jit" cx="64.2" cy="196" r="1.2"/>
-<circle class="b-jit" cx="64.7" cy="177.5" r="1.2"/>
-<circle class="b-jit" cx="66.1" cy="201.9" r="1.2"/>
-<circle class="b-jit" cx="71.2" cy="177.3" r="1.2"/>
-<line class="b-wh" x1="70.1" y1="218.2" x2="70.1" y2="169.1"/>
-<line class="b-wh" x1="65.3" y1="218.2" x2="74.8" y2="218.2"/>
-<line class="b-wh" x1="65.3" y1="169.1" x2="74.8" y2="169.1"/>
-<rect class="b-box" x="61.6" y="187.4" width="17" height="13.1"/>
-<line class="b-med" x1="61.6" y1="193.6" x2="78.6" y2="193.6"/>
-<circle class="b-jit" cx="101.6" cy="172.3" r="1.2"/>
-<circle class="b-jit" cx="108.2" cy="190.6" r="1.2"/>
-<circle class="b-jit" cx="100" cy="187.5" r="1.2"/>
-<circle class="b-jit" cx="100.3" cy="190.6" r="1.2"/>
-<circle class="b-jit" cx="107.6" cy="191.4" r="1.2"/>
-<circle class="b-jit" cx="105" cy="192.8" r="1.2"/>
-<circle class="b-jit" cx="101.2" cy="198.5" r="1.2"/>
-<circle class="b-jit" cx="96.7" cy="184.8" r="1.2"/>
-<circle class="b-jit" cx="98.8" cy="186.9" r="1.2"/>
-<line class="b-wh" x1="103" y1="211.4" x2="103" y2="165.4"/>
-<line class="b-wh" x1="98.3" y1="211.4" x2="107.8" y2="211.4"/>
-<line class="b-wh" x1="98.3" y1="165.4" x2="107.8" y2="165.4"/>
-<rect class="b-box" x="94.5" y="181.6" width="17" height="12"/>
-<line class="b-med" x1="94.5" y1="187.9" x2="111.5" y2="187.9"/>
-<line class="b-ax" x1="135.8" y1="227" x2="210.2" y2="227"/>
-<circle class="b-jit" cx="153.9" cy="188.8" r="1.2"/>
-<circle class="b-jit" cx="157.7" cy="184.9" r="1.2"/>
-<circle class="b-jit" cx="160.7" cy="186.1" r="1.2"/>
-<circle class="b-jit" cx="159.4" cy="194.1" r="1.2"/>
-<circle class="b-jit" cx="156.9" cy="192.6" r="1.2"/>
-<circle class="b-jit" cx="161.9" cy="202.2" r="1.2"/>
-<circle class="b-jit" cx="163.4" cy="191.4" r="1.2"/>
-<circle class="b-jit" cx="151.1" cy="186" r="1.2"/>
-<circle class="b-jit" cx="151.5" cy="181.1" r="1.2"/>
-<line class="b-wh" x1="156.5" y1="210" x2="156.5" y2="174.5"/>
-<line class="b-wh" x1="151.7" y1="210" x2="161.3" y2="210"/>
-<line class="b-wh" x1="151.7" y1="174.5" x2="161.3" y2="174.5"/>
-<rect class="b-box" x="148" y="187.5" width="17" height="10.3"/>
-<line class="b-med" x1="148" y1="192.2" x2="165" y2="192.2"/>
-<circle class="b-jit" cx="189.3" cy="201.5" r="1.2"/>
-<circle class="b-jit" cx="193.3" cy="207" r="1.2"/>
-<circle class="b-jit" cx="190.5" cy="197.3" r="1.2"/>
-<circle class="b-jit" cx="192.3" cy="199.6" r="1.2"/>
-<circle class="b-jit" cx="190.8" cy="188.6" r="1.2"/>
-<circle class="b-jit" cx="194.3" cy="185.4" r="1.2"/>
-<circle class="b-jit" cx="195.8" cy="189.3" r="1.2"/>
-<circle class="b-jit" cx="183.2" cy="181" r="1.2"/>
-<circle class="b-jit" cx="192.4" cy="196.2" r="1.2"/>
-<line class="b-wh" x1="189.5" y1="213.7" x2="189.5" y2="175.4"/>
-<line class="b-wh" x1="184.7" y1="213.7" x2="194.3" y2="213.7"/>
-<line class="b-wh" x1="184.7" y1="175.4" x2="194.3" y2="175.4"/>
-<rect class="b-box" x="181" y="188.5" width="17" height="12.1"/>
-<line class="b-med" x1="181" y1="194.1" x2="198" y2="194.1"/>
-<line class="b-ax" x1="222.2" y1="227" x2="296.7" y2="227"/>
-<circle class="b-jit" cx="247.6" cy="167.7" r="1.2"/>
-<circle class="b-jit" cx="239.9" cy="162.7" r="1.2"/>
-<circle class="b-jit" cx="236.1" cy="174.5" r="1.2"/>
-<circle class="b-jit" cx="242.4" cy="192.9" r="1.2"/>
-<circle class="b-jit" cx="236.7" cy="186.5" r="1.2"/>
-<circle class="b-jit" cx="246.8" cy="188.1" r="1.2"/>
-<circle class="b-jit" cx="241.4" cy="188.9" r="1.2"/>
-<circle class="b-jit" cx="248.3" cy="189.1" r="1.2"/>
-<circle class="b-jit" cx="243.7" cy="192.7" r="1.2"/>
-<line class="b-wh" x1="243" y1="205.6" x2="243" y2="162.7"/>
-<line class="b-wh" x1="238.2" y1="205.6" x2="247.7" y2="205.6"/>
-<line class="b-wh" x1="238.2" y1="162.7" x2="247.7" y2="162.7"/>
-<rect class="b-box" x="234.5" y="178.2" width="17" height="11.8"/>
-<line class="b-med" x1="234.5" y1="184.3" x2="251.5" y2="184.3"/>
-<circle class="b-jit" cx="281.4" cy="202.9" r="1.2"/>
-<circle class="b-jit" cx="272.8" cy="205.6" r="1.2"/>
-<circle class="b-jit" cx="274.7" cy="182.3" r="1.2"/>
-<circle class="b-jit" cx="282.5" cy="186.7" r="1.2"/>
-<circle class="b-jit" cx="271" cy="212.4" r="1.2"/>
-<circle class="b-jit" cx="272.1" cy="201.1" r="1.2"/>
-<circle class="b-jit" cx="275.7" cy="203.9" r="1.2"/>
-<circle class="b-jit" cx="268.9" cy="192.4" r="1.2"/>
-<circle class="b-jit" cx="274.8" cy="194.6" r="1.2"/>
-<line class="b-wh" x1="275.9" y1="217.8" x2="275.9" y2="181.9"/>
-<line class="b-wh" x1="271.2" y1="217.8" x2="280.7" y2="217.8"/>
-<line class="b-wh" x1="271.2" y1="181.9" x2="280.7" y2="181.9"/>
-<rect class="b-box" x="267.4" y="192.5" width="17" height="11.8"/>
-<line class="b-med" x1="267.4" y1="198.2" x2="284.4" y2="198.2"/>
-<rect class="b-comp" x="20" y="250" width="320" height="42" rx="14"/>
-<line class="b-caret" x1="36" y1="263" x2="36" y2="279"/>
-<circle class="b-send" cx="318" cy="271" r="11"/><path class="b-send-a" d="M318,276 V266 M314,270 L318,266 L322,270"/>
-<g transform="translate(1 378) scale(0.72)"><path class="n-cloud" vector-effect="non-scaling-stroke" d="M44,104 A28,28 0 0 1 40,50 A34,34 0 0 1 100,26 A40,40 0 0 1 170,44 A31,31 0 0 1 178,104 Z"/></g>
-<rect class="n-rack" x="232" y="382" width="88" height="124" rx="8"/>
-<rect class="n-foot" x="242" y="506" width="14" height="5" rx="1.5"/>
-<rect class="n-foot" x="296" y="506" width="14" height="5" rx="1.5"/>
-<rect class="n-unit" x="242" y="394" width="68" height="20" rx="4"/>
-<circle class="n-led" cx="251" cy="404" r="2.6"/>
-<circle class="n-led n-led--blink" cx="259" cy="404" r="2.6"/>
-<line class="n-vent" x1="281.4" y1="400" x2="281.4" y2="408"/>
-<line class="n-vent" x1="288.3" y1="400" x2="288.3" y2="408"/>
-<line class="n-vent" x1="295.1" y1="400" x2="295.1" y2="408"/>
-<line class="n-vent" x1="302" y1="400" x2="302" y2="408"/>
-<rect class="n-unit n-unit--me" x="242" y="421" width="68" height="20" rx="4"/>
-<circle class="n-led n-led--on" cx="251" cy="431" r="2.6"/>
-<circle class="n-led" cx="259" cy="431" r="2.6"/>
-<path class="n-prompt" d="M270,427 l4,4 l-4,4 M277,435 h6"/>
-<line class="n-vent" x1="281.4" y1="427" x2="281.4" y2="435"/>
-<line class="n-vent" x1="288.3" y1="427" x2="288.3" y2="435"/>
-<line class="n-vent" x1="295.1" y1="427" x2="295.1" y2="435"/>
-<line class="n-vent" x1="302" y1="427" x2="302" y2="435"/>
-<rect class="n-unit" x="242" y="448" width="68" height="20" rx="4"/>
-<circle class="n-led" cx="251" cy="458" r="2.6"/>
-<circle class="n-led" cx="259" cy="458" r="2.6"/>
-<line class="n-vent" x1="281.4" y1="454" x2="281.4" y2="462"/>
-<line class="n-vent" x1="288.3" y1="454" x2="288.3" y2="462"/>
-<line class="n-vent" x1="295.1" y1="454" x2="295.1" y2="462"/>
-<line class="n-vent" x1="302" y1="454" x2="302" y2="462"/>
-<rect class="n-unit" x="242" y="475" width="68" height="20" rx="4"/>
-<circle class="n-led" cx="251" cy="485" r="2.6"/>
-<circle class="n-led n-led--blink" cx="259" cy="485" r="2.6"/>
-<line class="n-vent" x1="281.4" y1="481" x2="281.4" y2="489"/>
-<line class="n-vent" x1="288.3" y1="481" x2="288.3" y2="489"/>
-<line class="n-vent" x1="295.1" y1="481" x2="295.1" y2="489"/>
-<line class="n-vent" x1="302" y1="481" x2="302" y2="489"/>
-<rect class="n-brk" x="22" y="514" width="12" height="62" rx="3"/>
-<rect class="n-board" x="34" y="522" width="100" height="46" rx="8"/>
-<rect class="n-gold" x="56" y="568" width="4.4" height="6" rx="1"/>
-<rect class="n-gold" x="63" y="568" width="4.4" height="6" rx="1"/>
-<rect class="n-gold" x="70" y="568" width="4.4" height="6" rx="1"/>
-<rect class="n-gold" x="77" y="568" width="4.4" height="6" rx="1"/>
-<rect class="n-gold" x="84" y="568" width="4.4" height="6" rx="1"/>
-<rect class="n-gold" x="98" y="568" width="4.4" height="6" rx="1"/>
-<rect class="n-gold" x="105" y="568" width="4.4" height="6" rx="1"/>
-<circle class="n-fan" cx="64" cy="545" r="14"/><g class="n-spin"><path class="n-blade" d="M68.2,545 Q72.9,548.3 70.7,554.4 M66.6,548.3 Q67,554 60.9,556.1 M63.1,549.1 Q58.8,553 53.4,549.4 M60.2,546.8 Q54.5,545.9 53.9,539.5 M60.2,543.2 Q57.4,538.2 62,533.7 M63.1,540.9 Q65.2,535.6 71.6,536.4 M66.6,541.7 Q72.1,540 75.5,545.6"/><circle class="n-hub" cx="64" cy="545" r="4.2"/></g>
-<circle class="n-fan" cx="104" cy="545" r="14"/><g class="n-spin"><path class="n-blade" d="M108.2,545 Q112.9,548.3 110.7,554.4 M106.6,548.3 Q107,554 100.9,556.1 M103.1,549.1 Q98.8,553 93.4,549.4 M100.2,546.8 Q94.5,545.9 93.9,539.5 M100.2,543.2 Q97.4,538.2 102,533.7 M103.1,540.9 Q105.2,535.6 111.6,536.4 M106.6,541.7 Q112.1,540 115.5,545.6"/><circle class="n-hub" cx="104" cy="545" r="4.2"/></g>
-<path class="fl-a " d="M180,309 C180,346 76,340 76,384" marker-end="url(#fh-tp)"/><path class="fl-d " d="M180,309 C180,346 76,340 76,384" pathLength="100"/>
-<path class="fl-a " d="M180,309 C180,346 276,338 276,374" marker-end="url(#fh-tp)"/><path class="fl-d " d="M180,309 C180,346 276,338 276,374" pathLength="100"/>
-<path class="fl-a " d="M226,434 H151" marker-end="url(#fh-tp)"/><path class="fl-d fl-d--late" d="M226,434 H151" pathLength="100"/>
-<path class="fl-a fl-a--o" d="M226,490 C186,490 186,545 142,545" marker-end="url(#fh-op)"/><path class="fl-d fl-d--o fl-d--late" d="M226,490 C186,490 186,545 142,545" pathLength="100"/>
-<circle class="fl-port" cx="180" cy="305" r="4"/>
+<svg class="lab__art lab__art--tall" viewBox="0 0 360 760" aria-hidden="true" focusable="false">
+<defs><marker id="lt-t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="lt-o" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><filter id="lt-sh" x="-12%" y="-12%" width="124%" height="136%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#0A423D" flood-opacity=".12"/></filter></defs>
+<rect class="lb-tile" x="14" y="16" width="100" height="96" rx="12" filter="url(#lt-sh)"/>
+<g transform="translate(46 26) scale(0.75)"><rect class="lb-ib" x="2" y="7" width="44" height="34" rx="5"/><path class="lb-ibar" d="M2,16 V12 a5,5 0 0 1 5,-5 H41 a5,5 0 0 1 5,5 V16 Z"/><circle class="lb-idot" cx="8" cy="11.5" r="1.5"/><circle class="lb-idot" cx="13" cy="11.5" r="1.5"/><circle class="lb-idot" cx="18" cy="11.5" r="1.5"/><circle class="lb-iav" cx="10" cy="25" r="3"/><rect class="lb-isk" x="16" y="22.5" width="22" height="3" rx="1.5"/><rect class="lb-isk" x="16" y="28.5" width="16" height="3" rx="1.5"/><rect class="lb-ibub" x="22" y="33.5" width="20" height="5" rx="2.5"/></g>
+<text class="lb-title" x="64" y="82" font-size="11.5" text-anchor="middle">A student</text>
+<text class="lb-sub" x="64" y="98" font-size="8.5" text-anchor="middle">in claude.ai</text>
+<circle class="fl-port" cx="64" cy="112" r="4"/>
+<rect class="lb-tile" x="130" y="16" width="100" height="96" rx="12" filter="url(#lt-sh)"/>
+<g transform="translate(162 26) scale(0.75)"><g transform="translate(1 12) scale(0.25)"><path class="lb-icloud" vector-effect="non-scaling-stroke" d="M44,104 A28,28 0 0 1 40,50 A34,34 0 0 1 100,26 A40,40 0 0 1 170,44 A31,31 0 0 1 178,104 Z"/></g><path class="lb-iprompt" d="M17,26 l4,4 l-4,4 M24,34 h7"/></g>
+<text class="lb-title" x="180" y="82" font-size="11.5" text-anchor="middle">A cloud session</text>
+<text class="lb-sub" x="180" y="98" font-size="8.5" text-anchor="middle">nobody watching</text>
+<circle class="fl-port" cx="180" cy="112" r="4"/>
+<rect class="lb-tile" x="246" y="16" width="100" height="96" rx="12" filter="url(#lt-sh)"/>
+<g transform="translate(278 26) scale(0.75)"><circle class="lb-ihead" cx="24" cy="15" r="7"/><path class="lb-ibody" d="M8,44 a16,15 0 0 1 32,0 Z"/></g>
+<text class="lb-title" x="296" y="82" font-size="11.5" text-anchor="middle">A teammate</text>
+<text class="lb-sub" x="296" y="98" font-size="8.5" text-anchor="middle">their own account</text>
+<circle class="fl-port" cx="296" cy="112" r="4"/>
+<path class="fl-a" d="M64,112 C64,205 90,205 90,296" marker-end="url(#lt-t)"/><path class="fl-d" d="M64,112 C64,205 90,205 90,296" pathLength="100"/>
+<path class="fl-a" d="M180,112 V296" marker-end="url(#lt-t)"/><path class="fl-d" d="M180,112 V296" pathLength="100" style="animation-delay:1.05s"/>
+<path class="fl-a" d="M296,112 C296,205 270,205 270,296" marker-end="url(#lt-t)"/><path class="fl-d" d="M296,112 C296,205 270,205 270,296" pathLength="100" style="animation-delay:2.1s"/>
+<rect class="lb-chip" x="29.5" y="157" width="95" height="17" rx="8.5"/>
+<text class="lb-lab" x="77" y="171" font-size="9" text-anchor="middle">claims an issue</text>
+<rect class="lb-chip" x="127.1" y="193" width="105.8" height="17" rx="8.5"/>
+<text class="lb-lab" x="180" y="207" font-size="9" text-anchor="middle">works in the open</text>
+<rect class="lb-chip" x="219.3" y="229" width="127.4" height="17" rx="8.5"/>
+<text class="lb-lab" x="283" y="243" font-size="9" text-anchor="middle">lands by pull request</text>
+<rect class="lb-repo" x="14" y="300" width="332" height="304" rx="14" filter="url(#lt-sh)"/>
+<path class="lb-head" d="M14,340 V314 a14,14 0 0 1 14,-14 H332 a14,14 0 0 1 14,14 V340 Z"/>
+<line class="lb-rule" x1="14" y1="340.5" x2="346" y2="340.5"/>
+<circle class="lb-rdot" cx="34" cy="320" r="4"/>
+<text class="lb-title" x="46" y="326" font-size="15">your repository</text>
+<text class="lb-k" x="332" y="325" font-size="9" text-anchor="end">STATE.md</text>
+<text class="lb-k" x="30" y="366" font-size="8.5" letter-spacing="1.3">THE BOARD</text>
+<text class="lb-num" x="30" y="401" font-size="11">#12</text>
+<rect class="lb-sk" x="62" y="392" width="88" height="7" rx="3.5"/>
+<rect class="lb-pill lb-pill--todo" x="248" y="384" width="84" height="24" rx="12" style="--r:-0s"/>
+<text class="lb-s lb-s0 lb-s--on" x="290" y="399.6" font-size="10" text-anchor="middle" style="--r:-0s">todo</text>
+<text class="lb-s lb-s1" x="290" y="399.6" font-size="10" text-anchor="middle" style="--r:-0s">claimed</text>
+<text class="lb-s lb-s2" x="290" y="399.6" font-size="10" text-anchor="middle" style="--r:-0s">in review</text>
+<text class="lb-s lb-s3" x="290" y="399.6" font-size="10" text-anchor="middle" style="--r:-0s">merged</text>
+<line class="lb-rule" x1="30" y1="420.5" x2="330" y2="420.5"/>
+<text class="lb-num" x="30" y="449" font-size="11">#13</text>
+<rect class="lb-sk" x="62" y="440" width="70" height="7" rx="3.5"/>
+<rect class="lb-pill lb-pill--claimed" x="248" y="432" width="84" height="24" rx="12" style="--r:-3s"/>
+<text class="lb-s lb-s0" x="290" y="447.6" font-size="10" text-anchor="middle" style="--r:-3s">todo</text>
+<text class="lb-s lb-s1 lb-s--on" x="290" y="447.6" font-size="10" text-anchor="middle" style="--r:-3s">claimed</text>
+<text class="lb-s lb-s2" x="290" y="447.6" font-size="10" text-anchor="middle" style="--r:-3s">in review</text>
+<text class="lb-s lb-s3" x="290" y="447.6" font-size="10" text-anchor="middle" style="--r:-3s">merged</text>
+<line class="lb-rule" x1="30" y1="468.5" x2="330" y2="468.5"/>
+<text class="lb-num" x="30" y="497" font-size="11">#14</text>
+<rect class="lb-sk" x="62" y="488" width="98" height="7" rx="3.5"/>
+<rect class="lb-pill lb-pill--in-review" x="248" y="480" width="84" height="24" rx="12" style="--r:-6s"/>
+<text class="lb-s lb-s0" x="290" y="495.6" font-size="10" text-anchor="middle" style="--r:-6s">todo</text>
+<text class="lb-s lb-s1" x="290" y="495.6" font-size="10" text-anchor="middle" style="--r:-6s">claimed</text>
+<text class="lb-s lb-s2 lb-s--on" x="290" y="495.6" font-size="10" text-anchor="middle" style="--r:-6s">in review</text>
+<text class="lb-s lb-s3" x="290" y="495.6" font-size="10" text-anchor="middle" style="--r:-6s">merged</text>
+<line class="lb-rule" x1="30" y1="516.5" x2="330" y2="516.5"/>
+<text class="lb-num" x="30" y="545" font-size="11">#15</text>
+<rect class="lb-sk" x="62" y="536" width="76" height="7" rx="3.5"/>
+<rect class="lb-pill lb-pill--merged" x="248" y="528" width="84" height="24" rx="12" style="--r:-9s"/>
+<text class="lb-s lb-s0" x="290" y="543.6" font-size="10" text-anchor="middle" style="--r:-9s">todo</text>
+<text class="lb-s lb-s1" x="290" y="543.6" font-size="10" text-anchor="middle" style="--r:-9s">claimed</text>
+<text class="lb-s lb-s2" x="290" y="543.6" font-size="10" text-anchor="middle" style="--r:-9s">in review</text>
+<text class="lb-s lb-s3 lb-s--on" x="290" y="543.6" font-size="10" text-anchor="middle" style="--r:-9s">merged</text>
+<text class="lb-cap" x="180" y="588" font-size="9" text-anchor="middle">one issue · one branch · one pull request</text>
+<path class="fl-a fl-a--o" d="M180,608 V684" marker-end="url(#lt-o)"/><path class="fl-d fl-d--o" d="M180,608 V684" pathLength="100" style="animation-delay:1.6s"/>
+<text class="lb-lab lb-lab--o" x="192" y="640" font-size="9">merges</text>
+<text class="lb-cap" x="192" y="654" font-size="8.5">the check decides</text>
+<line class="lb-main" x1="24" y1="694" x2="336" y2="694"/>
+<text class="lb-title" x="336" y="684" font-size="13" text-anchor="end">main</text>
+<g class="lb-commit lb-c0">
+<circle class="lb-cdot" cx="60" cy="694" r="8"/>
+<path class="lb-check" d="M56,694 l2.8,2.8 l5.2,-5.2"/>
+</g>
+<text class="lb-close lb-l0" x="60" y="720" font-size="8.5" text-anchor="middle">closes #15</text>
+<g class="lb-commit lb-c1">
+<circle class="lb-cdot" cx="140" cy="694" r="8"/>
+<path class="lb-check" d="M136,694 l2.8,2.8 l5.2,-5.2"/>
+</g>
+<text class="lb-close lb-l1" x="140" y="720" font-size="8.5" text-anchor="middle">closes #14</text>
+<g class="lb-commit lb-c2">
+<circle class="lb-cdot" cx="220" cy="694" r="8"/>
+<path class="lb-check" d="M216,694 l2.8,2.8 l5.2,-5.2"/>
+</g>
+<text class="lb-close lb-l2" x="220" y="720" font-size="8.5" text-anchor="middle">closes #13</text>
+<g class="lb-commit lb-c3">
+<circle class="lb-cdot" cx="300" cy="694" r="8"/>
+<path class="lb-check" d="M296,694 l2.8,2.8 l5.2,-5.2"/>
+</g>
+<text class="lb-close lb-l3" x="300" y="720" font-size="8.5" text-anchor="middle">closes #12</text>
+<text class="lb-cap" x="180" y="746" font-size="9" text-anchor="middle">every merge closes an issue</text>
 </svg>
-<span class="flow__t t-url t-s" style="--x:248;--y:46.5;--fs:12.5;--px:159;--py:24.6;--pfs:10">claude.ai</span>
-<p class="flow__t t-ask t-e" style="--x:530;--y:116;--fs:15.5;--px:338;--py:74;--pfs:13.5">Is the female pelvis <br class="ph">relatively wider?</p>
-<span class="flow__t t-arrow t-e" style="--x:706;--y:172;--fs:13.5;--px:118;--py:334;--pfs:11">a chat</span>
-<span class="flow__t t-node" style="--x:1044;--y:92;--fs:21;--px:77;--py:428;--pfs:14">Claude servers</span>
-<span class="flow__t t-arrow t-ps" style="--x:772;--y:336;--fs:13.5;--px:234;--py:334;--pfs:11">a Code session</span>
-<span class="flow__t t-node" style="--x:1044;--y:474;--fs:21;--px:276;--py:526;--pfs:15">Wayne State grid</span>
-<span class="flow__t t-me" style="--x:1044;--y:499;--fs:13;--px:276;--py:546;--pfs:10.5">your Claude Code worker</span>
-<span class="flow__t t-arrow t-s t-pm" style="--x:1058;--y:196;--fs:13.5;--px:188;--py:421;--pfs:10.5">the model</span>
-<span class="flow__t t-arrow t-o t-pe t-lift" style="--x:872;--y:426;--fs:13.5;--px:177;--py:499;--pfs:10.5">the heavy lifting</span>
-<span class="flow__t t-node" style="--x:688;--y:476;--fs:21;--px:84;--py:598;--pfs:14">H200 GPU</span>
-</div>
+<!-- lab:end -->
 </figure>
-<!-- flow:end -->
 
-  <p class="bh__need"><span class="bh__need-k">You need:</span>
-    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Category/877/AccessID-and-accounts" target="_blank" rel="noopener">a Wayne State AccessID</a><span class="bh__sep" aria-hidden="true">·</span>
-    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20199/How-to-apply-for-a-Grid-account" target="_blank" rel="noopener">a grid account</a><span class="bh__sep" aria-hidden="true">·</span>
-    <a href="https://services.wayne.edu/TDClient/277/Portal/KB/Article/20314/Wayne-State-VPN-and-the-Global-Protect-client" target="_blank" rel="noopener">GlobalProtect VPN</a><span class="bh__sep" aria-hidden="true">·</span>
-    <a href="https://claude.ai/upgrade" target="_blank" rel="noopener">Claude Pro or Max</a>
-    <a class="bh__how" href="/onboarding/">How it works <span aria-hidden="true">→</span></a></p>
+  <p class="lab-cta reveal" style="--d:5">
+    <a class="btn btn--solid" href="/symphony/">Symphony, for your repository <span aria-hidden="true">&rarr;</span></a>
+    <a class="btn btn--ghost" href="/beethoven/">Beethoven, for students on the grid <span aria-hidden="true">&rarr;</span></a>
+  </p>
 </section>
 
-<section class="bh-sec" id="access" aria-labelledby="access-title">
-  <h2 class="bh__h2" id="access-title">Ask for access</h2>
-<!-- build:request-form services=/beethoven/services.json fine=short -->
+<section class="bh-sec lab-sec lab-sec--graph" id="coordination" aria-labelledby="coordination-title">
+  <span class="eyebrow reveal">The experiment</span>
+  <h2 class="bh__h2 reveal" style="--d:1" id="coordination-title">Two features. One code base. <em>At the same time.</em></h2>
+  <div class="lab-prose reveal" style="--d:2">
+    <p><a href="https://cooperbench.com" target="_blank" rel="noopener">CooperBench</a>, an academic benchmark, measured what happens when two AI agents build two features of the same code base at once: they collide, repeat each other's work and undo it, a cost its authors named the curse of coordination.</p>
+    <p>The lab moves that experiment into a real coding environment. A claim is a branch that GitHub refuses to a second claimant. The board is a file every session reads. Nothing lands but a pull request that passes the same check. <a href="https://github.com/OpenSpineConsortium/coordbench" target="_blank" rel="noopener">coordbench</a> runs the benchmark's own tasks through this protocol and through others, so the cost can be measured and, we hope, removed.</p>
+  </div>
+<figure class="lab lab--graph reveal" style="--d:3" aria-label="A git graph: two branches, claude/12 for feature A and claude/13 for feature B, leave main at the same time, grow their commits side by side and merge back one after the other, with no conflict and nothing done twice">
+<!-- graph:start -->
+<svg class="lab__art lab__art--wide" viewBox="0 0 1000 240" aria-hidden="true" focusable="false">
+<defs><marker id="gw-t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="gw-o" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker></defs>
+<line class="lg-main" x1="40" y1="120" x2="960" y2="120"/>
+<path class="lg-br lg-br--a lg-d-a" pathLength="100" d="M180,120 C215,120 215,60 250,60 H640 C675,60 675,120 710,120"/>
+<path class="lg-br lg-br--b lg-d-b" pathLength="100" d="M260,120 C295,120 295,180 330,180 H760 C795,180 795,120 830,120"/>
+<text class="lg-t" x="40" y="108" font-size="12">main</text>
+<text class="lg-t lg-t--a lg-f-la" x="250" y="44" font-size="12">claude/12 · feature A</text>
+<text class="lg-t lg-t--b lg-f-lb" x="330" y="206" font-size="12">claude/13 · feature B</text>
+<circle class="lg-c lg-p-base" cx="120" cy="120" r="8"/>
+<circle class="lg-c lg-c--a lg-p-a1" cx="320" cy="60" r="8"/>
+<circle class="lg-c lg-c--a lg-p-a2" cx="440" cy="60" r="8"/>
+<circle class="lg-c lg-c--a lg-p-a3" cx="560" cy="60" r="8"/>
+<circle class="lg-c lg-c--b lg-p-b1" cx="400" cy="180" r="8"/>
+<circle class="lg-c lg-c--b lg-p-b2" cx="520" cy="180" r="8"/>
+<circle class="lg-c lg-c--b lg-p-b3" cx="640" cy="180" r="8"/>
+<circle class="lg-c lg-c--b lg-p-b4" cx="720" cy="180" r="8"/>
+<circle class="lg-c lg-c--ring lg-c--a lg-p-ma" cx="710" cy="120" r="9"/>
+<circle class="lg-c lg-c--ring lg-c--b lg-p-mb" cx="830" cy="120" r="9"/>
+<circle class="lg-c lg-p-last" cx="920" cy="120" r="8"/>
+<text class="lg-done lg-f-done" x="960" y="44" font-size="17" text-anchor="end">two features, no conflict, nothing done twice</text>
+</svg>
+<svg class="lab__art lab__art--tall" viewBox="0 0 360 540" aria-hidden="true" focusable="false">
+<defs><marker id="gt-t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker><marker id="gt-o" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="fl-h fl-h--o" d="M1.5,1.5 L8.5,5 L1.5,8.5"/></marker></defs>
+<line class="lg-main" x1="180" y1="30" x2="180" y2="510"/>
+<path class="lg-br lg-br--a lg-d-a" pathLength="100" d="M180,100 C180,122 110,122 110,144 V356 C110,378 180,378 180,400"/>
+<path class="lg-br lg-br--b lg-d-b" pathLength="100" d="M180,140 C180,162 250,162 250,184 V416 C250,438 180,438 180,460"/>
+<text class="lg-t" x="192" y="50" font-size="10">main</text>
+<text class="lg-t lg-t--a lg-f-la" x="98" y="262" font-size="10" text-anchor="end">feature A</text>
+<text class="lg-t lg-t--a lg-f-la" x="98" y="276" font-size="10" text-anchor="end">claude/12</text>
+<text class="lg-t lg-t--b lg-f-lb" x="262" y="302" font-size="10">feature B</text>
+<text class="lg-t lg-t--b lg-f-lb" x="262" y="316" font-size="10">claude/13</text>
+<circle class="lg-c lg-p-base" cx="180" cy="70" r="7"/>
+<circle class="lg-c lg-c--a lg-p-a1" cx="110" cy="180" r="7"/>
+<circle class="lg-c lg-c--a lg-p-a2" cx="110" cy="240" r="7"/>
+<circle class="lg-c lg-c--a lg-p-a3" cx="110" cy="300" r="7"/>
+<circle class="lg-c lg-c--b lg-p-b1" cx="250" cy="220" r="7"/>
+<circle class="lg-c lg-c--b lg-p-b2" cx="250" cy="280" r="7"/>
+<circle class="lg-c lg-c--b lg-p-b3" cx="250" cy="340" r="7"/>
+<circle class="lg-c lg-c--b lg-p-b4" cx="250" cy="390" r="7"/>
+<circle class="lg-c lg-c--ring lg-c--a lg-p-ma" cx="180" cy="400" r="8"/>
+<circle class="lg-c lg-c--ring lg-c--b lg-p-mb" cx="180" cy="460" r="8"/>
+<circle class="lg-c lg-p-last" cx="180" cy="496" r="7"/>
+<text class="lg-done lg-f-done" x="180" y="532" font-size="13" text-anchor="middle">two features, no conflict, nothing done twice</text>
+</svg>
+<!-- graph:end -->
+</figure>
 </section>
 
-<section class="bh-sec bh-sec--get" id="install" aria-labelledby="install-title">
-  <h2 class="bh__h2" id="install-title">Install</h2>
-  <!-- The one card comes from BROWSERS in tools/build_site.py: Chrome, the private listing, by invitation.
-       Nothing is downloaded from this site. -->
-<!-- build:browsers -->
-  <p class="bh__fine">Beethoven works on one computer per approved account. It runs Claude Code and is not an Anthropic product. <a href="/beethoven/terms.html">Agreement</a></p>
+<section class="bh-sec lab-sec" id="aims" aria-labelledby="aims-title">
+  <span class="eyebrow reveal">Three aims</span>
+  <h2 class="bh__h2 reveal" style="--d:1" id="aims-title">One lab, three questions.</h2>
+  <ol class="lab-aims">
+    <li class="reveal" style="--d:2">
+      <b>Aim 1</b>
+      <h3>How LLM-assisted software engineering behaves at scale</h3>
+      <p>What coordination costs, how sessions fail each other and what a protocol buys. Every repository that keeps sharing on contributes counts and durations of the protocol at work, never code, text or names.</p>
+      <a href="/symphony/">Symphony <span aria-hidden="true">&rarr;</span></a>
+    </li>
+    <li class="reveal" style="--d:3">
+      <b>Aim 2</b>
+      <h3>Medical students in computational research</h3>
+      <p>A browser extension gives a student their own Claude Code worker on the university cluster, with their own sign-in and their own flat-rate Claude plan: no API key, no credits, nothing to install on the cluster.</p>
+      <a href="/beethoven/">Beethoven <span aria-hidden="true">&rarr;</span></a>
+    </li>
+    <li class="reveal" style="--d:4">
+      <b>Aim 3</b>
+      <h3>Spine AI and medical data science</h3>
+      <p>The lab's own research, openly licensed spine imaging datasets and benchmarks, built with the first two aims: more done per person, organized by the board, and the most made of a flat-rate plan.</p>
+      <a href="/research/">Research <span aria-hidden="true">&rarr;</span></a>
+    </li>
+  </ol>
 </section>
 
-<section class="bh-sec bh-sec--symphony" id="symphony" aria-labelledby="symphony-title">
-  <h2 class="bh__h2" id="symphony-title">Symphony</h2>
-  <p class="bh__lede">A team of Claude Code teammates on your GitHub repository. Install the App, press Create, merge the pull request; from then on every Claude Code session that opens the repository claims an issue, works it in the open and lands it by pull request.</p>
-  <p class="bh__need"><a class="bh__how bh__how--alone" href="/symphony/">See Symphony <span aria-hidden="true">&rarr;</span></a></p>
+<section class="bh-sec lab-sec" id="how" aria-labelledby="how-title">
+  <span class="eyebrow reveal">How the lab works</span>
+  <h2 class="bh__h2 reveal" style="--d:1" id="how-title">One click and a few sign-ins.</h2>
+  <ol class="obd-steps lab-steps reveal" style="--d:2">
+    <li>
+      <h3>Give a repository the protocol</h3>
+      <p>Install the Symphony Apps and press Create: a pull request brings the board, the claim protocol and the checks, and merges itself unless you ask to review it first. The template behind it stays private; the process is public, and a repository that already has code gets the protocol alone.</p>
+    </li>
+    <li>
+      <h3>Open a cloud session</h3>
+      <p>In claude.ai, on the web or in the app, open a Claude Code session on the repository. That is the lab: no server of ours, nothing installed. The session reads the board, claims an issue and works.</p>
+    </li>
+    <li>
+      <h3>Add teammates</h3>
+      <p>A second person on their own account, or a second session, opens the same repository and takes the next issue. The board keeps them apart, the check keeps them honest, and the pull requests are the record.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="bh-sec bh-sec--get lab-sec lab-sec--products" id="products" aria-labelledby="products-title">
+  <span class="eyebrow reveal">What we make</span>
+  <h2 class="bh__h2 reveal" style="--d:1" id="products-title">The products.</h2>
+  <div class="lab-products">
+    <article class="lab-product reveal" style="--d:2">
+      <img class="lab-product__mark" src="/symphony/symphonyboard-logo.png" alt="" width="48" height="48">
+      <h3><a href="/symphony/">Symphony</a></h3>
+      <p>A team of Claude Code teammates on your GitHub repository: two Apps, a Chrome extension and a claim protocol any number of sessions work by, on their own accounts.</p>
+      <a class="lab-product__go" href="/symphony/">See Symphony <span aria-hidden="true">&rarr;</span></a>
+    </article>
+    <article class="lab-product reveal" style="--d:3">
+      <svg class="lab-product__mark lab-product__mark--svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <rect class="pm-rack" x="9" y="6" width="30" height="36" rx="4"/>
+        <rect class="pm-unit" x="13" y="10" width="22" height="7" rx="1.5"/>
+        <rect class="pm-unit pm-unit--me" x="13" y="20.5" width="22" height="7" rx="1.5"/>
+        <rect class="pm-unit" x="13" y="31" width="22" height="7" rx="1.5"/>
+        <circle class="pm-led" cx="16.5" cy="13.5" r="1.1"/><circle class="pm-led pm-led--on" cx="16.5" cy="24" r="1.1"/><circle class="pm-led" cx="16.5" cy="34.5" r="1.1"/>
+      </svg>
+      <h3><a href="/beethoven/">Beethoven</a></h3>
+      <p>Your university grid, from claude.ai: a browser extension that starts a Claude Code worker on the cluster under your own sign-in, with an H200 when the work needs one.</p>
+      <a class="lab-product__go" href="/beethoven/">See Beethoven <span aria-hidden="true">&rarr;</span></a>
+    </article>
+    <article class="lab-product reveal" style="--d:4">
+      <svg class="lab-product__mark lab-product__mark--svg" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+        <g class="pm-spine" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5"/>
+          <line x1="8.5" y1="6.2" x2="19.5" y2="6.2"/>
+          <line x1="8.5" y1="12.5" x2="19.5" y2="12.5"/>
+          <line x1="8.5" y1="18.8" x2="19.5" y2="18.8"/>
+        </g>
+      </svg>
+      <h3><a href="/research/">Research and data</a></h3>
+      <p>Openly licensed spine and pelvis imaging datasets, reproducible benchmarks, an atlas and tutorials, built in the lab by the people and the sessions above.</p>
+      <a class="lab-product__go" href="/data/">See the data <span aria-hidden="true">&rarr;</span></a>
+    </article>
+  </div>
+  <p class="bh__fine">Symphony and Beethoven run Claude Code and are not Anthropic or GitHub products. "Claude" and "Claude Code" are Anthropic's marks and "GitHub" is GitHub's, used here to say what they work with.</p>
 </section>
 
 <script>
 /* Old links into the one-page site (openspineconsortium.com/#datasets and the like) land here; send
-   each to the page that now holds that section. Only on the site root, never on /beethoven/. */
+   each to the page that now holds that section. Only on the site root. */
 (function () {
   if (location.pathname !== '/' && location.pathname !== '/index.html') return;
   var moved = {

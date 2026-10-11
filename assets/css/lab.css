@@ -1,0 +1,404 @@
+/* ============================================================
+   lab.css: the home page (/), the lab. It rides on hero.css for
+   the headline, the sections and the flow arrows, and on
+   style.css for the reveal, the buttons and the eyebrow; here the
+   two figures (the lab diagram and the git graph, drawn by
+   tools/home_figures.py), the aims, the steps and the product
+   cards. Animation is CSS only and holds still under
+   prefers-reduced-motion, showing every piece in its final state.
+   ============================================================ */
+
+/* ---------- headline ---------- */
+.lab-eyebrow { display: block; margin-bottom: 16px; }
+.lab-hero .bh__lede { max-width: 40em; }
+.lab-cta { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 34px auto 0; }
+.lab-cta .btn { font-size: 0.94rem; }
+
+/* ---------- the two figures: one SVG for wide screens, one for phones and tablets ----------
+   The wide drawing is 1200 units across; under 900px its 11-unit labels fall below 8px. */
+.lab { margin: 40px auto 0; max-width: 1140px; }
+.lab__art { display: block; width: 100%; height: auto; overflow: visible; }
+.lab__art--tall { display: none; max-width: 400px; margin: 0 auto; }
+.lab--graph { margin-top: 44px; max-width: 980px; }
+.lab__art { font-family: var(--font-mono); }   /* inherited by every text; the titles override it */
+.lab text { fill: var(--ink-soft); }
+
+/* ---------- the lab diagram ---------- */
+.lb-tile, .lb-repo { fill: var(--paper-card); stroke: var(--line); stroke-width: 1; }
+.lb-head { fill: var(--paper-deep); }
+.lb-rule { stroke: var(--line-soft); stroke-width: 1; }
+.lb-rdot { fill: var(--teal); }
+.lb-title { font-family: var(--font-display); font-weight: 500; fill: var(--ink); letter-spacing: -0.01em; }
+.lb-sub, .lb-lab { fill: var(--ink-soft); }
+.lb-lab--o { fill: var(--ochre); }
+.lb-k { fill: var(--ink-faint); }
+.lb-num { fill: var(--ink); }
+.lb-cap, .lb-close { fill: var(--ink-faint); }
+.lb-sk { fill: rgba(26, 28, 24, 0.09); }
+.lb-chip { fill: var(--paper); }
+.lb-main { stroke: var(--line); stroke-width: 2; }
+
+/* the icons */
+.lb-ib { fill: var(--paper); stroke: var(--ink); stroke-width: 1.3; }
+.lb-ibar { fill: var(--paper-deep); }
+.lb-idot { fill: rgba(26, 28, 24, 0.22); }
+.lb-iav { fill: var(--teal); }
+.lb-isk { fill: rgba(26, 28, 24, 0.12); }
+.lb-ibub { fill: rgba(14, 95, 88, 0.22); }
+.lb-icloud { fill: var(--paper); stroke: var(--ink); stroke-width: 1.3; }
+.lb-iprompt { fill: none; stroke: var(--teal); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.lb-ihead { fill: rgba(14, 95, 88, 0.12); stroke: var(--ink); stroke-width: 1.3; }
+.lb-ibody { fill: rgba(14, 95, 88, 0.12); stroke: var(--ink); stroke-width: 1.3; }
+
+/* the board: a pill per row whose fill cycles through the four states while the word on it
+   changes; --r (on the pill and its words) sets each row three seconds behind the one above */
+.lb-pill {
+  fill: var(--paper-deep);
+  stroke: transparent;
+  stroke-width: 1;
+  animation: lb-pill 12s linear var(--r, 0s) infinite;
+}
+.lb-pill--claimed { fill: rgba(14, 95, 88, 0.12); stroke: var(--teal); }
+.lb-pill--in-review { fill: rgba(188, 107, 38, 0.14); stroke: var(--ochre); }
+.lb-pill--merged { fill: var(--ink); stroke: var(--ink); }
+.lb-s { opacity: 0; animation: 12s linear var(--r, 0s) infinite; }
+.lb-s--on { opacity: 1; }
+.lb-s0 { fill: var(--ink-soft); animation-name: lb-s0; }
+.lb-s1 { fill: var(--teal); animation-name: lb-s1; }
+.lb-s2 { fill: var(--ochre); animation-name: lb-s2; }
+.lb-s3 { fill: var(--paper-card); animation-name: lb-s3; }
+
+/* main: a commit pops in as each row reaches merged */
+.lb-commit { transform-box: fill-box; transform-origin: center; animation: 12s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.lb-c0 { animation-name: lb-c0; }
+.lb-c1 { animation-name: lb-c1; }
+.lb-c2 { animation-name: lb-c2; }
+.lb-c3 { animation-name: lb-c3; }
+.lb-cdot { fill: var(--teal); }
+.lb-check { fill: none; stroke: var(--paper-card); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.lb-close { animation: 12s linear infinite; }
+.lb-l0 { animation-name: lb-l0; }
+.lb-l1 { animation-name: lb-l1; }
+.lb-l2 { animation-name: lb-l2; }
+.lb-l3 { animation-name: lb-l3; }
+
+/* ---------- the git graph ---------- */
+.lg-main { stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; opacity: 0.85; }
+.lg-br {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 100;      /* pathLength 100: the branch draws itself from the fork */
+  stroke-dashoffset: 0;
+  animation: 10s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.lg-br--a { stroke: var(--teal); }
+.lg-br--b { stroke: var(--ochre); }
+.lg-c { fill: var(--ink); transform-box: fill-box; transform-origin: center; animation: 10s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.lg-c--a { fill: var(--teal); }
+.lg-c--b { fill: var(--ochre); }
+.lg-c--ring { fill: var(--paper-card); stroke-width: 3; }
+.lg-c--ring.lg-c--a { stroke: var(--teal); }
+.lg-c--ring.lg-c--b { stroke: var(--ochre); }
+.lg-t { fill: var(--ink-soft); animation: 10s linear infinite; }
+.lg-t--a { fill: var(--teal); }
+.lg-t--b { fill: var(--ochre); }
+.lg-done { font-family: var(--font-display); font-weight: 500; fill: var(--ink); letter-spacing: -0.01em; animation: 10s linear infinite; }
+
+/* ---------- sections ---------- */
+.lab-sec { max-width: 1000px; }
+.lab-sec .eyebrow { display: block; margin-bottom: 14px; }
+.lab-sec .bh__h2 { margin-bottom: 26px; }
+.lab-sec .bh__h2 em { color: var(--teal); font-style: italic; }
+.lab-sec--graph { padding-top: 112px; }
+.lab-prose { max-width: 46em; margin: 0 auto; text-align: left; color: var(--ink-soft); font-size: 1.04rem; }
+.lab-prose p + p { margin-top: 14px; }
+.lab-prose a { color: var(--teal); border-bottom: 1px solid rgba(14, 95, 88, 0.25); transition: border-color 0.2s var(--ease); }
+.lab-prose a:hover { border-color: var(--teal); }
+
+/* the three aims */
+.lab-aims {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  text-align: left;
+  margin-top: 10px;
+}
+.lab-aims li {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 26px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.lab-aims li:hover { border-color: var(--teal); transform: translateY(-3px); box-shadow: 0 24px 44px -32px rgba(10, 66, 61, 0.5); }
+.lab-aims b { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; color: var(--ochre); font-weight: 500; text-transform: uppercase; }
+.lab-aims h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.32rem; line-height: 1.22; letter-spacing: -0.01em; }
+.lab-aims p { font-size: 0.95rem; color: var(--ink-soft); flex: 1; }
+.lab-aims a { align-self: flex-start; font-size: 0.92rem; font-weight: 500; color: var(--teal); }
+.lab-aims a:hover { color: var(--teal-deep); }
+
+/* the steps: the onboarding list (hero.css), centred */
+.bh-sec .lab-steps { text-align: left; max-width: 760px; margin: 0 auto; }
+.lab-steps p { color: var(--ink-soft); }
+
+/* the products */
+.lab-products {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+.lab-product {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 26px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.lab-product:hover { border-color: var(--teal); transform: translateY(-3px); box-shadow: 0 24px 44px -32px rgba(10, 66, 61, 0.5); }
+.lab-product__mark { width: 48px; height: 48px; border-radius: 12px; display: block; }
+.lab-product__mark--svg { color: var(--teal); background: var(--paper-deep); padding: 6px; box-sizing: border-box; }
+.pm-rack { fill: var(--paper-card); stroke: var(--ink); stroke-width: 1.4; }
+.pm-unit { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+.pm-unit--me { fill: rgba(14, 95, 88, 0.12); stroke: var(--teal); }
+.pm-led { fill: var(--ink-faint); }
+.pm-led--on { fill: var(--teal); animation: bh-led 1.8s ease-in-out infinite; }
+.lab-product h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; line-height: 1.15; letter-spacing: -0.015em; }
+.lab-product h3 a { color: var(--ink); }
+.lab-product h3 a:hover { color: var(--teal); }
+.lab-product p { font-size: 0.95rem; color: var(--ink-soft); flex: 1; }
+.lab-product__go { align-self: flex-start; font-size: 0.92rem; font-weight: 500; color: var(--teal); }
+.lab-product__go:hover { color: var(--teal-deep); }
+.lab-sec--products .bh__fine { margin-top: 56px; }
+
+/* ---------- tablets and phones ---------- */
+@media (max-width: 960px) {
+  .lab-aims, .lab-products { grid-template-columns: 1fr; max-width: 560px; margin-left: auto; margin-right: auto; }
+}
+@media (max-width: 900px) {
+  .lab__art--wide { display: none; }
+  .lab__art--tall { display: block; max-width: 440px; }
+}
+@media (max-width: 720px) {
+  .lab { margin-top: 30px; }
+  .lab-cta { margin-top: 28px; }
+  .lab-cta .btn { width: 100%; text-align: center; }
+  .lab-sec--graph { padding-top: 84px; }
+  .lab-prose { font-size: 1rem; }
+}
+
+/* ---------- reduced motion: every piece in its final state ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .lb-pill, .lb-s, .lb-commit, .lb-close, .lg-br, .lg-c, .lg-t, .lg-done, .pm-led--on { animation: none; }
+  .lab-aims li, .lab-aims li:hover, .lab-product, .lab-product:hover { transition: none; transform: none; }
+}
+
+/* generated by tools/home_figures.py: start */
+@keyframes lb-pill {
+  0%, 24.99% { fill: var(--paper-deep); stroke: transparent; }
+  25%, 49.99% { fill: rgba(14, 95, 88, 0.12); stroke: var(--teal); }
+  50%, 74.99% { fill: rgba(188, 107, 38, 0.14); stroke: var(--ochre); }
+  75%, 99.99% { fill: var(--ink); stroke: var(--ink); }
+}
+@keyframes lb-s0 {
+  25%, 100% { opacity: 0; }
+  0%, 24.99% { opacity: 1; }
+}
+@keyframes lb-s1 {
+  0%, 24.99% { opacity: 0; }
+  50%, 100% { opacity: 0; }
+  25%, 49.99% { opacity: 1; }
+}
+@keyframes lb-s2 {
+  0%, 49.99% { opacity: 0; }
+  75%, 100% { opacity: 0; }
+  50%, 74.99% { opacity: 1; }
+}
+@keyframes lb-s3 {
+  0%, 74.99% { opacity: 0; }
+  75%, 99.99% { opacity: 1; }
+}
+@keyframes lb-c0 {
+  0%, 1.67% { transform: scale(0); opacity: 0; }
+  3.75% { transform: scale(1.22); opacity: 1; }
+  5.83% { transform: scale(1); }
+  96% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lb-l0 {
+  0%, 1.67% { opacity: 0; }
+  5.83% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lb-c1 {
+  0%, 26.67% { transform: scale(0); opacity: 0; }
+  28.75% { transform: scale(1.22); opacity: 1; }
+  30.83% { transform: scale(1); }
+  96% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lb-l1 {
+  0%, 26.67% { opacity: 0; }
+  30.83% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lb-c2 {
+  0%, 51.67% { transform: scale(0); opacity: 0; }
+  53.75% { transform: scale(1.22); opacity: 1; }
+  55.83% { transform: scale(1); }
+  96% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lb-l2 {
+  0%, 51.67% { opacity: 0; }
+  55.83% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lb-c3 {
+  0%, 76.67% { transform: scale(0); opacity: 0; }
+  78.75% { transform: scale(1.22); opacity: 1; }
+  80.83% { transform: scale(1); }
+  96% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lb-l3 {
+  0%, 76.67% { opacity: 0; }
+  80.83% { opacity: 1; }
+  96% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lg-p-base {
+  0%, 3% { transform: scale(0); opacity: 0; }
+  5.5% { transform: scale(1.22); opacity: 1; }
+  7.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-a1 {
+  0%, 22% { transform: scale(0); opacity: 0; }
+  24.5% { transform: scale(1.22); opacity: 1; }
+  26.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-a2 {
+  0%, 34% { transform: scale(0); opacity: 0; }
+  36.5% { transform: scale(1.22); opacity: 1; }
+  38.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-a3 {
+  0%, 46% { transform: scale(0); opacity: 0; }
+  48.5% { transform: scale(1.22); opacity: 1; }
+  50.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-b1 {
+  0%, 28% { transform: scale(0); opacity: 0; }
+  30.5% { transform: scale(1.22); opacity: 1; }
+  32.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-b2 {
+  0%, 40% { transform: scale(0); opacity: 0; }
+  42.5% { transform: scale(1.22); opacity: 1; }
+  44.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-b3 {
+  0%, 52% { transform: scale(0); opacity: 0; }
+  54.5% { transform: scale(1.22); opacity: 1; }
+  56.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-b4 {
+  0%, 64% { transform: scale(0); opacity: 0; }
+  66.5% { transform: scale(1.22); opacity: 1; }
+  68.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-ma {
+  0%, 70% { transform: scale(0); opacity: 0; }
+  72.5% { transform: scale(1.22); opacity: 1; }
+  74.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-mb {
+  0%, 78% { transform: scale(0); opacity: 0; }
+  80.5% { transform: scale(1.22); opacity: 1; }
+  82.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-p-last {
+  0%, 84% { transform: scale(0); opacity: 0; }
+  86.5% { transform: scale(1.22); opacity: 1; }
+  88.5% { transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes lg-f-la {
+  0%, 8% { opacity: 0; }
+  12% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lg-f-lb {
+  0%, 13% { opacity: 0; }
+  17% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lg-f-done {
+  0%, 88% { opacity: 0; }
+  92% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lg-d-a {
+  0%, 8% { stroke-dashoffset: 100; opacity: 1; }
+  20% { stroke-dashoffset: 0; }
+  95% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes lg-d-b {
+  0%, 13% { stroke-dashoffset: 100; opacity: 1; }
+  25% { stroke-dashoffset: 0; }
+  95% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+.lg-p-base { animation-name: lg-p-base; }
+.lg-p-a1 { animation-name: lg-p-a1; }
+.lg-p-a2 { animation-name: lg-p-a2; }
+.lg-p-a3 { animation-name: lg-p-a3; }
+.lg-p-b1 { animation-name: lg-p-b1; }
+.lg-p-b2 { animation-name: lg-p-b2; }
+.lg-p-b3 { animation-name: lg-p-b3; }
+.lg-p-b4 { animation-name: lg-p-b4; }
+.lg-p-ma { animation-name: lg-p-ma; }
+.lg-p-mb { animation-name: lg-p-mb; }
+.lg-p-last { animation-name: lg-p-last; }
+.lg-f-la { animation-name: lg-f-la; }
+.lg-f-lb { animation-name: lg-f-lb; }
+.lg-f-done { animation-name: lg-f-done; }
+.lg-d-a { animation-name: lg-d-a; }
+.lg-d-b { animation-name: lg-d-b; }
+/* generated by tools/home_figures.py: end */

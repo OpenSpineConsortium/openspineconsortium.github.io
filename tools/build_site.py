@@ -37,7 +37,8 @@ WHAT IT DOES, IN ORDER
  4. Stamps every local stylesheet, script, image, video and document reference in every page
     with ?v=<yyyymmddHHMM> (UTC), and keeps content hashes on ES-module import edges, because a new
     stamp on gallery.js does not make a browser refetch the ./viewer.js it imports.
- 5. Writes sitemap.xml (canonical addresses only, so / is left to /beethoven/) and robots.txt.
+ 5. Writes sitemap.xml (canonical addresses only; a page whose canonical is elsewhere is left
+    out) and robots.txt.
  6. Writes the moved pages in REDIRECTS (old address -> new address): a two-line page that sends
     the visitor on, with the query and the fragment (an installed build opens
     /ashley/request.html?access_id=...), and a meta refresh for a browser without scripts. It
@@ -309,8 +310,19 @@ SPINE_MRI = [
 ]
 
 SITE = [
-    node("Home", "/", strip="Beethoven", strip_path="/beethoven/", footer="Beethoven", children=[
-        node("Product", "/beethoven/", crumb="Beethoven", same_as="/"),
+    # the lab: what the consortium makes and why, with the products behind it; no children, so no
+    # strip and no footer column of its own (the brand links it everywhere)
+    node("Home", "/"),
+    # Symphony, the GitHub Apps and their Chrome extension: one page in the Beethoven page's style, with
+    # the promo film in the diagram's place, and the extension's privacy statement rendered from its
+    # repository (TEXTS: symphony-privacy), at the address the Chrome Web Store listing names, and
+    # the two GitHub Apps' statement from the front door's (TEXTS: symphony-apps-privacy)
+    node("Symphony", "/symphony/", overview="Overview", children=[
+        node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
+        node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
+    ]),
+    # Beethoven, the browser extension for the grid: the product page (the flow diagram) and its texts
+    node("Beethoven", "/beethoven/", overview="Product", children=[
         node("Agreement", "/beethoven/terms.html"),
         node("Privacy", "/beethoven/privacy.html"),
         node("Support", "/beethoven/support.html"),
@@ -327,14 +339,6 @@ SITE = [
         # asking to read named folders of the lab's storage: the lab lead sends its address, so it is
         # generated and checked but not in the navigation or the sitemap either
         node("Lab storage", "/beethoven/storage.html", hidden=True),
-    ]),
-    # Symphony, the GitHub App and its Chrome extension: one page in the Beethoven home's style, with
-    # the promo film in the diagram's place, and the extension's privacy statement rendered from its
-    # repository (TEXTS: symphony-privacy), at the address the Chrome Web Store listing names, and
-    # the two GitHub Apps' statement from the front door's (TEXTS: symphony-apps-privacy)
-    node("Symphony", "/symphony/", overview="Overview", children=[
-        node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
-        node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
     ]),
     node("Onboarding", "/onboarding/", overview="Start here", children=[
         node("By hand", "/onboarding/by-hand.html", optional=True),
@@ -539,6 +543,8 @@ def footer():
             for g in c["children"]:
                 if g.get("in_footer") and listed(g):
                     items.append((g["label"], g["path"]))
+        if not items:
+            continue
         lis = "".join(f'<li><a href="{p}">{esc(l)}</a></li>' for l, p in items)
         cols.append(f'    <div class="footer__col"><h2><a href="{head_path}">{esc(title)}</a></h2><ul>{lis}</ul></div>')
     return fill(template("footer.html"), {"directory": "\n".join(cols)}, "footer.html")
@@ -785,7 +791,7 @@ def vscode_install_html(version):
             + f'  <p class="browser__note">{esc(note)}</p>\n</article>\n</div>')
 
 
-# The home page's copy of the form is the short one: same fields, same script, same CV box and the same
+# The Beethoven page's copy of the form is the short one: same fields, same script, same CV box and the same
 # consent line (which links the privacy statement), without the three plain hints under the fields (the
 # placeholders and the script's own messages carry them) and without the "What this page sends"
 # paragraph, which request.html keeps. The Google account's one line, <small class="why">, stays in
@@ -1511,7 +1517,7 @@ def main():
                         print(f"{'wrote' if changed else 'same '}  {rel}  (hidden; not in sitemap.xml)")
                     continue
                 if f'<link rel="canonical" href="{esc(ORIGIN + n["path"])}">' not in page:
-                    # a sitemap lists canonical addresses only: / declares /beethoven/ as its canonical
+                    # a sitemap lists canonical addresses only
                     if not a.quiet:
                         print(f"{'wrote' if changed else 'same '}  {rel}  (canonical elsewhere; not in sitemap.xml)")
                     continue
