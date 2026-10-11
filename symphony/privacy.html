@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610111927">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610111927">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610112034">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610112034">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -71,10 +71,10 @@
     <h1 id="symphony-privacy-statement">Symphony privacy statement</h1>
 
     <p class="note"><strong>Save a copy.</strong> Press Ctrl+S (&#8984;S on a Mac) to keep this page as a file, or print it
-    to PDF. This is version 2 of the statement for Symphony for Chrome; the extension
+    to PDF. This is version 3 of the statement for Symphony for Chrome; the extension
     ships the same text.</p>
 
-    <p>Version 2, 2026-10-11. This text is also at https://openspineconsortium.com/symphony/privacy.html.</p>
+    <p>Version 3, 2026-10-11. This text is also at https://openspineconsortium.com/symphony/privacy.html.</p>
 <p>Who makes Symphony: Gregory Schwing, trading as OpenSpineConsortium (“the developer”). Questions: the contact on https://openspineconsortium.com/symphony/.</p>
 <p>Symphony, the browser extension, adds two buttons and two banners to pages on github.com so that installing the two Symphony GitHub Apps on a repository is one click away each. This statement is short because the extension does little: it collects nothing, sends nothing, and keeps two short-lived notes on your own device.</p>
 <h2 id="what-the-extension-collects">What the extension collects</h2>
@@ -93,6 +93,7 @@
 <ul>
 <li>On GitHub’s new-repository page, the repository name typed into the form, at the moment you press Symphony’s own button.</li>
 <li>On a repository’s main page, the meta tags GitHub prints that name the repository owner’s login and account id, and the repository’s id and its owner/name. The two ids and the owner/name go into the address of the GitHub install page the button opens, where the account and the repository are then preselected and the owner/name travels as the link’s <code>state</code>, which GitHub hands back to the form, and nowhere else.</li>
+<li>On a repository’s main page, the topic links in its About sidebar, read only to see whether the topic <code>symphony</code> is among them, which the adoption sets on a repository: when it is, the header’s button reads <strong>Ready for Symphony</strong> and opens the repository’s board instead of an install page. Which topics a repository has is read for nothing else, and nothing of it is kept.</li>
 <li>On the front door’s form page, the page the Setup URL of both Apps sends you to, the page’s own query string: whether GitHub put an installation’s number in it (<code>installation_id</code>), which says an install just happened, and whether it holds the repository (<code>state</code>).</li>
 <li>On an installation’s settings page, nothing but its address, which says it is one.</li>
 </ul>
@@ -107,7 +108,7 @@
 <h2 id="children">Children</h2>
 <p>Symphony is for people who administer GitHub repositories. It is not directed at children.</p>
 <h2 id="changes">Changes</h2>
-<p>A new version of this statement ships with the version of the extension it applies to, and the page at https://openspineconsortium.com/symphony/privacy.html is updated with it. Version 2 (extension 1.1.0) added the second note, the second banner, the repository’s tags and the form page’s query string among what is read, and the two cases in which the page is moved; version 1 shipped with extension 1.0.0.</p>
+<p>A new version of this statement ships with the version of the extension it applies to, and the page at https://openspineconsortium.com/symphony/privacy.html is updated with it. Version 3 (extension 1.2.0) added the About sidebar’s topic links among what is read, for the one topic that marks an adopted repository; version 2 (extension 1.1.0) added the second note, the second banner, the repository’s tags and the form page’s query string among what is read, and the two cases in which the page is moved; version 1 shipped with extension 1.0.0.</p>
 <p>Symphony is not a GitHub or Anthropic product. “GitHub” is GitHub’s mark; “Claude” and “Claude Code” are Anthropic’s marks, used here to say what Symphony works with.</p>
 
     <hr>
@@ -166,7 +167,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610111927"></script>
+<script src="/assets/js/main.js?v=202610112034"></script>
 <!-- /site:footer -->
 
 </body>
