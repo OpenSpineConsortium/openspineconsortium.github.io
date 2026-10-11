@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610112319">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610112319">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610112320">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610112320">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -144,12 +144,12 @@
       its one-time key step, where it reads only the page's title and types one line. No page script is registered, and
       the sign-in below uses none.</p>
       <p>No remote code: the daily update check fetches one signed list
-      (<a href="/beethoven/killlist.json?v=202610112319">killlist.json</a>) and checks its signature against a key built into the extension;
+      (<a href="/beethoven/killlist.json?v=202610112320">killlist.json</a>) and checks its signature against a key built into the extension;
       the list can withdraw a version and nothing else. No licence key: the one request to the maintainer that carries
       anything about the person is the approval check, which sends the account name the portal's dashboard showed (never
       the one typed to sign in), the portal's hostname, the product, the version and the installation identifier to the
       maintainer's access service (<code>beethoven-access.openspineconsortium.workers.dev</code>, named in
-      <a href="/beethoven/services.json?v=202610112319">services.json</a>) and is answered yes or no. The bundle is minified for size and not
+      <a href="/beethoven/services.json?v=202610112320">services.json</a>) and is answered yes or no. The bundle is minified for size and not
       obfuscated. Security reports go to the notice address on the <a href="/beethoven/support.html">support page</a>.</p>
     </div>
 
@@ -235,16 +235,19 @@
     encrypts a saved password, derived from what the passkey releases and never written to disk.</p>
 
     <h2 id="distribution">Distribution and installations</h2>
-    <p>Beethoven is published only as a private listing in the Chrome Web Store: the listing opens for the Google accounts
-    in the lab's group of testers, which the maintainer adds one by one after approving a request. There is no public
-    listing, no other store and no download from this site, and the package holds no program besides the extension
-    itself. The access service ties each approved account to one installation, identified by the random installation
-    identifier the extension makes when its agreement is accepted and keeps in its own storage (it is not derived from the
-    device, and a reinstall makes a new one). A check from a second installation of the same account is refused, and the
-    maintainer is told; the maintainer can move the approval or withdraw it. The service keeps the identifier and when it
-    was first and last seen; of refused checks it keeps a count, the time of the last one and the first eight characters
-    of a one-way hash of the refused installation's identifier. This is an access rule the extension and the service keep
-    between them, not copy protection: it makes casual sharing fail, and the agreement makes sharing a breach.</p>
+    <p>Beethoven is published only as a private listing in the Chrome Web Store: the listing opens for the Google
+    accounts in the lab's group of testers, which the maintainer adds one by one after approving a request. There is no
+    public listing, no other store and no download from this site, and the package holds no program besides the
+    extension itself. The access service records each installation that asks about an approved account, identified by
+    the random installation identifier the extension makes when its agreement is accepted and keeps in its own storage
+    (it is not derived from the device, and a reinstall makes a new one). Since 20.0.0 every installation of the
+    student's own is approved at its first check: the service keeps the ten most recently seen per account, each with
+    when it was first and last seen, and tells the maintainer, at most once a day per account, when a new one asks, with
+    a link that withdraws the approval. An installation serves one account: a check from it for another approved account
+    is refused, and of such refusals the service keeps a count, the time of the last one and the first eight characters
+    of a one-way hash of that installation's identifier. This is an access record the extension and the service keep
+    between them, not copy protection: it shows the maintainer an account spread over installations nobody expected, and
+    the agreement makes sharing a breach.</p>
 
     <h2 id="mock">Trying it against the mock portal</h2>
     <p>No live test account can be given: the extension works only against a university cluster, which needs a university
@@ -354,7 +357,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610112319"></script>
+<script src="/assets/js/main.js?v=202610112320"></script>
 <!-- /site:footer -->
 
 </body>
