@@ -209,6 +209,12 @@
 .bh__fine a { color: var(--ink-soft); border-bottom: 1px solid var(--line); }
 .bh__fine a:hover { color: var(--teal); border-color: var(--teal); }
 
+/* ---------- home: Symphony, the other product, in one breath ---------- */
+.bh-sec--symphony { padding-top: 0; padding-bottom: 104px; border-top: 1px solid var(--line); }
+.bh-sec--symphony .bh__h2 { margin-top: 72px; }
+.bh-sec--symphony .bh__need { margin-top: 22px; }
+.bh__need a.bh__how--alone { margin-left: 0; font-size: 1rem; }
+
 /* ---------- home: tablets ----------
    Where the labels' minimum size takes over (a diagram narrower than about 1000px), "the heavy
    lifting" in one line is wider than the gap between the GPU and the rack, so it touched the

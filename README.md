@@ -105,7 +105,8 @@ breadcrumb: no
 | `<!-- build:privacy-title -->`, `<!-- build:privacy-text -->` | the browser edition's privacy statement, rendered from its `PRIVACY.md` with pandoc |
 | `<!-- build:vscode-license-… -->`, `<!-- build:vscode-full-… -->` (`-title`, `-toc`, `-text`) | Beethoven for VS Code's Trial and Full Edition License Agreements, from its repository's `extension/LICENSE.txt` and `LICENSE-FULL.txt` |
 | `<!-- build:vscode-privacy-… -->`, `<!-- build:vscode-third-party-… -->` (`-title`, `-text`) | its `extension/PRIVACY.md` and `extension/THIRD_PARTY_NOTICES.md`, with pandoc |
-| `{{version}}`, `{{vscode_version}}`, `{{license_version}}`, `{{privacy_version}}`, `{{vscode_license_version}}`, `{{vscode_full_version}}`, `{{vscode_privacy_version}}` | the two editions' versions and the texts' version numbers |
+| `<!-- build:symphony-privacy-… -->` (`-title`, `-text`) | Symphony for Chrome's privacy statement, from its repository's `PRIVACY.md`, with pandoc |
+| `{{version}}`, `{{vscode_version}}`, `{{license_version}}`, `{{privacy_version}}`, `{{vscode_license_version}}`, `{{vscode_full_version}}`, `{{vscode_privacy_version}}`, `{{symphony_privacy_version}}` | the two editions' versions and the texts' version numbers |
 
 Rules for bodies:
 
@@ -204,6 +205,13 @@ Beethoven has two editions, and both live under `/beethoven/`:
   `vscode-license-full.txt`, byte-for-byte copies of the two agreements. Its version is
   read from its `extension/package.json`. The other spellings `beethoven/vscode-privacy.html`
   and `beethoven/third_party_notices.html` are redirects in `REDIRECTS`.
+- **Symphony**, `/symphony/` (its own tab): the GitHub App that sets a team of Claude Code
+  teammates up on a repository, and Symphony for Chrome, the extension that puts its install
+  one click away on github.com. The page is in the Beethoven home's style with the promo film
+  (`symphony/symphony-promo.webm`, `.mp4`, `poster.jpg`) in the diagram's place; the
+  extension's privacy statement, `/symphony/privacy.html` (the address its Chrome Web Store
+  listing names), is rendered from its repository's `PRIVACY.md` (`../symphony-extension/`;
+  `SYMPHONY_REPO` overrides) and checked word for word, like the Beethoven texts.
 - **`/beethoven/admin.html`**, the maintainer's approval page, is generated like any page
   but `hidden`: no navigation leads to it, it carries `noindex` and it is not in the
   sitemap. It reads the access service's address from `beethoven/services.json`
