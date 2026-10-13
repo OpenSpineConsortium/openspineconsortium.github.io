@@ -165,7 +165,8 @@ TEXT_COPIES = {
 # store_url: the listing's address, https://chromewebstore.google.com/detail/<item id>, shown as the
 # card's button; None shows the note alone, until the maintainer gives the address.
 BROWSERS = [
-    {"key": "chrome", "name": "Chrome", "store": "Chrome Web Store", "store_url": None},
+    {"key": "chrome", "name": "Chrome", "store": "Chrome Web Store",
+     "store_url": "https://chromewebstore.google.com/detail/beethoven/heoopgbkbkfckhhpbkkcgigohfekjicn"},
 ]
 LISTING_NOTE = ("On the Chrome Web Store, with no invitation needed: install it like any other extension; it starts a "
                 "worker once your account is approved.")
