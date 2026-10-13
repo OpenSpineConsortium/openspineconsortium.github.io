@@ -170,10 +170,11 @@ description: What Beethoven is, what it never does, the permissions it asks for 
     encrypts a saved password, derived from what the passkey releases and never written to disk.</p>
 
     <h2 id="distribution">Distribution and installations</h2>
-    <p>Beethoven is published only as a private listing in the Chrome Web Store: the listing opens for the Google
-    accounts in the lab's group of testers, which the maintainer adds one by one after approving a request. There is no
-    public listing, no other store and no download from this site, and the package holds no program besides the
-    extension itself. The access service records each installation that asks about an approved account, identified by
+    <p>Beethoven is published only on the Chrome Web Store, as a public listing since 20.0.0 (until 19.0.0 a private
+    one that opened for the Google accounts in the lab's group of testers, which the maintainer added one by one after
+    approving a request). Installing it needs no invitation; it starts a worker only for an account the access service approves.
+    There is no other store and no download from this site, and the package holds no program besides the extension
+    itself. The access service records each installation that asks about an approved account, identified by
     the random installation identifier the extension makes when its agreement is accepted and keeps in its own storage
     (it is not derived from the device, and a reinstall makes a new one). Since 20.0.0 every installation of the
     student's own is approved at its first check: the service keeps the ten most recently seen per account, each with
