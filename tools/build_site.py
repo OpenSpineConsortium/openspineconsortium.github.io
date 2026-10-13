@@ -20,7 +20,7 @@ WHAT IT DOES, IN ORDER
             symphony-privacy (Symphony for Chrome), symphony-apps-privacy (the Symphony GitHub
             Apps); -toc only for the agreements
         <!-- build:request-form services=<url> [fine=short] -->   the access form and its script
-        <!-- build:browsers -->                      the one install card: Chrome, the private listing
+        <!-- build:browsers -->                      the one install card: Chrome, the store listing
         <!-- build:vscode-install -->                the Beethoven for VS Code install card
         <!-- build:section-index -->                 on a tab's landing page, the pages one level
                                                      below its children (tutorials, Spine MRI parts)
@@ -49,13 +49,14 @@ WHAT IT DOES, IN ORDER
     absent (outside a person's name and the KEPT identifiers); every file under /ashley/ is either
     a redirect in REDIRECTS or a file in KEPT_FILES with the same bytes as before (installed
     builds read those by address); /beethoven/services.json names every route both editions read;
-    the browser edition is offered only through its private Chrome listing (check_private_listing:
+    the browser edition is offered only through its Chrome Web Store listing (check_private_listing:
     no package of it in the site, no link to one, no other browser named on a page).
     A failed check exits non-zero and says which page and why.
 
-THE BROWSER EDITION IS NOT DOWNLOADED FROM THIS SITE. It is on a private Chrome Web Store listing
-whose testers are the lab's Google Group; the maintainer adds each approved student's Google account
-(the request form asks for it). The site used to copy the packages into beethoven/downloads/; that
+THE BROWSER EDITION IS NOT DOWNLOADED FROM THIS SITE. It is on a Chrome Web Store listing, public
+since Beethoven 20.0.0 (2026-10-13; until 19.0.0 a private one whose testers were the lab's Google
+Group, each approved student's Google account added by the maintainer, which the request form asked
+for); installing it needs no invitation, and the access service's approval decides whether it works. The site used to copy the packages into beethoven/downloads/; that
 step and the folder are gone, and the check fails if either comes back.
 
 /ASHLEY/ is the product's old address. Nothing there is edited by hand: every file is either in
@@ -156,16 +157,18 @@ TEXT_COPIES = {
     "beethoven/vscode-license.txt": "vscode-license",
     "beethoven/vscode-license-full.txt": "vscode-full",
 }
-# The browser edition has one listing: the Chrome Web Store, Private visibility, open only to the Google
-# accounts in the lab's Google Group of testers (the maintainer adds each approved student's Google
-# account, which the request form asks for). No other store, and no package on this site.
-# store_url: None shows no button, only how the invitation comes. Set it to the listing's address only
-# if the card should link it; the listing still opens only for the invited accounts.
+# The browser edition has one listing: the Chrome Web Store, Public visibility since 20.0.0
+# (2026-10-13; from 8.0.0 to 19.0.0 Private, open only to the Google accounts in the lab's Google
+# Group of testers). Installing it needs no invitation (its regions stay the United States, so the
+# pages never say anyone); the access service's approval decides whether it works.
+# No other store, and no package on this site.
+# store_url: the listing's address, https://chromewebstore.google.com/detail/<item id>, shown as the
+# card's button; None shows the note alone, until the maintainer gives the address.
 BROWSERS = [
     {"key": "chrome", "name": "Chrome", "store": "Chrome Web Store", "store_url": None},
 ]
-PRIVATE_LISTING = ("Private listing, by invitation: after approval you receive an invitation at the Google "
-                   "account you gave.")
+LISTING_NOTE = ("On the Chrome Web Store, with no invitation needed: install it like any other extension; it starts a "
+                "worker once your account is approved.")
 # What check_private_listing refuses: a package of the extension in the site or a link to one, and
 # another browser named in a page's text (case matters: "edge cases" is not the browser)
 OLD_DOWNLOADS = "beethoven/downloads"
@@ -758,8 +761,8 @@ def parse_body(p):
 
 
 def browsers_html():
-    """The install card: Chrome, the private listing. There is nothing to download here; with
-    store_url set, the card also links the listing (it opens only for the invited accounts)."""
+    """The install card: Chrome, the store listing. There is nothing to download here; with
+    store_url set, the card also links the listing."""
     cards = []
     card = template("browser-card.html")
     for b in BROWSERS:
@@ -768,9 +771,9 @@ def browsers_html():
             if not b["store_url"].startswith("https://chromewebstore.google.com/"):
                 raise SystemExit(f"BROWSERS: {b['store_url']} is not a Chrome Web Store address")
             action = (f'    <a class="btn btn--solid" href="{esc(b["store_url"])}" target="_blank" rel="noopener">'
-                      "Open the private listing</a>\n")
+                      "Open it on the Chrome Web Store</a>\n")
         cards.append(fill(card, {"key": b["key"], "name": esc(b["name"]), "action": action,
-                                 "note": esc(PRIVATE_LISTING)}, "browser-card.html").rstrip("\n"))
+                                 "note": esc(LISTING_NOTE)}, "browser-card.html").rstrip("\n"))
     one = " browsers--one" if len(cards) == 1 else ""
     return f'<div class="browsers{one}">\n' + "\n".join(cards) + "\n</div>"
 
@@ -794,16 +797,19 @@ def vscode_install_html(version):
 # The Beethoven page's copy of the form is the short one: same fields, same script, same CV box and the same
 # consent line (which links the privacy statement), without the three plain hints under the fields (the
 # placeholders and the script's own messages carry them) and without the "What this page sends"
-# paragraph, which request.html keeps. The Google account's one line, <small class="why">, stays in
-# both: without it nobody knows why a Google account is asked for.
+# paragraph, which request.html keeps. The Google account field and its one line, <small class="why">,
+# left with the public listing (2026-10-13): no invitation goes anywhere, so none is asked for.
 
 
 def request_form(services, fine):
     out = fill(template("request-form.html"), {"services": services}, "request-form.html")
-    for must in ('<small class="why"', 'class="consent"', 'id="cv"', "google_account", "purpose"):
+    for must in ('class="consent"', 'id="cv"', "purpose"):
         if must not in out:
-            raise SystemExit(f"request-form.html: '{must}' is gone (the form's v2 fields, the Google account's "
-                             "line and the consent line are part of the form everywhere it appears)")
+            raise SystemExit(f"request-form.html: '{must}' is gone (the form's v2 fields and the consent line "
+                             "are part of the form everywhere it appears)")
+    if "google_account" in out:
+        raise SystemExit("request-form.html: the Google account is asked for again; the listing is public "
+                         "since 20.0.0 and the service takes a request without one")
     if fine == "short":
         out, n_hints = re.subn(r"\n  <small>.*?</small>", "", out)
         out, n_fine = re.subn(r'\n*<p class="fineprint">.*?</p>', "", out, flags=re.S)
@@ -1178,15 +1184,15 @@ def check_services(problems):
 
 
 def check_private_listing(parsed, rendered, problems, notes):
-    """The browser edition is offered only through its private Chrome listing: no package of it in the
-    site, no link to one, and no other browser named in a page's text. /ashley/ is not checked (its
+    """The browser edition is offered only through its Chrome Web Store listing: no package of it in
+    the site, no link to one, and no other browser named in a page's text. /ashley/ is not checked (its
     kept files are the exact texts people accepted, pinned byte for byte). A page that carries a text
     from TEXTS is checked without that text, and the text at its source instead: the page renders it
     word for word, so a browser named there is changed in that repository's file; that is a note, and
     it stays on every run until the file changes."""
     if (OUT / OLD_DOWNLOADS).exists():
         problems.append(f"{OLD_DOWNLOADS}/: still in the site; the browser edition is offered only through its "
-                        "private Chrome listing (delete the folder)")
+                        "Chrome Web Store listing (delete the folder)")
     for top, dirs, files in os.walk(OUT):
         dirs[:] = [d for d in dirs if d not in (".git", "node_modules")]
         for f in files:
@@ -1194,7 +1200,7 @@ def check_private_listing(parsed, rendered, problems, notes):
                 rel = (Path(top) / f).relative_to(OUT).as_posix()
                 if not rel.startswith(EXCLUDE_DIRS):
                     problems.append(f"{rel}: a package of the browser edition in the site (it is offered only "
-                                    "through its private Chrome listing)")
+                                    "through its Chrome Web Store listing)")
     unstamp = lambda s: re.sub(r"\?v=\d{12}\b", "", s)  # noqa: E731 (the check-only run has another stamp)
     for rel, (text, pg) in parsed.items():
         for tag, attr, ref, line in pg.refs:
@@ -1597,7 +1603,7 @@ def main():
     vs = ", ".join(f"{k} v{t['version']} ({t['date']})" for k, t in TEXTS.items() if "version" in t)
     print(f"\n{len(parsed)} pages checked{where}, {did}; {len(REDIRECTS)} moved pages, {len(KEPT_FILES)} kept files; "
           f"texts: {vs}; Beethoven for VS Code {texts['vscode_version']} from {VSCODE_REPO.name}, "
-          f"Beethoven {texts['version']} from {BEETHOVEN_REPO.name} (private Chrome listing; no package here); "
+          f"Beethoven {texts['version']} from {BEETHOVEN_REPO.name} (Chrome Web Store listing; no package here); "
           f"{len(problems)} problem(s), {len(notes)} note(s)")
     sys.exit(1 if problems else 0)
 

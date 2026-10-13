@@ -97,8 +97,8 @@ breadcrumb: no
 | directive | becomes |
 |---|---|
 | `<!-- build:request-form services=<url> -->` | the access-request form and its script (`tools/templates/request-form.html`); `services` is where it reads the access service's address (default `/beethoven/services.json`; `request.html` passes `services.json`, relative, as it always has, and the build checks that it still does) |
-| `<!-- build:request-form services=<url> fine=short -->` | the same form and the same script without the three plain hints under the fields and without the "What this page sends" paragraph (`request.html` keeps it). The Google account's line (`<small class="why">`), the CV box and the consent line, which links the privacy statement, stay in both. The home page uses it |
-| `<!-- build:browsers -->` | the one install card: Chrome, "Private listing, by invitation: after approval you receive an invitation at the Google account you gave" (`BROWSERS`, `PRIVATE_LISTING`). No button while `store_url` is `None`; set it to the listing's `https://chromewebstore.google.com/...` address only if the card should link it. Nothing is downloaded from this site |
+| `<!-- build:request-form services=<url> fine=short -->` | the same form and the same script without the three plain hints under the fields and without the "What this page sends" paragraph (`request.html` keeps it). The CV box and the consent line, which links the privacy statement, stay in both (the Google account's line, `<small class="why">`, left with the field on 2026-10-13). The home page uses it |
+| `<!-- build:browsers -->` | the one install card: Chrome, "On the Chrome Web Store, with no invitation needed" (`BROWSERS`, `LISTING_NOTE`; the listing is public since Beethoven 20.0.0, 2026-10-13). No button while `store_url` is `None`; set it to the listing's `https://chromewebstore.google.com/...` address only if the card should link it. Nothing is downloaded from this site |
 | `<!-- build:section-index -->` | on a tab's landing page (`/research/`, `/data/`), a list of the pages one level below its children (the six tutorials, the Spine MRI parts), made from `SITE`, so every page is at most two clicks from the header |
 | `<!-- build:vscode-install -->` | the one install card of Beethoven for VS Code: the Marketplace button once `VSCODE_STORE_URL` is set, else "listing pending" |
 | `<!-- build:license-title -->`, `<!-- build:license-toc -->`, `<!-- build:license-text -->` | the browser edition's Trial Edition License Agreement, rendered from its repository's `LICENSE.txt` |
@@ -189,9 +189,9 @@ Beethoven has two editions, and both live under `/beethoven/`:
   reviewers pages beside it. The texts come from its repository (`../beethoven/`, or
   `../ashley-bridge/` until the folder is renamed; `BEETHOVEN_REPO` overrides), and its
   version from that repository's `extension/package.json`. It is for Chrome only and is
-  distributed only through a **private Chrome Web Store listing** whose testers are the
-  lab's Google Group: the maintainer adds each approved student's Google account (the
-  request form asks for it), and the invitation goes there. The site offers no package:
+  distributed only through its **Chrome Web Store listing**, public since 20.0.0
+  (2026-10-13; until 19.0.0 a private one whose testers were the lab's Google Group, the
+  request form asking for each student's Google account). The site offers no package:
   `beethoven/downloads/` is gone, and the build fails if that folder, a package file
   (`beethoven-*.zip`, `.crx`, `.xpi`) or a link to one comes back, or if a page names
   another browser (the names are `OTHER_BROWSERS` in the script; a text rendered from the
@@ -237,7 +237,7 @@ appear on a page only inside a person's name or one of the `KEPT` identifiers (t
 prefixes `ASHLEY1.`/`ASHLEYREV1`, the folders `~/.ashley`, `~/.ashley-local` and
 `/shared/ashley`, the old settings `ashley.*`, the old Marketplace id and service name),
 which stay because renaming them would break an installed copy. `VSCODE_STORE_URL`,
-`BROWSERS` (Chrome only; `store_url` `None`) and `PRIVATE_LISTING` are at the top of
+`BROWSERS` (Chrome only; `store_url` the listing's address, or `None`) and `LISTING_NOTE` are at the top of
 `tools/build_site.py`.
 
 **Retired:** the browser repository's `tools/site_beethoven_build.py` and the VS Code

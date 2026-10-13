@@ -27,9 +27,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610131835">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610131835">
-<link rel="stylesheet" href="/assets/css/hero.css?v=202610131835">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610132017">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610132017">
+<link rel="stylesheet" href="/assets/css/hero.css?v=202610132017">
 </head>
 <body data-shell="page" class="page-home">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -446,10 +446,6 @@
   <label for="email">WSU e-mail</label>
   <input id="email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="ab1234@wayne.edu" required>
 
-  <label for="google">Google account</label>
-  <input id="google" name="google" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="the account you use in Chrome" maxlength="254" required aria-describedby="google-why">
-  <small class="why" id="google-why">Beethoven is on a private Chrome listing. Once you are approved, the invitation goes to this account.</small>
-
   <label for="note">What will you use Beethoven for?</label>
   <textarea id="note" name="note" maxlength="500" required placeholder="The project, the course, or who you are working with."></textarea>
 
@@ -476,7 +472,6 @@
   var send = document.getElementById('send');
   var accessId = document.getElementById('accessId');
   var email = document.getElementById('email');
-  var google = document.getElementById('google');
   var note = document.getElementById('note');
   var cvInput = document.getElementById('cv');
   var drop = document.getElementById('drop');
@@ -646,14 +641,14 @@
   });
 
   function submit() {
-    // v 2 carries the Google account, what it is for and the CV; product "bridge" is the extension's
-    // name on the wire since its first version; the service shows it as Beethoven
-    var body = { v: 2, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), google_account: google.value.trim().toLowerCase(), purpose: note.value.trim(), product: 'bridge' };
+    // v 2 carries what it is for and the CV (and, until 2026-10-13, the Google account the private listing's
+    // invitation went to; the listing is public since 20.0.0, so none is asked); product "bridge" is the
+    // extension's name on the wire since its first version; the service shows it as Beethoven
+    var body = { v: 2, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), purpose: note.value.trim(), product: 'bridge' };
     var bad = null;
     if (!/^[a-z]{2}[0-9]{4}$/.test(body.access_id)) bad = [accessId, 'The AccessID is two letters and four digits, like ab1234.'];
     else if (body.name.length < 2 || body.name.length > 80) bad = [document.getElementById('name'), 'Please give your name (2 to 80 characters).'];
     else if (body.email !== body.access_id + '@wayne.edu') bad = [email, 'The WSU e-mail must be ' + body.access_id + '@wayne.edu.'];
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.google_account) || body.google_account.length > 254) bad = [google, 'Please give the Google account you use in Chrome; the invitation to Beethoven goes there.'];
     else if (body.purpose.length < 2) bad = [note, 'Please say in a sentence what you will use Beethoven for.'];
     else if (body.purpose.length > 500) bad = [note, 'What you will use it for is too long (500 characters at most).'];
     if (bad) { send.disabled = false; return fail(bad[0], bad[1]); }
@@ -666,7 +661,7 @@
       if (r.status === 202) return sayHere(confirmSent(j) ? 'Sent. Check your Wayne State mail for a confirmation link.' : 'Sent. You hear from the lab lead.');
       if (r.status === 200 && j.status === 'approved') {
         if (Array.isArray(j.grants) && j.grants.indexOf('extension') < 0) return sayHere('You are approved as a lab member, not for Beethoven itself. If you need Beethoven, talk to your lab lead.');
-        return sayHere('You are already approved. Beethoven installs from its private Chrome listing, by invitation; if no invitation has reached the Google account you use in Chrome, ask your lab lead.');
+        return sayHere('You are already approved. Install Beethoven from its Chrome Web Store listing, linked from Beethoven\'s page, if you have not already.');
       }
       if (r.status === 200 && j.status === 'denied') return sayHere('This request was not approved. If you think that is a mistake, talk to your lab lead.');
       if (r.status === 413) return sayHere(cv ? 'Not sent: the CV is too large for the service. Choose a smaller file, or leave it out.' : 'Not sent: there is too much text.');
@@ -684,12 +679,12 @@
 
 <section class="bh-sec bh-sec--get" id="install" aria-labelledby="install-title">
   <h2 class="bh__h2" id="install-title">Install</h2>
-  <!-- The one card comes from BROWSERS in tools/build_site.py: Chrome, the private listing, by invitation.
-       Nothing is downloaded from this site. -->
+  <!-- The one card comes from BROWSERS in tools/build_site.py: Chrome, the Chrome Web Store listing, public
+       since 20.0.0. Nothing is downloaded from this site. -->
 <div class="browsers browsers--one">
   <article class="browser browser--private" data-browser="chrome">
     <h3 class="browser__name">Chrome</h3>
-    <p class="browser__note">Private listing, by invitation: after approval you receive an invitation at the Google account you gave.</p>
+    <p class="browser__note">On the Chrome Web Store, with no invitation needed: install it like any other extension; it starts a worker once your account is approved.</p>
   </article>
 </div>
   <p class="bh__fine">One approval covers every computer and Chrome profile of yours. It runs Claude Code and is not an Anthropic product. <a href="/beethoven/terms.html">Agreement</a></p>
@@ -751,7 +746,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610131835"></script>
+<script src="/assets/js/main.js?v=202610132017"></script>
 <!-- /site:footer -->
 
 </body>

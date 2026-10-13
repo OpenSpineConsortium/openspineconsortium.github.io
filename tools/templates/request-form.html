@@ -13,10 +13,6 @@
   <input id="email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="ab1234@wayne.edu" required>
   <small>Your AccessID followed by <code>@wayne.edu</code>.</small>
 
-  <label for="google">Google account</label>
-  <input id="google" name="google" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="the account you use in Chrome" maxlength="254" required aria-describedby="google-why">
-  <small class="why" id="google-why">Beethoven is on a private Chrome listing. Once you are approved, the invitation goes to this account.</small>
-
   <label for="note">What will you use Beethoven for?</label>
   <textarea id="note" name="note" maxlength="500" required placeholder="The project, the course, or who you are working with."></textarea>
   <small>Up to 500 characters.</small>
@@ -36,7 +32,7 @@
   <button id="send" type="submit" class="btn btn--solid">Send the request</button>
 </form>
 
-<p class="fineprint">What this page sends: the fields above (your AccessID, name, WSU e-mail and Google account, what you will use Beethoven for, and the CV if you add one) and the name of the product this page belongs to, to the lab's own service. The lab lead reads them to decide. A CV is deleted twelve months after the decision, or at once if the request is not approved. The service may first e-mail a link to your WSU address to confirm the request is yours. The connection you send from is kept only as a hash for up to two days, to limit repeats. If Beethoven brought you here, the account name your portal shows came along in this page's address and was used only to fill in the first field. <a href="/beethoven/privacy.html">Privacy statement</a> · <a href="/beethoven/support.html">Support</a> · <a href="/beethoven/">About Beethoven</a></p>
+<p class="fineprint">What this page sends: the fields above (your AccessID, name, WSU e-mail, what you will use Beethoven for, and the CV if you add one) and the name of the product this page belongs to, to the lab's own service. The lab lead reads them to decide. A CV is deleted twelve months after the decision, or at once if the request is not approved. The service may first e-mail a link to your WSU address to confirm the request is yours. The connection you send from is kept only as a hash for up to two days, to limit repeats. If Beethoven brought you here, the account name your portal shows came along in this page's address and was used only to fill in the first field. <a href="/beethoven/privacy.html">Privacy statement</a> · <a href="/beethoven/support.html">Support</a> · <a href="/beethoven/">About Beethoven</a></p>
 </div>
 
 <script>
@@ -46,7 +42,6 @@
   var send = document.getElementById('send');
   var accessId = document.getElementById('accessId');
   var email = document.getElementById('email');
-  var google = document.getElementById('google');
   var note = document.getElementById('note');
   var cvInput = document.getElementById('cv');
   var drop = document.getElementById('drop');
@@ -216,14 +211,14 @@
   });
 
   function submit() {
-    // v 2 carries the Google account, what it is for and the CV; product "bridge" is the extension's
-    // name on the wire since its first version; the service shows it as Beethoven
-    var body = { v: 2, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), google_account: google.value.trim().toLowerCase(), purpose: note.value.trim(), product: 'bridge' };
+    // v 2 carries what it is for and the CV (and, until 2026-10-13, the Google account the private listing's
+    // invitation went to; the listing is public since 20.0.0, so none is asked); product "bridge" is the
+    // extension's name on the wire since its first version; the service shows it as Beethoven
+    var body = { v: 2, access_id: id(), name: document.getElementById('name').value.trim(), email: email.value.trim().toLowerCase(), purpose: note.value.trim(), product: 'bridge' };
     var bad = null;
     if (!/^[a-z]{2}[0-9]{4}$/.test(body.access_id)) bad = [accessId, 'The AccessID is two letters and four digits, like ab1234.'];
     else if (body.name.length < 2 || body.name.length > 80) bad = [document.getElementById('name'), 'Please give your name (2 to 80 characters).'];
     else if (body.email !== body.access_id + '@wayne.edu') bad = [email, 'The WSU e-mail must be ' + body.access_id + '@wayne.edu.'];
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.google_account) || body.google_account.length > 254) bad = [google, 'Please give the Google account you use in Chrome; the invitation to Beethoven goes there.'];
     else if (body.purpose.length < 2) bad = [note, 'Please say in a sentence what you will use Beethoven for.'];
     else if (body.purpose.length > 500) bad = [note, 'What you will use it for is too long (500 characters at most).'];
     if (bad) { send.disabled = false; return fail(bad[0], bad[1]); }
@@ -236,7 +231,7 @@
       if (r.status === 202) return sayHere(confirmSent(j) ? 'Sent. Check your Wayne State mail for a confirmation link.' : 'Sent. You hear from the lab lead.');
       if (r.status === 200 && j.status === 'approved') {
         if (Array.isArray(j.grants) && j.grants.indexOf('extension') < 0) return sayHere('You are approved as a lab member, not for Beethoven itself. If you need Beethoven, talk to your lab lead.');
-        return sayHere('You are already approved. Beethoven installs from its private Chrome listing, by invitation; if no invitation has reached the Google account you use in Chrome, ask your lab lead.');
+        return sayHere('You are already approved. Install Beethoven from its Chrome Web Store listing, linked from Beethoven\'s page, if you have not already.');
       }
       if (r.status === 200 && j.status === 'denied') return sayHere('This request was not approved. If you think that is a mistake, talk to your lab lead.');
       if (r.status === 413) return sayHere(cv ? 'Not sent: the CV is too large for the service. Choose a smaller file, or leave it out.' : 'Not sent: there is too much text.');
