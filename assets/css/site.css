@@ -838,28 +838,33 @@ body[data-shell="app"] .nav__links a { white-space: nowrap; }
 
 /* ============================================================
    CHROME WEB STORE BADGE (Beethoven's listing: the Beethoven hero, the home page's card)
+   Drawn as the store's own badge is: white, a light grey outline, the Chrome logo, "Available in the"
+   over "Chrome Web Store" in Google's greys. The install card's button wears Beethoven's icon instead.
    ============================================================ */
 .cws {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   align-self: flex-start;
-  padding: 8px 16px 8px 10px;
-  background: var(--paper-card);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--ink);
-  font-size: 0.9rem;
+  min-height: 58px;
+  padding: 9px 20px 9px 14px;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  color: #202124;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 1.02rem;
   font-weight: 500;
   line-height: 1.15;
   text-align: left;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.12);
   transition: border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
-.cws:hover { border-color: var(--teal); color: var(--ink); transform: translateY(-1px); box-shadow: 0 14px 28px -22px rgba(10, 66, 61, 0.55); }
-.cws:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.cws:hover { border-color: #c4c7c5; color: #202124; transform: translateY(-1px); box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15); }
+.cws:focus-visible { outline: 2px solid #1a73e8; outline-offset: 3px; }
 .cws__icon { width: 30px; height: 30px; flex: none; display: block; }
 .cws__text { display: flex; flex-direction: column; }
-.cws__k { font-size: 0.72rem; font-weight: 400; color: var(--ink-faint); letter-spacing: 0.01em; }
+.cws__k { font-size: 0.74rem; font-weight: 400; color: #5f6368; letter-spacing: 0.01em; }
 .bh__store { margin: 22px 0 0; }
 .btn--cws { display: inline-flex; align-items: center; gap: 9px; }
 .btn--cws .cws__icon { width: 22px; height: 22px; }

@@ -169,8 +169,8 @@ BROWSERS = [
      "store_url": "https://chromewebstore.google.com/detail/beethoven/heoopgbkbkfckhhpbkkcgigohfekjicn"},
 ]
 # Beethoven's own icon (the extension's icon-48.svg, the optical size that stays sharp small) on the
-# listing's links: the hero badge, the home page's Beethoven card and the install card's button; the
-# body files carry the same <svg> inline
+# install card's button. The hero and the home page's Beethoven card carry the store's own badge
+# instead (the Chrome logo, /assets/img/chrome-logo.svg, "Available in the Chrome Web Store")
 BEETHOVEN_ICON = ('<svg class="cws__icon" viewBox="0 0 96 96" aria-hidden="true" focusable="false">'
                   '<rect x="1" y="1" width="94" height="94" rx="17" fill="#FBFAF4" stroke="#1A1C18" stroke-opacity="0.24" stroke-width="2"/>'
                   '<rect x="26" y="14" width="44" height="68" rx="1.6" fill="#FBFAF4" stroke="#1A1C18" stroke-width="4"/>'
