@@ -168,6 +168,18 @@ BROWSERS = [
     {"key": "chrome", "name": "Chrome", "store": "Chrome Web Store",
      "store_url": "https://chromewebstore.google.com/detail/beethoven/heoopgbkbkfckhhpbkkcgigohfekjicn"},
 ]
+# Beethoven's own icon (the extension's icon-48.svg, the optical size that stays sharp small) on the
+# install card's button. The hero and the home page's Beethoven card carry the store's own badge
+# instead (the Chrome logo, /assets/img/chrome-logo.svg, "Available in the Chrome Web Store")
+BEETHOVEN_ICON = ('<svg class="cws__icon" viewBox="0 0 96 96" aria-hidden="true" focusable="false">'
+                  '<rect x="1" y="1" width="94" height="94" rx="17" fill="#FBFAF4" stroke="#1A1C18" stroke-opacity="0.24" stroke-width="2"/>'
+                  '<rect x="26" y="14" width="44" height="68" rx="1.6" fill="#FBFAF4" stroke="#1A1C18" stroke-width="4"/>'
+                  '<rect x="30" y="84" width="6" height="4" rx="0" fill="#1A1C18"/>'
+                  '<rect x="60" y="84" width="6" height="4" rx="0" fill="#1A1C18"/>'
+                  '<rect x="36" y="24" width="24" height="12" fill="#1A1C18" fill-opacity="0.22"/>'
+                  '<rect x="36" y="42" width="24" height="12" fill="#0E5F58" fill-opacity="1"/>'
+                  '<rect x="36" y="60" width="24" height="12" fill="#1A1C18" fill-opacity="0.22"/>'
+                  '</svg>')
 LISTING_NOTE = ("On the Chrome Web Store, with no invitation needed: install it like any other extension; it starts a "
                 "worker once your account is approved.")
 # What check_private_listing refuses: a package of the extension in the site or a link to one, and
@@ -771,8 +783,8 @@ def browsers_html():
         if b["store_url"]:
             if not b["store_url"].startswith("https://chromewebstore.google.com/"):
                 raise SystemExit(f"BROWSERS: {b['store_url']} is not a Chrome Web Store address")
-            action = (f'    <a class="btn btn--solid" href="{esc(b["store_url"])}" target="_blank" rel="noopener">'
-                      "Open it on the Chrome Web Store</a>\n")
+            action = (f'    <a class="btn btn--solid btn--cws" href="{esc(b["store_url"])}" target="_blank" rel="noopener">'
+                      f"{BEETHOVEN_ICON}Open it on the Chrome Web Store</a>\n")
         cards.append(fill(card, {"key": b["key"], "name": esc(b["name"]), "action": action,
                                  "note": esc(LISTING_NOTE)}, "browser-card.html").rstrip("\n"))
     one = " browsers--one" if len(cards) == 1 else ""
