@@ -835,3 +835,32 @@ body[data-shell="app"] .nav__links a { white-space: nowrap; }
   .admin table.admin__stack td.admin__wide { display: block; }
   .admin table.admin__stack td.admin__wide::before { display: block; margin-bottom: 4px; }
 }
+
+/* ============================================================
+   CHROME WEB STORE BADGE (Beethoven's listing: the Beethoven hero, the home page's card)
+   ============================================================ */
+.cws {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  padding: 8px 16px 8px 10px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.15;
+  text-align: left;
+  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.cws:hover { border-color: var(--teal); color: var(--ink); transform: translateY(-1px); box-shadow: 0 14px 28px -22px rgba(10, 66, 61, 0.55); }
+.cws:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.cws__icon { width: 28px; height: 28px; flex: none; display: block; }
+.cws__text { display: flex; flex-direction: column; }
+.cws__k { font-size: 0.72rem; font-weight: 400; color: var(--ink-faint); letter-spacing: 0.01em; }
+.bh__store { margin: 22px 0 0; }
+.btn--cws { display: inline-flex; align-items: center; gap: 9px; }
+.btn--cws .cws__icon { width: 20px; height: 20px; }
+@media (prefers-reduced-motion: reduce) { .cws, .cws:hover { transition: none; transform: none; } }

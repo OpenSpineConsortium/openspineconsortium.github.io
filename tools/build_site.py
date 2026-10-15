@@ -168,6 +168,13 @@ BROWSERS = [
     {"key": "chrome", "name": "Chrome", "store": "Chrome Web Store",
      "store_url": "https://chromewebstore.google.com/detail/beethoven/heoopgbkbkfckhhpbkkcgigohfekjicn"},
 ]
+# The Chrome mark on the listing's links (the hero badge, the home page's Beethoven card, the
+# install card's button); the body files carry the same <svg> inline
+CHROME_ICON = ('<svg class="cws__icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">'
+               '<path fill="#DB4437" d="M24 14H43.6A22 22 0 0 0 5.54 12.03L15.34 29Z"/>'
+               '<path fill="#F4B400" d="M32.66 29L22.86 45.97A22 22 0 0 0 43.6 14H24Z"/>'
+               '<path fill="#0F9D58" d="M15.34 29L5.54 12.03A22 22 0 0 0 22.86 45.97L32.66 29Z"/>'
+               '<circle cx="24" cy="24" r="10" fill="#fff"/><circle cx="24" cy="24" r="8" fill="#4285F4"/></svg>')
 LISTING_NOTE = ("On the Chrome Web Store, with no invitation needed: install it like any other extension; it starts a "
                 "worker once your account is approved.")
 # What check_private_listing refuses: a package of the extension in the site or a link to one, and
@@ -771,8 +778,8 @@ def browsers_html():
         if b["store_url"]:
             if not b["store_url"].startswith("https://chromewebstore.google.com/"):
                 raise SystemExit(f"BROWSERS: {b['store_url']} is not a Chrome Web Store address")
-            action = (f'    <a class="btn btn--solid" href="{esc(b["store_url"])}" target="_blank" rel="noopener">'
-                      "Open it on the Chrome Web Store</a>\n")
+            action = (f'    <a class="btn btn--solid btn--cws" href="{esc(b["store_url"])}" target="_blank" rel="noopener">'
+                      f"{CHROME_ICON}Open it on the Chrome Web Store</a>\n")
         cards.append(fill(card, {"key": b["key"], "name": esc(b["name"]), "action": action,
                                  "note": esc(LISTING_NOTE)}, "browser-card.html").rstrip("\n"))
     one = " browsers--one" if len(cards) == 1 else ""
