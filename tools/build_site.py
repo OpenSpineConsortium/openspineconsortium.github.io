@@ -334,6 +334,12 @@ SITE = [
     # repository (TEXTS: symphony-privacy), at the address the Chrome Web Store listing names, and
     # the two GitHub Apps' statement from the front door's (TEXTS: symphony-apps-privacy)
     node("Symphony", "/symphony/", overview="Overview", children=[
+        # the control panel: a page that drives a Symphony repository through GitHub's API as the
+        # signed-in person (assets/js/symphony-panel.js); hidden, since it is a signed-in page, and
+        # linked from the Symphony page; the cost page beside it prices the work against the
+        # other ways of running coding agents on GitHub
+        node("Control panel", "/symphony/control/", hidden=True),
+        node("What it costs", "/symphony/cost.html", crumb="What Symphony costs, against the alternatives"),
         node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
         node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
     ]),

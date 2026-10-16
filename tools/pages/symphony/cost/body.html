@@ -1,0 +1,110 @@
+---
+title: What it costs · Symphony
+description: What running Claude Code teammates costs under Symphony, measured on your own repository, set beside what the same work costs under the other ways of running coding agents on GitHub.
+css: /assets/css/control.css
+js: /assets/js/symphony-panel.js
+canonical: https://openspineconsortium.com/symphony/cost.html
+strip: no
+---
+<section class="section admin control cost" aria-labelledby="cost-title">
+  <header class="page-head">
+    <span class="eyebrow">Symphony</span>
+    <h1 id="cost-title">What it costs</h1>
+    <p>Symphony&rsquo;s bill is a flat Claude plan and, on a public repository, nothing for compute: the workers run in GitHub Actions on the repository&rsquo;s own subscription token, and standard runners are free and unlimited on public repositories. The other ways of running coding agents on GitHub meter every token. This page prices the same work under each: measured on your repository when you are signed in to <a href="/symphony/control/">the control panel</a>, or from the numbers you type below. Every price has its source at the foot of the page.</p>
+  </header>
+
+  <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
+
+  <h2 id="h-measured">Measured on your repository</h2>
+  <p class="admin__lead">A Symphony repository records what its work cost beside the work: each session&rsquo;s commits carry a <code>Symphony-Usage</code> line and each Claude run in Actions leaves a usage record, and the metrics workflow sums them daily into <code>METRICS.json</code> on the branch <code>metrics</code>, priced at Anthropic&rsquo;s API list prices, with no API key, no routine and no server. Signed in, the page reads that file as you and sets the figure beside what you paid instead.</p>
+
+  <div class="admin__box" id="cp-gate">
+    <h3>Sign in</h3>
+    <div id="cp-oauth" class="hidden">
+      <div><button id="cp-signin" type="button">Sign in with GitHub</button></div>
+      <p class="admin__lead">Or paste a token of your own:</p>
+    </div>
+    <label for="cp-token">A fine-grained personal access token with Contents: Read-only on the repository</label>
+    <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+    <small>The same token as the control panel&rsquo;s; it stays in this browser and goes to GitHub&rsquo;s API only. Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.</small>
+    <div class="admin__checks"><label><input id="cp-keep" type="checkbox"> Keep me signed in on this browser</label></div>
+    <div><button id="cp-open" type="button">Read my repository</button></div>
+  </div>
+
+  <div id="cp-app" class="hidden">
+    <p class="admin__bar"><button id="cp-signout" type="button" class="quiet">Forget the token</button> <small id="cp-who"></small></p>
+    <div class="admin__box">
+      <div class="admin__row">
+        <div><label for="cost-repo">Repository (the control panel&rsquo;s list)</label><select id="cost-repo"></select></div>
+      </div>
+      <div id="cost-measured" class="control__answer"></div>
+    </div>
+  </div>
+  <div id="cost-app" class="hidden"></div>
+
+  <h2 id="h-calc">Price the same work under each system</h2>
+  <p class="admin__lead">Type a month of agent runs, or press the button above to take your repository&rsquo;s last 30 days. The defaults are a typical 40-turn run in Actions: most of its tokens are cache reads, which is why a flat plan goes far.</p>
+  <div class="admin__box">
+    <div class="admin__row">
+      <div><label for="cc-runs">Agent runs a day</label><input id="cc-runs" inputmode="decimal" value="10"></div>
+      <div><label for="cc-days">Days a month</label><input id="cc-days" inputmode="numeric" value="30"></div>
+      <div><label for="cc-minutes">Runner minutes a run</label><input id="cc-minutes" inputmode="numeric" value="10"></div>
+      <div><label for="cc-model">Model</label><select id="cc-model">
+        <option value="claude-sonnet-5-5">Sonnet 5.5</option>
+        <option value="claude-opus-5-5">Opus 5.5</option>
+        <option value="claude-fable-5-1">Fable 5.1</option>
+        <option value="claude-haiku-5-5">Haiku 5.5</option>
+      </select></div>
+    </div>
+    <div class="admin__row">
+      <div><label for="cc-input">Uncached input tokens a run</label><input id="cc-input" inputmode="numeric" value="20000"></div>
+      <div><label for="cc-write">Cache-write tokens a run</label><input id="cc-write" inputmode="numeric" value="100000"></div>
+      <div><label for="cc-read">Cache-read tokens a run</label><input id="cc-read" inputmode="numeric" value="1600000"></div>
+      <div><label for="cc-output">Output tokens a run</label><input id="cc-output" inputmode="numeric" value="25000"></div>
+    </div>
+    <div class="admin__row">
+      <div><label for="cc-visibility">Repository</label><select id="cc-visibility">
+        <option value="public">Public: Actions minutes free</option>
+        <option value="private">Private, GitHub Free: 2,000 minutes a month included</option>
+        <option value="private-pro">Private, GitHub Pro or Team: 3,000 included</option>
+      </select></div>
+      <div><label for="cc-plan">The Claude plan Symphony&rsquo;s workers run on</label><select id="cc-plan">
+        <option value="pro">Claude Pro, $20 a month</option>
+        <option value="max5" selected>Claude Max 5x, $100 a month</option>
+        <option value="max20">Claude Max 20x, $200 a month</option>
+      </select></div>
+      <div><label for="cc-copilot">The Copilot plan to compare</label><select id="cc-copilot">
+        <option value="pro">Copilot Pro, $10 with $15 of credits</option>
+        <option value="proplus" selected>Copilot Pro+, $39 with $70 of credits</option>
+        <option value="max">Copilot Max, $100 with $200 of credits</option>
+      </select></div>
+    </div>
+    <p id="cc-note" class="admin__lead"></p>
+    <div class="table-scroll"><table id="cc-out" class="admin__stack cost__out"><thead><tr><th>A month under</th><th>Inference</th><th>Actions</th><th>Total</th><th>Why</th></tr></thead><tbody></tbody></table></div>
+    <p class="admin__lead">Prices as of <span id="cc-prices-as-of"></span>. A Claude plan&rsquo;s allowance is published as a multiple, not a token count: Anthropic says Pro gives at least five times Free per five-hour window and Max five or twenty times Pro, with weekly limits on top; past them, usage credits bill at the API prices in the table. Cache writes are priced at the five-minute rate, which an API key gets by default; on a subscription the cache lives an hour.</p>
+  </div>
+
+  <h2 id="h-table">How each system charges</h2>
+  <p class="admin__lead">The cost model of each way of running coding agents on GitHub, read from each project&rsquo;s own documents and code on 2026-10-15. Symphony is the only one of them that runs its agents in Actions on a flat Claude plan: the Actions-native neighbors take an API key or Copilot credits and refuse the subscription token, and the flat-plan neighbors run their agents on people&rsquo;s own machines.</p>
+  <div class="table-scroll"><table class="admin__stack cost__models"><thead><tr><th>System</th><th>Where the agents run</th><th>Compute</th><th>Inference</th><th>Who pays</th></tr></thead><tbody>
+    <tr class="cost__us"><th>Symphony</th><td>GitHub Actions runners, and each person&rsquo;s own Claude Code session</td><td>Free standard runners on a public repository; a private one&rsquo;s included minutes, then $0.006 a minute</td><td>One Claude plan (Pro, Max or a Team seat) for all the workers in Actions, on its subscription token; each person&rsquo;s own plan for their sessions</td><td>The repository&rsquo;s owner, once; no server, no API key</td></tr>
+    <tr><th>unsorry (agenticsnz/unsorry)</th><td>Volunteers&rsquo; own machines; the board, the dispatcher and the reaper in Actions</td><td>Free: a public repository&rsquo;s Actions for the coordination</td><td>Each volunteer&rsquo;s claude -p, Codex or Gemini runs, on their own plan or key</td><td>Each volunteer</td></tr>
+    <tr><th>GitHub Agentic Workflows, the work queue</th><td>Actions runners only</td><td>Actions minutes</td><td>An API key, workload identity or Copilot-hosted models billed in credits; the Claude subscription token is refused</td><td>The repository&rsquo;s owner, per token</td></tr>
+    <tr><th>GitHub Copilot coding agent, Agent HQ</th><td>Actions runners, under GitHub&rsquo;s service</td><td>Actions minutes</td><td>AI credits at $0.01 each, Claude at Anthropic&rsquo;s list prices; a plan&rsquo;s included credits, then metered</td><td>The Copilot subscriber, per token</td></tr>
+    <tr><th>openai/codex-action, openai/symphony</th><td>Actions, or a daemon on a host</td><td>Actions minutes, or the host</td><td>An OpenAI API key</td><td>The owner, per token</td></tr>
+    <tr><th>CCPM, agentic-setup, Claude Code agent teams</th><td>One person&rsquo;s own machine</td><td>That machine</td><td>The person&rsquo;s own plan</td><td>The person</td></tr>
+    <tr><th>paperclip, Beads and Gas Town</th><td>A self-hosted server, or local agents synced through git</td><td>The server or the machines</td><td>The person&rsquo;s own plan or keys</td><td>The person</td></tr>
+  </tbody></table></div>
+
+  <h2 id="h-sources">Sources</h2>
+  <ul class="cost__sources">
+    <li>Claude plans: <a href="https://claude.com/pricing" target="_blank" rel="noopener">claude.com/pricing</a> (Pro $20 monthly, Max 5x $100, Max 20x $200; limits as multiples per five-hour window, weekly limits on top; read 2026-10-15) and <a href="https://support.claude.com/en/articles/12429409-manage-usage-credits-for-paid-claude-plans" target="_blank" rel="noopener">usage credits at API rates past the limits</a>.</li>
+    <li>Claude Code in Actions on a subscription: <a href="https://code.claude.com/docs/en/github-actions" target="_blank" rel="noopener">Anthropic&rsquo;s GitHub Actions page</a> (&ldquo;If you authenticate with an OAuth token, runs use your Claude subscription instead of API billing&rdquo;), which is how a Symphony repository&rsquo;s workers run.</li>
+    <li>API list prices: <a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">platform.claude.com, pricing</a> (read 2026-10-15). The field metrics a repository records are priced by the Symphony template&rsquo;s own table (tools/economics.py) as of the date it names, which the page prints beside the measured figures; the two tables can differ until the template takes a price change.</li>
+    <li>GitHub Actions: <a href="https://github.com/github/docs/blob/main/content/billing/concepts/product-billing/github-actions.md" target="_blank" rel="noopener">github/docs, billing for GitHub Actions</a> (free and unlimited standard runners on public repositories; 2,000 minutes a month on Free, 3,000 on Pro and Team; Linux 2-core $0.006 a minute from 2026-01-01; read at commit 12691d2, 2026-10-15).</li>
+    <li>GitHub Copilot: <a href="https://github.com/github/docs/blob/main/content/copilot/concepts/billing-and-usage/individuals/billing.md" target="_blank" rel="noopener">github/docs, Copilot billing</a> (usage-based since 2026-06-01, AI credits at $0.01; Pro $10 with 1,500 credits, Pro+ $39 with 7,000, Max $100 with 20,000) and <a href="https://github.com/github/docs/blob/main/content/copilot/concepts/agent-capabilities/about-agents/about-third-party-coding-agents.md" target="_blank" rel="noopener">about third-party coding agents</a> (they consume Actions minutes and AI credits) and <a href="https://github.com/github/docs/blob/main/content/copilot/reference/copilot-billing/models-and-pricing.md" target="_blank" rel="noopener">models and pricing</a> (Claude at Anthropic&rsquo;s list prices).</li>
+    <li>GitHub Agentic Workflows: <a href="https://github.com/github/gh-aw/blob/main/docs/src/content/docs/engines/claude.md" target="_blank" rel="noopener">gh-aw, the Claude engine</a> (&ldquo;Claude subscription OAuth tokens such as CLAUDE_CODE_OAUTH_TOKEN are not supported&rdquo;; read at commit dc91dbe, 2026-10-15).</li>
+    <li>OpenAI: <a href="https://github.com/openai/codex-action#readme" target="_blank" rel="noopener">openai/codex-action</a> (an API key as a secret is required).</li>
+    <li>unsorry: <a href="https://github.com/agenticsnz/unsorry" target="_blank" rel="noopener">agenticsnz/unsorry</a> at commit 029d328b (ADR-004 for the claims on one shared branch, reaper.yml and queue-dispatcher.yml for the coordination in Actions, swarm/agent.sh for each volunteer&rsquo;s own runs; read 2026-10-15).</li>
+  </ul>
+</section>
