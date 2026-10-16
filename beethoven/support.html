@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610160417">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610160417">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610160945">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610160945">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -114,7 +114,8 @@
       <li><strong>Sign in to Claude once, when the panel asks.</strong> A Claude tab opens; sign in with your own Claude
       account, approve, and paste the code it shows into the panel. The code is typed once into your own job's terminal
       on the grid and is not kept.</li>
-      <li><strong>Open my session.</strong> Your worker runs until you press <em>Stop</em>.</li>
+      <li><strong>Open my session</strong>, or <strong>Open my project</strong> if you gave one in <em>Settings</em>
+      (below). Your worker runs until you press <em>Stop</em>.</li>
     </ol>
     <p>The worker is a job on the grid, not a program on your computer. Once the panel shows <em>Open my session</em>,
     close the panel, the browser or the laptop as you like: open <a href="https://claude.ai/code">claude.ai/code</a> or
@@ -123,6 +124,12 @@
     <p>What the worker makes (figures, tables, files) shows in that claude.ai session. If you want results in Google
     Drive, Docs or Sheets, turn on Claude's Google connectors yourself in claude.ai's settings; Beethoven does not do it
     for you.</p>
+    <p>Working in a Claude project? A project cannot take the session your worker starts by itself; it reaches your
+    worker's folder only when you ask for the work inside the project. Since 21.0.0, press <em>Add</em> under <em>Your
+    project on claude.ai</em> in Beethoven's <em>Settings</em>, paste the project's address from the address bar and
+    press <em>Use</em>: the panel's button then reads <em>Open my project</em>, and when Beethoven opens claude.ai for a
+    worker that is ready (<em>Settings</em> says whether it does), it opens your project. In the project, choose
+    <em>Work locally</em> from the + menu, write the task, and press <em>Allow once</em> on the card.</p>
 
     <h2 id="password">Your grid sign-in</h2>
     <p><strong>Where your password goes.</strong> What you type on <em>Sign in to the grid</em> goes only to the grid's
@@ -210,9 +217,10 @@
     your lab lead is told that a new installation asked. An installation serves one account: if Beethoven on this
     computer was set up for another AccessID, the panel says so, and your lab lead can release it. Beethoven works only
     for the AccessID that was approved.</p>
-    <p>When Beethoven updates to 20.0.0, it asks you to accept its agreement once more, because the agreement now says
-    that your approval covers every installation of yours; 19.0.0 asked once too, when the agreement first described the
-    grid sign-in.</p>
+    <p>When Beethoven updates to 21.0.0, it asks you to accept its agreement once more, because the agreement now says
+    that it may open your Claude project's page and keeps the project's address if you give one in Settings. 20.0.0
+    asked once too, when the agreement first said that your approval covers every installation of yours, and 19.0.0
+    when it first described the grid sign-in.</p>
 
     <h2 id="vpn">When the grid is out of reach</h2>
     <p>GlobalProtect must be on each time you start, watch or stop your worker; your worker itself keeps running
@@ -372,7 +380,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610160417"></script>
+<script src="/assets/js/main.js?v=202610160945"></script>
 <!-- /site:footer -->
 
 </body>
