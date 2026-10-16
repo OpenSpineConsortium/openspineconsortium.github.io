@@ -16,18 +16,19 @@ strip: no
 
   <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
 
-  <div class="admin__box" id="cp-gate">
+  <div class="admin__box control__gate" id="cp-gate">
     <h2>Sign in</h2>
-    <div id="cp-oauth" class="hidden">
-      <p class="admin__lead">Sign in with your GitHub account: GitHub asks whether SymphonyBoard may act as you, and a small stateless service turns GitHub&rsquo;s one-time code into a token and keeps nothing. The token reaches only the repositories the App is installed on, with the App&rsquo;s own permissions.</p>
-      <div><button id="cp-signin" type="button">Sign in with GitHub</button></div>
-      <p class="admin__lead">Or paste a token of your own:</p>
-    </div>
-    <label for="cp-token">A fine-grained personal access token</label>
-    <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-    <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token: the page never takes a Claude token, and the workers run on the one the repository holds as its secret.</small>
+    <p class="admin__lead">One press: GitHub asks, the first time only, whether SymphonyBoard may act as you, and sends you straight back here signed in. The token GitHub issues is kept only in this browser, lasts eight hours at a time (the page renews it as you go), and reaches only the repositories SymphonyBoard is installed on, within the App&rsquo;s permissions and your own access; a small stateless service turns GitHub&rsquo;s one-time code into that token and keeps nothing. The page never takes a Claude token: the workers run on the one the repository holds as its secret.</p>
+    <div><button id="cp-signin" type="button" class="control__signin">Sign in with GitHub</button></div>
+    <p id="cp-signin-off" class="admin__lead admin__warn hidden">Sign in with GitHub switches on once its sign-in service is running; until then, use a token below.</p>
     <div class="admin__checks"><label><input id="cp-keep" type="checkbox"> Keep me signed in on this browser (otherwise until this tab closes)</label></div>
-    <div><button id="cp-open" type="button">Open the panel</button></div>
+    <details id="cp-token-way" class="control__token">
+      <summary>Use a fine-grained token instead</summary>
+      <label for="cp-token">A fine-grained personal access token</label>
+      <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token: the page never takes a Claude token, and the workers run on the one the repository holds as its secret.</small>
+      <div><button id="cp-open" type="button">Open the panel</button></div>
+    </details>
   </div>
 
   <div id="cp-app" class="hidden">
@@ -143,6 +144,6 @@ strip: no
     <div class="table-scroll"><table id="cp-runs" class="admin__stack"><thead><tr><th>Workflow</th><th>Event</th><th>Branch</th><th>Outcome</th><th>Started by</th><th>Started</th></tr></thead><tbody></tbody></table></div>
 
     <h2 id="h-privacy">What this page keeps and sends</h2>
-    <p class="admin__lead">In this browser: the GitHub token (until you press Forget the token, or the tab closes when you did not tick Keep me signed in) and, after Sign in with GitHub, the refresh token GitHub issued beside it, with which the page renews the token after its eight hours; the names of the repositories you listed and the plan you chose on the cost page. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does, and nothing to anyone else; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, and, when you press Forget the token, the token to the same service once more, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+    <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed and the plan you chose on the cost page. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does, and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
   </div>
 </section>

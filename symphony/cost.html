@@ -27,9 +27,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610160945">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610160945">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610160945">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610161205">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610161205">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610161205">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -74,17 +74,19 @@
   <h2 id="h-measured">Measured on your repository</h2>
   <p class="admin__lead">A Symphony repository records what its work cost beside the work: each session&rsquo;s commits carry a <code>Symphony-Usage</code> line and each Claude run in Actions leaves a usage record, and the metrics workflow sums them daily into <code>METRICS.json</code> on the branch <code>metrics</code>, priced at Anthropic&rsquo;s API list prices, with no API key, no routine and no server. Signed in, the page reads that file as you and sets the figure beside what you paid instead.</p>
 
-  <div class="admin__box" id="cp-gate">
+  <div class="admin__box control__gate" id="cp-gate">
     <h3>Sign in</h3>
-    <div id="cp-oauth" class="hidden">
-      <div><button id="cp-signin" type="button">Sign in with GitHub</button></div>
-      <p class="admin__lead">Or paste a token of your own:</p>
-    </div>
-    <label for="cp-token">A fine-grained personal access token with Contents: Read-only on the repository</label>
-    <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-    <small>The same token as the control panel&rsquo;s; it stays in this browser and goes to GitHub&rsquo;s API only. Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.</small>
+    <p class="admin__lead">One press, as on the control panel: GitHub sends you straight back here signed in, and the page reads the file as you.</p>
+    <div><button id="cp-signin" type="button" class="control__signin">Sign in with GitHub</button></div>
+    <p id="cp-signin-off" class="admin__lead admin__warn hidden">Sign in with GitHub switches on once its sign-in service is running; until then, use a token below.</p>
     <div class="admin__checks"><label><input id="cp-keep" type="checkbox"> Keep me signed in on this browser</label></div>
-    <div><button id="cp-open" type="button">Read my repository</button></div>
+    <details id="cp-token-way" class="control__token">
+      <summary>Use a fine-grained token instead</summary>
+      <label for="cp-token">A fine-grained personal access token with Contents: Read-only on the repository</label>
+      <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+      <small>The same token as the control panel&rsquo;s; it stays in this browser and goes to GitHub&rsquo;s API only. Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>.</small>
+      <div><button id="cp-open" type="button">Read my repository</button></div>
+    </details>
   </div>
 
   <div id="cp-app" class="hidden">
@@ -215,8 +217,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610160945"></script>
+<script src="/assets/js/main.js?v=202610161205"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610160945"></script>
+<script src="/assets/js/symphony-panel.js?v=202610161205"></script>
 </body>
 </html>
