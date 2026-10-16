@@ -228,9 +228,11 @@ Beethoven has two editions, and both live under `/beethoven/`:
   `SYMPHONY_REPO` overrides) and checked word for word, like the Beethoven texts.
 - **The Symphony control panel**, `/symphony/control/` (hidden, `noindex`, linked from the
   Symphony page): drives a Symphony repository through GitHub's REST API as the signed-in
-  person, from the browser, with a fine-grained token kept in the browser or, once the stateless
-  sign-in service in symphony-app is deployed and `SIGNIN_SERVICE` and `CLIENT_ID` name it at the
-  top of `assets/js/symphony-panel.js`, with "Sign in with GitHub". It shows the board (STATE.md
+  person, from the browser. "Sign in with GitHub" is the way in, SymphonyBoard's user token
+  through the stateless sign-in service in symphony-app, pressable once `SIGNIN_SERVICE` and
+  `CLIENT_ID` at the top of `assets/js/symphony-panel.js` name the deployed service (until then
+  the button shows unpressable, with a line saying why); a fine-grained token kept in the browser
+  is the fallback, folded under "Use a fine-grained token instead". It shows the board (STATE.md
   on the branch `board`, rendered by a small Markdown renderer of its own), the open issues by the
   protocol's labels, the worker registry, the open pull requests with their checks and the Actions
   runs; it queues a task, gives an issue to a worker, opens the "Add a worker" issue, asks Claude

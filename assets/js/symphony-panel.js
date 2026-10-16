@@ -9,12 +9,15 @@
    when "keep me signed in" is ticked, sessionStorage otherwise) and goes
    to api.github.com and nowhere else. The site is static files, so
    nothing of the site ever sees the token. The one exception is the
-   sign-in service, once it is deployed (symphony-app/signin): it turns
-   GitHub's one-time code into a token, renews it, revokes it when asked,
-   and keeps nothing. Until SIGNIN_SERVICE and CLIENT_ID name it, the page
-   offers the token box alone. The sign-in uses PKCE: the page keeps a
-   secret for each sign-in and sends GitHub its hash, so only this page
-   can turn the code GitHub returns into a token.
+   sign-in service (symphony-app/signin): it turns GitHub's one-time code
+   into a token, renews it, revokes it when asked, and keeps nothing.
+   "Sign in with GitHub" is the way in, one press for a person who has
+   allowed the App once; a fine-grained token pasted into the page is the
+   fallback, folded under it. Until SIGNIN_SERVICE and CLIENT_ID name the
+   service, the button stands where it belongs, unpressable, with a line
+   saying why, and the token box is open beneath it. The sign-in uses
+   PKCE: the page keeps a secret for each sign-in and sends GitHub its
+   hash, so only this page can turn the code GitHub returns into a token.
 
    What it never does: it never takes a Claude token, never stores
    anything but the GitHub token (and the refresh token that came with
@@ -31,7 +34,7 @@
 
   var API = 'https://api.github.com';
   // The stateless sign-in service and SymphonyBoard's client id. Both are empty until the service is
-  // deployed; then "Sign in with GitHub" appears beside the token box.
+  // deployed; then "Sign in with GitHub" can be pressed.
   var SIGNIN_SERVICE = '';
   var CLIENT_ID = '';
   var APP_SLUG = 'symphonyboard';
@@ -155,6 +158,9 @@
     dropKey(KEY_TOKEN);
     dropKey(KEY_OAUTH);
   }
+  // the token came from "Sign in with GitHub", so it can do what SymphonyBoard's permissions allow
+  // and no more, whatever the person may do; a pasted token can do what it was made for
+  function signedInByApp() { return !readKey(KEY_TOKEN) && !!oauthRecord(); }
 
   /* ---------- the sign-in service (symphony-app/signin), when it is deployed ---------- */
   function signinAvailable() { return !!(SIGNIN_SERVICE && CLIENT_ID); }
@@ -172,23 +178,42 @@
     for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
     return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
+  // the token box, folded under the sign-in, opens where the sign-in cannot be used or did not work
+  function offerToken() {
+    var way = $('cp-token-way');
+    if (way) way.open = true;
+  }
+  // GitHub's return lands on the bare page, which is the App's callback URL, so the page's own query
+  // from before the sign-in (?repo=OWNER/NAME) travels with the sign-in's secret and is put back
+  var SIGNIN_PARAMS = ['code', 'state', 'error', 'error_description', 'error_uri'];
+  function withoutSigninParams(search) {
+    var q = new URLSearchParams(search);
+    SIGNIN_PARAMS.forEach(function (k) { q.delete(k); });
+    return q.toString();
+  }
+  function restoreQuery(back) {
+    if (typeof back !== 'string' || back.length > 2048 || location.search) return;
+    var rest = withoutSigninParams(back);
+    if (!rest) return;
+    try { history.replaceState(null, '', location.pathname + '?' + rest + location.hash); } catch (e) { /* the address stays */ }
+  }
   // PKCE: a secret for this one sign-in stays in this tab, GitHub gets its hash, and only the holder
   // of the secret can turn the code GitHub sends back into a token. The "keep me signed in" tick
   // travels with it, since the page that comes back from GitHub is a fresh load.
   function startOauth() {
-    if (!window.crypto || !crypto.subtle || !crypto.getRandomValues) { say('This browser cannot make the sign-in\'s secret (no Web Crypto); paste a token instead.', true); return; }
+    if (!window.crypto || !crypto.subtle || !crypto.getRandomValues) { say('This browser cannot make the sign-in\'s secret (no Web Crypto); use a token instead.', true); offerToken(); return; }
     var state = randomHex(16);
     var verifier = randomHex(32);
     crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)).then(function (hash) {
       var challenge = base64url(new Uint8Array(hash));
       var keep = $('cp-keep') ? $('cp-keep').checked : false;
       try {
-        sessionStorage.setItem(KEY_STATE, JSON.stringify({ state: state, verifier: verifier, keep: keep }));
-      } catch (e) { say('This browser refuses session storage, which the sign-in needs to come back; paste a token instead.', true); return; }
+        sessionStorage.setItem(KEY_STATE, JSON.stringify({ state: state, verifier: verifier, keep: keep, back: location.search }));
+      } catch (e) { say('This browser refuses session storage, which the sign-in needs to come back; use a token instead.', true); offerToken(); return; }
       location.href = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(CLIENT_ID)
         + '&redirect_uri=' + encodeURIComponent(pageAddress()) + '&state=' + encodeURIComponent(state)
         + '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256';
-    }).catch(function (e) { say('The sign-in could not start: ' + e.message, true); });
+    }).catch(function (e) { say('The sign-in could not start: ' + e.message, true); offerToken(); });
   }
   // an answer of the service that means "not now" rather than "this token is dead"
   var TEMPORARY = { github_unreachable: true, too_many_requests: true, not_configured: true };
@@ -232,17 +257,17 @@
     var kept = null;
     try { kept = JSON.parse(sessionStorage.getItem(KEY_STATE) || 'null'); sessionStorage.removeItem(KEY_STATE); } catch (e) { kept = null; }
     // the code and GitHub's words leave the address before anything else, so neither stays in the history
-    ['code', 'state', 'error', 'error_description', 'error_uri'].forEach(function (k) { q.delete(k); });
-    var clean = location.pathname + (q.toString() ? '?' + q.toString() : '') + location.hash;
-    try { history.replaceState(null, '', clean); } catch (e2) { /* the address stays */ }
-    if (error) { say('GitHub did not sign you in (' + error + (description ? ': ' + description : '') + '). Try again, or paste a token.', true); return Promise.resolve(false); }
+    var rest = withoutSigninParams(location.search);
+    try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } catch (e2) { /* the address stays */ }
+    if (kept) restoreQuery(kept.back);
+    if (error) { say('GitHub did not sign you in (' + error + (description ? ': ' + description : '') + '). Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return Promise.resolve(false); }
     if (!signinAvailable()) return Promise.resolve(false);
-    if (!kept || !state || kept.state !== state || !kept.verifier) { say('The sign-in did not come back the way it left (its state differs); start it again.', true); return Promise.resolve(false); }
+    if (!kept || !state || kept.state !== state || !kept.verifier) { say('The sign-in did not come back the way it left (its state differs); press Sign in with GitHub to start it again.', true); return Promise.resolve(false); }
     return exchange('/exchange', { code: code, code_verifier: kept.verifier, redirect_uri: pageAddress() }).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
       keepOauth(answer, !!kept.keep);
       return true;
-    }).catch(function (e) { say(e.message, true); return false; });
+    }).catch(function (e) { say(e.message + ' Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return false; });
   }
   // one renewal at a time: GitHub's refresh tokens are single use, so two renewals at once would
   // spend the same one twice and leave the page signed out
@@ -257,7 +282,7 @@
     var o = oauthRecord();
     if (!o || !o.refresh_token || !o.expires_at || Date.now() < o.expires_at - 60000 || !signinAvailable()) return Promise.resolve(token);
     if (refreshing) return refreshing;
-    if (o.refresh_expires_at && Date.now() >= o.refresh_expires_at) return Promise.reject(expired('Your sign-in expired (its six months are over); sign in again.'));
+    if (o.refresh_expires_at && Date.now() >= o.refresh_expires_at) return Promise.reject(expired('Your sign-in expired (its six months are over); press Sign in with GitHub again.'));
     refreshing = exchange('/refresh', { refresh_token: o.refresh_token }).then(function (answer) {
       refreshing = null;
       if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
@@ -265,7 +290,7 @@
       return token;
     }).catch(function (e) {
       refreshing = null;
-      if (e.kind === 'refused') throw expired('Your sign-in expired or was revoked; sign in again.');
+      if (e.kind === 'refused') throw expired('Your sign-in expired or was revoked; press Sign in with GitHub again.');
       say('The token could not be renewed: ' + e.message + ' Try again in a moment.', true);
       throw e;
     });
@@ -275,9 +300,11 @@
   /* ---------- the GitHub client ---------- */
   function explain(status, data, path) {
     var m = data && data.message ? String(data.message) : '';
-    if (status === 401) return 'GitHub refused the token (401). Sign in again with a token that is still valid.';
+    if (status === 401) return signedInByApp() ? 'GitHub refused the sign-in\'s token (401): it was revoked or has run out. Press Forget the token, then Sign in with GitHub again.' : 'GitHub refused the token (401). Sign in again with a token that is still valid.';
     if (status === 429 || (status === 403 && /rate limit|secondary/i.test(m))) return 'GitHub\'s rate limit for this token is reached (' + status + '). Wait a minute, then press Refresh.';
-    if (status === 403) return 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it.';
+    if (status === 403) return signedInByApp()
+      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on.'
+      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it.';
     if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or the token does not reach it.';
     if (status === 422) return 'GitHub refused the request (422' + (m ? ': ' + m : '') + ').';
     return 'GitHub answered ' + status + (m ? ': ' + m : '') + '.';
@@ -419,12 +446,17 @@
   }
 
   /* ---------- the sign-in box, shared by both pages ---------- */
+  // "Sign in with GitHub" comes first; until the service is deployed it cannot be pressed, a line
+  // says why, and the token box beneath it stands open
   function wireGate(onSignedIn) {
     var gate = $('cp-gate');
     if (!gate) return;
-    if (signinAvailable() && $('cp-oauth')) {
-      $('cp-oauth').classList.remove('hidden');
-      $('cp-signin').addEventListener('click', startOauth);
+    var signin = $('cp-signin');
+    if (signin && signinAvailable()) signin.addEventListener('click', startOauth);
+    else if (signin) {
+      signin.disabled = true;
+      if ($('cp-signin-off')) $('cp-signin-off').classList.remove('hidden');
+      offerToken();
     }
     $('cp-open').addEventListener('click', function () {
       var t = ($('cp-token').value || '').trim();
@@ -449,7 +481,7 @@
   function whoAmI() {
     return gh('GET', '/user').then(function (r) {
       var login = r.data && r.data.login ? r.data.login : '';
-      if ($('cp-who')) $('cp-who').textContent = login ? 'Signed in as ' + login + (keepSignedIn() ? ', kept on this browser.' : ', for this tab.') : '';
+      if ($('cp-who')) $('cp-who').textContent = login ? 'Signed in as ' + login + (signedInByApp() ? ' through GitHub' : ' with a token') + (keepSignedIn() ? ', kept on this browser.' : ', for this tab.') : '';
       return login;
     });
   }
@@ -668,7 +700,7 @@
       s.runs = [];
       clear(body);
       if (e.status === 403 || e.status === 404) {
-        note.textContent = 'The token cannot list Actions runs (' + e.status + '); showing the check runs on the default branch instead. A fine-grained token with Actions: read lists the runs.';
+        note.textContent = (signedInByApp() ? 'The sign-in' : 'The token') + ' cannot list Actions runs (' + e.status + '); showing the check runs on the default branch instead. ' + (signedInByApp() ? 'The sign-in lists them once SymphonyBoard holds Actions: read; a fine-grained token with it lists them now.' : 'A fine-grained token with Actions: read lists the runs.');
         return checkRunsFallback(s, body);
       }
       failed(s, 'the Actions runs', e);
@@ -730,7 +762,7 @@
       say('#' + pr.number + ' is merged.');
       return loadPulls(s).then(function () { return loadIssues(s); }).then(summary);
     }).catch(function (e) {
-      say(e.message + (e.status === 403 ? ' Merging needs Contents: read and write on the token.' : (e.status === 405 ? ' GitHub does not allow this merge yet: a required check or review is missing.' : '')), true);
+      say(e.message + (e.status === 403 ? ' Merging needs Contents: read and write' + (signedInByApp() ? ', for you on this repository as for the App.' : ' on the token.') : (e.status === 405 ? ' GitHub does not allow this merge yet: a required check or review is missing.' : '')), true);
       button.disabled = false;
     });
   }
@@ -856,10 +888,10 @@
     }).catch(function (e) { say(e.message, true); });
   }
   function discover() {
-    say('Looking for repositories with the topic symphony among those this token reaches...');
+    say('Looking for repositories with the topic symphony among those ' + (signedInByApp() ? 'the sign-in' : 'this token') + ' reaches...');
     ghList('/user/repos?per_page=100&sort=pushed', 3).then(function (list) {
       var found = list.filter(function (r) { return r.topics && r.topics.indexOf(TOPIC) >= 0; }).map(function (r) { return r.full_name; });
-      if (!found.length) { say('None found' + (list.more ? ' among the 300 most recently pushed' : '') + '. A fine-grained token lists only the repositories it was made for; add one by name below.'); return; }
+      if (!found.length) { say('None found' + (list.more ? ' among the 300 most recently pushed' : '') + '. ' + (signedInByApp() ? 'The sign-in lists only the repositories SymphonyBoard is installed on' : 'A fine-grained token lists only the repositories it was made for') + '; add one by name below.'); return; }
       var kept = repos();
       found.forEach(function (n) { if (kept.indexOf(n) < 0) kept.push(n); });
       saveRepos(kept);
@@ -947,7 +979,7 @@
     gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', { ref: branch }).then(function () {
       say(label + ' is queued on ' + branch + '; the runs list shows it within a minute.');
       setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
-    }).catch(function (e) { say(e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write on the token.' : ''), true); });
+    }).catch(function (e) { say(e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write' + (signedInByApp() ? ', which the sign-in has once SymphonyBoard holds it; a fine-grained token with it starts one now.' : ' on the token.') : ''), true); });
   }
 
   function initPanel() {

@@ -2,8 +2,8 @@
    control.css: the Symphony control panel (/symphony/control/) and
    the cost page (/symphony/cost.html). Both ride on the admin page's
    styles in site.css (.admin, its boxes, tables and forms); here only
-   what those two pages add: the repository line, the summary, the
-   rendered board, the select boxes and the cost tables.
+   what those two pages add: the sign-in, the repository line, the
+   summary, the rendered board, the select boxes and the cost tables.
    ============================================================ */
 
 .control .page-head p { max-width: 80ch; }
@@ -13,6 +13,15 @@
 .control .admin__lead a:hover { color: var(--teal-deep); border-color: var(--teal); }
 .control small a { color: var(--teal); }
 .control #msg.admin__warn { border-color: rgba(188, 107, 38, 0.45); }
+
+/* ---------- the sign-in: GitHub's first, a pasted token folded beneath it ---------- */
+.control .control__signin { font-size: 1.02rem; padding: 10px 26px; margin: 4px 0 12px; }
+.control__gate .admin__checks { margin: 2px 0 6px; }
+.control__token { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.control__token > summary { cursor: pointer; color: var(--ink-soft); font-size: 0.92rem; width: max-content; max-width: 100%; }
+.control__token > summary:hover { color: var(--teal); }
+.control__token > summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.control__token[open] > summary { margin-bottom: 4px; }
 
 /* ---------- the repository line and the summary ---------- */
 .control__pick { margin-top: 8px; }
