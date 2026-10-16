@@ -155,21 +155,41 @@
   function keepSignedIn() {
     try { return signinStore() === localStorage; } catch (e) { return false; }
   }
+  function recordIn(store) {
+    try { return JSON.parse(store.getItem(KEY_OAUTH) || 'null'); } catch (e) { return null; }
+  }
 
   var token = '';
+  // whether this tab's token is the one storage holds: when storage holds none any more, another tab
+  // has forgotten it, and this tab is signed out too
+  var tokenStored = false;
+  // a sign-in for this tab alone keeps its refresh token here, in the open page, and never in storage,
+  // which a browser brings back with a closed or restored tab; it belongs to one token, and a reload
+  // loses it, so that sign-in ends with its eight-hour token
+  var heldRefresh = { access: '', refresh: '' };
+  // this tab's sign-in ended (it ran out, or GitHub refused it): nothing stored is taken up in its
+  // place, a sign-in another tab keeps on this browser included, until the person signs in, pastes
+  // a token or reloads, so no call goes out for an account the page is no longer showing
+  var ended = false;
   function oauthRecord() {
     try { return JSON.parse(readSignin(KEY_OAUTH) || 'null'); } catch (e) { return null; }
   }
+  function storedToken() {
+    var o = oauthRecord();
+    return readSignin(KEY_TOKEN) || (o && o.access_token) || '';
+  }
   function loadToken() {
-    token = readSignin(KEY_TOKEN);
-    if (!token) {
-      var o = oauthRecord();
-      if (o && o.access_token) token = o.access_token;
-    }
+    token = storedToken();
+    tokenStored = !!token;
     return token;
+  }
+  function refreshOf(o) {
+    return o.refresh_token || (heldRefresh.access && heldRefresh.access === o.access_token ? heldRefresh.refresh : '');
   }
   function forgetToken() {
     token = '';
+    tokenStored = false;
+    heldRefresh = { access: '', refresh: '' };
     dropKey(KEY_TOKEN);
     dropKey(KEY_OAUTH);
   }
@@ -177,18 +197,50 @@
   // never takes with it the one another tab keeps on this browser
   function dropSignin(store) {
     token = '';
+    tokenStored = false;
+    heldRefresh = { access: '', refresh: '' };
+    ended = true;
+    // what is still being read with the dead token is dropped when it comes, not shown or said
+    state = emptyState(state.repo);
     try { if (store) { store.removeItem(KEY_TOKEN); store.removeItem(KEY_OAUTH); } } catch (e) { /* nothing to drop */ }
+  }
+  // the sign-in was forgotten, or dropped, while this tab waited on its renewal: nothing more is
+  // renewed for it, and the page is signed out
+  function signedOutMeanwhile() {
+    token = '';
+    tokenStored = false;
+    heldRefresh = { access: '', refresh: '' };
+    return '';
   }
   // the tokens of "Sign in with GitHub" this tab can reach, its own and the one kept on this browser
   function signinTokens() {
     var found = [];
     [function () { return sessionStorage; }, function () { return localStorage; }].forEach(function (storage) {
       try {
-        var o = JSON.parse(storage().getItem(KEY_OAUTH) || 'null');
+        var o = recordIn(storage());
         if (o && o.access_token && found.indexOf(o.access_token) < 0) found.push(o.access_token);
       } catch (e) { /* nothing readable there */ }
     });
     return found;
+  }
+  // A new sign-in or pasted token of this tab. Kept on the browser, it replaces what the browser kept
+  // and this tab's own; for this tab alone, it stands in front of what the browser keeps for its other
+  // tabs and leaves that be. A sign-in token it replaces is nobody's any more, so GitHub is asked to
+  // revoke it.
+  function storeSignin(key, value, keep) {
+    var replaced = [];
+    try {
+      (keep ? [localStorage, sessionStorage] : [sessionStorage]).forEach(function (store) {
+        var o = recordIn(store);
+        if (o && o.access_token) replaced.push(o.access_token);
+        store.removeItem(KEY_TOKEN);
+        store.removeItem(KEY_OAUTH);
+      });
+      (keep ? localStorage : sessionStorage).setItem(key, value);
+      tokenStored = true;
+    } catch (e) { tokenStored = false; /* storage refused: the token lives for this page only */ }
+    ended = false;
+    if (signinAvailable()) replaced.forEach(function (t) { exchange('/revoke', { access_token: t }).catch(function () { /* it runs out in eight hours */ }); });
   }
   // the token came from "Sign in with GitHub", so it can do what SymphonyBoard's permissions allow
   // and no more, whatever the person may do; a pasted token can do what it was made for
@@ -247,31 +299,27 @@
         + '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256';
     }).catch(function (e) { say('The sign-in could not start: ' + e.message, true); offerToken(); });
   }
-  // an answer of the service that means "not now" rather than "this token is dead"
-  var TEMPORARY = { github_unreachable: true, too_many_requests: true, not_configured: true };
+  // GitHub's own word for a refresh token it will not renew any more (run out, revoked or spent);
+  // every other failure, of the service or of GitHub, is of the moment and leaves the sign-in be
+  var DEAD_REFRESH = 'bad_refresh_token';
   function exchange(route, body) {
     var ask = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
     // a service that never answers must not hold the renewal, and the other tabs waiting on it, for good
     if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ask.signal = AbortSignal.timeout(20000);
-    return fetch(SIGNIN_SERVICE + route, ask)
-      .catch(function () { var err = new Error('The sign-in service could not be reached.'); err.kind = 'unreachable'; throw err; })
-      .then(function (r) {
-        return r.text().then(function (t) {
-          var data = null;
-          try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
-          if (!data || typeof data !== 'object') {
-            var e1 = new Error('The sign-in service answered ' + r.status + ' with nothing readable; the address the page holds for it may be wrong.');
-            e1.kind = 'unreachable';
-            throw e1;
-          }
-          if (!r.ok || data.error) {
-            var e2 = new Error('The sign-in service answered ' + r.status + (data.error ? ': ' + data.error : '') + (data.error_description ? ' (' + data.error_description + ')' : '') + '.');
-            e2.kind = data.error && !TEMPORARY[data.error] ? 'refused' : 'unreachable';
-            throw e2;
-          }
-          return data;
-        });
+    function unreachable() { throw new Error('The sign-in service could not be reached.'); }
+    return fetch(SIGNIN_SERVICE + route, ask).catch(unreachable).then(function (r) {
+      return r.text().catch(unreachable).then(function (t) {
+        var data = null;
+        try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
+        if (!data || typeof data !== 'object') throw new Error('The sign-in service answered ' + r.status + ' with nothing readable; the address the page holds for it may be wrong.');
+        if (!r.ok || data.error) {
+          var err = new Error('The sign-in service answered ' + r.status + (data.error ? ': ' + data.error : '') + (data.error_description ? ' (' + data.error_description + ')' : '') + '.');
+          err.code = String(data.error || '');
+          throw err;
+        }
+        return data;
       });
+    });
   }
   function recordOf(answer) {
     var now = Date.now();
@@ -282,17 +330,23 @@
       refresh_expires_at: answer.refresh_token_expires_in ? now + Number(answer.refresh_token_expires_in) * 1000 : 0
     };
   }
-  // a new sign-in replaces what this browser kept, a pasted token included, where the tick says
+  // a sign-in for this tab alone keeps its refresh token in the page, the rest in the tab's storage
+  function holdRefresh(record, keep) {
+    heldRefresh = keep ? { access: '', refresh: '' } : { access: record.access_token, refresh: record.refresh_token };
+    if (!keep) record.refresh_token = '';
+    return record;
+  }
   function keepOauth(answer, keep) {
-    var record = recordOf(answer);
-    writeKey(KEY_OAUTH, JSON.stringify(record), keep);
-    dropKey(KEY_TOKEN);
+    var record = holdRefresh(recordOf(answer), keep);
+    storeSignin(KEY_OAUTH, JSON.stringify(record), keep);
     token = record.access_token;
   }
   // a renewal goes back to the storage the renewed record came from and touches nothing else
   function renewOauth(answer, store) {
-    var record = recordOf(answer);
-    try { if (store) store.setItem(KEY_OAUTH, JSON.stringify(record)); } catch (e) { /* the token lives for this page only */ }
+    var kept = false;
+    try { kept = store === localStorage; } catch (e) { kept = false; }
+    var record = holdRefresh(recordOf(answer), kept);
+    try { if (store) { store.setItem(KEY_OAUTH, JSON.stringify(record)); tokenStored = true; } } catch (e) { /* the token lives for this page only */ }
     token = record.access_token;
   }
   function finishOauth() {
@@ -307,9 +361,10 @@
     if (kept) restoreQuery(kept.back);
     if (!signinAvailable()) return Promise.resolve(false);
     if (!kept || !state || kept.state !== state || !kept.verifier) {
-      // GitHub's refusal is said only for a sign-in this tab started; a link that merely carries
-      // ?error= is cleaned from the address and otherwise ignored
-      if (!error) { say('The sign-in did not come back the way it left (its state differs); press Sign in with GitHub to start it again.', true); offerToken(); }
+      // said only for a sign-in this tab started and that came back with another state; a return
+      // with nothing pending is Back after a sign-in, or a crafted link, and is cleaned from the
+      // address and otherwise ignored, GitHub's words with it
+      if (kept && !error) { say('The sign-in did not come back the way it left (its state differs); press Sign in with GitHub to start it again.', true); offerToken(); }
       return Promise.resolve(false);
     }
     if (error) { say('GitHub did not sign you in (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return Promise.resolve(false); }
@@ -332,69 +387,89 @@
   // the first one's renewal stored instead of spending the same refresh token again
   function inTurn(work) {
     var ran = false;
-    function run() { ran = true; return work(); }
+    function run() { ran = true; return work(true); }
     try {
       if (navigator.locks && navigator.locks.request) {
-        return navigator.locks.request('symphony-panel-renewal', run).catch(function (e) { if (ran) throw e; return work(); });
+        return navigator.locks.request('symphony-panel-renewal', run).catch(function (e) { if (ran) throw e; return work(false); });
       }
-    } catch (e) { /* no lock: the second look after a refusal covers two tabs renewing at once */ }
-    return work();
+    } catch (e) { /* no lock: renew() looks longer for another tab's renewal after a refusal */ }
+    return work(false);
   }
-  // the token stored since this tab spent a refresh token: one pasted meanwhile, or the record of
-  // another tab's renewal; empty when nothing changed
-  function storedSince(spent) {
-    var pasted = readSignin(KEY_TOKEN);
-    if (pasted) { token = pasted; return token; }
-    var o = oauthRecord();
-    if (o && o.access_token && o.refresh_token && o.refresh_token !== spent) { token = o.access_token; return token; }
-    return '';
+  // the token stored since this tab began renewing the one it holds: a token pasted meanwhile, or
+  // the record of another tab's renewal or sign-in; empty when nothing changed
+  function storedSince(old) {
+    var now = storedToken();
+    if (!now || now === old) return '';
+    token = now;
+    tokenStored = true;
+    return token;
+  }
+  // looks in storage every half second, until the time given, for what another tab stored
+  function lookAgain(old, until) {
+    var found = storedSince(old);
+    if (found || !storedToken() || Date.now() >= until) return Promise.resolve(found);
+    return new Promise(function (resolve) { setTimeout(resolve, 500); }).then(function () { return lookAgain(old, until); });
   }
   function ensureToken() {
+    if (ended) return Promise.resolve(signedOutMeanwhile());
     var pasted = readSignin(KEY_TOKEN);
     var o = pasted ? null : oauthRecord();
-    // another tab may have renewed the sign-in, or pasted a token, since this one read it: what is
-    // stored is the truth, and a token renewed elsewhere is the only one GitHub still takes
-    if (pasted) token = pasted;
-    else if (o && o.access_token) token = o.access_token;
-    if (!o || !o.refresh_token || !o.expires_at || Date.now() < o.expires_at - 60000 || !signinAvailable()) return Promise.resolve(token);
+    // another tab may have renewed the sign-in, pasted a token or forgotten it since this one read
+    // it: what is stored is the truth, and a token renewed elsewhere is the only one GitHub still takes
+    if (pasted) { token = pasted; tokenStored = true; }
+    else if (o && o.access_token) { token = o.access_token; tokenStored = true; }
+    else if (tokenStored) { token = ''; tokenStored = false; }
+    if (!o || !o.expires_at || Date.now() < o.expires_at - 60000 || !signinAvailable()) return Promise.resolve(token);
     if (refreshing) return refreshing;
     var store = signinStore();
+    var tabOnly = false;
+    try { tabOnly = store === sessionStorage; } catch (e) { tabOnly = false; }
+    var refresh = refreshOf(o);
+    // a sign-in for this tab alone whose refresh token went with an earlier page ends with its token
+    if (!refresh) return Date.now() < o.expires_at ? Promise.resolve(token) : Promise.reject(expired('Your sign-in for this tab ran out after its eight hours; press Sign in with GitHub again.', store));
     if (o.refresh_expires_at && Date.now() >= o.refresh_expires_at) return Promise.reject(expired('Your sign-in expired (its six months are over); press Sign in with GitHub again.', store));
-    var spent = o.refresh_token;
-    refreshing = inTurn(function () {
-      // the tab that held the turn before this one may have renewed the sign-in already
-      var renewed = storedSince(spent);
+    var old = o.access_token;
+    refreshing = inTurn(function (locked) {
+      // the tab that held the turn before this one may have renewed the sign-in already, or the
+      // sign-in may have been forgotten meanwhile, here or in another tab
+      var renewed = storedSince(old);
       if (renewed) return renewed;
-      return renew(spent, store);
+      if (!storedToken()) return signedOutMeanwhile();
+      // a sign-in for this tab alone holds its refresh token in this page only, so no other tab can
+      // have renewed it, whether or not the tabs take turns
+      return renew(refresh, old, store, locked || tabOnly);
     }).then(function (t) { refreshing = null; return t; }, function (e) { refreshing = null; throw e; });
     return refreshing;
   }
-  function renew(spent, store) {
-    return exchange('/refresh', { refresh_token: spent }).then(function (answer) {
+  function renew(refresh, old, store, alone) {
+    return exchange('/refresh', { refresh_token: refresh }).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
       // written back only over the record it renews: a sign-in forgotten or replaced meanwhile stays
       // so, and the renewed token, then nobody's, is revoked at once
       var now = oauthRecord();
-      if (!now || now.refresh_token !== spent) {
+      if (!now || now.access_token !== old) {
         exchange('/revoke', { access_token: answer.access_token }).catch(function () { /* it runs out in eight hours */ });
-        token = readSignin(KEY_TOKEN) || (now && now.access_token) || '';
+        token = storedToken();
+        tokenStored = !!token;
         return token;
       }
       renewOauth(answer, store);
       return token;
     }).catch(function (e) {
-      var taken = storedSince(spent);
+      var taken = storedSince(old);
       if (taken) return taken;
-      if (e.kind !== 'refused') {
-        say('The token could not be renewed: ' + e.message + ' Try again in a moment.', true);
-        throw e;
+      if (!storedToken()) return signedOutMeanwhile();
+      if (e.code !== DEAD_REFRESH) {
+        var failure = new Error('The token could not be renewed: ' + e.message + ' Try again in a moment.');
+        say(failure.message, true);
+        throw failure;
       }
-      // a refusal may be another tab spending the same refresh token a moment earlier, in a browser
-      // with no lock to take turns by, whose new record arrives with its answer, so the page looks
-      // again before it signs out
-      return new Promise(function (resolve) { setTimeout(resolve, 2500); }).then(function () {
-        var later = storedSince(spent);
+      // GitHub will not renew it. Where the tabs take turns, or the sign-in is this tab's alone, no
+      // other tab spent it first; otherwise another may have, and its new record comes with the
+      // service's answer, within twenty seconds, so the page looks for it that long before it signs out
+      return lookAgain(old, Date.now() + (alone ? 0 : 22000)).then(function (later) {
         if (later) return later;
+        if (!storedToken()) return signedOutMeanwhile();
         throw expired('Your sign-in expired or was revoked; press Sign in with GitHub again.', store);
       });
     });
@@ -414,22 +489,24 @@
     if (status === 422) return 'GitHub refused the request (422' + (m ? ': ' + m : '') + ').';
     return 'GitHub answered ' + status + (m ? ': ' + m : '') + '.';
   }
-  // GitHub refused the token itself, so nothing more works with it and the sign-in box comes back,
-  // unless another tab has stored a newer token meanwhile. A sign-in's token is dead (revoked, or run
-  // out) and is dropped; a pasted token is the person's to replace, so its box opens beneath.
+  // GitHub refused the token itself (401). When another tab has stored a newer one meanwhile, the
+  // answer is true and the call is made again with it. Otherwise nothing more works with this token,
+  // and the sign-in box comes back with the reason: a sign-in's token is dead (revoked, or run out)
+  // and is dropped; a pasted token is the person's to replace, so its box opens beneath.
   function refusedToken(sent, byApp) {
     var store = signinStore();
-    var o = oauthRecord();
-    var stored = readSignin(KEY_TOKEN) || (o && o.access_token) || '';
-    if (stored && stored !== sent) return;
+    var stored = storedToken();
+    if (stored && stored !== sent) return true;
     if (byApp) dropSignin(store); else offerToken();
     showGate();
+    say(explain(401, null, '', byApp), true);
+    return false;
   }
-  function gh(method, path, body, headers, raw) {
+  function gh(method, path, body, headers, raw, again) {
     var sent = '', byApp = false;
     return ensureToken().then(function () {
-      // every call is made signed in; none is left when another tab forgot the sign-in meanwhile
-      if (!token) { showGate(); throw new Error('This page is signed out now; sign in again to go on.'); }
+      // every call is made signed in; none is left when the token was forgotten, here or in another tab
+      if (!token) { showGate(); throw new Error('This page is signed out now: the token was forgotten, or GitHub refused it, here or in another tab. Sign in again to go on.'); }
       sent = token;
       byApp = signedInByApp();
       var h = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
@@ -445,10 +522,12 @@
         var data = null;
         try { data = t ? JSON.parse(t) : null; } catch (e) { data = t; }
         if (!r.ok) {
+          // GitHub turned the request away unread, so it is made once more with a token another tab
+          // stored meanwhile, where there is one
+          if (r.status === 401 && refusedToken(sent, byApp) && !again) return gh(method, path, body, headers, raw, true);
           var err = new Error(explain(r.status, data, path, byApp));
           err.status = r.status;
           err.data = data;
-          if (r.status === 401) refusedToken(sent, byApp);
           throw err;
         }
         return { status: r.status, data: data, headers: r.headers };
@@ -583,13 +662,41 @@
     $('cp-open').addEventListener('click', function () {
       var t = ($('cp-token').value || '').trim();
       if (!t) { say('Paste a token first.', true); return; }
-      writeKey(KEY_TOKEN, t, $('cp-keep').checked);
-      dropKey(KEY_OAUTH);
-      token = t;
-      $('cp-token').value = '';
-      onSignedIn();
+      // a GitHub token is plain ASCII with no space in it; a character the copy brought along (a
+      // space inside it, a zero-width or curly character) would make every request fail unsent
+      if (!/^[\x21-\x7e]+$/.test(t)) { say('The pasted text holds a character no GitHub token has (a space, or one outside plain ASCII that the copy brought along); copy the token again from GitHub.', true); return; }
+      var keep = $('cp-keep').checked;
+      var open = $('cp-open');
+      open.disabled = true;
+      say('Asking GitHub about the token...');
+      checkToken(t).then(function (ok) {
+        open.disabled = false;
+        if (!ok) return;
+        heldRefresh = { access: '', refresh: '' };
+        storeSignin(KEY_TOKEN, t, keep);
+        token = t;
+        $('cp-token').value = '';
+        say('');
+        onSignedIn();
+      });
     });
     $('cp-token').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('cp-open').click(); });
+  }
+  // GitHub is asked about a pasted token before it takes the place of anything, so a token GitHub
+  // refuses, or a moment GitHub cannot be reached, leaves this tab's sign-in and the one the browser
+  // keeps for its other tabs as they were
+  function checkToken(t) {
+    var h = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Authorization': 'Bearer ' + t };
+    return fetch(API + '/user', { headers: h }).then(function (r) {
+      if (r.ok) return true;
+      say(r.status === 401
+        ? explain(401, null, '', false)
+        : 'GitHub answered ' + r.status + ' when asked about the token, so nothing was changed; try again in a moment.', true);
+      return false;
+    }, function () {
+      say('GitHub could not be reached to check the token, so nothing was changed; try again in a moment.', true);
+      return false;
+    });
   }
   function showGate() {
     if ($('cp-gate')) $('cp-gate').classList.remove('hidden');
@@ -600,31 +707,85 @@
     if ($('cp-gate')) $('cp-gate').classList.add('hidden');
     if ($('cp-app')) $('cp-app').classList.remove('hidden');
   }
+  var shownLogin = '';
   function whoAmI() {
     return gh('GET', '/user').then(function (r) {
       var login = r.data && r.data.login ? r.data.login : '';
+      // the token may have been forgotten while GitHub answered: then nobody is signed in to name
+      if (!token) return '';
+      shownLogin = login;
       if ($('cp-who')) $('cp-who').textContent = login ? 'Signed in as ' + login + (signedInByApp() ? ' through GitHub' : ' with a token') + (keepSignedIn() ? ', kept on this browser.' : ', for this tab.') : '';
       return login;
     });
   }
-  // "Forget the token" forgets this tab's sign-in and the one kept on this browser, and asks GitHub,
-  // through the service, to revoke each token of "Sign in with GitHub" among them
+  // A page opens signed in once GitHub has said who the token is. A token GitHub refused, or none
+  // left, keeps the sign-in box; any other failure is of the moment (no network yet, GitHub or the
+  // service down), so the page opens with the token it holds, where Refresh tries again and Forget
+  // the token stays within reach.
+  function enter(begin) {
+    return whoAmI().then(function () {
+      // another tab may have forgotten the token while GitHub was answering
+      if (!token) { showGate(); return; }
+      showApp();
+      begin();
+    }, function (e) {
+      say(e.message, true);
+      if (e.status === 401 || !token) showGate();
+      else { showApp(); begin(); }
+    });
+  }
+  // Where this tab's token was the one the browser kept, another tab that forgets it, or finds it
+  // refused, signs this one out at once, and another tab that keeps a token in its place makes this
+  // one ask GitHub whose the new token is, so the page never acts for an account it does not name.
+  // The look waits a moment, so that a token another tab is putting in place of the old one is not
+  // taken for none.
+  function watchOtherTabs() {
+    window.addEventListener('storage', function (e) {
+      if (e.key !== null && e.key !== KEY_TOKEN && e.key !== KEY_OAUTH) return;
+      setTimeout(function () {
+        if (!token || !tokenStored) return;
+        var now = storedToken();
+        if (now === token) return;
+        if (now) { followToken(now); return; }
+        token = '';
+        tokenStored = false;
+        heldRefresh = { access: '', refresh: '' };
+        state = emptyState(state.repo);
+        showGate();
+        say('Signed out: the token this browser kept was forgotten in another tab, or GitHub refused it there. Sign in again to go on.');
+      }, 300);
+    });
+  }
+  // another tab's renewal names the same account again; a token another tab kept in its place may
+  // be another account's, and the page says so
+  function followToken(now) {
+    var before = shownLogin;
+    token = now;
+    whoAmI().then(function (login) {
+      if (login && before && login !== before) say('Now signed in as ' + login + ', not ' + before + ': another tab of this browser kept that account\'s token in place of the one this page had.', true);
+    }).catch(function () { /* the next call says what is wrong */ });
+  }
+  // "Forget the token" forgets this tab's token and the one kept on this browser, and asks GitHub,
+  // through the service, to revoke each token of "Sign in with GitHub" among them; a pasted token is
+  // the person's own, which only GitHub's settings revoke
   function signOut() {
+    var pasted = !!readKey(KEY_TOKEN);
     var dead = signinTokens();
     forgetToken();
     // what is still being read for the forgotten token is dropped when it comes, not shown
     state = emptyState(state.repo);
     showGate();
+    var own = pasted ? ' The personal access token itself stays valid at GitHub until it runs out or you delete it at github.com/settings/personal-access-tokens.' : '';
     if (dead.length && signinAvailable()) {
-      say('The token is forgotten here; asking GitHub to revoke it...');
+      say('The token is forgotten here; asking GitHub to revoke the sign-in\'s token...');
       Promise.all(dead.map(function (t) { return exchange('/revoke', { access_token: t }); })).then(function () {
-        say('The token is forgotten and revoked at GitHub; the repositories you listed stay.');
+        say('The token is forgotten here and the sign-in\'s token is revoked at GitHub.' + own + ' The repositories you listed stay.');
       }).catch(function (e) {
-        say('The token is forgotten here, but GitHub could not be asked to revoke it (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at github.com/settings/apps/authorizations ends it now.', true);
+        say('The token is forgotten here, but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at github.com/settings/apps/authorizations ends it now.' + own, true);
       });
       return;
     }
-    say('The token is forgotten; the repositories you listed stay.');
+    say('The token is forgotten on this browser.' + own + ' The repositories you listed stay.');
   }
 
   /* ============================================================
@@ -1118,7 +1279,8 @@
   }
 
   function initPanel() {
-    wireGate(function () { whoAmI().then(function () { showApp(); start(); }).catch(function (e) { say(e.message, true); }); });
+    wireGate(function () { enter(start); });
+    watchOtherTabs();
     $('cp-signout').addEventListener('click', signOut);
     $('cp-refresh').addEventListener('click', function () { if (state.repo) loadRepo(state.repo); });
     $('cp-repo').addEventListener('change', function () { if ($('cp-repo').value) loadRepo($('cp-repo').value); });
@@ -1149,7 +1311,7 @@
     }
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
-      whoAmI().then(function () { showApp(); start(); }).catch(function (e) { say(e.message, true); showGate(); });
+      enter(start);
     });
   }
 
@@ -1321,7 +1483,8 @@
     });
   }
   function initCost() {
-    wireGate(function () { whoAmI().then(function () { showApp(); startCost(); }).catch(function (e) { say(e.message, true); }); });
+    wireGate(function () { enter(startCost); });
+    watchOtherTabs();
     $('cp-signout').addEventListener('click', signOut);
     ['cc-runs', 'cc-days', 'cc-minutes', 'cc-input', 'cc-write', 'cc-read', 'cc-output', 'cc-model', 'cc-visibility', 'cc-plan', 'cc-copilot'].forEach(function (id) {
       $(id).addEventListener('change', calculate);
@@ -1336,7 +1499,7 @@
     }
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
-      whoAmI().then(function () { showApp(); startCost(); }).catch(function (e) { say(e.message, true); showGate(); });
+      enter(startCost);
     });
   }
 
