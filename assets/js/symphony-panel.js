@@ -612,6 +612,8 @@
   function signOut() {
     var dead = signinTokens();
     forgetToken();
+    // what is still being read for the forgotten token is dropped when it comes, not shown
+    state = emptyState(state.repo);
     showGate();
     if (dead.length && signinAvailable()) {
       say('The token is forgotten here; asking GitHub to revoke it...');
@@ -1327,10 +1329,9 @@
     });
     $('cc-prices-as-of').textContent = PRICES_AS_OF;
     calculate();
-    // wired once: a second sign-in after "Forget the token" would otherwise read the file twice a change
-    $('cost-repo').addEventListener('change', measured);
     function startCost() {
       fillRepoSelect($('cost-repo'), chosenRepo());
+      $('cost-repo').addEventListener('change', measured);
       measured();
     }
     finishOauth().then(function () {
