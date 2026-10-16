@@ -16,6 +16,8 @@
 
 /* ---------- the sign-in: GitHub's first, a pasted token folded beneath it ---------- */
 .control .control__signin { font-size: 1.02rem; padding: 10px 26px; margin: 4px 0 12px; }
+/* site.css turns every admin button teal on hover; one that cannot be pressed keeps its colour */
+.control .control__signin:disabled:hover { background: var(--ink); border-color: var(--ink); }
 .control__gate .admin__checks { margin: 2px 0 6px; }
 .control__token { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
 .control__token > summary { cursor: pointer; color: var(--ink-soft); font-size: 0.92rem; width: max-content; max-width: 100%; }
