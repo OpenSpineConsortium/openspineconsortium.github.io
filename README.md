@@ -226,6 +226,22 @@ Beethoven has two editions, and both live under `/beethoven/`:
   extension's privacy statement, `/symphony/privacy.html` (the address its Chrome Web Store
   listing names), is rendered from its repository's `PRIVACY.md` (`../symphony-extension/`;
   `SYMPHONY_REPO` overrides) and checked word for word, like the Beethoven texts.
+- **The Symphony control panel**, `/symphony/control/` (hidden, `noindex`, linked from the
+  Symphony page): drives a Symphony repository through GitHub's REST API as the signed-in
+  person, from the browser, with a fine-grained token kept in the browser or, once the stateless
+  sign-in service in symphony-app is deployed and `SIGNIN_SERVICE` and `CLIENT_ID` name it at the
+  top of `assets/js/symphony-panel.js`, with "Sign in with GitHub". It shows the board (STATE.md
+  on the branch `board`, rendered by a small Markdown renderer of its own), the open issues by the
+  protocol's labels, the worker registry, the open pull requests with their checks and the Actions
+  runs; it queues a task, gives an issue to a worker, opens the "Add a worker" issue, asks Claude
+  (an issue or a comment mentioning @claude), starts the workers, the board, the checks and the
+  metrics by hand, merges a green pull request (the token needs Contents: Read and write for that), and gives the two presses that set Symphony up on
+  a repository named without the topic `symphony`. Every state is written in words and every action
+  is a named button, so a browsing Claude can drive it; `?repo=OWNER/NAME` lands on one
+  repository. **`/symphony/cost.html`** beside it reads `METRICS.json` on the branch `metrics` of
+  the chosen repository and prices the same tokens under the other ways of running coding agents
+  on GitHub, with a calculator; every price names its source. Both pages share the script and
+  `assets/css/control.css`, which ride on the admin page's `.admin` styles.
 - **`/beethoven/admin.html`**, the maintainer's approval page, is generated like any page
   but `hidden`: no navigation leads to it, it carries `noindex` and it is not in the
   sitemap. It reads the access service's address from `beethoven/services.json`

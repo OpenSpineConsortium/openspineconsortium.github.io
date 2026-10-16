@@ -1,0 +1,77 @@
+/* ============================================================
+   control.css: the Symphony control panel (/symphony/control/) and
+   the cost page (/symphony/cost.html). Both ride on the admin page's
+   styles in site.css (.admin, its boxes, tables and forms); here only
+   what those two pages add: the repository line, the summary, the
+   rendered board, the select boxes and the cost tables.
+   ============================================================ */
+
+.control .page-head p { max-width: 80ch; }
+.control h2 { margin-top: 44px; }
+.control h3 { margin-top: 22px; }
+.control .admin__lead a { color: var(--teal); border-bottom: 1px solid var(--line); }
+.control .admin__lead a:hover { color: var(--teal-deep); border-color: var(--teal); }
+.control small a { color: var(--teal); }
+.control #msg.admin__warn { border-color: rgba(188, 107, 38, 0.45); }
+
+/* ---------- the repository line and the summary ---------- */
+.control__pick { margin-top: 8px; }
+.control__links { margin: 12px 0 8px; }
+.control__links strong { font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600; margin-right: 6px; }
+.control__links a { color: var(--teal); }
+.control__summary { font-size: 0.98rem; line-height: 1.6; margin: 0; max-width: none; }
+
+/* ---------- select boxes, like the inputs ---------- */
+.admin select {
+  width: 100%;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.admin select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14, 95, 88, 0.16); }
+.admin td select { width: auto; padding: 3px 8px; font-size: 0.85rem; margin: 2px 6px 4px 0; }
+.admin select:disabled { opacity: 0.6; }
+
+/* ---------- the answer under "Add a repository" and the measured box ---------- */
+.control__answer:empty { display: none; }
+.control__answer { margin-top: 12px; }
+.control__answer ol { margin: 8px 0 12px 22px; }
+.control__answer li { margin: 4px 0; }
+.control__answer a { color: var(--teal); border-bottom: 1px solid var(--line); }
+.control__answer h3 { margin-top: 6px; }
+
+/* ---------- the rendered board ---------- */
+.control__board { font-size: 0.95rem; line-height: 1.55; overflow-wrap: anywhere; }
+.control__board h2 { font-size: 1.2rem; margin: 18px 0 8px; }
+.control__board h3 { font-size: 1.05rem; margin: 14px 0 6px; }
+.control__board h4, .control__board h5, .control__board h6 { font-size: 1rem; margin: 12px 0 6px; }
+.control__board p { margin: 8px 0; }
+.control__board ul { margin: 6px 0 10px 22px; }
+.control__board li { margin: 2px 0; }
+.control__board a { color: var(--teal); border-bottom: 1px solid var(--line); }
+.control__board pre { white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.85rem; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+.control__board .table-scroll { margin: 8px 0 12px; }
+.control__board table { font-size: 0.88rem; }
+.control__board:empty::before { content: "Reading the board..."; color: var(--ink-faint); }
+
+/* ---------- the cost page ---------- */
+.cost__facts { margin: 6px 0 14px; }
+.cost__facts th { width: 13em; color: var(--ink-soft); }
+.cost__out th, .cost__models th { font-weight: 600; }
+.cost__out tbody th, .cost__models tbody th { width: 15em; }
+.cost__out td:nth-child(2), .cost__out td:nth-child(3), .cost__out td:nth-child(4) { white-space: nowrap; }
+.cost__out td:nth-child(5) { min-width: 22em; color: var(--ink-soft); }
+tr.cost__us th, tr.cost__us td { background: rgba(14, 95, 88, 0.07); }
+.cost__sources { margin: 8px 0 24px 22px; font-size: 0.92rem; line-height: 1.55; color: var(--ink-soft); }
+.cost__sources li { margin: 6px 0; }
+.cost__sources a { color: var(--teal); border-bottom: 1px solid var(--line); }
+.cost__sources a:hover { color: var(--teal-deep); border-color: var(--teal); }
+
+@media (max-width: 720px) {
+  .cost__out td:nth-child(5) { min-width: 0; }
+  .cost__facts th { width: 8em; }
+}
