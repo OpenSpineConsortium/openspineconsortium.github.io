@@ -33,10 +33,10 @@
   'use strict';
 
   var API = 'https://api.github.com';
-  // The stateless sign-in service and SymphonyBoard's client id. Both are empty until the service is
-  // deployed; then "Sign in with GitHub" can be pressed.
-  var SIGNIN_SERVICE = '';
-  var CLIENT_ID = '';
+  // The stateless sign-in service and SymphonyBoard's client id, neither a secret. With both set,
+  // "Sign in with GitHub" can be pressed; emptying either one turns the button off again.
+  var SIGNIN_SERVICE = 'https://symphony-signin.openspineconsortium.workers.dev';
+  var CLIENT_ID = 'Iv23liTkIRov2FYN83wD';
   var APP_SLUG = 'symphonyboard';
   var FORM_URL = 'https://github.com/OpenSpineConsortium/symphony-start/issues/new?template=adopt.yml';
   var TOPIC = 'symphony';
