@@ -339,6 +339,9 @@ SITE = [
         # linked from the Symphony page; the cost page beside it prices the work against the
         # other ways of running coding agents on GitHub
         node("Control panel", "/symphony/control/", hidden=True),
+        # the Claude slots the workers run on, read from the repository's branch pool; hidden as the
+        # panel is, and linked from it
+        node("Claude tokens", "/symphony/control/tokens.html", hidden=True),
         node("What it costs", "/symphony/cost.html", crumb="What Symphony costs, against the alternatives"),
         node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
         node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
