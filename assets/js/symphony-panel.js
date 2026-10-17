@@ -1678,7 +1678,279 @@
     });
   }
 
+
+  /* ============================================================
+     The Tokens page
+     ============================================================ */
+  // The Claude slots a repository's workers run on, read from its branch pool, which tools/pool.py
+  // of the Symphony template writes: one file per slot and kind of reading (a run's, a probe's from
+  // the workflow Pool, cswap's from the owner's machine), each with the five-hour and seven-day
+  // windows' use and resets and the per-model weekly limits, such as Fable's, which only cswap
+  // reads. No reading holds a token, and the page never sees one: GitHub never gives a secret back.
+  // The rules below are pool.py's: the newest reading of each window counts, a window past its
+  // reset counts as empty, and a slot with a window at 90 percent or more is held until it resets,
+  // or for five hours from its reading when no reset is known.
+  var POOL_BRANCH = 'pool';
+  var POOL_FILE = /^slot-(main|[1-8])\.(run|probe|cswap)\.json$/;
+  var POOL_THRESHOLD = 0.9;
+  var POOL_UNKNOWN_HOLD_MS = 5 * 3600 * 1000;
+  var POOL_WINDOWS = [['five_hour', '5 hours'], ['seven_day', '7 days']];
+  var ASSIGNMENTS_PATH = '.github/symphony/accounts.json';
+  var CHOICES = ['main', 'auto', '1', '2', '3', '4', '5', '6', '7', '8'];
+  var SLOT_ORDER = ['1', '2', '3', '4', '5', '6', '7', '8', 'main'];
+  var reading = 0;
+
+  function moment(v) {
+    if (typeof v === 'number') return v * 1000;
+    var t = typeof v === 'string' ? new Date(v).getTime() : NaN;
+    return isNaN(t) ? null : t;
+  }
+  function used(v) { return typeof v === 'number' && v === v ? Math.max(0, Math.min(v, 10)) : null; }
+  function slotWindows(records, now) {
+    var windows = {}, scoped = [];
+    records.slice().sort(function (a, b) { return moment(a.at) - moment(b.at); }).forEach(function (r) {
+      var w = r.windows || {};
+      POOL_WINDOWS.forEach(function (pair) {
+        var each = w[pair[0]];
+        if (each && used(each.utilization) != null) windows[pair[0]] = { utilization: each.utilization, resetsAt: each.resetsAt, at: r.at, source: r.source };
+      });
+      if (Array.isArray(r.scoped) && r.scoped.length) scoped = r.scoped.filter(function (s) { return s && typeof s.name === 'string'; }).map(function (s) {
+        return { name: s.name, utilization: s.utilization, resetsAt: s.resetsAt, at: r.at, source: r.source };
+      });
+    });
+    Object.keys(windows).map(function (k) { return windows[k]; }).concat(scoped).forEach(function (each) {
+      var resets = moment(each.resetsAt);
+      if (resets != null && resets <= now) { each.utilization = 0; each.reset = true; }
+    });
+    return { windows: windows, scoped: scoped };
+  }
+  function heldUntil(found, now) {
+    var until = null;
+    Object.keys(found.windows).map(function (k) { return found.windows[k]; }).concat(found.scoped).forEach(function (each) {
+      var u = used(each.utilization);
+      if (u == null || u < POOL_THRESHOLD) return;
+      var resets = moment(each.resetsAt);
+      if (resets == null) resets = (moment(each.at) || now) + POOL_UNKNOWN_HOLD_MS;
+      if (resets > now && (until == null || resets > until)) until = resets;
+    });
+    return until;
+  }
+  // the slot auto would take now, as pool.py's pick does: the most room in five hours, then seven
+  // days, a slot no reading names after every one a reading does, the list's order last
+  function autoPick(rows) {
+    var free = rows.filter(function (r) { return r.slot !== 'main' && !r.until; });
+    if (!free.length) return null;
+    free.sort(function (a, b) {
+      var ka = [a.empty ? 1 : 0].concat(POOL_WINDOWS.map(function (p) { return a.found.windows[p[0]] ? used(a.found.windows[p[0]].utilization) : 0; }));
+      var kb = [b.empty ? 1 : 0].concat(POOL_WINDOWS.map(function (p) { return b.found.windows[p[0]] ? used(b.found.windows[p[0]].utilization) : 0; }));
+      for (var i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+      return SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot);
+    });
+    return free[0].slot;
+  }
+  function percent(v) { return v == null ? 'n/a' : Math.round(v * 100) + '%'; }
+  function windowText(each) {
+    if (!each) return 'not read yet';
+    var text = percent(used(each.utilization)) + ' used';
+    if (each.reset) return '0% used (reset at ' + stamp(new Date(moment(each.resetsAt)).toISOString()) + ')';
+    if (each.resetsAt) text += ', resets ' + stamp(new Date(moment(each.resetsAt)).toISOString());
+    return text;
+  }
+  function sourceWord(s) { return s === 'cswap' ? 'cswap on your machine' : s === 'probe' ? 'a Refresh probe' : 'a worker\'s run'; }
+
+  function readPool(repo) {
+    return gh('GET', '/repos/' + repo + '/contents/?ref=' + POOL_BRANCH).then(function (r) {
+      var names = (Array.isArray(r.data) ? r.data : []).filter(function (f) { return f.type === 'file' && POOL_FILE.test(f.name); }).map(function (f) { return f.name; });
+      return Promise.all(names.map(function (name) {
+        return file(repo, name, POOL_BRANCH).then(function (text) {
+          var m = POOL_FILE.exec(name), rec = null;
+          try { rec = JSON.parse(text); } catch (e) { rec = null; }
+          // a reading of another slot or kind than its name says is left out, as pool.py leaves it
+          return rec && rec.version === 1 && rec.slot === m[1] && rec.source === m[2] && moment(rec.at) != null ? rec : null;
+        }).catch(function () { return null; });
+      }));
+    }).then(function (records) {
+      var by = {};
+      records.forEach(function (r) { if (r) (by[r.slot] = by[r.slot] || []).push(r); });
+      return by;
+    });
+  }
+  function readAssignments(repo) {
+    return file(repo, ASSIGNMENTS_PATH).then(function (text) {
+      var data = JSON.parse(text);
+      return { exists: true, default: CHOICES.indexOf(data['default']) >= 0 ? data['default'] : 'main', workers: data.workers && typeof data.workers === 'object' ? data.workers : {} };
+    }).catch(function (e) {
+      if (e && e.status === 404) return { exists: false, default: 'main', workers: {} };
+      if (e instanceof SyntaxError) return { exists: true, broken: true, default: 'main', workers: {} };
+      throw e;
+    });
+  }
+  function readActionWorkers(repo) {
+    return gh('GET', '/repos/' + repo + '/contents/.github/symphony/workers').then(function (r) {
+      var files = (Array.isArray(r.data) ? r.data : []).filter(function (f) { return f.type === 'file' && /\.json$/.test(f.name); });
+      return Promise.all(files.map(function (f) {
+        return file(repo, '.github/symphony/workers/' + f.name).then(function (text) {
+          try { return JSON.parse(text); } catch (e) { return null; }
+        }).catch(function () { return null; });
+      }));
+    }).then(function (all) {
+      return all.filter(function (w) { return w && w.runs === 'actions' && WORKER_NAME.test(w.name || ''); }).map(function (w) { return w.name; });
+    }).catch(function (e) { if (e.status === 404) return []; throw e; });
+  }
+
+  function showSlots(repo, by) {
+    var body = $('tk-slots').querySelector('tbody');
+    clear(body);
+    var now = Date.now();
+    var rows = SLOT_ORDER.filter(function (slot) { return by[slot]; }).map(function (slot) {
+      var found = slotWindows(by[slot], now);
+      return { slot: slot, found: found, until: heldUntil(found, now), empty: !Object.keys(found.windows).length,
+               at: by[slot].map(function (r) { return r.at; }).sort().pop(), sources: by[slot].map(function (r) { return r.source; }) };
+    });
+    if (!rows.length) {
+      var tr = el('tr');
+      add(tr, el('td', 'admin__none', 'No reading yet on ' + repo + '\'s branch pool. Press "Read every slot now", or run python3 scripts/tokens.py usage on your machine for cswap\'s, Fable\'s included.')).firstChild.colSpan = 6;
+      body.appendChild(tr);
+    }
+    rows.forEach(function (r) {
+      var tr = el('tr');
+      add(tr, el('th', '', r.slot === 'main' ? 'main (CLAUDE_CODE_OAUTH_TOKEN)' : 'slot ' + r.slot + ' (SYMPHONY_CLAUDE_' + r.slot + ')'));
+      POOL_WINDOWS.forEach(function (p) { add(tr, el('td', '', windowText(r.found.windows[p[0]]))); });
+      add(tr, el('td', '', r.found.scoped.length ? r.found.scoped.map(function (s) { return s.name + ': ' + windowText(s); }).join('; ') : 'none read (only cswap reads them)'));
+      add(tr, el('td', r.until ? 'admin__warn' : '', r.until ? 'held until ' + stamp(new Date(r.until).toISOString()) : 'free'));
+      var last = add(el('td'), timeEl(r.at), ' from ' + r.sources.filter(function (s, i, a) { return a.indexOf(s) === i; }).map(sourceWord).join(', '));
+      add(tr, last);
+      body.appendChild(tr);
+    });
+    var pick = autoPick(rows);
+    var held = rows.filter(function (r) { return r.slot !== 'main' && r.until; });
+    $('tk-auto').textContent = pick
+      ? 'Auto would take slot ' + pick + ' now, the read slot with the most room. A slot with no reading comes after every read one, and a held slot is passed over until it resets.'
+      : held.length ? 'Every read slot is held; the first is free at ' + stamp(new Date(Math.min.apply(null, held.map(function (r) { return r.until; }))).toISOString()) + '. A worker on auto waits until then.'
+      : 'No slot is read yet, so auto takes the first slot of SYMPHONY_CLAUDE_ACCOUNTS.';
+  }
+
+  function choiceSelect(id, value) {
+    var s = el('select');
+    s.id = id;
+    CHOICES.forEach(function (c) {
+      var o = el('option', '', c === 'main' ? 'main (CLAUDE_CODE_OAUTH_TOKEN)' : c === 'auto' ? 'auto (the pool)' : 'slot ' + c);
+      o.value = c;
+      if (c === value) o.selected = true;
+      s.appendChild(o);
+    });
+    return s;
+  }
+  function showAssignments(a, workers) {
+    var box = $('tk-assign');
+    clear(box);
+    if (a.broken) none(box, ASSIGNMENTS_PATH + ' is there but does not parse as JSON; saving here replaces it.');
+    add(box, add(el('div', 'admin__row'), add(el('div'), add(el('label', '', 'Every worker not named below'), ''), choiceSelect('tk-default', a['default']))));
+    box.querySelector('label').htmlFor = 'tk-default';
+    var names = workers.slice();
+    Object.keys(a.workers).forEach(function (n) { if (names.indexOf(n) < 0 && WORKER_NAME.test(n)) names.push(n); });
+    if (!names.length) none(box, 'No worker in Actions is registered yet: the control panel\'s "Add a worker" makes one.');
+    names.forEach(function (n, i) {
+      var row = el('div', 'admin__row'), cell = el('div'), label = el('label', '', n + (workers.indexOf(n) < 0 ? ' (no longer registered)' : ''));
+      var choice = a.workers[n] && CHOICES.indexOf(a.workers[n]) >= 0 ? a.workers[n] : 'default';
+      var s = choiceSelect('tk-w-' + i, choice);
+      var o = el('option', '', 'the default above');
+      o.value = 'default';
+      s.insertBefore(o, s.firstChild);
+      if (choice === 'default') o.selected = true;
+      s.setAttribute('data-worker', n);
+      label.htmlFor = s.id;
+      add(box, add(row, add(cell, label, s)));
+    });
+    add(box, add(el('p', 'admin__bar'), btn('Propose these assignments as a pull request', false, saveAssignments)));
+  }
+  function chosenAssignments() {
+    var out = { 'default': $('tk-default').value, workers: {} };
+    Array.prototype.forEach.call(document.querySelectorAll('#tk-assign select[data-worker]'), function (s) {
+      if (s.value !== 'default') out.workers[s.getAttribute('data-worker')] = s.value;
+    });
+    return out;
+  }
+  // main takes only pull requests, so the change is a branch of its own and a pull request, which the
+  // repository's check and its owner then take as any other
+  function saveAssignments() {
+    var repo = $('tk-repo').value;
+    if (!repo) return;
+    var text = JSON.stringify(chosenAssignments(), null, 2) + '\n';
+    var branch = 'symphony/accounts-' + new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
+    var base = 'main', existing = null;
+    say('Opening a pull request that sets ' + ASSIGNMENTS_PATH + '...');
+    gh('GET', '/repos/' + repo).then(function (r) {
+      base = r.data.default_branch || 'main';
+      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(base));
+    }).then(function (r) {
+      return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + branch, sha: r.data.object.sha });
+    }).then(function () {
+      return gh('GET', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH + '?ref=' + encodeURIComponent(branch)).then(function (r) { existing = r.data && r.data.sha; }).catch(function (e) { if (e.status !== 404) throw e; });
+    }).then(function () {
+      var body = { message: 'Which Claude account each worker in Actions runs on', content: btoa(text), branch: branch };
+      if (existing) body.sha = existing;
+      return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, body);
+    }).then(function () {
+      return gh('POST', '/repos/' + repo + '/pulls', { title: 'Which Claude account each worker in Actions runs on', head: branch, base: base,
+        body: 'Sets ' + ASSIGNMENTS_PATH + ' from the control panel\'s Tokens page: main is CLAUDE_CODE_OAUTH_TOKEN, a number is that slot\'s SYMPHONY_CLAUDE_<slot>, and auto takes the slot of SYMPHONY_CLAUDE_ACCOUNTS with the most room at the start of each run (docs/setup/claude-tokens.md).' });
+    }).then(function (r) {
+      clear($('msg'));
+      add($('msg'), 'Opened ', link(r.data.html_url, 'pull request #' + r.data.number), '; the assignments take effect once it merges.');
+      $('msg').className = 'admin__box';
+    }).catch(function (e) { say(e.message + (e.status === 403 || e.status === 404 ? ' Proposing the change needs Contents and Pull requests: read and write on the repository.' : ''), true); });
+  }
+
+  function loadTokens() {
+    var asked = ++reading;
+    var repo = $('tk-repo').value;
+    var slots = $('tk-slots').querySelector('tbody');
+    clear(slots);
+    clear($('tk-assign'));
+    $('tk-auto').textContent = '';
+    if (!repo) { say('Choose a repository from the control panel\'s list first.', true); return; }
+    writeKey(KEY_REPO, repo, true);
+    var tr = el('tr');
+    add(tr, el('td', 'admin__none', 'Reading the branch pool of ' + repo + '...')).firstChild.colSpan = 6;
+    slots.appendChild(tr);
+    readPool(repo).catch(function (e) { if (e.status === 404) return {}; throw e; }).then(function (by) {
+      if (asked === reading) showSlots(repo, by);
+    }).catch(function (e) { if (asked === reading) { clear(slots); say(e.message, true); } });
+    Promise.all([readAssignments(repo), readActionWorkers(repo)]).then(function (both) {
+      if (asked === reading) showAssignments(both[0], both[1]);
+    }).catch(function (e) { if (asked === reading) none($('tk-assign'), 'The assignments could not be read: ' + e.message); });
+  }
+  // one word from each slot of SYMPHONY_CLAUDE_ACCOUNTS through the workflow Pool, which spends that
+  // word of each slot's window, so it runs only on this press (the owner's choice, 2026-10-17)
+  function probeSlots() {
+    var repo = $('tk-repo').value;
+    if (!repo) return;
+    say('Starting the workflow Pool...');
+    gh('GET', '/repos/' + repo).then(function (r) {
+      return gh('POST', '/repos/' + repo + '/actions/workflows/pool.yml/dispatches', { ref: r.data.default_branch || 'main' });
+    }).then(function () {
+      say('Pool is queued: it asks each slot for one word, which spends that word of the slot\'s window, and writes the readings to the branch pool in a minute or two. Press "Read the pool again" then.');
+    }).catch(function (e) { say(e.message + (e.status === 404 ? ' The repository has no workflow Pool yet (.github/workflows/pool.yml).' : e.status === 403 ? ' Starting a workflow needs Actions: read and write.' : ''), true); });
+  }
+  function initTokens() {
+    wireGate(function () { enter(startTokens); });
+    watchOtherTabs();
+    $('cp-signout').addEventListener('click', signOut);
+    $('tk-repo').addEventListener('change', loadTokens);
+    $('tk-reload').addEventListener('click', loadTokens);
+    $('tk-probe').addEventListener('click', probeSlots);
+    function startTokens() {
+      fillRepoSelect($('tk-repo'), chosenRepo());
+      loadTokens();
+    }
+    finishOauth().then(function () {
+      if (!loadToken()) { showGate(); return; }
+      enter(startTokens);
+    });
+  }
+
   // the cost page carries a signed-in box of its own, so its marker is read first
-  if ($('cost-app')) initCost();
+  if ($('tokens-app')) initTokens();
+  else if ($('cost-app')) initCost();
   else if ($('cp-app')) initPanel();
 })();
