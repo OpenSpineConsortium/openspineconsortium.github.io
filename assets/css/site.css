@@ -83,7 +83,8 @@
 .skip-link:focus { top: 12px; }
 
 /* style.css opens the drawer at 1300px because the bar once held sixteen links.
-   Seven tabs and a button fit in one row down to 901px; below that the drawer. */
+   Eight tabs and a button fit in one row down to 901px, each label on one line; below that the
+   drawer. */
 @media (min-width: 901px) {
   .nav { padding-left: 32px; padding-right: 32px; }
   .nav__links {
@@ -102,13 +103,16 @@
     visibility: visible;
   }
   .nav__links.is-open { box-shadow: none; }
-  .nav__links a { padding: 0; width: auto; font-size: .92rem; }
+  .nav__links a { padding: 0; width: auto; font-size: .92rem; white-space: nowrap; }
   .nav__links a.nav__cta { padding: 9px 18px; margin-top: 0; }
   .nav__toggle { display: none; }
 }
+@media (min-width: 1061px) and (max-width: 1180px) {
+  .nav__links { gap: 20px; }
+}
 @media (min-width: 901px) and (max-width: 1060px) {
   .nav { padding-left: 20px; padding-right: 20px; }
-  .nav__links { gap: 15px; }
+  .nav__links { gap: 12px; }
   .nav__links a { font-size: .86rem; }
   .nav__links a.nav__cta { padding: 8px 15px; }
   #nav .nav__brand { font-size: 1rem; gap: 7px; }
