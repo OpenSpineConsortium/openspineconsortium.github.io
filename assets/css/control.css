@@ -742,3 +742,64 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 .launch__note { font-size: 0.74rem; line-height: 1.3; }
 .console button.readout { padding: 5px 10px; }
 .readout__n { font-size: 1.3rem; }
+
+/* ============================================================
+   The + style everywhere (the Tokens tab's, for every list): each
+   list ends in a dashed + card, each card opens its status on a
+   press, and its gear and X sit in its top right corner. Every
+   form is a dialog the + or the gear opens; no tab holds a form.
+   ============================================================ */
+.console table.console__cards tr { position: relative; }
+.console table.console__cards tr.card--open { cursor: pointer; }
+.console table.console__cards tr.card--open:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.console table.console__cards td.card__ctl { position: absolute; top: 4px; right: 4px; display: flex; gap: 0; padding: 0; z-index: 1; }
+.console button.card__gear, .console button.card__x {
+  margin: 0; padding: 0; width: 28px; height: 28px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint); font-size: 1.1rem; line-height: 1;
+}
+.console button.card__x { font-size: 1.25rem; }
+.console button.card__gear:hover { color: var(--teal); background: rgba(60, 194, 177, 0.12); border-color: rgba(60, 194, 177, 0.5); }
+.console button.card__x:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
+/* the corner holds the gear and the X, so what sat there moves down a row or in */
+.console .console__kanban td.cell--when { grid-row: auto; grid-column: 1 / -1; text-align: left; }
+.console table.console__cards tr > td.cell--num { padding-right: 60px; }
+.console #cp-pulls td.cell--state { margin-right: 60px; }
+.console #cp-pulls tr > td.cell--when { grid-column: 1 / -1; text-align: left; }
+.console #cp-workers td.cell--name, .console #cp-agents td.cell--name { padding-right: 60px; }
+.console #cp-agents td.cell--purpose { margin-right: 60px; }
+/* the dashed + card */
+.console table.console__cards tr.card--add { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.console table.console__cards tr.card--add td { grid-column: 1 / -1; }
+.console button.card__add {
+  margin: 0; width: 100%; min-height: 44px; height: 100%; padding: 8px 12px; border-radius: 12px; border: 2px dashed var(--line);
+  background: transparent; color: var(--ink-soft); font-size: 0.92rem; font-weight: 600;
+}
+.console button.card__add:hover { border-color: var(--teal); color: var(--teal); background: rgba(60, 194, 177, 0.06); }
+.console #cp-workers tr.card--add, .console #cp-agents tr.card--add { min-height: 96px; }
+.console #cp-workers tr.card--add::before { display: none; }
+/* the + in a tab's head */
+.console button.console__add { margin: 0; padding: 4px 14px; border-radius: 100px; font-size: 0.86rem; font-weight: 600; color: #08110F; background: var(--teal); border-color: var(--teal); white-space: nowrap; }
+.console button.console__add:hover { background: var(--teal-bright); border-color: var(--teal-bright); color: #08110F; }
+/* the dialogs */
+.cpdlg { width: min(560px, calc(100vw - 32px)); }
+.cpdlg--wide { width: min(680px, calc(100vw - 32px)); }
+.cpdlg .tkdlg__form { position: relative; }
+.cpdlg__title { padding-right: 36px; overflow-wrap: anywhere; }
+.console .cpdlg__close, .cpdlg .cpdlg__close { position: absolute; top: -6px; right: -8px; }
+.cpdlg__body { max-height: 40vh; overflow: auto; }
+.cpdlg__inline { display: flex; gap: 8px; align-items: center; }
+.cpdlg__inline input, .cpdlg__inline select { flex: 1; min-width: 0; margin: 0; }
+.cpdlg__inline button { margin: 0; white-space: nowrap; }
+.cpdlg__chips { display: flex; flex-wrap: wrap; }
+.cpdlg__list { margin: 0; padding-left: 20px; font-size: 0.88rem; }
+.cpdlg .tkdlg__bar a { align-self: center; margin-left: 4px; }
+.cpdlg .console__more > summary { margin-bottom: 6px; }
+.cpdlg .wtiles { margin: 0; }
+.cpdlg .wtile { min-height: 0; padding: 8px 10px; }
+.tkdlg__row--three { grid-template-columns: 1fr 1fr 1fr; }
+.cpdlg textarea { width: 100%; }
+@media (max-width: 520px) { .tkdlg__row--three { grid-template-columns: 1fr; } }
+.console #cp-workers td.cell--runs { margin-right: 56px; }
+.console #cp-workers tr.card--add, .console #cp-agents tr.card--add { display: flex; align-items: stretch; }
+.console #cp-workers tr.card--add td, .console #cp-agents tr.card--add td { flex: 1 1 auto; display: flex; }
+.console #cp-workers tr.card--add .card__add, .console #cp-agents tr.card--add .card__add { min-height: 96px; }
