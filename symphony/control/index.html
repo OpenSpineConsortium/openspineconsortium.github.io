@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180852">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180852">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180852">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180957">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180957">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180957">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -122,7 +122,7 @@
       <summary>Use a fine-grained token instead</summary>
       <label for="cp-token">A fine-grained personal access token</label>
       <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board and the Claude accounts&rsquo; readings, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Adding a Claude account also needs the organization permissions Secrets and Variables set to Read and write. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token; Claude tokens are made under the Tokens tabthe one Claude token the page takes is the one you paste under the Tokens tab&rsquo;s &ldquo;Add or renew a slot&rdquo;.rsquo;s + Add Token, and the page never sees one.</small>
+      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board and the Claude accounts&rsquo; readings, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Adding a Claude account also needs the organization permissions Secrets and Variables set to Read and write. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token; Claude tokens are made under the Tokens tab&rsquo;s + Add Token, and the page never sees one.</small>
       <div><button id="cp-open" type="button">Open the panel</button></div>
     </details>
   </div>
@@ -132,7 +132,8 @@
     <div class="console__body">
       <div class="console__side">
         <div class="console__id">
-          <h1 id="cp-title" class="console__title">Control panel</h1>
+          <div class="console__titlerow"><h1 id="cp-title" class="console__title">Control panel</h1>
+            <button type="button" class="console__full quiet" id="cp-full" aria-pressed="false" title="Full screen: the console alone, the site's bar hidden (Esc to leave)"><span aria-hidden="true">&#x26F6;</span><span class="console__fullword">Full screen</span></button></div>
           <label for="cp-repo">Repository</label>
           <div class="console__pick">
             <p class="console__shown" id="cp-repo-shown" aria-hidden="true">No repository listed yet</p>
@@ -423,6 +424,9 @@
       </div>
     </div>
   </div>
+  <!-- the Ask Claude bar's place, frozen above the status line like it; the assistant fills it
+       (its own code), and while it is empty it takes no room -->
+  <div class="console__askbar" id="cp-askbar"></div>
   <div class="console__status">
     <div class="admin__box console__msg" id="msg" role="status" aria-live="polite"></div>
     <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
@@ -485,8 +489,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180852"></script>
+<script src="/assets/js/main.js?v=202610180957"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180852"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180957"></script>
 </body>
 </html>

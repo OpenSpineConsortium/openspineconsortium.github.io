@@ -23,7 +23,7 @@
    the refresh token that came with it) and the names of the repositories
    you listed, and never sends anything anywhere but GitHub and, for the
    sign-in, that service. The one Claude token it touches is one pasted
-   into the Tokens tab's "Add or renew a slot", which it seals in this
+   into the Tokens tab's + Add Token, which it seals in this
    browser for GitHub's public key and sends to GitHub as that sealed box
    alone, never stored, logged or shown (the owner, 2026-10-18).
 
@@ -1554,9 +1554,63 @@
     var box = wrap.closest('.console__scroll');
     if (box) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
   }
+  // a message that arrives, or changes, flashes the line at the deck's foot; emptying it does not.
+  // say() replaces className, so the flash class is put back after it rather than kept
+  function initFlash() {
+    var m = $('msg');
+    if (!m || !window.MutationObserver) return;
+    var last = '';
+    new MutationObserver(function () {
+      var text = m.textContent;
+      if (!text || text === last) { last = text; return; }
+      last = text;
+      m.classList.remove('console__flash');
+      void m.offsetWidth;
+      m.classList.add('console__flash');
+    }).observe(m, { childList: true, characterData: true, subtree: true });
+    m.addEventListener('animationend', function () { m.classList.remove('console__flash'); });
+  }
+  // full screen is the browser's own (F11, or the Fullscreen API from the button): the site's bar
+  // is hidden while it holds, and the deck measured again
+  function inFullScreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) return true;
+    // F11 makes the browser full screen without the API; Chrome and Firefox say so through display-mode
+    return !!(window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches);
+  }
+  function syncFullScreen() {
+    var on = inFullScreen();
+    document.body.classList.toggle('console-full', on);
+    if ($('cp-full')) {
+      $('cp-full').setAttribute('aria-pressed', on ? 'true' : 'false');
+      $('cp-full').querySelector('.console__fullword').textContent = on ? 'Leave' : 'Full screen';
+    }
+    fitConsole();
+  }
+  function initFullScreen() {
+    var b = $('cp-full');
+    if (b) b.addEventListener('click', function () {
+      var root = document.documentElement;
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else if (inFullScreen()) {
+        say('The browser itself is full screen: press F11 (on a Mac, Control-Command-F) to leave it.');
+      } else if (root.requestFullscreen || root.webkitRequestFullscreen) {
+        var asked = (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+        if (asked && asked.catch) asked.catch(function () { say('The browser would not go full screen here; press F11 instead.', true); });
+      } else {
+        say('This browser has no full screen for a page; press F11 instead.', true);
+      }
+    });
+    document.addEventListener('fullscreenchange', syncFullScreen);
+    document.addEventListener('webkitfullscreenchange', syncFullScreen);
+    window.addEventListener('resize', syncFullScreen);
+    syncFullScreen();
+  }
   function initConsole() {
     var c = $('console');
     if (!c) return;
+    initFlash();
+    initFullScreen();
     // the deck's foot holds the page's message; Clear empties it
     // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
