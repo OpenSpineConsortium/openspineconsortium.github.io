@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180658">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180658">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180658">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180729">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180729">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180729">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -103,15 +103,13 @@
 </div>
 <!-- /site:header -->
 <main id="main">
-<!-- The console: one screen under the site's header, a command bar, a rail of tabs and one tab at a
-     time, each scrolling inside itself so the page does not. assets/js/symphony-panel.js (initConsole)
+<!-- The console: one screen under the site's header, a side column (the repository and the rail of
+     tabs), one tab at a time and a status line at the foot (the page's message, who is signed in), each scrolling inside itself so the page does not. assets/js/symphony-panel.js (initConsole)
      sizes it to the window, switches the tabs, keeps the tab in the address (#board, #tokens, ...),
      counts the rows of each list onto the readouts, and opens the tab of anything the page points
      at. A new section is one more rail button (data-tab="name") and one more
      <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. -->
 <section class="section admin control console" id="console" aria-labelledby="cp-title">
-
-  <div class="admin__box console__msg" id="msg" role="status" aria-live="polite"></div>
 
   <div class="admin__box control__gate console__gate" id="cp-gate">
     <span class="console__eyebrow">Symphony control panel</span>
@@ -131,35 +129,33 @@
 
   <div id="cp-app" class="hidden console__app">
 
-    <div class="console__bar">
-      <h1 id="cp-title" class="console__title">Control panel</h1>
-      <div class="console__repo">
-        <label for="cp-repo">Repository</label>
-        <select id="cp-repo"></select>
-      </div>
-      <p class="console__links">
-        <a id="cp-on-github" href="https://github.com" target="_blank" rel="noopener">on GitHub</a>
-        <a id="cp-board-link" href="https://github.com" target="_blank" rel="noopener">the board file</a>
-        <a id="cp-issues-link" href="https://github.com" target="_blank" rel="noopener">the issues</a>
-        <a id="cp-actions-link" href="https://github.com" target="_blank" rel="noopener">the Actions tab</a>
-      </p>
-      <p class="console__me"><small id="cp-who"></small>
-        <button id="cp-refresh" type="button" class="quiet">Refresh</button>
-        <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
-    </div>
-
     <div class="console__body">
-      <div class="console__rail" role="tablist" aria-label="Control panel sections" aria-orientation="vertical">
-        <button type="button" role="tab" data-tab="command" id="rail-command" aria-controls="tab-command"><span class="rail__icon" aria-hidden="true">&#9673;</span><span class="rail__name">Command</span></button>
-        <button type="button" role="tab" data-tab="board" id="rail-board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
-        <button type="button" role="tab" data-tab="tasks" id="rail-tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
-        <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
-        <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
-        <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
-        <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
-        <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
-        <button type="button" role="tab" data-tab="repos" id="rail-repos" aria-controls="tab-repos"><span class="rail__icon" aria-hidden="true">&#43;</span><span class="rail__name">Repositories</span></button>
-        <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
+      <div class="console__side">
+        <div class="console__id">
+          <h1 id="cp-title" class="console__title">Control panel</h1>
+          <label for="cp-repo">Repository</label>
+          <div class="console__pick">
+            <p class="console__shown" id="cp-repo-shown" aria-hidden="true">No repository listed yet</p>
+            <select id="cp-repo"></select>
+          </div>
+          <p class="console__links"><span>GitHub:</span>
+            <a id="cp-on-github" href="https://github.com" target="_blank" rel="noopener">repository</a>
+            <a id="cp-board-link" href="https://github.com" target="_blank" rel="noopener">board</a>
+            <a id="cp-issues-link" href="https://github.com" target="_blank" rel="noopener">issues</a>
+            <a id="cp-actions-link" href="https://github.com" target="_blank" rel="noopener">Actions</a></p>
+        </div>
+        <div class="console__rail" role="tablist" aria-label="Control panel sections" aria-orientation="vertical">
+          <button type="button" role="tab" data-tab="command" id="rail-command" aria-controls="tab-command"><span class="rail__icon" aria-hidden="true">&#9673;</span><span class="rail__name">Command</span></button>
+          <button type="button" role="tab" data-tab="board" id="rail-board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
+          <button type="button" role="tab" data-tab="tasks" id="rail-tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
+          <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
+          <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
+          <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
+          <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
+          <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
+          <button type="button" role="tab" data-tab="repos" id="rail-repos" aria-controls="tab-repos"><span class="rail__icon" aria-hidden="true">&#43;</span><span class="rail__name">Repositories</span></button>
+          <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
+        </div>
       </div>
 
       <div class="console__stage">
@@ -424,6 +420,15 @@
       </div>
     </div>
   </div>
+  <div class="console__status">
+    <div class="admin__box console__msg" id="msg" role="status" aria-live="polite"></div>
+    <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
+    <div class="console__me">
+      <small id="cp-who"></small>
+      <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
+        <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
+    </div>
+  </div>
 </section>
 </main>
 <!-- site:footer -->
@@ -477,8 +482,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180658"></script>
+<script src="/assets/js/main.js?v=202610180729"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180658"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180729"></script>
 </body>
 </html>
