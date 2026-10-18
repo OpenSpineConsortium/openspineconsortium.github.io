@@ -3056,7 +3056,9 @@
   // may push the branch board writes its text, and Mermaid at its strict level still draws the HTML
   // a label holds (an image, a form, a field with an id the page's own forms answer to, a link) and
   // obeys a directive, so a block of any other line is never handed to it. This follows node_label's
-  // escapes: a change to the labels in the library changes it in the same step.
+  // escapes: a change to the labels in the library changes it in the same step, and the panel's
+  // checks (symphony-app, signin/panel-checks/e2e2/graph.test.mjs, R2 and R3) hand this tab the
+  // library's own lines for titles of every printable ASCII character, so a step missed fails them.
   var BOARD_NODE_LINE = /^  i([1-9][0-9]{0,8})\["#\1(?: [ !#&-;=?-{}~]*)?"\](?::::(?:todo|claimed|review|blocked|closed))?$/;
   var BOARD_EDGE_LINE = /^  i[1-9][0-9]{0,8} (?:-->|-\.->|==>) i[1-9][0-9]{0,8}$/;
   function boardChartLines(text) {
@@ -3065,12 +3067,15 @@
       return BOARD_NODE_LINE.test(line) || BOARD_EDGE_LINE.test(line) || GRAPH_CLASSES.some(function (c) { return line === '  ' + c; });
     });
   }
-  // a block that is no chart the board writes, shown as the text it is, and never drawn
+  // a block that is no chart the board writes, shown as the text it is, and never drawn; the host
+  // gives up the chart's class, whose light ground and dark ink are for a drawing, so its words and
+  // its text read in the Board tab's own colours, as any other block of code on the board does
   function boardNotChart(host) {
     var text = host.getAttribute('data-chart');
     host.removeAttribute('data-chart');
+    host.removeAttribute('class');
     clear(host);
-    add(host, el('p', 'admin__lead', 'Not drawn: this block is not a chart as the board writes it, so it is shown as text; the board on GitHub has it as text too.'));
+    add(host, el('p', 'admin__lead', 'Not drawn: this block is not a chart as the board writes it, so it is shown here as text.'));
     add(host, el('pre', 'admin__text', text));
   }
   // the charts the board's own text holds, its Dependencies section, drawn in place in the Board tab
@@ -3083,7 +3088,7 @@
       return false;
     });
     if (!hosts.length) return;
-    function undrawn(host, e) { host.textContent = 'This chart could not be drawn (' + e.message + '); the board on GitHub has it as text.'; }
+    function undrawn(host, e) { host.textContent = 'This chart could not be drawn (' + e.message + ').'; }
     loadMermaid().then(function (m) {
       return hosts.reduce(function (p, host) {
         return p.then(function () {
