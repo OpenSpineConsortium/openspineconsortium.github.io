@@ -125,19 +125,19 @@ robots: noindex
               </div></details>
             </div>
             <p id="cp-as-filter" class="admin__lead"></p>
-            <div class="console__scroll">
-              <h3>Queue: unclaimed, given to no worker</h3>
-              <div class="table-scroll"><table id="cp-queue" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3>Given to workers, not yet claimed</h3>
-              <div class="table-scroll"><table id="cp-given" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3>Claimed, at work</h3>
-              <div class="table-scroll"><table id="cp-claimed" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3>In review</h3>
-              <div class="table-scroll"><table id="cp-review" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3>Blocked, and blockers</h3>
-              <div class="table-scroll"><table id="cp-blocked" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3>Epics, which the coordinator plans</h3>
-              <div class="table-scroll"><table id="cp-epics" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <div class="console__scroll console__kanban">
+              <h3 data-col="queue">Queue: unclaimed, given to no worker</h3>
+              <div class="table-scroll"><table id="cp-queue" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+              <h3 data-col="given">Given to workers, not yet claimed</h3>
+              <div class="table-scroll"><table id="cp-given" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+              <h3 data-col="claimed">Claimed, at work</h3>
+              <div class="table-scroll"><table id="cp-claimed" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+              <h3 data-col="review">In review</h3>
+              <div class="table-scroll"><table id="cp-review" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+              <h3 data-col="blocked">Blocked, and blockers</h3>
+              <div class="table-scroll"><table id="cp-blocked" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+              <h3 data-col="epics">Epics, which the coordinator plans</h3>
+              <div class="table-scroll"><table id="cp-epics" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
               <p id="cp-other" class="admin__lead"></p>
             </div>
           </div>
@@ -165,7 +165,7 @@ robots: noindex
               <p>The open pull requests with the state of the checks on each head. Merge becomes pressable once a pull request is ready and every check has passed; it asks once more, then merges with a merge commit, which needs Contents set to Read and write on the token, and the merge closes the issue the pull request says it closes.</p>
             </div></details>
           </div>
-          <div class="console__scroll"><div class="table-scroll"><table id="cp-pulls" class="admin__stack"><thead><tr><th>Pull request</th><th>Title</th><th>Branch</th><th>State</th><th>Checks</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div></div>
+          <div class="console__scroll"><div class="table-scroll"><table id="cp-pulls" class="admin__stack console__cards"><thead><tr><th>Pull request</th><th>Title</th><th>Branch</th><th>State</th><th>Checks</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div></div>
         </section>
 
         <!-- Runs -->
@@ -183,7 +183,7 @@ robots: noindex
             </div></details>
           </div>
           <p id="cp-runs-note" class="admin__warn"></p>
-          <div class="console__scroll"><div class="table-scroll"><table id="cp-runs" class="admin__stack"><thead><tr><th>Workflow</th><th>Event</th><th>Branch</th><th>Outcome</th><th>Started by</th><th>Started</th></tr></thead><tbody></tbody></table></div></div>
+          <div class="console__scroll"><div class="table-scroll"><table id="cp-runs" class="admin__stack console__cards"><thead><tr><th>Workflow</th><th>Event</th><th>Branch</th><th>Outcome</th><th>Started by</th><th>Started</th></tr></thead><tbody></tbody></table></div></div>
         </section>
 
         <!-- Workers -->
@@ -195,34 +195,47 @@ robots: noindex
                 <p>The registry under <code>.github/symphony/workers/</code>: each routine or worker in Actions is one file there, and a person&rsquo;s sessions need none. Adding one opens the &ldquo;Add a worker&rdquo; issue; its workflow checks the answers and opens the pull request that adds the file, which joins the registry when it merges. The same form on GitHub: <a id="cp-worker-form-link" href="https://github.com" target="_blank" rel="noopener">Add a worker</a>.</p>
               </div></details>
             </div>
-            <div class="console__scroll"><div class="table-scroll"><table id="cp-workers" class="admin__stack"><thead><tr><th>Name</th><th>Runs</th><th>For</th><th>Area</th><th>Lands</th><th>Model</th><th>Turns</th><th>Rounds</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="console__scroll"><div class="table-scroll"><table id="cp-workers" class="admin__stack console__cards"><thead><tr><th>Name</th><th>Runs</th><th>For</th><th>Area</th><th>Lands</th><th>Model</th><th>Turns</th><th>Rounds</th></tr></thead><tbody></tbody></table></div></div>
           </div>
           <div class="console__col console__col--side">
             <div class="admin__box console__scroll">
               <h3 class="console__boxh">Add a worker</h3>
-              <label for="cp-w-name">Name (lower case, digits, inner dashes; after its job, never a login)</label><input id="cp-w-name" placeholder="nightly" maxlength="39" autocapitalize="off" spellcheck="false">
-              <div class="admin__row">
-                <div><label for="cp-w-runs">Where it runs</label><select id="cp-w-runs">
+              <p class="console__lead">Press where it runs and how its work lands, give it a name, and press Add.</p>
+              <!-- the tiles set the two selects, which stay the source the add reads -->
+              <div class="wtiles" role="group" aria-label="Where it runs" data-for="cp-w-runs">
+                <button type="button" class="wtile" data-index="0" aria-pressed="true"><span class="wtile__icon" aria-hidden="true">&#9881;</span><b>GitHub Actions</b><small>On this repository&rsquo;s Claude token</small></button>
+                <button type="button" class="wtile" data-index="1" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#8635;</span><b>A routine</b><small>On someone&rsquo;s Claude account</small></button>
+                <button type="button" class="wtile" data-index="2" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#9673;</span><b>Sessions</b><small>A person&rsquo;s own, local or cloud</small></button>
+              </div>
+              <div class="wtiles wtiles--two" role="group" aria-label="How its pull requests land" data-for="cp-w-lands">
+                <button type="button" class="wtile" data-index="0" aria-pressed="true"><span class="wtile__icon" aria-hidden="true">&#10003;</span><b>You merge</b><small>The owner merges each one</small></button>
+                <button type="button" class="wtile" data-index="1" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#8634;</span><b>Auto-merge</b><small>Once the check is green</small></button>
+              </div>
+              <div class="console__shadow" aria-hidden="true">
+                <label for="cp-w-runs">Where it runs</label><select id="cp-w-runs" tabindex="-1">
                   <option>actions: GitHub Actions, on this repository's Claude token</option>
                   <option>routine: a routine on someone's Claude account</option>
                   <option>session: a person's own sessions, local or in the cloud</option>
-                </select></div>
-                <div><label for="cp-w-lands">How its pull requests land</label><select id="cp-w-lands">
+                </select>
+                <label for="cp-w-lands">How its pull requests land</label><select id="cp-w-lands" tabindex="-1">
                   <option>owner: the owner merges each pull request</option>
                   <option>auto-merge: GitHub merges it once the check is green</option>
-                </select></div>
+                </select>
               </div>
+              <label for="cp-w-name">Name, after its job (lower case, digits, inner dashes)</label><input id="cp-w-name" placeholder="nightly" maxlength="39" autocapitalize="off" spellcheck="false">
               <label for="cp-w-about">What it is for, one line</label><input id="cp-w-about" maxlength="200">
-              <div class="admin__row">
-                <div><label for="cp-w-model">Model (empty for the default)</label><input id="cp-w-model" placeholder="sonnet" maxlength="60" autocapitalize="off" spellcheck="false"></div>
-                <div><label for="cp-w-turns">Turns per run (1 to 500; empty for 80)</label><input id="cp-w-turns" inputmode="numeric" maxlength="3"></div>
-                <div><label for="cp-w-rounds">Rounds in a row (1 to 50; empty for 6)</label><input id="cp-w-rounds" inputmode="numeric" maxlength="2"></div>
-              </div>
-              <label for="cp-w-area">Area: paths or globs it prefers, one a line; empty means anywhere</label>
-              <textarea id="cp-w-area" rows="2" placeholder="docs/" autocapitalize="off" spellcheck="false"></textarea>
-              <label for="cp-w-account">Claude account, as a note of whose it is; never a credential</label>
-              <input id="cp-w-account" maxlength="120">
-              <div><button id="cp-w-add" type="button" class="console__primary">Add the worker</button></div>
+              <details class="console__more"><summary>More settings: model, turns, area, account</summary>
+                <div class="admin__row">
+                  <div><label for="cp-w-model">Model (empty for the default)</label><input id="cp-w-model" placeholder="sonnet" maxlength="60" autocapitalize="off" spellcheck="false"></div>
+                  <div><label for="cp-w-turns">Turns per run (1 to 500; empty for 80)</label><input id="cp-w-turns" inputmode="numeric" maxlength="3"></div>
+                  <div><label for="cp-w-rounds">Rounds in a row (1 to 50; empty for 6)</label><input id="cp-w-rounds" inputmode="numeric" maxlength="2"></div>
+                </div>
+                <label for="cp-w-area">Area: paths or globs it prefers, one a line; empty means anywhere</label>
+                <textarea id="cp-w-area" rows="2" placeholder="docs/" autocapitalize="off" spellcheck="false"></textarea>
+                <label for="cp-w-account">Claude account, as a note of whose it is; never a credential</label>
+                <input id="cp-w-account" maxlength="120">
+              </details>
+              <div><button id="cp-w-add" type="button" class="console__primary">+ Add the worker</button></div>
             </div>
           </div>
         </section>

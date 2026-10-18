@@ -1006,6 +1006,20 @@
     return g;
   }
 
+  // each cell of a card's row names its part, so the console draws rows as cards (control.css)
+  function cardCells(tr, parts) {
+    Array.prototype.forEach.call(tr.children, function (td, i) { if (parts[i]) td.classList.add('cell--' + parts[i]); });
+    return tr;
+  }
+  // labels as chips; the separators stay in the text, so the cell reads as it did
+  function labelChips(labels) {
+    var td = el('td');
+    labels.forEach(function (name, i) {
+      if (i) add(td, el('span', 'chip__sep', ', '));
+      add(td, el('span', 'lchip' + (/^worker:|^account:|^agent:/.test(name) ? ' lchip--worker' : '') + (/^(blocker|blocked)$/.test(name) ? ' lchip--warn' : ''), name));
+    });
+    return td;
+  }
   function issueRow(it, acts) {
     var tr = el('tr');
     var l = labelsOf(it);
@@ -1014,13 +1028,13 @@
     tr.setAttribute('data-labels', l.join('\n'));
     add(tr, add(el('td'), link(it.html_url, '#' + it.number)));
     add(tr, el('td', '', it.title));
-    add(tr, el('td', '', l.join(', ') || ''));
+    add(tr, labelChips(l));
     add(tr, el('td', '', workerOf(l) || ''));
     add(tr, add(el('td'), timeEl(it.updated_at)));
     var act = el('td', 'admin__act');
     if (acts) acts(act, it);
     add(tr, act);
-    return tr;
+    return cardCells(tr, ['num', 'title', 'labels', 'worker', 'when', 'act']);
   }
   function issueTable(id, list, acts) {
     var body = $(id).querySelector('tbody');
@@ -1149,7 +1163,8 @@
         add(tr, el('td', '', w.model || 'default'));
         add(tr, el('td', '', w.max_turns != null ? String(w.max_turns) : ''));
         add(tr, el('td', '', w.rounds != null ? String(w.rounds) : ''));
-        body.appendChild(tr);
+        tr.setAttribute('data-runs', w.runs || '');
+        body.appendChild(cardCells(tr, ['name', 'runs', 'about', 'area', 'lands', 'model', 'turns', 'rounds']));
       });
       return loadIssues(s);
     });
@@ -1270,6 +1285,12 @@
     if (run.status !== 'completed') return run.status.replace(/_/g, ' ');
     return run.conclusion ? run.conclusion.replace(/_/g, ' ') : 'completed';
   }
+  // a run's outcome as one of three the cards colour: passed, failed, or anything else
+  function outcomeOf(word) {
+    if (word === 'success') return 'ok';
+    if (/^(failure|timed out|startup failure|action required)$/.test(word)) return 'bad';
+    return /^(in progress|queued|waiting|pending|requested)$/.test(word) ? 'running' : 'other';
+  }
   function loadRuns(s) {
     var body = $('cp-runs').querySelector('tbody');
     var note = $('cp-runs-note');
@@ -1289,7 +1310,8 @@
         add(tr, el('td', '', w)).lastChild.className = w === 'success' ? 'admin__tag admin__tag--ok' : (w === 'failure' ? 'admin__tag admin__tag--wait' : 'admin__tag admin__tag--mid');
         add(tr, el('td', '', run.actor && run.actor.login ? run.actor.login : ''));
         add(tr, add(el('td'), timeEl(run.run_started_at || run.created_at)));
-        body.appendChild(tr);
+        tr.setAttribute('data-outcome', outcomeOf(w));
+        body.appendChild(cardCells(tr, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
       });
     }).catch(function (e) {
       if (stale(s)) return;
@@ -1317,7 +1339,8 @@
         add(tr2, el('td', '', run.status === 'completed' ? (run.conclusion || 'completed') : run.status));
         add(tr2, el('td', '', run.app && run.app.slug ? run.app.slug : ''));
         add(tr2, add(el('td'), timeEl(run.completed_at || run.started_at)));
-        body.appendChild(tr2);
+        tr2.setAttribute('data-outcome', outcomeOf(run.status === 'completed' ? (run.conclusion || 'completed') : run.status));
+        body.appendChild(cardCells(tr2, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
       });
     }).catch(function (e) { if (stale(s)) return; var tr = el('tr'); add(tr, el('td', 'admin__none', e.message)).firstChild.colSpan = 6; body.appendChild(tr); });
   }
@@ -1335,7 +1358,7 @@
       });
       var unread = total > runs.length ? total - runs.length : 0;
       cell.textContent = (bad ? bad + ' failed, ' : '') + (wait ? wait + ' running, ' : '') + ok + ' of ' + runs.length + ' passed' + (unread ? ' (' + unread + ' more not read; see GitHub)' : '');
-      cell.className = bad ? 'admin__tag admin__tag--wait' : (wait || unread ? 'admin__tag admin__tag--mid' : 'admin__tag admin__tag--ok');
+      cell.className = 'cell--checks ' + (bad ? 'admin__tag admin__tag--wait' : (wait || unread ? 'admin__tag admin__tag--mid' : 'admin__tag admin__tag--ok'));
       pr._green = !bad && !wait && !unread;
       mergeBtn.disabled = !(pr._green && !pr.draft);
     }).catch(function (e) { if (!stale(s)) cell.textContent = e.status === 403 ? 'checks not readable' : e.message; });
@@ -1384,7 +1407,12 @@
         m.title = 'Enabled once the pull request is ready and every check has passed';
         add(act, m);
         add(tr, act);
-        body.appendChild(tr);
+        tr.setAttribute('data-draft', pr.draft ? 'true' : 'false');
+        // the Ask Claude bar finds a pull request's Merge button by its number; data-pull keeps
+        // these cards out of the task filters, which read tr[data-number] as tasks
+        tr.setAttribute('data-number', String(pr.number));
+        tr.setAttribute('data-pull', String(pr.number));
+        body.appendChild(cardCells(tr, ['num', 'title', 'branch', 'state', 'checks', 'when', 'act']));
         checksOf(s, pr, checks, m);
       });
       if (pulls.more) { var more = el('tr'); add(more, el('td', 'admin__none', 'Only the first ' + pulls.length + ' open pull requests were read; the rest are on GitHub.')).firstChild.colSpan = 7; body.appendChild(more); }
@@ -1665,7 +1693,14 @@
     var wrap = table.closest('.table-scroll') || table;
     var head = wrap.previousElementSibling && /^H[1-6]$/.test(wrap.previousElementSibling.tagName) ? wrap.previousElementSibling : wrap;
     var box = wrap.closest('.console__scroll');
-    if (box) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    if (!box) return;
+    // the task board lays its lists side by side, so the jump is sideways there
+    if (box.classList.contains('console__kanban') && getComputedStyle(box).display === 'grid') {
+      box.scrollLeft = head.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft;
+      head.classList.remove('console__flash');
+      void head.offsetWidth;
+      head.classList.add('console__flash');
+    } else box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
   }
   // a message that arrives, or changes, flashes the line at the deck's foot; emptying it does not.
   // say() replaces className, so the flash class is put back after it rather than kept
@@ -1719,11 +1754,28 @@
     window.addEventListener('resize', syncFullScreen);
     syncFullScreen();
   }
+  // the worker's tiles set the select each group names; a select set any other way lights its tile
+  function initTiles() {
+    Array.prototype.forEach.call(document.querySelectorAll('.wtiles[data-for]'), function (group) {
+      var select = $(group.getAttribute('data-for'));
+      if (!select) return;
+      var tiles = group.querySelectorAll('.wtile');
+      function light() {
+        Array.prototype.forEach.call(tiles, function (t) { t.setAttribute('aria-pressed', Number(t.getAttribute('data-index')) === select.selectedIndex ? 'true' : 'false'); });
+      }
+      Array.prototype.forEach.call(tiles, function (t) {
+        t.addEventListener('click', function () { select.selectedIndex = Number(t.getAttribute('data-index')); select.dispatchEvent(new Event('change', { bubbles: true })); });
+      });
+      select.addEventListener('change', light);
+      light();
+    });
+  }
   function initConsole() {
     var c = $('console');
     if (!c) return;
     initFlash();
     initFullScreen();
+    initTiles();
     // the deck's foot holds the page's message; Clear empties it
     // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
@@ -2291,7 +2343,7 @@
   // marks the focused row and hides the rows the filter leaves out, in every task table, and says
   // so above the tables; called again whenever the tables are rendered afresh
   function assistantRedraw() {
-    var rows = document.querySelectorAll('#cp-app table.admin__stack tbody tr[data-number]');
+    var rows = document.querySelectorAll('#cp-app table.admin__stack tbody tr[data-number]:not([data-pull])');
     var out = { row: null, shown: 0, total: rows.length };
     for (var i = 0; i < rows.length; i++) {
       var tr = rows[i];
@@ -3347,6 +3399,140 @@
     return label;
   }
 
+  /* ---------- which tokens an agent takes in one repository ---------- */
+  // The Agents tab gives each agent (a worker by name in accounts.json) a share of the repository's
+  // tokens: its line becomes a list of slots, which tools/pool.py picks over as auto picks over the
+  // pool, main only where the list names it. The list belongs to the repository, so anyone who may
+  // write to it may change it, through a pull request as every change under .github/ is made; who
+  // may switch a token on for the repository at all stays its owner's (reachBox).
+  var ASSIGN_BRANCH = 'symphony/tokens-';
+  var AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+  function assignedSlots(choice, pooled) {
+    if (Array.isArray(choice)) return choice.filter(function (s) { return TILE_SLOTS.indexOf(s) >= 0; });
+    if (choice === 'auto') return pooled.slice();
+    return TILE_SLOTS.indexOf(choice) >= 0 ? [choice] : ['main'];
+  }
+  // the tokens the repository can use, by name: the Tokens tab's own reading where it is of this
+  // repository, else the organization's lists, else the ones GitHub shows the repository
+  function usableTokens(repo) {
+    if (tk.repo === repo && tk.secrets && !tk.secrets.unread) {
+      return readAccounts(tk.place, repo).then(function (pooled) {
+        return { pooled: pooled, slots: TILE_SLOTS.filter(function (s) { return tk.secrets[slotSecret(s)]; }), labels: tk.labels };
+      });
+    }
+    var place;
+    return slotPlace(repo).then(function (p) {
+      place = p;
+      return readSecrets(place).catch(function () {
+        return Promise.all([
+          place.org ? listed('/repos/' + repo + '/actions/organization-secrets', 'secrets') : Promise.resolve([]),
+          listed('/repos/' + repo + '/actions/secrets', 'secrets').catch(function () { return []; })
+        ]).then(function (both) {
+          var by = {};
+          both[0].concat(both[1]).forEach(function (s) { if (s && s.name) by[s.name] = s; });
+          return by;
+        });
+      });
+    }).then(function (secrets) {
+      return Promise.all([readTileVariables(place), readAccounts(place, repo)]).then(function (both) {
+        return { pooled: both[1], slots: TILE_SLOTS.filter(function (s) { return secrets[slotSecret(s)]; }), labels: both[0][1] };
+      });
+    });
+  }
+  function readAccounts(place, repo) {
+    return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE).catch(function () {
+      return listed('/repos/' + repo + '/actions/organization-variables', 'variables').then(function (list) {
+        return list.filter(function (v) { return v.name === ACCOUNTS_VARIABLE; })[0] || null;
+      }, function () { return null; });
+    }).then(function (v) { return slotWords(v ? v.value : ''); });
+  }
+  function assignLabel(slot, labels) {
+    return labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot);
+  }
+  function tokenAssignBox(repo, agentName) {
+    var box = el('div', 'tkassign');
+    if (!repo || !AGENT_NAME.test(agentName || '') || agentName.indexOf('..') >= 0 || /\.lock$/i.test(agentName)) { none(box, 'No such agent.'); return box; }
+    none(box, 'Reading the tokens...');
+    Promise.all([usableTokens(repo), readAssignments(repo)]).then(function (both) {
+      var found = both[0], plan = both[1];
+      clear(box);
+      if (plan.broken) { none(box, ASSIGNMENTS_PATH + ' is not JSON, so it is left as it is.'); return; }
+      var choice = Object.prototype.hasOwnProperty.call(plan.workers, agentName) ? plan.workers[agentName] : plan['default'];
+      var have = assignedSlots(choice, found.pooled);
+      if (!found.slots.length) { none(box, 'Runs on the main token: this repository sees no token yet.'); return; }
+      var ticks = found.slots.map(function (slot) {
+        var label = tickOf('tka-' + agentName + '-' + slot, have.indexOf(slot) >= 0, assignLabel(slot, found.labels));
+        if (slot !== 'main' && found.pooled.indexOf(slot) < 0) label.title = 'Not in ' + ACCOUNTS_VARIABLE + ', so no run takes it until it is';
+        return { slot: slot, input: label.querySelector('input'), label: label };
+      });
+      var save = btn('Save', false, function () {
+        var list = ticks.filter(function (t) { return t.input.checked; }).map(function (t) { return t.slot; });
+        save.disabled = true;
+        say('Proposing the tokens of ' + agentName + '...');
+        proposeAssignment(repo, agentName, list).then(function (url) {
+          clear(note);
+          add(note, 'Proposed in ', link(url, 'a pull request'), '; ' + agentName + ' takes them once it merges.');
+          say('The tokens of ' + agentName + ' are proposed in a pull request; its runs take them once it merges.');
+        }, function (e) {
+          save.disabled = false;
+          say('Could not propose the tokens of ' + agentName + ': ' + e.message + (e.status === 403 || e.status === 404 ? ' It needs Contents and Pull requests: read and write on ' + repo + '.' : ''), true);
+        });
+      });
+      save.id = 'tka-save-' + agentName;
+      save.disabled = true;
+      ticks.forEach(function (t) {
+        t.input.addEventListener('change', function () { save.disabled = !ticks.some(function (x) { return x.input.checked; }); });
+        add(box, t.label);
+      });
+      var note = el('p', 'tkdlg__fact tkdlg__faint', Array.isArray(choice) ? '' : choice === 'auto' ? 'Now: any token of the pool.' : 'Now: ' + assignLabel(have[0], found.labels) + '.');
+      add(box, add(el('p', 'admin__bar'), save), note);
+    }).catch(function (e) { clear(box); none(box, 'Could not read the tokens: ' + e.message); });
+    return box;
+  }
+  function utf8Base64(text) { return btoa(unescape(encodeURIComponent(text))); }
+  // accounts.json read again on the default branch just before the change, so the change carries
+  // whatever merged meanwhile; one branch per agent, moved to the default branch's head each time
+  function proposeAssignment(repo, agent, list) {
+    var base, head, branch = ASSIGN_BRANCH + agent.toLowerCase();
+    return gh('GET', '/repos/' + repo).then(function (r) {
+      base = r.data.default_branch || 'main';
+      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(base));
+    }).then(function (r) {
+      head = r.data.object.sha;
+      // a pool.py older than the lists would refuse the whole file and stop every worker's run
+      return file(repo, 'tools/pool.py', base).catch(function (e) { if (e.status === 404) return ''; throw e; });
+    }).then(function (code) {
+      if (code.indexOf('def is_choice(') < 0) throw new Error('this repository\'s tools/pool.py does not take a list of tokens yet; bring the template\'s newer tools/pool.py in first');
+      return file(repo, ASSIGNMENTS_PATH, base).catch(function (e) { if (e.status === 404) return '{}'; throw e; });
+    }).then(function (text) {
+      var data = JSON.parse(text || '{}');
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error(ASSIGNMENTS_PATH + ' is not an object');
+      data.workers = data.workers && typeof data.workers === 'object' ? data.workers : {};
+      data.workers[agent] = list;
+      var body = JSON.stringify(data, null, 2) + '\n';
+      return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + branch, sha: head }).catch(function (e) {
+        if (e.status !== 422) throw e;
+        return gh('PATCH', '/repos/' + repo + '/git/refs/heads/' + branch, { sha: head, force: true });
+      }).then(function () {
+        return gh('GET', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH + '?ref=' + encodeURIComponent(branch)).then(function (r) { return r.data.sha; }, function (e) { if (e.status === 404) return null; throw e; });
+      }).then(function (sha) {
+        var put = { message: 'Give ' + agent + ' the tokens ' + list.join(', '), content: utf8Base64(body), branch: branch };
+        if (sha) put.sha = sha;
+        return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, put);
+      });
+    }).then(function () {
+      return gh('GET', '/repos/' + repo + '/pulls?state=open&head=' + encodeURIComponent(repo.split('/')[0] + ':' + branch));
+    }).then(function (r) {
+      if (Array.isArray(r.data) && r.data.length) return r.data[0];
+      return gh('POST', '/repos/' + repo + '/pulls', { title: 'Give ' + agent + ' its tokens', head: branch, base: base,
+        body: 'The control panel\'s Agents tab: ' + agent + ' takes the tokens ' + list.join(', ') + ' in this repository (' + ASSIGNMENTS_PATH + ', a list tools/pool.py picks over as auto picks over the pool).' }).then(function (x) { return x.data; });
+    }).then(function (pr) {
+      // GitHub merges it once its checks pass where the repository allows auto-merge; else it waits for a press
+      return gh('POST', '/graphql', { query: 'mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}', variables: { id: pr.node_id } })
+        .then(function () { return pr.html_url; }, function () { return pr.html_url; });
+    });
+  }
+
   // the settings are read again just before the write, so a change another page made meanwhile stays
   function saveTokenSettings(slot, setting, labelText) {
     var place = tk.place, ids = [place.id], path = place.base + '/variables/' + SETTINGS_VARIABLE;
@@ -3618,6 +3804,9 @@
     $('sh-copy').addEventListener('click', function () { if (shareReady()) shareCopy(shareNote(), 'The note is copied.'); });
     consoleOnOpen.share = shareRefresh;
   }
+
+  // the Agents tab puts one in each agent's row
+  window.tokenAssignBox = tokenAssignBox;
 
   // the cost page carries a signed-in box of its own, so its marker is read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
