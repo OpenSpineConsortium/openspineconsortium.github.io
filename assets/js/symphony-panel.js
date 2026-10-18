@@ -1998,7 +1998,9 @@
       return gh('GET', path + (path.indexOf('?') < 0 ? '?' : '&') + 'per_page=100&page=' + page).then(function (r) {
         var got = (r.data && Array.isArray(r.data[key])) ? r.data[key] : [];
         out = out.concat(got);
-        return got.length === 100 && page < 5 ? step(page + 1) : out;
+        if (got.length < 100) return out;
+        if (page >= 50) throw new Error('GitHub listed more than 5,000 entries at ' + path + ', more than the page reads; nothing was changed.');
+        return step(page + 1);
       });
     }
     return step(1);
@@ -2080,7 +2082,7 @@
       });
     } else add(reach, el('p', 'admin__lead', repo + ' belongs to a personal account, so the slot is a secret of that repository alone.'));
     add(box, reach);
-    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', false, function () { saveSlot(repo, place); })));
+    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', false, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
   }
 
   function reachIds(place, repo) {
@@ -2092,16 +2094,20 @@
     }));
   }
   // a repository in crowd mode holds no Claude token (docs/setup/crowdsourcing.md), as the wizard refuses
-  function refuseCrowd(names) {
-    return Promise.all(names.map(function (name) {
+  function refuseCrowd(names, place) {
+    var orgWide = place.org ? gh('GET', place.base + '/variables/' + CROWD_VARIABLE).then(function (r) {
+      if (String((r.data && r.data.value) || '').trim().toLowerCase() === 'true') throw new Error('The organization ' + place.owner + ' is in crowd mode (its variable ' + CROWD_VARIABLE + ' is true): its repositories hold no Claude token, so nothing was saved.');
+    }, function (e) { if (e.status !== 404) throw e; }) : Promise.resolve();
+    return orgWide.then(function () { return Promise.all(names.map(function (name) {
       return gh('GET', '/repos/' + name + '/actions/variables/' + CROWD_VARIABLE).then(function (r) {
         if (String((r.data && r.data.value) || '').trim().toLowerCase() === 'true') throw new Error(name + ' is in crowd mode (its variable ' + CROWD_VARIABLE + ' is true): it holds no Claude token, so nothing was saved.');
       }, function (e) { if (e.status !== 404 && e.status !== 403) throw e; });
-    }));
+    })); });
   }
   // the repositories a selected organization secret or variable reaches already, so a save adds to them
+  // one that cannot be read stops the save, since a PUT with part of the list would take the rest away
   function reachOf(path) {
-    return listed(path + '/repositories', 'repositories').catch(function () { return []; }).then(function (list) {
+    return listed(path + '/repositories', 'repositories').then(function (list) {
       return list.map(function (r) { return r.id; });
     });
   }
@@ -2130,19 +2136,35 @@
     });
   }
 
-  function saveSlot(repo, place) {
+  // a repository's own secret or variable of the same name outranks the organization's, as
+  // scripts/tokens.py warns, so the save says when the chosen repository holds one
+  function shadowed(place, repo, name, slot) {
+    if (!place.org) return Promise.resolve('');
+    function own(kind, n) { return readOne('/repos/' + repo + '/actions/' + kind + '/' + n).catch(function () { return null; }); }
+    return Promise.all([own('secrets', name), slot === 'main' ? null : own('variables', ACCOUNTS_VARIABLE)]).then(function (have) {
+      var out = '';
+      if (have[0]) out += ' But ' + repo + ' holds its own secret ' + name + ', which its workflows take in place of the organization\'s: delete it under the repository\'s Settings, Secrets and variables, Actions, or the new token goes unused there.';
+      if (have[1]) out += ' ' + repo + ' also holds its own ' + ACCOUNTS_VARIABLE + ' (' + have[1].value + '), which outranks the organization\'s list.';
+      return out;
+    });
+  }
+  function saveSlot(repo, place, button) {
+    if (button.disabled) return;
     var slot = $('tk-add-slot').value;
     var labelText = $('tk-add-label').value.trim();
     var input = $('tk-add-token');
+    // the token leaves the box at once, so a second press finds nothing to seal
     var text = input.value.trim();
-    if (API_KEY.test(text)) { input.value = ''; say('That is an Anthropic API key, which Symphony never uses: paste the token claude setup-token prints, which starts ' + SECRET_HEAD + 'oat.', true); return; }
-    if (!CLAUDE_TOKEN.test(text)) { say('That is not the shape of the token claude setup-token prints (' + SECRET_HEAD + 'oat and two digits, then a long run of letters); nothing was saved.', true); return; }
-    if (labelText && !SLOT_LABEL.test(labelText)) { say('A label is one word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address.', true); return; }
+    input.value = '';
+    if (API_KEY.test(text)) { say('That is an Anthropic API key, which Symphony never uses: paste the token claude setup-token prints, which starts ' + SECRET_HEAD + 'oat.', true); return; }
+    if (!CLAUDE_TOKEN.test(text)) { say('That is not the shape of the token claude setup-token prints (' + SECRET_HEAD + 'oat and two digits, then a long run of letters); nothing was saved. Paste it again.', true); return; }
+    if (labelText && !SLOT_LABEL.test(labelText)) { text = ''; say('A label is one word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address. Paste the token again with it.', true); return; }
+    button.disabled = true;
     var name = slotSecret(slot), secretPath = place.base + '/secrets/' + name, ids = [], sealed = '', keyId = '', stored = false;
     say('Sealing the token in this browser and saving ' + name + '...');
     reachIds(place, repo).then(function (found) {
       ids = found.map(function (f) { return f.id; });
-      return refuseCrowd(place.org ? found.map(function (f) { return f.name; }) : [repo]);
+      return refuseCrowd(place.org ? found.map(function (f) { return f.name; }) : [repo], place);
     }).then(function () {
       return Promise.all([loadSealer(), gh('GET', place.base + '/secrets/public-key')]);
     }).then(function (both) {
@@ -2150,7 +2172,6 @@
       sealed = toBase64(both[0](new TextEncoder().encode(text), fromBase64(both[1].data.key)));
       // from here only the sealed box is held; the box empties so a second press seals nothing
       text = '';
-      input.value = '';
       return place.org ? readOne(secretPath) : null;
     }).then(function (have) {
       var body = { encrypted_value: sealed, key_id: keyId };
@@ -2173,14 +2194,16 @@
         return writeVariable(place, ACCOUNTS_VARIABLE, words.join(','), ids);
       });
     }).then(function () {
-      return readOne(secretPath);
-    }).then(function (now) {
-      say(name + ' is saved' + (now && now.updated_at ? ', updated ' + stamp(now.updated_at) : '') + (slot === 'main' ? '.' : ', and ' + ACCOUNTS_VARIABLE + ' lists slot ' + slot + '. Press "Read every slot now" to take its first reading.'));
+      return Promise.all([readOne(secretPath), shadowed(place, repo, name, slot)]);
+    }).then(function (both) {
+      var now = both[0];
+      button.disabled = false;
+      say(name + ' is saved' + (now && now.updated_at ? ', updated ' + stamp(now.updated_at) : '') + (slot === 'main' ? '.' : ', and ' + ACCOUNTS_VARIABLE + ' lists slot ' + slot + '. Press "Read every slot now" to take its first reading.') + both[1], !!both[1]);
       showAddSlot(repo, reading);
     }).catch(function (e) {
+      button.disabled = false;
       text = '';
       sealed = '';
-      input.value = '';
       // once the secret is in, a failed label or list leaves the token saved, so it is not asked for again
       if (stored) say(name + ' is saved, but its label or ' + ACCOUNTS_VARIABLE + ' could not be written: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : '') + ' Add the slot to ' + ACCOUNTS_VARIABLE + ' on GitHub\'s variables page, or save the slot again.', true);
       else say(e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : '') + ' Paste the token again to retry.', true);
