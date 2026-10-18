@@ -651,12 +651,17 @@
     var m = /<([^>]+)>;\s*rel="next"/.exec(l);
     return m ? m[1].replace(API, '') : '';
   }
-  // the pages of a list, up to a number of them; the array says .more when GitHub had another page
+  // the pages of a list, up to a number of them; the array says .more when GitHub had another page,
+  // and .left the calls the token has left this hour where the latest page that says it said so,
+  // which a draw of the Dependencies tab that follows the open issues starts from (loadGraph)
   function ghList(path, pages) {
-    var out = [];
+    var out = [], calls = null;
     function step(p, left) {
       return gh('GET', p).then(function (r) {
         if (Array.isArray(r.data)) out = out.concat(r.data);
+        var said = rateLeft(r.headers);
+        if (said !== null) calls = said;
+        if (calls !== null) out.left = calls;
         var n = nextPage(r.headers);
         if (n && left <= 1) { out.more = true; return out; }
         return n ? step(n, left - 1) : out;
@@ -682,10 +687,13 @@
     return s;
   }
   // charts says a Mermaid block is a chart to draw: the board's own Dependencies section, which
-  // loadBoard draws in place (boardCharts), so the Board box never shows a chart as text; anything
-  // else, an assistant's answer among them, shows such a block as text, as it shows any code
+  // loadBoard draws in place (boardCharts), so the Board tab never shows the board's chart as text;
+  // anything else, an assistant's answer among them, shows such a block as text, as it shows any
+  // code. A comment is taken out only within its line, as the board writes its markers: the board
+  // writes a title raw, and every edge of its charts carries "-->", so a title holding "<!--"
+  // would otherwise swallow every line up to the first edge.
   function markdown(src, charts) {
-    var lines = escapeHtml(String(src).replace(/<!--[\s\S]*?-->/g, '').replace(/\r/g, '')).split('\n');
+    var lines = escapeHtml(String(src).replace(/<!--[^\n]*?-->/g, '').replace(/\r/g, '')).split('\n');
     var out = [], i = 0, para = [], list = null, table = null, code = false, chart = [];
     // a chart's lines, escaped with the rest, sit in the attribute the drawing reads
     function chartHost() { return '<div class="control__chart" data-chart="' + chart.join('\n') + '">Drawing the chart...</div>'; }
@@ -720,7 +728,8 @@
       if (code === 'chart') { chart.push(line); continue; }
       if (code) { out.push(line); continue; }
       var h = /^(#{1,6})\s+(.*)$/.exec(line);
-      if (h) { flushPara(); flushList(); flushTable(); var n = Math.min(h[1].length + 1, 6); out.push('<h' + n + '>' + inline(h[2]) + '</h' + n + '>'); continue; }
+      // the board writes a pipe in an epic's heading as \|, as it does in a cell, and a page shows it as the pipe
+      if (h) { flushPara(); flushList(); flushTable(); var n = Math.min(h[1].length + 1, 6); out.push('<h' + n + '>' + inline(h[2].replace(/\\\|/g, '|')) + '</h' + n + '>'); continue; }
       if (/^\s*\|/.test(line)) { flushPara(); flushList(); (table = table || []).push(line); continue; }
       var li = /^\s*(?:[-*]|\d+\.)\s+(.*)$/.exec(line);
       if (li) { flushPara(); flushTable(); (list = list || []).push(li[1]); continue; }
@@ -2622,12 +2631,14 @@
   // epics. Mermaid draws them, 12.2.0 (MIT; assets/js/vendor/mermaid.min.js, the npm package's own
   // build unchanged, its licence in mermaid.LICENSE beside it), loaded from the site only when there
   // is a chart to draw, as the sealing script is, and told to draw at its strict level. A title is
-  // untrusted: it is folded, cut and written as entities as the board writes it, with one entity more
-  // (graphLabel), and never raw, so what reaches the drawing is text, and the tables under the charts
-  // show it as text too. The tab reads and never writes. It draws whenever the task tables are
-  // rendered, whether or not it is open, as the review of the section settled: its reads are capped
-  // and keep a reserve, and a failed read is said in the Command tab's summary, which a draw made
-  // only once the tab is opened would leave unsaid.
+  // untrusted: it is folded, cut and written as entities as the board writes it (graphLabel), and
+  // never raw, so what reaches the drawing is text, and the tables under the charts show it as text
+  // too. The board's own text, which anyone who may push the branch board writes, is drawn in the
+  // Board tab only where every line is one the board writes (boardChartLines). The tab reads and
+  // never writes. It draws whenever the task tables are rendered, whether or not it is open, as the
+  // review of the section settled: its reads are capped and keep a reserve, and a failed read is
+  // said in the Command tab's summary, which a draw made only once the tab is opened would leave
+  // unsaid.
   var MERMAID_JS = '/assets/js/vendor/mermaid.min.js';
   // the most reads of GitHub one draw makes, each page of a list one read; a draw that would need
   // more says so and draws nothing, since a tab half drawn would mislead (one line, so a check
@@ -2690,20 +2701,22 @@
   }
   // text folded to ASCII as the board folds it: accented letters to their plain ones, the rest dropped
   function graphFold(text) { return String(text).normalize('NFKD').replace(/[^\x00-\x7f]/g, ''); }
-  // a node's text, byte for byte the board's: the number, the title folded, one-spaced and cut, the
-  // characters that could end the label as entities ("#" first, since the entities carry one), and
-  // the sub-issues' progress where there is any. One pair more than the board writes, "%" as #37;,
-  // which Mermaid decodes to the character: it scans the whole text for a directive, %%{ ... }%%,
-  // before it reads the entities, so a title holding %%{ would break or edit the chart. The same
-  // pair is proposed for the library's node_label; until it takes it, a title with a "%" is the one
-  // byte the two texts differ in, drawn the same. Mermaid still reads a label further, harmlessly at
-  // its strict level, and the board's text alike: an HTML entity a title holds (&lt;b&gt;) shows
-  // decoded, $$...$$ is typeset by its KaTeX, a title of the form "style x:#f;" loses its last
-  // semicolon, and NUL and DEL are dropped; the table under the chart shows the title as it is.
+  // a node's text, byte for byte the board's (symphony-protocol's node_label, on its branch
+  // claude/dependencies, held for its next release): the number, the title folded, one-spaced and
+  // cut, the characters that could end the label as entities ("#" first, since the entities carry
+  // one), and the sub-issues' progress where there is any. "%" and "$" are written as entities too,
+  // after the fold, which turns the small and the fullwidth signs into them, as the board writes
+  // them: Mermaid scans the whole text for a directive, %%{ ... }%%, before it reads the entities,
+  // so a raw "%" would let a title break or edit the chart, and it typesets $$...$$ as math with
+  // KaTeX, which stops the whole chart from drawing on a formula it cannot parse. Mermaid still
+  // reads a label further, harmlessly at its strict level, and the board's text alike: an HTML
+  // entity a title holds (&lt;b&gt;) shows decoded, fa:fa-<name> becomes an empty icon, a title of
+  // the form "style x:#f;" loses its last semicolon, and NUL and DEL are dropped; the table under
+  // the chart shows the title as it is.
   function graphLabel(issue) {
     var title = graphFold(issue.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
     if (title.length > GRAPH_LABEL_WIDTH) title = title.slice(0, GRAPH_LABEL_WIDTH - 3).replace(GRAPH_SPACE_END, '') + '...';
-    [['#', '#35;'], ['%', '#37;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']].forEach(function (pair) { title = title.split(pair[0]).join(pair[1]); });
+    [['#', '#35;'], ['%', '#37;'], ['$', '#36;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']].forEach(function (pair) { title = title.split(pair[0]).join(pair[1]); });
     var label = '#' + issue.number + (title ? ' ' + title : '');
     if (issue.progress && issue.progress[1] > 0) label += ' (' + issue.progress[0] + '/' + issue.progress[1] + ')';
     return label;
@@ -2840,7 +2853,10 @@
   // carries the new one.
   function loadGraph(s) {
     var repo = s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo;
-    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: null, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
+    // the draw starts from the calls GitHub said were left when it answered the open issues, so
+    // once the token is under the reserve no draw reads, a draw that follows a Refresh included
+    var left = typeof s.issues.left === 'number' ? s.issues.left : null;
+    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
     var open = s.issues.filter(function (it) { return !it.pull_request; });
     open.forEach(function (it) { draw.listed[Number(it.number)] = graphIssue(it); });
     var planned = open.filter(function (it) { return graphPlanned(draw.listed[Number(it.number)]) && !owesNoRead(it); })
@@ -2862,7 +2878,7 @@
       if (!graphLive(draw)) return;
       clear($('cp-graph'));
       if (e.cap) graphWords('Not drawn: it would take more than ' + GRAPH_READS_MAX + ' reads of GitHub, the most this page makes for one draw; stopped at ' + draw.reading + '. Closing the epics that are done makes it fewer.', true);
-      else if (e.reserve) graphWords('Not drawn: GitHub says this token has ' + draw.left + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for its other sections; stopped at ' + draw.reading + '. Press Refresh once GitHub\'s hourly limit has reset.', true);
+      else if (e.reserve) graphWords('Not drawn: GitHub says this token has ' + draw.left + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console; stopped at ' + draw.reading + '. Press Refresh once GitHub\'s hourly limit has reset.', true);
       else if (draw.reading) graphWords('Not drawn: reading ' + draw.reading + ' failed. ' + e.message, true);
       // the reads ended, so what failed is the page's own laying out of them
       else graphWords('Not drawn: ' + e.message, true);
@@ -2962,7 +2978,8 @@
     var charts = [];
     if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf));
     epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy)); });
-    var drawn = 'from ' + plural(draw.reads, 'read') + ' of GitHub: ' + plural(goals.length, 'goal') + ' and ' + plural(epics.length, 'epic') + ' with sub-issues';
+    var drew = (goals.length ? [plural(goals.length, 'goal')] : []).concat(epics.length ? [plural(epics.length, 'epic')] : []);
+    var drawn = 'from ' + plural(draw.reads, 'read') + ' of GitHub: ' + drew.join(' and ') + ' with sub-issues';
     graphWords('Drawing ' + drawn + '...');
     // each chart is drawn on its own, so one Mermaid cannot draw leaves the others drawn and is
     // named, its table standing in for it
@@ -2992,8 +3009,13 @@
       s.onerror = function () { reject(new Error('the drawing script could not be loaded; press Refresh to try again')); };
       document.head.appendChild(s);
     }).then(function (m) {
-      // nothing is drawn on load, no HTML of a label is trusted, and a failed drawing leaves no picture of its own on the page
-      m.initialize({ startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true });
+      // nothing is drawn on load, no HTML of a label is trusted, and a failed drawing leaves no picture
+      // of its own on the page; beside Mermaid's own secure keys, no directive may change the label
+      // sanitizer's settings, the styles or the fonts, which could fetch from elsewhere. No directive
+      // reaches it from the page (graphLabel, boardChartLines); this holds should one ever do.
+      m.initialize({ startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true,
+        secure: ['secure', 'securityLevel', 'startOnLoad', 'maxTextSize', 'suppressErrorRendering', 'maxEdges',
+          'dompurifyConfig', 'themeCSS', 'themeVariables', 'fontFamily', 'altFontFamily'] });
       return m;
     }).catch(function (e) {
       // whatever failed, the next draw tries the load again, as the words tell the person Refresh does
@@ -3020,18 +3042,46 @@
     });
   }
   // a node pressed, or Centre its row: the task's row is centred and marked in the Tasks tab, which
-  // opens, as the assistant's focus opens it, and nothing else happens; no window or page opens.
-  // Where the press leaves the tab of the said line, a press from this tab or from the Board's, the
-  // same words go to the line above the deck too, so they are read whichever tab is shown.
+  // opens, as the assistant's focus opens it, where the task tables hold the task, and nothing else
+  // happens; no window or page opens. The words go to the message line under the deck too, on every
+  // press, whichever tab it leaves shown, so that line never keeps an earlier press's focus.
   function graphFocus(n) {
     $('cp-graph-said').textContent = assistantFocus(n);
-    var said = $('cp-graph-said'), panel = said.closest('[data-tab-panel]');
-    if (panel && panel.hidden) say(said.textContent);
+    say($('cp-graph-said').textContent);
+  }
+  // The lines of a chart as the board's mermaid_block writes them, and only those: the header; a
+  // node whose label starts with its own number and whose title holds only the characters
+  // node_label leaves raw, every printable ASCII character but the quote, "$", "%", "<", ">" and
+  // "|", which it writes as entities; an edge of the three kinds; and the five classes. Anyone who
+  // may push the branch board writes its text, and Mermaid at its strict level still draws the HTML
+  // a label holds (an image, a form, a field with an id the page's own forms answer to, a link) and
+  // obeys a directive, so a block of any other line is never handed to it. This follows node_label's
+  // escapes: a change to the labels in the library changes it in the same step.
+  var BOARD_NODE_LINE = /^  i([1-9][0-9]{0,8})\["#\1(?: [ !#&-;=?-{}~]*)?"\](?::::(?:todo|claimed|review|blocked|closed))?$/;
+  var BOARD_EDGE_LINE = /^  i[1-9][0-9]{0,8} (?:-->|-\.->|==>) i[1-9][0-9]{0,8}$/;
+  function boardChartLines(text) {
+    var lines = String(text).split('\n');
+    return lines[0] === 'flowchart TD' && lines.slice(1).every(function (line) {
+      return BOARD_NODE_LINE.test(line) || BOARD_EDGE_LINE.test(line) || GRAPH_CLASSES.some(function (c) { return line === '  ' + c; });
+    });
+  }
+  // a block that is no chart the board writes, shown as the text it is, and never drawn
+  function boardNotChart(host) {
+    var text = host.getAttribute('data-chart');
+    host.removeAttribute('data-chart');
+    clear(host);
+    add(host, el('p', 'admin__lead', 'Not drawn: this block is not a chart as the board writes it, so it is shown as text; the board on GitHub has it as text too.'));
+    add(host, el('pre', 'admin__text', text));
   }
   // the charts the board's own text holds, its Dependencies section, drawn in place in the Board tab
-  // where the renderer put them (markdown), each on its own, so the board never shows a chart as text
+  // where the renderer put them (markdown), each on its own, so the board never shows its chart as
+  // text; Mermaid is loaded only where a block is a chart the board writes
   function boardCharts(s, box) {
-    var hosts = Array.prototype.slice.call(box.querySelectorAll('.control__chart[data-chart]'));
+    var hosts = Array.prototype.slice.call(box.querySelectorAll('.control__chart[data-chart]')).filter(function (host) {
+      if (boardChartLines(host.getAttribute('data-chart'))) return true;
+      boardNotChart(host);
+      return false;
+    });
     if (!hosts.length) return;
     function undrawn(host, e) { host.textContent = 'This chart could not be drawn (' + e.message + '); the board on GitHub has it as text.'; }
     loadMermaid().then(function (m) {
