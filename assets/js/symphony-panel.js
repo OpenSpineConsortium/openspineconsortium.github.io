@@ -2564,8 +2564,8 @@
 
     // the same wizard in a Codespace on the repository: claude setup-token's sign-in opens in a tab
     // and the token goes from claude to GitHub with nothing to paste (docs/setup/codespace.md)
-    add(box, add(el('p', 'admin__lead'), 'No token to hand? ', link('https://codespaces.new/' + repo, 'Open a Codespace on ' + repo),
-      ': it signs you in to GitHub, applies the repository\'s settings, then runs claude setup-token for each account and stores each token itself, with nothing to copy or paste. Or paste a token printed anywhere below.'));
+    add(box, add(el('p', 'admin__lead'), '"Add with one press" opens a Codespace on ' + repo + ' in a new tab, signed in to GitHub as you with this page\'s sign-in, which opens claude.ai\'s sign-in in another tab; press Authorize there as the new account, and this page says when the next free slot is saved. To choose the slot or a label, or to renew one, paste a token below instead, or ',
+      link('https://codespaces.new/' + repo, 'open a Codespace on ' + repo), ' for the whole setup, the repository\'s settings included.'));
     var free = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return unread || !secrets[slotSecret(n)]; });
     var pick = el('select');
     pick.id = 'tk-add-slot';
@@ -2610,7 +2610,8 @@
       });
     } else add(reach, el('p', 'admin__lead', repo + ' belongs to a personal account, so the slot is a secret of that repository alone.'));
     add(box, reach);
-    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', false, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
+    add(box, add(el('p', 'admin__bar'), btn('Add with one press', false, function (ev) { addByCodespace(repo, place, ev.currentTarget); })));
+    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', true, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
   }
 
   function reachIds(place, repo) {
@@ -2676,6 +2677,109 @@
       return out;
     });
   }
+  /* ---------- one press: a Codespace mints the next slot's token and stores it ---------- */
+  // The page makes a Codespace on the repository with the template's .devcontainer/token config,
+  // whose setup signs gh in there as the person (with the sign-in this page hands it, handOver below,
+  // else a one-time code) and runs scripts/tokens.py add for the next free slot; the page watches the
+  // slots and deletes the Codespace and the handed sign-in once one appears.
+  var HANDOVER_SECRET = 'SYMPHONY_GITHUB_HANDOVER';
+  var HANDOVER_NEEDED = '; SymphonyBoard needs the account permission Codespaces user secrets, Read and write';
+  var HANDOVER_LEFT = ' The Codespaces secret ' + HANDOVER_SECRET + ' could not be deleted: delete it at https://github.com/settings/codespaces.';
+  var TOKEN_DEVCONTAINER = '.devcontainer/token/devcontainer.json';
+  var WATCH_EVERY_MS = 10000;
+  var WATCH_FOR_MS = 20 * 60 * 1000;
+  var CODESPACE_NEEDED = ' Making the Codespace here needs the SymphonyBoard App\'s repository permission Codespaces: read and write; until then the page opens GitHub\'s own Codespace page, where one more press makes it.';
+
+  function setSlots(place) {
+    return readSecrets(place).then(function (by) {
+      return Object.keys(by).filter(function (n) { return /^SYMPHONY_CLAUDE_[1-8]$/.test(n); });
+    });
+  }
+  // a Codespace made through the API opens straight in the editor; where the token may not make one,
+  // GitHub's own page makes it with one more press
+  function makeCodespace(repo) {
+    return gh('POST', '/repos/' + repo + '/codespaces', { devcontainer_path: TOKEN_DEVCONTAINER }).then(function (r) {
+      return { url: r.data.web_url, name: r.data.name };
+    }, function (e) {
+      if (e.status === 403 || e.status === 404) return { url: 'https://codespaces.new/' + repo + '?devcontainer_path=' + encodeURIComponent(TOKEN_DEVCONTAINER), name: '', refused: true };
+      throw e;
+    });
+  }
+  function addByCodespace(repo, place, button) {
+    if (button.disabled) return;
+    // the tab opens on the press itself, since a browser blocks one opened after the calls below
+    var tab = window.open('about:blank', '_blank');
+    var before = [], made = null, handed = false;
+    button.disabled = true;
+    say('Making a Codespace on ' + repo + '...');
+    refuseCrowd([repo], place).then(function () {
+      return setSlots(place);
+    }).then(function (names) {
+      before = names;
+      if (before.length >= 8) throw new Error('All eight slots are set; renew one by pasting its token and pressing "Seal and save the slot".');
+      return handOver(repo);
+    }).then(function (given) {
+      handed = given;
+      return makeCodespace(repo);
+    }).then(function (codespace) {
+      made = codespace;
+      if (tab) tab.location.href = codespace.url;
+      clear($('msg'));
+      add($('msg'), 'The Codespace is opening', tab ? ' in a new tab' : '', ' (', link(codespace.url, 'open it'), '). ',
+        handed ? 'It works as you with this page\'s GitHub sign-in, so its terminal goes straight to' : 'Its terminal asks for a one-time GitHub code (this page could not hand it its sign-in' + HANDOVER_NEEDED + '), then opens',
+        ' claude.ai\'s sign-in: sign in as the new account and press Authorize. This page says when the slot is saved.',
+        codespace.refused ? CODESPACE_NEEDED : '');
+      $('msg').className = 'admin__box';
+      return watchNewSlot(place, before);
+    }).then(function (name) {
+      var gone = made && made.name ? gh('DELETE', '/user/codespaces/' + encodeURIComponent(made.name)).then(function () { return true; }, function () { return false; }) : Promise.resolve(false);
+      return Promise.all([gone, takeBack(handed)]).then(function (both) {
+        button.disabled = false;
+        say(name + ' is saved and listed for auto and the bench.' + (both[0] ? ' The Codespace is deleted.' : ' Delete the Codespace at https://github.com/codespaces when you have closed it.') + (both[1] ? '' : HANDOVER_LEFT));
+        showAddSlot(repo, reading);
+      });
+    }).catch(function (e) {
+      if (tab && !made) tab.close();
+      button.disabled = false;
+      takeBack(handed).then(function (gone) { say(e.message + (gone ? '' : HANDOVER_LEFT), true); });
+    });
+  }
+  // The page's own GitHub sign-in, sealed in this browser to the Codespaces public key of the signed-in
+  // person and saved as their Codespaces secret for this one repository: only their own Codespaces on it
+  // read it, as the variable HANDOVER_SECRET, and scripts/codespace.sh signs gh in with it, so the
+  // Codespace asks for no GitHub code. The secret is deleted once the slot is saved or the press fails;
+  // a sign-in token lasts eight hours whatever happens. Where GitHub refuses (the App lacks the account
+  // permission Codespaces user secrets), it resolves false and the Codespace signs in by itself.
+  function handOver(repo) {
+    var sealed = '';
+    return Promise.all([loadSealer(), gh('GET', '/user/codespaces/secrets/public-key'), gh('GET', '/repos/' + repo)]).then(function (all) {
+      sealed = toBase64(all[0](new TextEncoder().encode(token), fromBase64(all[1].data.key)));
+      return gh('PUT', '/user/codespaces/secrets/' + HANDOVER_SECRET, { encrypted_value: sealed, key_id: all[1].data.key_id, selected_repository_ids: [all[2].data.id] });
+    }).then(function () { return true; }, function (e) {
+      if (e.status === 403 || e.status === 404) return false;
+      throw e;
+    });
+  }
+  function takeBack(handed) {
+    if (!handed) return Promise.resolve(true);
+    return gh('DELETE', '/user/codespaces/secrets/' + HANDOVER_SECRET).then(function () { return true; }, function (e) { return e.status === 404; });
+  }
+  // the organization's slots, read every ten seconds until one that was not set before appears
+  function watchNewSlot(place, before) {
+    var until = Date.now() + WATCH_FOR_MS;
+    return new Promise(function (resolve, reject) {
+      function look() {
+        setSlots(place).then(function (names) {
+          var fresh = names.filter(function (n) { return before.indexOf(n) < 0; });
+          if (fresh.length) { resolve(fresh[0]); return; }
+          if (Date.now() > until) { reject(new Error('No new slot appeared within 20 minutes; the Codespace is still there, and its terminal says where it stopped.')); return; }
+          setTimeout(look, WATCH_EVERY_MS);
+        }, reject);
+      }
+      setTimeout(look, WATCH_EVERY_MS);
+    });
+  }
+
   function saveSlot(repo, place, button) {
     if (button.disabled) return;
     var slot = $('tk-add-slot').value;
