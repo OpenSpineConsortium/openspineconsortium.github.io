@@ -4239,7 +4239,12 @@
   var CROWD_VARIABLE = 'CLAUDE_CROWD';
   // the wizard's label shape (scripts/tokens.py LABEL_SHAPE): a word, never an e-mail address
   var SLOT_LABEL = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$/;
-  var SECRETS_NEEDED = ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions (for a personal account\'s repository, the repository permissions Secrets and Variables).';
+  // what a 403 or 404 on a slot's secret or variable means, for where the slots live: an organization's
+  // pool, or a personal account's repository, which takes the App's repository permissions instead
+  function secretsNeeded(place) {
+    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); a fine-grained token needs the same two repository permissions.';
+    return ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions.';
+  }
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
   function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return POOL_SLOTS.indexOf(w) >= 0; }); }
@@ -4517,7 +4522,7 @@
       var hint = Promise.resolve('');
       if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
       else if ((step === 'workflow' || step === 'dispatch' || step === 'issue') && e.status === 403) hint = Promise.resolve(ACTIONS_NEEDED);
-      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(SECRETS_NEEDED);
+      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(secretsNeeded(place));
       hint.then(function (text) { view.tell(e.message + text, true); });
     });
   }
@@ -4894,7 +4899,7 @@
       if (owner && owner.value.trim() && !LOGIN.test(owner.value.trim())) return 'Belongs to takes a GitHub login, such as ' + (shownLogin || 'octocat') + '.';
       return '';
     }
-    function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''); }
+    function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''); }
     var bar = el('p', 'admin__bar tkdlg__bar');
     var cancel = btn('Cancel', true, function () { d.close(); });
     var save = el('button', 'console__primary', adding ? 'Save and sign in' : 'Save');
@@ -4990,7 +4995,7 @@
       }, function (e) {
         tick.disabled = false;
         tick.checked = !tick.checked;
-        say('Could not switch it on ' + r.name + ': ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+        say('Could not switch it on ' + r.name + ': ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''), true);
       });
     });
     return label;
@@ -5183,7 +5188,7 @@
       readTokenPlace(tk.repo, reading);
     }).catch(function (e) {
       button.disabled = false;
-      say('Removing ' + name + ' stopped: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+      say('Removing ' + name + ' stopped: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''), true);
     });
   }
 
