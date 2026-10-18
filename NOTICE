@@ -2,3 +2,21 @@ openspineconsortium.github.io
 Copyright 2026 Gregory Schwing and the OpenSpine Consortium contributors.
 
 Licensed under the Apache License, Version 2.0 (see the LICENSE file).
+
+The third-party code named here keeps its own licence beside or inside its file:
+
+Mermaid 12.2.0 (assets/js/vendor/mermaid.min.js, the npm package's dist/mermaid.min.js, unchanged)
+is Copyright (c) 2014 - 2022 Knut Sveidqvist and released under the MIT License; the licence text
+is assets/js/vendor/mermaid.LICENSE. The file bundles the libraries the package depends on at
+12.2.0 (its dependency list on npm), each under its own licence as its npm record says, read on
+2026-10-18 (khroma's from its repository's licence file): chevrotain, under the Apache License 2.0,
+whose text is assets/js/vendor/Apache-2.0.txt; DOMPurify, under the Mozilla Public License 2.0 or the
+Apache License 2.0; elkjs, the Eclipse Layout Kernel, under the Eclipse Public License 2.0 or the GNU
+General Public License 3.0 or later, whose source is at https://github.com/kieler/elkjs; d3, under
+the ISC licence; d3-sankey, under the BSD 3-Clause licence; and, under the MIT License, cytoscape
+with its cose-bilkent and fcose layouts, dagre-d3-es, KaTeX, marked, roughjs, stylis, dayjs,
+khroma, es-toolkit, @iconify/utils, langium and Mermaid's own parser, @upsetjs/venn.js,
+@braintree/sanitize-url, uuid and ts-dedent. What those depend on in turn is under the licences
+their own packages give; the licence comments esbuild kept (DOMPurify, lodash, parts of cytoscape)
+are in the comment at the end of the file. The control panel loads it only when it has a chart to
+draw.
