@@ -1253,7 +1253,7 @@
       button.disabled = false;
     });
   }
-  // the read is kept on the state, so the Dependencies section, drawn from the issues read beside
+  // the read is kept on the state, so the Dependencies tab, drawn from the issues read beside
   // it, can wait for the claim branches the pull requests show (graphClaimed)
   function loadPulls(s) {
     var body = $('cp-pulls').querySelector('tbody');
@@ -2144,13 +2144,17 @@
     if (kind !== 'none') revealTab($('cp-queue'));
     return kind === 'none' ? 'Showing every task again.' : 'Filtered the task tables to ' + assistantFilterWords() + ': ' + r.shown + ' of ' + r.total + '; Show all tasks, above the tables, clears it.';
   }
-  // the Dependencies section is the page's own, drawn from GitHub as the person; the others are the board's
+  // the Dependencies tab is the page's own, drawn from GitHub as the person, and opens at its first
+  // chart; the other sections are the board's, in the Board tab
   function assistantShowSection(key) {
     var name = ASSISTANT_SECTIONS[key];
     if (key === 'dependencies') {
+      var heading = $('h-dependencies'), charts = $('cp-graph').closest('.console__scroll');
       assistant.section = name;
-      $('h-dependencies').scrollIntoView({ block: 'start' });
-      return 'Showing the Dependencies section, which this page draws.';
+      revealTab(heading);
+      scrollInDeck(heading, { block: 'start' });
+      if (charts) charts.scrollTop = 0;
+      return 'Showing the Dependencies tab, which this page draws.';
     }
     var hs = $('cp-board').querySelectorAll('h2,h3,h4,h5,h6');
     for (var i = 0; i < hs.length; i++) {
@@ -2170,7 +2174,7 @@
   }
 
   /* ============================================================
-     The Dependencies section: each open epic's tasks and what blocks them
+     The Dependencies tab: each open epic's tasks and what blocks them
      ============================================================ */
   // The same charts the protocol's board writes into STATE.md where it carries the section
   // (symphony-protocol, sdlc_protocol/board.py, the dependencies), built here from GitHub's REST
@@ -2181,10 +2185,13 @@
   // is a chart to draw, as the sealing script is, and told to draw at its strict level. A title is
   // untrusted: it is folded, cut and written as entities as the board writes it, with one entity more
   // (graphLabel), and never raw, so what reaches the drawing is text, and the tables under the charts
-  // show it as text too. The section reads and never writes.
+  // show it as text too. The tab reads and never writes. It draws whenever the task tables are
+  // rendered, whether or not it is open, as the review of the section settled: its reads are capped
+  // and keep a reserve, and a failed read is said in the Command tab's summary, which a draw made
+  // only once the tab is opened would leave unsaid.
   var MERMAID_JS = '/assets/js/vendor/mermaid.min.js';
   // the most reads of GitHub one draw makes, each page of a list one read; a draw that would need
-  // more says so and draws nothing, since a section half drawn would mislead (one line, so a check
+  // more says so and draws nothing, since a tab half drawn would mislead (one line, so a check
   // can lower it)
   var GRAPH_READS_MAX = 60;
   // the calls of the token's hour a draw leaves for the rest of the page, its tables, its writes and
@@ -2193,7 +2200,7 @@
   var GRAPH_RESERVE = 100;
   // a node's label is cut to this many characters, as the board cuts it
   var GRAPH_LABEL_WIDTH = 40;
-  // the section's words while no repository is chosen, the same the page is served with
+  // the tab's words while no repository is chosen, the same the page is served with
   var GRAPH_NO_REPOSITORY = 'Nothing to draw yet: no repository is chosen.';
   // how a person starts, said wherever there is nothing to draw
   var GRAPH_START = 'To start, label an issue epic, open it on GitHub and add its tasks under Sub-issues (Create sub-issue, or Add existing issue); on a task, add what must close first under Relationships (Blocked by); then press Refresh.';
@@ -2530,7 +2537,7 @@
       }, Promise.resolve()).then(function () { return undrawn; });
     }).then(function (undrawn) {
       if (!graphLive(draw)) return;
-      if (!undrawn.length) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the tasks above.' + graphCut(draw));
+      if (!undrawn.length) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the Tasks tab.' + graphCut(draw));
       else graphWords('Drawn ' + (charts.length - undrawn.length) + ' of ' + plural(charts.length, 'chart') + ' ' + drawn + '; ' + plural(undrawn.length, 'chart') + ' could not be drawn (' + undrawn.join('; ') + '), and the table under ' + (undrawn.length === 1 ? 'it' : 'each') + ' says the same.' + graphCut(draw), true);
     }, function (e) {
       if (graphLive(draw)) graphWords('The charts could not be drawn (' + e.message + '); the tables say the same ' + drawn + '.', true);
@@ -2557,7 +2564,7 @@
     return mermaidLoad;
   }
   // one chart drawn under an id of its own, since Mermaid takes any element already carrying the id
-  // it draws under off the page; the picture is put where the section keeps it, at its own width,
+  // it draws under off the page; the picture is put where the tab keeps it, at its own width,
   // so a wide one scrolls sideways instead of shrinking
   function graphDraw(m, chart) {
     var id = 'cp-graph-' + (++graphRenders);
@@ -2573,13 +2580,17 @@
       throw e;
     });
   }
-  // a node pressed, or Centre its row: the task's row is centred and marked in the tables above, as
-  // the assistant's focus does, and nothing else happens; no tab opens by itself
+  // a node pressed, or Centre its row: the task's row is centred and marked in the Tasks tab, which
+  // opens, as the assistant's focus opens it, and nothing else happens; no window or page opens.
+  // Where the press leaves the tab of the said line, a press from this tab or from the Board's, the
+  // same words go to the line above the deck too, so they are read whichever tab is shown.
   function graphFocus(n) {
     $('cp-graph-said').textContent = assistantFocus(n);
+    var said = $('cp-graph-said'), panel = said.closest('[data-tab-panel]');
+    if (panel && panel.hidden) say(said.textContent);
   }
-  // the charts the board's own text holds, its Dependencies section, drawn in place where the
-  // renderer put them (markdown), each on its own, so the board box never shows a chart as text
+  // the charts the board's own text holds, its Dependencies section, drawn in place in the Board tab
+  // where the renderer put them (markdown), each on its own, so the board never shows a chart as text
   function boardCharts(s, box) {
     var hosts = Array.prototype.slice.call(box.querySelectorAll('.control__chart[data-chart]'));
     if (!hosts.length) return;
@@ -2593,7 +2604,7 @@
       }, Promise.resolve());
     }).catch(function (e) { if (!stale(s)) hosts.forEach(function (host) { undrawn(host, e); }); });
   }
-  // a node pressed, in the section's own charts or in the board's
+  // a node pressed, in the tab's own charts or in the board's
   function initGraph() {
     ['cp-graph', 'cp-board'].forEach(function (id) {
       $(id).addEventListener('click', function (e) {
