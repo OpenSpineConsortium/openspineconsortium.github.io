@@ -349,3 +349,6 @@ body[data-shell] main > .console.section, .console.section {
 .tkdlg__note { font-size: 0.8rem !important; }
 .tkdlg__bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
 @media (max-width: 520px) { .tkdlg__row { grid-template-columns: 1fr; } }
+.console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
+.console .console__note:empty { display: none; }
+.console .console__boxh--next { margin-top: 18px; }

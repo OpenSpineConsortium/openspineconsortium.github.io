@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css?v=202610180800">
 <link rel="stylesheet" href="/assets/css/site.css?v=202610180800">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180800">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610181000">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -151,6 +151,7 @@
           <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
           <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
+          <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
           <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
           <button type="button" role="tab" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
@@ -317,6 +318,45 @@
               <label for="cp-w-account">Claude account, as a note of whose it is; never a credential</label>
               <input id="cp-w-account" maxlength="120">
               <div><button id="cp-w-add" type="button" class="console__primary">Add the worker</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agents: the repository's agents, which tokens each may run on, running and importing them -->
+        <section class="console__panel console__panel--split" id="tab-agents" data-tab-panel="agents" role="tabpanel" aria-labelledby="rail-agents" hidden>
+          <div class="console__col">
+            <div class="console__head">
+              <h2 id="h-agents" class="console__h">Agents</h2>
+              <details class="console__help"><summary>What an agent is</summary><div>
+                <p>An agent is a set of instructions and the tools it may use, kept as a Claude Code subagent file under <code>.claude/agents/</code> and listed in <code>.github/symphony/agents.json</code> with its purpose. Any session in the repository can hand it work by name; Run starts it in GitHub Actions on a pull request or issue, on the tokens you give it here, which is how usage is divided between review, development and testing; and coordbench and flowbench measure the same file. Import brings one in from another repository or an address by pull request, so it joins only once someone merges it.</p>
+              </div></details>
+            </div>
+            <p id="cp-agents-note" class="console__note"></p>
+            <div class="console__scroll"><div class="table-scroll"><table id="cp-agents" class="admin__stack"><thead><tr><th>Name</th><th>Purpose</th><th>What it does</th><th>Tools</th><th>Runs</th><th>From</th><th>Tokens</th><th></th></tr></thead><tbody></tbody></table></div></div>
+          </div>
+          <div class="console__col console__col--side">
+            <div class="admin__box console__scroll">
+              <h3 class="console__boxh">Run an agent</h3>
+              <div class="admin__row">
+                <div><label for="cp-a-agent">Agent</label><select id="cp-a-agent"></select></div>
+                <div><label for="cp-a-target">Pull request or issue number</label><input id="cp-a-target" inputmode="numeric" maxlength="9" placeholder="12"></div>
+              </div>
+              <div><button id="cp-a-run" type="button" class="console__primary">Run it</button></div>
+              <h3 class="console__boxh console__boxh--next">Import an agent</h3>
+              <label for="cp-a-source">From OWNER/REPO/PATH.md (add @branch or @tag to pin it), or the https address of the raw file</label>
+              <input id="cp-a-source" placeholder="someone/agents/review/security.md@v1" maxlength="400" autocapitalize="off" spellcheck="false">
+              <div class="admin__row">
+                <div><label for="cp-a-name">Name here (empty keeps its own)</label><input id="cp-a-name" maxlength="39" autocapitalize="off" spellcheck="false"></div>
+                <div><label for="cp-a-purpose">Purpose</label><select id="cp-a-purpose">
+                  <option value="">guess from its description</option>
+                  <option value="review">review</option>
+                  <option value="develop">develop</option>
+                  <option value="test">test</option>
+                  <option value="other">other</option>
+                </select></div>
+              </div>
+              <div><button id="cp-a-import" type="button" class="console__primary">Import it by pull request</button></div>
+              <p class="console__note">An imported agent must list its tools and may carry no hooks, MCP servers or bypassed permissions; read its instructions in the pull request before you merge it.</p>
             </div>
           </div>
         </section>
@@ -515,6 +555,6 @@
 </footer>
 <script src="/assets/js/main.js?v=202610180800"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180800"></script>
+<script src="/assets/js/symphony-panel.js?v=202610181000"></script>
 </body>
 </html>
