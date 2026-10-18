@@ -1980,10 +1980,11 @@
   // Open, or Enter in the search: a whole name is read by name; otherwise the first card shown opens
   function pickerOpenTyped() {
     var typed = ($('cp-add-name').value || '').trim();
-    var first = $('rp-list').querySelector('.repos__card');
-    var exact = typed && Array.prototype.some.call($('rp-list').querySelectorAll('.repos__card'), function (c) { return c.getAttribute('aria-label') === 'Open ' + typed; });
-    if (REPOSITORY.test(typed) && !exact) { addRepository(typed); return; }
-    if (first) { first.click(); return; }
+    var cards = Array.prototype.slice.call($('rp-list').querySelectorAll('.repos__card'));
+    var exact = cards.filter(function (c) { return typed && c.getAttribute('aria-label').toLowerCase() === ('Open ' + typed).toLowerCase(); })[0];
+    if (exact) { exact.click(); return; }
+    if (REPOSITORY.test(typed)) { addRepository(typed); return; }
+    if (cards.length) { cards[0].click(); return; }
     say(typed ? 'Nothing matches "' + typed + '"; type the whole OWNER/NAME to open it by name.' : 'Type a name, or press a repository.', true);
   }
   function forgetRepo(name) {
