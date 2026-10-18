@@ -168,7 +168,17 @@ body[data-shell] main > .console.section, .console.section {
 .console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 10px; }
 .console__side { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); overflow: hidden; }
 .console__id { flex: 0 0 auto; padding: 8px 10px 8px; border-bottom: 1px solid var(--line-soft); }
-.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0 0 6px; white-space: nowrap; }
+.console__titlerow { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0; white-space: nowrap; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.console .console__full { flex: 0 0 auto; margin: 0; padding: 3px 7px; font-size: 0.74rem; display: inline-flex; align-items: center; gap: 4px; }
+.console .console__full span:first-child { font-size: 1.05rem; line-height: 1; }
+/* the word stays for a screen reader; the side column is too narrow for it beside the title */
+.console__fullword { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* full screen (the browser's, F11, or the button's): the site's bar and its drop-downs go, and
+   the console takes the whole screen; symphony-panel.js sets console-full on the body */
+body.console-full #nav, body.console-full #flyouts, body.console-full .crumbs-band { display: none !important; }
+body.console-full[data-shell] { padding-top: 0 !important; }
 /* the select says the repository by itself; its label stays for a screen reader */
 .console__id label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console__rail { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-x: hidden; overflow-y: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
@@ -208,6 +218,15 @@ body[data-shell] main > .console.section, .console.section {
 .console .console__status #msg input { width: 22em; max-width: 100%; padding: 5px 10px; }
 .console .console__status #msg button { margin: 0; padding: 4px 14px; font-size: 0.85rem; }
 .console .console__statusx { flex: 0 0 auto; margin: 0; padding: 4px 12px; font-size: 0.8rem; }
+/* the Ask Claude bar: a frozen row above the status line, as tall as what it holds up to a third
+   of the window, scrolling inside past that; empty, it is gone */
+.console__askbar { flex: 0 0 auto; max-height: 34vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); padding: 6px 10px; }
+.console__askbar:empty { display: none; }
+
+/* a new message flashes white, so the eye goes to the foot */
+@keyframes console-msg-flash { 0%, 25% { background-color: #F4F1E6; color: #0B100F; } 100% { background-color: var(--paper-card); color: var(--ink); } }
+.console .console__status #msg.console__flash { animation: console-msg-flash 1.1s ease-out; }
+@media (prefers-reduced-motion: reduce) { .console .console__status #msg.console__flash { animation-duration: 0.4s; } }
 .console__status:has(#msg:empty) .console__statusx, .console__status:has(#msg input:not(:disabled)) .console__statusx { visibility: hidden; }
 
 /* the repository's whole name, wrapped, with the select laid over it, so a press opens the
@@ -306,6 +325,7 @@ body[data-shell] main > .console.section, .console.section {
   .console__panel--split, .console__panel--even { grid-template-columns: minmax(0, 1fr); }
   .console__scroll { overflow: visible; }
   .console__side { overflow: visible; }
+  .console__askbar { max-height: 40vh; }
   .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
   .console__me { max-width: none; }
 }
@@ -315,25 +335,30 @@ body[data-shell] main > .console.section, .console.section {
 
 /* the Tokens tab's tiles: square buttons like the Command tab's, filling a row from the left, the
    dashed + Add Token tile last; the X sits in the tile's top right corner */
-.toks { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 140px)); gap: 10px; margin: 0 0 14px; }
+.toks { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 176px)); gap: 10px; margin: 0 0 14px; }
 .toks__note { grid-column: 1 / -1; }
 .tok { position: relative; aspect-ratio: 1 / 1; min-width: 0; }
 .console button.tok__open {
-  margin: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 3px;
+  margin: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px;
   padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-align: left; overflow: hidden;
   transition: transform 0.12s var(--ease), border-color 0.12s, background 0.12s;
 }
 .console button.tok__open:hover { transform: translateY(-1px); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); color: var(--ink); }
 .console button.tok__open:active { transform: translateY(1px); }
-.tok__icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: auto; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-weight: 600; }
+.console button.tok__open > * { flex-shrink: 0; }
+.tok__icon { display: grid; place-items: center; width: 26px; height: 26px; margin-bottom: auto; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-weight: 600; }
 .tok__name { font-weight: 600; font-size: 0.95rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tok__meta, .tok__state { font-size: 0.74rem; line-height: 1.3; color: var(--ink-faint); max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tok__use ~ .tok__state { -webkit-line-clamp: 1; }
+.tok__meta { -webkit-line-clamp: 1; }
 .tok__state--go { color: var(--go); }
 .tok__state--warn { color: var(--ochre); }
-.console button.tok__x {
-  position: absolute; top: 6px; right: 6px; margin: 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center;
-  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint); font-size: 1.05rem; line-height: 1;
+.console button.tok__x, .console button.tok__gear {
+  position: absolute; top: 6px; right: 6px; margin: 0; padding: 0; width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-soft); font-size: 1.35rem; line-height: 1;
 }
+.console button.tok__gear { right: 40px; font-size: 1.25rem; }
+.console button.tok__gear:hover { color: var(--teal); background: rgba(60, 194, 177, 0.12); border-color: rgba(60, 194, 177, 0.5); }
 .console button.tok__x:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
 .console button.tok--add { align-items: center; justify-content: center; border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); }
 .console button.tok--add:hover { border-color: var(--teal); color: var(--teal); background: rgba(60, 194, 177, 0.06); }
@@ -348,7 +373,40 @@ body[data-shell] main > .console.section, .console.section {
 .tkdlg .tkdlg__tick input { width: auto; flex: none; margin: 0; }
 .tkdlg__note { font-size: 0.8rem !important; }
 .tkdlg__bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+.tok__use { display: flex; flex-direction: column; gap: 3px; width: 100%; margin-top: 4px; }
+.tok__window { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--ink-faint); }
+.tok__wname { flex: none; width: 1.6em; }
+.tok__bar { flex: 1; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.tok__fill { display: block; height: 100%; background: var(--teal); }
+.tok__bar--full .tok__fill { background: var(--ochre); }
+.tok__owner { font-size: 0.72rem; color: var(--teal); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tkdlg__reach { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tkdlg__repos { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; }
+.tkdlg .tkdlg__fact { margin: 0; font-size: 0.86rem; }
+.tkdlg__faint { color: var(--ink-faint); }
+.tkdlg__line { margin: 0; }
+.tkdlg__code { display: flex; gap: 8px; }
+.tkdlg__code input { flex: 1; min-width: 0; }
 @media (max-width: 520px) { .tkdlg__row { grid-template-columns: 1fr; } }
+.lb__closed { display: flex; align-items: center; gap: 8px; min-width: 160px; }
+.lb__track { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.lb__bar { display: block; height: 100%; background: var(--teal); }
+.lb__n { flex: none; min-width: 2ch; text-align: right; }
+.tok--on .tok__open { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.tkwrap { display: flex; gap: 18px; align-items: flex-start; }
+.tkwrap .toks { flex: 1; min-width: 0; align-content: start; }
+.tkside { position: sticky; top: 0; flex: none; width: 320px; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.tkside[hidden] { display: none; }
+.tkside .console__boxh { margin: 0; padding-right: 32px; }
+.tkside p { margin: 0; }
+.tkside .tkdlg__fact { font-size: 0.86rem; }
+.console button.tkside__close { position: absolute; top: 8px; right: 8px; margin: 0; padding: 0; width: 32px; height: 32px; border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-soft); font-size: 1.35rem; line-height: 1; }
+.tkside__meter { display: flex; flex-direction: column; gap: 4px; }
+.tkside__line { display: flex; justify-content: space-between; font-size: 0.88rem; }
+.tkside__pct { font-weight: 600; }
+.tkside__meter .tok__bar { height: 8px; border-radius: 4px; }
+.tkside__reset { font-size: 0.78rem; color: var(--ink-faint); }
+@media (max-width: 760px) { .tkwrap { flex-direction: column; } .tkside { position: relative; width: auto; align-self: stretch; } }
 .console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
 .console .console__note:empty { display: none; }
 .console .console__boxh--next { margin-top: 18px; }
