@@ -82,6 +82,18 @@
 /* the filter's words above the tables and the actions under the answer: nothing, and no gap, until there is something to say */
 .control #cp-as-filter:empty, .control #cp-as-actions:empty { display: none; }
 
+/* ---------- the Dependencies section: a chart per epic, at its own width, scrolling sideways where it is wide, and its table ---------- */
+.control__chart { overflow-x: auto; margin: 8px 0 10px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.control__chart:empty { display: none; }
+.control__chart svg { display: block; margin: 0 auto; }
+.control__chart g.node { cursor: pointer; }
+.control__graph h3 { margin-top: 22px; }
+.control__graph .table-scroll { margin: 4px 0 16px; }
+/* the table keeps readable columns and scrolls in its box where the screen is narrow */
+.control__graph table { font-size: 0.88rem; min-width: 40em; }
+.control__graph th:first-child, .control__graph td:first-child, .control__graph td.admin__act { white-space: nowrap; }
+.control #cp-graph-said:empty { display: none; }
+
 /* ---------- the cost page ---------- */
 .cost__facts { margin: 6px 0 14px; }
 .cost__facts th { width: 13em; color: var(--ink-soft); }
