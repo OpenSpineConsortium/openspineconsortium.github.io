@@ -1320,6 +1320,7 @@
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
+    if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
       return Promise.all([loadBoard(s), loadWorkers(s), loadRuns(s), loadPulls(s)]);
@@ -3357,9 +3358,73 @@
     consoleOnOpen.tokens = function () { if (tokensFor !== tokensRepo()) loadTokens(); };
   }
 
+  // The Share tab: GitHub's API invites a collaborator only by username, and only with the App's
+  // Administration permission, which SymphonyBoard never holds, so the page opens GitHub's own access
+  // page, where Add people takes a username or an address, and composes the note in the person's own
+  // mail. Nothing here is sent by the page; each button opens a page the person sends from.
+  var SHARE_ROLES = { read: 'read', triage: 'triage', write: 'write', maintain: 'maintain' };
+  function shareRepo() { return state && state.repo ? state.repo : ''; }
+  function shareWho() { return $('sh-who').value.trim(); }
+  function shareIsEmail(who) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who); }
+  function shareSubject() { return 'Join ' + shareRepo() + ' on GitHub'; }
+  function shareNote() {
+    var repo = shareRepo();
+    var role = SHARE_ROLES[$('sh-role').value] || 'write';
+    return 'I would like you to work with me on ' + repo + ', a Symphony project on GitHub, with ' + role + ' access.\n\n' +
+      'I have invited you on GitHub. Accept it here, signed in to your GitHub account (if this note came to you by email, the account that holds this address):\n' +
+      'https://github.com/' + repo + '/invitations\n\n' +
+      'The repository: https://github.com/' + repo + '\n' +
+      'Its control panel: https://openspineconsortium.com/symphony/control/?repo=' + encodeURIComponent(repo) + '\n\n' +
+      'No GitHub account yet? Make one at https://github.com/signup, with Continue with Google if you like, using this address, and the invitation will be there.\n';
+  }
+  function shareReady() {
+    if (shareRepo()) return true;
+    $('sh-answer').textContent = 'Pick a repository on the Repositories tab first.';
+    return false;
+  }
+  // window.open with noopener answers null even when the tab opens, so the opener is cut by hand
+  function shareOpen(url) {
+    var w = window.open(url, '_blank');
+    if (w) { try { w.opener = null; } catch (e) { /* the new tab is another origin's already */ } }
+    else $('sh-answer').textContent = 'The browser blocked the new tab; allow pop-ups for this site, or use Copy the note.';
+  }
+  function shareTo() { var who = shareWho(); return shareIsEmail(who) ? who : ''; }
+  function shareCopy(text, done) {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) { $('sh-answer').textContent = 'This browser gives the page no clipboard; select and copy by hand.'; return; }
+    navigator.clipboard.writeText(text).then(function () { $('sh-answer').textContent = done; },
+      function () { $('sh-answer').textContent = 'The browser refused the clipboard; select and copy by hand.'; });
+  }
+  function initShareTab() {
+    var q = function (v) { return encodeURIComponent(v); };
+    $('sh-grant').addEventListener('click', function () {
+      if (!shareReady()) return;
+      // the clipboard is written before the new tab takes the focus, which a browser may require
+      var who = shareWho();
+      if (who) shareCopy(who, who + ' is copied: press Add people on GitHub, paste it, pick the role ' + $('sh-role').value + ' and press Add.');
+      else $('sh-answer').textContent = 'On GitHub, press Add people and type their username or email.';
+      shareOpen('https://github.com/' + shareRepo() + '/settings/access');
+    });
+    $('sh-gmail').addEventListener('click', function () {
+      if (shareReady()) shareOpen('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(shareTo()) + '&su=' + q(shareSubject()) + '&body=' + q(shareNote()));
+    });
+    $('sh-outlook').addEventListener('click', function () {
+      if (shareReady()) shareOpen('https://outlook.office.com/mail/deeplink/compose?to=' + q(shareTo()) + '&subject=' + q(shareSubject()) + '&body=' + q(shareNote()));
+    });
+    $('sh-mail').addEventListener('click', function () {
+      if (shareReady()) location.href = 'mailto:' + q(shareTo()) + '?subject=' + q(shareSubject()) + '&body=' + q(shareNote());
+    });
+    $('sh-native').addEventListener('click', function () {
+      if (!shareReady()) return;
+      if (!navigator.share) { shareCopy(shareNote(), 'This browser has no share sheet; the note is copied instead.'); return; }
+      navigator.share({ title: shareSubject(), text: shareNote() }).catch(function () { /* the person closed the sheet */ });
+    });
+    $('sh-copy').addEventListener('click', function () { if (shareReady()) shareCopy(shareNote(), 'The note is copied.'); });
+    consoleOnOpen.share = function () { $('sh-repo').textContent = shareRepo(); $('sh-answer').textContent = ''; };
+  }
+
   // the cost page carries a signed-in box of its own, so its marker is read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-slots')) initTokensTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-slots')) initTokensTab(); if ($('sh-who')) initShareTab(); }
 })();
