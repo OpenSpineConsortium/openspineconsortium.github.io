@@ -595,3 +595,37 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
 .console .console__note:empty { display: none; }
 .console .console__boxh--next { margin-top: 18px; }
+
+/* agents: the name and its purpose on top, what it does, how it runs as chips, its tokens, Run */
+.console #cp-agents tr { --card-accent: #3CC2B1; grid-template-columns: minmax(0, 1fr) auto; }
+.console #cp-agents tr[data-purpose="review"] { --card-accent: #B79CF0; }
+.console #cp-agents tr[data-purpose="test"] { --card-accent: #F0A45C; }
+.console #cp-agents tr[data-purpose="other"] { --card-accent: rgba(233, 230, 218, 0.3); }
+.console #cp-agents td { grid-column: 1 / -1; }
+.console #cp-agents td.cell--name { grid-column: 1; font-family: var(--font-mono); font-weight: 600; font-size: 1rem; }
+.console #cp-agents td.cell--name a { border: 0; color: var(--ink); }
+.console #cp-agents td.cell--purpose { grid-row: 1; grid-column: 2; justify-self: end; align-self: center; padding: 0 9px; border-radius: 100px; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid var(--card-accent); color: var(--card-accent); }
+.console #cp-agents td.cell--about { color: var(--ink-soft); font-size: 0.88rem; }
+.console #cp-agents tr:not(:has(td.admin__none)) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.console #cp-agents td.cell--name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
+.console #cp-agents td.cell--about, .console #cp-agents td.cell--tokens, .console #cp-agents td.admin__act { flex: 1 1 100%; }
+.console #cp-agents td.cell--tools, .console #cp-agents td.cell--runs, .console #cp-agents td.cell--from {
+  max-width: 100%; padding: 1px 9px; border-radius: 100px; font-size: 0.74rem; border: 1px solid var(--line); color: var(--ink-soft);
+}
+.console #cp-agents td.cell--runs::before { content: "runs "; color: var(--ink-faint); }
+.console #cp-agents td.cell--from::before { content: "from "; color: var(--ink-faint); }
+.console #cp-agents td.cell--tokens { font-size: 0.8rem; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 6px; }
+
+/* a short window: the rail's rows close up so all its tabs fit; below that it scrolls */
+@media (min-width: 901px) and (max-height: 820px) {
+  .console .console__rail button { padding: 1px 10px; font-size: 0.86rem; line-height: 1.35; }
+  .console .console__rail { gap: 0; }
+}
+
+/* the leaderboard: the first three places wear a medal */
+.console #lb-people tbody tr > td:first-child, .console #lb-tokens tbody tr > td:first-child { font-weight: 700; }
+.console #lb-people tbody tr:nth-child(-n+3) > td:first-child::before, .console #lb-tokens tbody tr:nth-child(-n+3) > td:first-child::before {
+  content: "\25CF "; color: #E3B341;
+}
+.console #lb-people tbody tr:nth-child(2) > td:first-child::before, .console #lb-tokens tbody tr:nth-child(2) > td:first-child::before { color: #C9CDD2; }
+.console #lb-people tbody tr:nth-child(3) > td:first-child::before, .console #lb-tokens tbody tr:nth-child(3) > td:first-child::before { color: #C98A55; }
