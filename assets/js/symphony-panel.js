@@ -20,8 +20,8 @@
    hash, so only this page can turn the code GitHub returns into a token.
 
    What it never does: it never stores anything but the GitHub token (and
-   the refresh token that came with it) and the names of the repositories
-   you listed, and never sends anything anywhere but GitHub and, for the
+   the refresh token that came with it), the names of the repositories
+   you listed and the sizes and text size you set, and never sends anything anywhere but GitHub and, for the
    sign-in, that service, save what the Folders tab sends for a drive the
    person connects there: Microsoft's consent, Microsoft Graph and the
    same service's drive routes. The one Claude token it touches is one pasted
@@ -1472,6 +1472,7 @@
     var s = state;
     if (!s.meta) {
       p.textContent = s.failed.length ? 'Could not read ' + s.repo + ': ' + s.failed.join('; ') + '.' : 'Reading ' + s.repo + '...';
+      summaryWarn(s.failed.length ? p.textContent : '');
       return;
     }
     var g = sortIssues(s.issues);
@@ -1490,6 +1491,14 @@
       s.failed.length ? 'Not read: ' + s.failed.join('; ') + '.' : ''
     ];
     p.textContent = parts.filter(Boolean).join(' ');
+    summaryWarn(s.failed.length ? 'Not read: ' + s.failed.join('; ') + '.' : '');
+  }
+  // the summary itself is for a screen reader and a browsing agent; what could not be read shows
+  function summaryWarn(text) {
+    var w = $('cp-summary-warn');
+    if (!w) return;
+    w.textContent = text;
+    w.hidden = !text;
   }
 
   function loadRepo(name) {
@@ -1816,12 +1825,143 @@
       light();
     });
   }
+  /* ---------- the layout the person sets: sizes and the text size, kept in this browser ---------- */
+  // Each grip (an element with data-split) sizes one part of the console as the person drags it, and
+  // A- and A+ scale the console's text with its buttons and boxes, through CSS zoom, so the whole
+  // deck grows or shrinks as one. The numbers are kept in this browser's localStorage under one key,
+  // read once when the page opens; a double-click on a grip, or 100%, puts that part back. Nothing
+  // but these numbers is kept, and nothing is sent anywhere.
+  var KEY_LAYOUT = 'symphony_panel_layout';
+  // prop: the custom property on #console that CSS sizes the part by; sign: whether dragging right
+  // (or down) grows the part (+1) or shrinks it (-1); measure: the part's size now, in CSS pixels
+  var LAYOUT_PARTS = {
+    side: { prop: '--side-w', min: 150, max: 520, axis: 'x', sign: 1, measure: function () { return $('console').querySelector('.console__side').offsetWidth; } },
+    col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
+    tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
+    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } }
+  };
+  var ZOOM_STEPS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.7];
+  var layout = {};
+  function readLayout() {
+    var kept = {};
+    try { kept = JSON.parse(localStorage.getItem(KEY_LAYOUT) || '{}'); } catch (e) { kept = {}; }
+    var clean = {};
+    if (!kept || typeof kept !== 'object') return clean;
+    Object.keys(LAYOUT_PARTS).forEach(function (k) {
+      var v = kept[k], p = LAYOUT_PARTS[k];
+      if (typeof v === 'number' && v >= p.min && v <= p.max) clean[k] = Math.round(v);
+    });
+    if (ZOOM_STEPS.indexOf(kept.zoom) >= 0) clean.zoom = kept.zoom;
+    return clean;
+  }
+  function saveLayout() {
+    try {
+      if (Object.keys(layout).length) localStorage.setItem(KEY_LAYOUT, JSON.stringify(layout));
+      else localStorage.removeItem(KEY_LAYOUT);
+    } catch (e) { /* storage refused: the sizes last while the page is open */ }
+  }
+  function zoomOf() { return layout.zoom || 1; }
+  function applyLayout() {
+    var c = $('console');
+    if (!c) return;
+    Object.keys(LAYOUT_PARTS).forEach(function (k) {
+      if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, layout[k] + 'px');
+      else c.style.removeProperty(LAYOUT_PARTS[k].prop);
+    });
+    // the answer keeps its usual cap until the person sizes it, and may then take the stage
+    if (layout.drawer != null) c.style.setProperty('--drawer-max', 'calc(100% - 16px)');
+    else c.style.removeProperty('--drawer-max');
+    c.style.setProperty('--console-zoom', String(zoomOf()));
+    if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
+  }
+  // a grip made by the script, for a part the script draws (a token's panel, Claude's answer)
+  function splitGrip(part, what) {
+    var g = el('div', 'console__split console__split--edge console__split--' + part);
+    g.setAttribute('data-split', part);
+    g.setAttribute('role', 'separator');
+    g.setAttribute('aria-orientation', LAYOUT_PARTS[part].axis === 'x' ? 'vertical' : 'horizontal');
+    g.setAttribute('aria-label', 'Drag to size ' + what + '; double-click to reset');
+    g.tabIndex = 0;
+    return g;
+  }
+  function setPart(part, px) {
+    var p = LAYOUT_PARTS[part];
+    layout[part] = Math.round(Math.min(p.max, Math.max(p.min, px)));
+    applyLayout();
+  }
+  function stepZoom(step) {
+    var at = ZOOM_STEPS.indexOf(zoomOf());
+    var next = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, (at < 0 ? 3 : at) + step))];
+    if (next === 1) delete layout.zoom; else layout.zoom = next;
+    applyLayout();
+    saveLayout();
+    fitConsole();
+  }
+  function initLayout() {
+    var c = $('console');
+    layout = readLayout();
+    applyLayout();
+    if ($('cp-zoom-down')) $('cp-zoom-down').addEventListener('click', function () { stepZoom(-1); });
+    if ($('cp-zoom-up')) $('cp-zoom-up').addEventListener('click', function () { stepZoom(1); });
+    if ($('cp-zoom-reset')) $('cp-zoom-reset').addEventListener('click', function () { stepZoom(0 - ZOOM_STEPS.indexOf(zoomOf()) + 3); });
+    // one listener on the console serves every grip, those the script draws later among them
+    c.addEventListener('pointerdown', function (e) {
+      var grip = e.target && e.target.closest ? e.target.closest('[data-split]') : null;
+      if (!grip || e.button !== 0) return;
+      var part = grip.getAttribute('data-split'), p = LAYOUT_PARTS[part];
+      if (!p) return;
+      e.preventDefault();
+      var start = p.measure(grip), from = p.axis === 'x' ? e.clientX : e.clientY;
+      // the pointer moves in the window's pixels; the part is sized in the zoomed console's
+      var scale = zoomOf();
+      grip.setPointerCapture(e.pointerId);
+      document.body.classList.add('console-dragging', 'console-dragging--' + p.axis);
+      function move(ev) { setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale); }
+      // the grip may be drawn again mid-drag (the Tokens tab redraws its panel as readings land), so
+      // a lost capture ends the drag as a release does
+      var done = false;
+      function up() {
+        if (done) return;
+        done = true;
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+        grip.removeEventListener('pointercancel', up);
+        grip.removeEventListener('lostpointercapture', up);
+        document.body.classList.remove('console-dragging', 'console-dragging--' + p.axis);
+        saveLayout();
+      }
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up);
+      grip.addEventListener('pointercancel', up);
+      grip.addEventListener('lostpointercapture', up);
+    });
+    c.addEventListener('dblclick', function (e) {
+      var grip = e.target && e.target.closest ? e.target.closest('[data-split]') : null;
+      if (!grip || !LAYOUT_PARTS[grip.getAttribute('data-split')]) return;
+      delete layout[grip.getAttribute('data-split')];
+      applyLayout();
+      saveLayout();
+    });
+    // the arrow keys move a focused grip, so the sizes are set without a mouse too
+    c.addEventListener('keydown', function (e) {
+      var grip = e.target && e.target.getAttribute ? e.target : null;
+      var part = grip && grip.getAttribute('data-split'), p = part && LAYOUT_PARTS[part];
+      if (!p) return;
+      var keys = p.axis === 'x' ? { ArrowLeft: -1, ArrowRight: 1 } : { ArrowUp: -1, ArrowDown: 1 };
+      if (!(e.key in keys)) return;
+      e.preventDefault();
+      setPart(part, p.measure(grip) + p.sign * keys[e.key] * 16);
+      saveLayout();
+    });
+  }
+
   function initConsole() {
     var c = $('console');
     if (!c) return;
     initFlash();
     initFullScreen();
     initTiles();
+    initLayout();
     // the deck's foot holds the page's message; Clear empties it
     // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
@@ -2625,7 +2765,7 @@
     var acts = el('div', 'console__askactions');
     acts.id = 'cp-as-actions';
     add(body, acts, answer);
-    add(drawer, head, body);
+    add(drawer, splitGrip('drawer', 'the answer'), head, body);
     stage.appendChild(drawer);
   }
   function initAssistant() {
@@ -3894,6 +4034,7 @@
     if (!slot || !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(slot)]) { tk.side = ''; side.hidden = true; clear(side); return; }
     clear(side);
     side.hidden = false;
+    add(side, splitGrip('tkside', 'this panel'));
     var s = tk.settings[slot] || {}, state = tileState(slot);
     var close = el('button', 'tkside__close', '\u00d7');
     close.type = 'button';
