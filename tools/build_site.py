@@ -1000,24 +1000,31 @@ def buttons_in(fragment):
     """The names of the buttons and button-styled links in an HTML fragment, in order."""
     found = []
     for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", fragment, re.S):
-        label = text_of(m.group(2)).strip() or (re.search(r'aria-label="([^"]*)"', m.group(1)) or [None, ""])[1]
+        # an icon button's name is its aria-label, not the glyph it shows
+        aria = re.search(r'aria-label="([^"]*)"', m.group(1))
+        label = aria.group(1) if aria else text_of(m.group(2)).strip()
         found.append(" ".join(html.unescape(label).split()))
     for m in re.finditer(r'<a\b([^>]*\bclass="[^"]*\bbtn\b[^"]*"[^>]*)>(.*?)</a>', fragment, re.S):
         found.append(" ".join(text_of(m.group(2)).split()))
     return found
 
 
-def buttons_made_by(meta):
-    """The buttons a page's own scripts make when there is something to act on: the labels passed
-    to a btn('...') helper, as symphony-panel.js makes its Merge and Cancel buttons."""
-    found = []
+def page_scripts(meta):
+    """The page's own scripts, root-absolute, that exist (main.js, which every page loads, aside)."""
+    out = []
     for j in meta.get("js", "").split(","):
         path = j.strip().split(" ")[0]
-        f = ROOT / path.lstrip("/")
-        if path and f.exists() and path != "/assets/js/main.js":
-            for m in re.finditer(r"""\bbtn\(\s*(['"])(.+?)\1""", read(f)):
-                found.append(m.group(2))
-    return found
+        if path and path != "/assets/js/main.js" and (ROOT / path.lstrip("/")).exists():
+            out.append(path)
+    return out
+
+
+def buttons_made_by(script):
+    """The buttons a script makes when there is something to act on: the labels passed to a
+    btn('...') helper, as symphony-panel.js makes its Merge and Cancel buttons. A script shared by
+    several pages makes each only on the page whose part needs it, so they are listed once per
+    script, not per page."""
+    return unique(m.group(2) for m in re.finditer(r"""\bbtn\(\s*(['"])(.+?)\1""", read(ROOT / script.lstrip("/"))))
 
 
 def unique(xs):
@@ -1030,8 +1037,8 @@ def unique(xs):
 
 
 def docs_buttons(texts):
-    """Every page's buttons: those in its HTML, then those its scripts make."""
-    groups = []
+    """Every page's buttons as its HTML has them, then the buttons each page script makes."""
+    groups, scripts = [], {}
     for n, _ in walk(SITE):
         if not exists(n) or n["path"].startswith(DOCS_PATHS):
             continue
@@ -1046,14 +1053,23 @@ def docs_buttons(texts):
             for name in ("head", "header", "footer"):
                 text = re.sub(rf"<!-- site:{name} -->.*?<!-- /site:{name} -->", "", text, flags=re.S)
             fixed = buttons_in(text)
-        made = [b for b in unique(buttons_made_by(meta)) if b not in fixed]
+        for script in page_scripts(meta):
+            scripts.setdefault(script, []).append(n)
         fixed = unique(fixed)
-        if not fixed and not made:
+        if not fixed:
             continue
         lis = "".join(f'<li>{esc(b)}</li>' for b in fixed)
-        lis += "".join(f'<li class="docs__made">{esc(b)}<span class="docs__tag">when there is something to act on</span></li>'
-                       for b in made)
         groups.append(f'<section class="docs__group"><h3><a href="{n["path"]}">{esc(n.get("crumb", n["label"]))}</a></h3>'
+                      f'<ul class="docs__buttons">{lis}</ul></section>')
+    for script, pages in scripts.items():
+        made = buttons_made_by(script)
+        if not made:
+            continue
+        where = ", ".join(f'<a href="{p["path"]}">{esc(p.get("crumb", p["label"]))}</a>' for p in pages)
+        lis = "".join(f'<li class="docs__made">{esc(b)}</li>' for b in made)
+        groups.append(f'<section class="docs__group"><h3>Made beside what they act on</h3>'
+                      f'<p class="docs__lede">By the script these pages share ({where}), next to the pull request, '
+                      f'task or slot each acts on, only when there is one.</p>'
                       f'<ul class="docs__buttons">{lis}</ul></section>')
     return '<div class="docs__directory">\n' + "\n".join(groups) + "\n</div>"
 
@@ -1095,6 +1111,17 @@ def change_notes(key):
     notes = []
     for m in re.finditer(r"<p>(Version (\d+)\b(?![,']|’s)(.*?))</p>", body, re.S):
         notes.append((int(m.group(2)), m.group(1)))
+    if not notes:
+        # a statement that lists its changes in one sentence inside a paragraph, as Symphony for
+        # Chrome's does: "Version 6 (extension 1.4.1) says ...; version 5 (extension 1.4.0) ..."
+        for para in re.findall(r"<p>(.*?)</p>", body, re.S):
+            m = re.search(r"\bVersion \d+ \(", para)
+            if not m:
+                continue
+            for piece in re.split(r";\s+(?=version \d+ \()", para[m.start():].rstrip(". ")):
+                n = re.match(r"[Vv]ersion (\d+)", piece)
+                if n:
+                    notes.append((int(n.group(1)), "V" + piece[1:] + "."))
     notes.sort(key=lambda x: -x[0])
     return notes
 
@@ -1163,8 +1190,10 @@ def expand(body, texts, where, path=None):
             raise SystemExit(f"{where}: unknown directive <!-- build:{m.group(1)} -->")
         return texts[m.group(1)]
     body = re.sub(r"<!-- build:([\w-]+-(?:title|toc|text)) -->", text, body)
-    # last, so a "{{" or a directive's name inside a page's text is never read as one
-    body = expand_docs(body, texts)
+    # last, so a "{{" or a directive's name inside a page's text is never read as one; only on the
+    # Docs pages, so the buttons index, which expands every other body, never calls itself
+    if path and path.startswith(DOCS_PATHS):
+        body = expand_docs(body, texts)
     left = re.findall(r"<!--\s*build:[^>]*-->", body)
     if left:
         raise SystemExit(f"{where}: unknown directive(s) {left}")

@@ -21,13 +21,19 @@
     try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data: data })); } catch (e) { /* private window */ }
   }
 
-  function getJSON(url) {
+  // a read of GitHub, kept in this tab as `keep` makes it: only the few fields the page shows, since
+  // whole pull requests would fill the tab's storage and every reload would ask GitHub again
+  function getJSON(url, keep) {
     var kept = remembered(url);
     if (kept) return Promise.resolve(kept);
     return fetch(url, { headers: { Accept: "application/vnd.github+json" } }).then(function (r) {
       if (!r.ok) throw new Error("GitHub answered " + r.status);
       return r.json();
-    }).then(function (data) { remember(url, data); return data; });
+    }).then(function (data) {
+      var small = keep ? keep(data) : data;
+      remember(url, small);
+      return small;
+    });
   }
 
   function showVersion(name, text) {
@@ -36,20 +42,32 @@
 
   function versions() {
     if (!document.querySelector("[data-live]")) return;
-    getJSON("https://api.github.com/repos/" + OWNER + "/symphony-protocol/releases/latest")
+    getJSON("https://api.github.com/repos/" + OWNER + "/symphony-protocol/releases/latest", function (r) { return { tag_name: r.tag_name }; })
       .then(function (r) { showVersion("protocol", r.tag_name.replace(/^v/, "") + " (the latest published release)"); })
       .catch(function () { showVersion("protocol", "not read: GitHub did not answer"); });
-    getJSON("https://raw.githubusercontent.com/" + OWNER + "/symphony-marketplace/main/plugins/sdlc/.claude-plugin/plugin.json")
+    getJSON("https://raw.githubusercontent.com/" + OWNER + "/symphony-marketplace/main/plugins/sdlc/.claude-plugin/plugin.json", function (p) { return { version: p.version }; })
       .then(function (p) { showVersion("plugin", p.version); })
       .catch(function () { showVersion("plugin", "not read: GitHub did not answer"); });
   }
 
-  function merged(repo) {
-    var url = "https://api.github.com/repos/" + OWNER + "/" + repo.repo +
-      "/pulls?state=closed&sort=updated&direction=desc&per_page=50";
-    return getJSON(url).then(function (prs) {
-      return prs.filter(function (p) { return p.merged_at; }).map(function (p) {
-        return { at: p.merged_at, title: p.title, url: p.html_url, product: repo.product, number: p.number };
+  // the pull requests merged since `since`, newest updated first, a page of 100 at a time until a
+  // page reaches back past `since` (a merge is never later than the last update), three at most
+  function merged(repo, since) {
+    function page(n) {
+      var url = "https://api.github.com/repos/" + OWNER + "/" + repo.repo +
+        "/pulls?state=closed&sort=updated&direction=desc&per_page=100&page=" + n;
+      return getJSON(url, function (prs) {
+        return prs.map(function (p) {
+          return { at: p.merged_at, updated: p.updated_at, title: p.title, url: p.html_url };
+        });
+      }).then(function (prs) {
+        var done = prs.length < 100 || Date.parse(prs[prs.length - 1].updated) < since || n >= 3;
+        return done ? prs : page(n + 1).then(function (more) { return prs.concat(more); });
+      });
+    }
+    return page(1).then(function (prs) {
+      return prs.filter(function (p) { return p.at && Date.parse(p.at) >= since; }).map(function (p) {
+        return { at: p.at, title: p.title, url: p.url, product: repo.product };
       });
     });
   }
@@ -75,14 +93,13 @@
     if (!list || !status) return;
     var repos = JSON.parse(list.getAttribute("data-repos") || "[]");
     var since = Date.now() - DAYS * 86400000;
-    Promise.allSettled(repos.map(merged)).then(function (results) {
+    Promise.allSettled(repos.map(function (r) { return merged(r, since); })).then(function (results) {
       var prs = [], failed = [];
       results.forEach(function (r, i) {
         if (r.status === "fulfilled") prs = prs.concat(r.value);
         else failed.push(repos[i].product);
       });
-      prs = prs.filter(function (p) { return Date.parse(p.at) >= since; })
-        .sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+      prs = prs.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
       prs.forEach(function (p, i) {
         var li = item(p);
         if (i >= SHOWN) li.hidden = true;
