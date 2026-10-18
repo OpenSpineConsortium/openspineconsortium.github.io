@@ -168,7 +168,17 @@ body[data-shell] main > .console.section, .console.section {
 .console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 10px; }
 .console__side { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); overflow: hidden; }
 .console__id { flex: 0 0 auto; padding: 8px 10px 8px; border-bottom: 1px solid var(--line-soft); }
-.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0 0 6px; white-space: nowrap; }
+.console__titlerow { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0; white-space: nowrap; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.console .console__full { flex: 0 0 auto; margin: 0; padding: 3px 7px; font-size: 0.74rem; display: inline-flex; align-items: center; gap: 4px; }
+.console .console__full span:first-child { font-size: 1.05rem; line-height: 1; }
+/* the word stays for a screen reader; the side column is too narrow for it beside the title */
+.console__fullword { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* full screen (the browser's, F11, or the button's): the site's bar and its drop-downs go, and
+   the console takes the whole screen; symphony-panel.js sets console-full on the body */
+body.console-full #nav, body.console-full #flyouts, body.console-full .crumbs-band { display: none !important; }
+body.console-full[data-shell] { padding-top: 0 !important; }
 /* the select says the repository by itself; its label stays for a screen reader */
 .console__id label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console__rail { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-x: hidden; overflow-y: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
@@ -208,6 +218,15 @@ body[data-shell] main > .console.section, .console.section {
 .console .console__status #msg input { width: 22em; max-width: 100%; padding: 5px 10px; }
 .console .console__status #msg button { margin: 0; padding: 4px 14px; font-size: 0.85rem; }
 .console .console__statusx { flex: 0 0 auto; margin: 0; padding: 4px 12px; font-size: 0.8rem; }
+/* the Ask Claude bar: a frozen row above the status line, as tall as what it holds up to a third
+   of the window, scrolling inside past that; empty, it is gone */
+.console__askbar { flex: 0 0 auto; max-height: 34vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); padding: 6px 10px; }
+.console__askbar:empty { display: none; }
+
+/* a new message flashes white, so the eye goes to the foot */
+@keyframes console-msg-flash { 0%, 25% { background-color: #F4F1E6; color: #0B100F; } 100% { background-color: var(--paper-card); color: var(--ink); } }
+.console .console__status #msg.console__flash { animation: console-msg-flash 1.1s ease-out; }
+@media (prefers-reduced-motion: reduce) { .console .console__status #msg.console__flash { animation-duration: 0.4s; } }
 .console__status:has(#msg:empty) .console__statusx, .console__status:has(#msg input:not(:disabled)) .console__statusx { visibility: hidden; }
 
 /* the repository's whole name, wrapped, with the select laid over it, so a press opens the
@@ -306,6 +325,7 @@ body[data-shell] main > .console.section, .console.section {
   .console__panel--split, .console__panel--even { grid-template-columns: minmax(0, 1fr); }
   .console__scroll { overflow: visible; }
   .console__side { overflow: visible; }
+  .console__askbar { max-height: 40vh; }
   .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
   .console__me { max-width: none; }
 }
