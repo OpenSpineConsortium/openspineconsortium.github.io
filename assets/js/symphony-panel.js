@@ -2368,13 +2368,14 @@
   // reset counts as empty, and a slot with a window at 90 percent or more is held until it resets,
   // or for five hours from its reading when no reset is known.
   var POOL_BRANCH = 'pool';
-  var POOL_FILE = /^slot-(main|[1-8])\.(run|probe|cswap)\.json$/;
+  var POOL_FILE = /^slot-(main|[1-9]|[12][0-9]|3[0-2])\.(run|probe|cswap)\.json$/;
   var POOL_THRESHOLD = 0.9;
   var POOL_UNKNOWN_HOLD_MS = 5 * 3600 * 1000;
   var POOL_WINDOWS = [['five_hour', '5 hours'], ['seven_day', '7 days']];
   var ASSIGNMENTS_PATH = '.github/symphony/accounts.json';
-  var CHOICES = ['main', 'auto', '1', '2', '3', '4', '5', '6', '7', '8'];
-  var SLOT_ORDER = ['1', '2', '3', '4', '5', '6', '7', '8', 'main'];
+  // an organization's pool holds every member's tokens, so it has room for 32, as tools/pool.py's SLOTS
+  var POOL_SLOTS = Array.apply(null, Array(32)).map(function (x, i) { return String(i + 1); });
+  var CHOICES = ['main', 'auto'].concat(POOL_SLOTS);
   var reading = 0;
 
   function moment(v) {
@@ -2504,7 +2505,7 @@
   var SECRETS_NEEDED = ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions (for a personal account\'s repository, the repository permissions Secrets and Variables).';
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
-  function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return /^[1-8]$/.test(w); }); }
+  function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return POOL_SLOTS.indexOf(w) >= 0; }); }
 
   // where a repository's slots live: its organization's secrets, or for a personal account's
   // repository, the repository's own
@@ -2537,18 +2538,30 @@
     });
   }
 
+  // An organization's owners hold every token in its pool; anyone else only the ones they added
+  // (the owner, 2026-10-18). GitHub says who is an owner; a personal account is its own.
+  function ownsPlace(place) {
+    if (!shownLogin) return Promise.resolve(false);
+    if (!place.org) return Promise.resolve(place.owner.toLowerCase() === shownLogin.toLowerCase());
+    return gh('GET', '/orgs/' + place.owner + '/memberships/' + shownLogin).then(function (r) {
+      return !!(r.data && r.data.role === 'admin' && r.data.state === 'active');
+    }, function () { return false; });
+  }
+
   // where the tokens live, which are set and their names and settings, read when the tab opens
   function readTokenPlace(repo, asked) {
     var place = null, secrets = null;
-    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null }; drawTiles(); }
+    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
     }).then(function (found) {
       secrets = found;
-      return readTileVariables(place);
-    }).then(function (vars) {
+      return Promise.all([readTileVariables(place), ownsPlace(place)]);
+    }).then(function (both) {
+      var vars = both[0];
       if (asked !== reading) return;
+      tk.admin = both[1];
       tk.place = place;
       tk.secrets = secrets;
       tk.settings = vars[0];
@@ -2651,8 +2664,8 @@
     refuseCrowd([repo], place).then(function () {
       return readSecrets(place);
     }).then(function (by) {
-      slot = wanted || ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
-      if (!slot) throw new Error('All eight slots are set; remove one with its X, or renew one from its tile.');
+      slot = wanted || POOL_SLOTS.filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
+      if (!slot) throw new Error('All 32 slots are set; remove one with its X, or renew one from its tile.');
       mainMissing = slot !== 'main' && !by[MAIN_SECRET];
       return gh('GET', place.base + '/secrets/public-key');
     }).then(function (r) {
@@ -2788,15 +2801,26 @@
   // the token comes back by itself once its limit resets. The X deletes the token's secret, its label
   // and its settings, and takes it off SYMPHONY_CLAUDE_ACCOUNTS.
   var SETTINGS_VARIABLE = SLOT_PREFIX + 'SETTINGS';
-  var TILE_SLOTS = ['main', '1', '2', '3', '4', '5', '6', '7', '8'];
+  var TILE_SLOTS = ['main'].concat(POOL_SLOTS);
   // not MODELS, which the cost page's prices hold in the same scope
   var TILE_MODELS = [['', 'The worker\'s own model'], ['claude-fable-5-1', 'Fable 5.1'], ['claude-opus-5-5', 'Opus 5.5'],
                 ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5']];
   var EFFORTS = [['', 'The model\'s default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
   // tools/pool.py takes only these models (KNOWN_MODELS), so the page never writes one it would leave out
   function knownModel(m) { return TILE_MODELS.some(function (t) { return t[0] && t[0] === m; }); }
-  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null };
+  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false };
 
+  function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
+  function canChange(slot) {
+    return tk.admin || (!!shownLogin && ownerOf(slot).toLowerCase() === shownLogin.toLowerCase());
+  }
+  // eight hex digits, as tools/pool.py's TOKEN_ID, made once per token and kept while it is renewed
+  function newTokenId() {
+    var bytes = new Uint8Array(4);
+    window.crypto.getRandomValues(bytes);
+    return Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+  var LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
   function tileName(slot) { return tk.labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot); }
   function modelWord(model) {
     for (var i = 0; i < TILE_MODELS.length; i++) if (TILE_MODELS[i][0] === (model || '')) return i ? TILE_MODELS[i][1] : 'Worker\'s model';
@@ -2843,7 +2867,7 @@
     var labels = listed(place.base + '/variables', 'variables').then(function (list) {
       var out = {};
       list.forEach(function (v) {
-        var m = /^SYMPHONY_CLAUDE_([1-8])_LABEL$/.exec(v.name || '');
+        var m = /^SYMPHONY_CLAUDE_([1-9]|[12][0-9]|3[0-2])_LABEL$/.exec(v.name || '');
         if (m && SLOT_LABEL.test(v.value || '')) out[m[1]] = v.value;
       });
       return out;
@@ -2874,9 +2898,11 @@
     open.id = 'tk-tile-' + slot;
     open.title = 'Settings of ' + tileName(slot) + ' (' + slotSecret(slot) + ')';
     add(open, el('span', 'tok__icon', slot === 'main' ? 'M' : slot), el('span', 'tok__name', tileName(slot)),
+        el('span', 'tok__owner', s.owner ? '@' + s.owner : 'no owner yet'),
         el('span', 'tok__meta', modelWord(s.model) + (s.effort ? ', ' + s.effort : '')),
         useBars(slot), state.text ? el('span', 'tok__state ' + state.cls, state.text) : null);
     open.addEventListener('click', function () { openTokenDialog(slot, false); });
+    if (!canChange(slot)) return add(wrap, open);
     var x = el('button', 'tok__x', '\u00d7');
     x.type = 'button';
     x.id = 'tk-remove-' + slot;
@@ -2949,14 +2975,13 @@
     form.method = 'dialog';
     add(form, el('h3', 'console__boxh', adding ? 'Add a token' : tileName(slot)));
     var free = TILE_SLOTS.filter(function (n) { return !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(n)]; });
-    var pick = null;
     if (adding) {
-      var choices = free.filter(function (n) { return n !== 'main'; });
-      if (!free.length) add(form, el('p', 'admin__lead', 'All eight slots and main are set: remove one with its X, or renew one from its tile.'));
-      pick = selectOf('tk-d-slot', free.map(function (n) { return [n, n === 'main' ? 'main (' + MAIN_SECRET + ', which @claude and the workers read)' : 'slot ' + n + ' (' + slotSecret(n) + ')']; }), choices[0] || free[0]);
-      add(form, labelled(pick, 'Where it is kept'));
-      slot = pick.value;
-    } else add(form, useLines(slot));
+      slot = free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '';
+      if (!slot) add(form, el('p', 'admin__lead', 'All 32 slots and main are set: remove one with its \u00d7, or renew one from its tile.'));
+    } else {
+      add(form, useLines(slot));
+      if (!canChange(slot)) { drawSomeoneElses(d, form, slot); return; }
+    }
     var label = el('input');
     label.id = 'tk-d-label';
     label.type = 'text';
@@ -2973,9 +2998,17 @@
     add(form, labelled(fallback, 'When its model\'s weekly limit runs out, switch to'));
     add(form, tickOf('tk-d-resume', s.resume !== false, 'Resume by itself when its limit resets'));
     add(form, tickOf('tk-d-paused', s.paused, 'Pause: auto passes this token over'));
-    function labelShown() { labelField.hidden = slot === 'main'; }
-    labelShown();
-    if (pick) pick.addEventListener('change', function () { slot = pick.value; labelShown(); });
+    labelField.hidden = slot === 'main';
+    var owner = null;
+    if (tk.admin) {
+      owner = el('input');
+      owner.id = 'tk-d-owner';
+      owner.type = 'text';
+      owner.maxLength = 39;
+      owner.autocomplete = 'off';
+      owner.value = s.owner || (adding ? shownLogin : '');
+      add(form, labelled(owner, 'Belongs to (a GitHub login)'));
+    } else add(form, el('p', 'admin__lead tkdlg__faint', adding ? 'It will be yours: only you and an owner of ' + tk.place.owner + ' can change or remove it.' : 'Yours: only you and an owner of ' + tk.place.owner + ' can change or remove it.'));
     add(form, el('p', 'admin__lead tkdlg__note', 'Runs on this token follow these from their next start.'));
     var problem = el('p', 'admin__warn tkdlg__problem');
     problem.hidden = true;
@@ -2992,11 +3025,15 @@
         out.resumedAt = s.resume === false && s.resumedAt ? s.resumedAt : new Date().toISOString().replace(/\.\d+Z$/, 'Z');
       }
       if ($('tk-d-paused').checked) out.paused = true;
+      out.id = s.id || newTokenId();
+      var who = owner ? owner.value.trim() : (s.owner || (adding ? shownLogin : ''));
+      if (who) out.owner = who;
       return out;
     }
     function check() {
       var text = label.value.trim();
       if (text && !SLOT_LABEL.test(text)) return 'A name is a word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address.';
+      if (owner && owner.value.trim() && !LOGIN.test(owner.value.trim())) return 'Belongs to takes a GitHub login, such as ' + (shownLogin || 'octocat') + '.';
       return '';
     }
     function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''); }
@@ -3019,6 +3056,7 @@
       }, function (e) { save.disabled = false; fail(e); });
     });
     add(bar, cancel, ' ', save);
+    if (!adding && tk.place.org) add(form, reachBox(slot));
     if (!adding) {
       if (s.resume === false) {
         var resume = btn('Resume now', true, function () {
@@ -3042,7 +3080,65 @@
     add(form, bar);
     add(d, form);
     if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
-    (adding ? pick || model : model).focus();
+    model.focus();
+  }
+
+  function drawSomeoneElses(d, form, slot) {
+    var s = tk.settings[slot] || {};
+    add(form, el('p', 'tkdlg__fact', 'Model: ' + modelWord(s.model) + (s.effort ? ', thinking ' + s.effort : '') + (s.fallback ? '; switches to ' + modelWord(s.fallback) + ' when its model\'s weekly limit runs out' : '')));
+    add(form, el('p', 'tkdlg__fact', s.paused ? 'Paused.' : s.resume === false ? 'Waits for Resume once at its limit.' : 'Resumes by itself when its limit resets.'));
+    add(form, el('p', 'admin__lead tkdlg__faint', (s.owner ? 'This token belongs to @' + s.owner : 'This token has no owner yet') + '; only ' + (s.owner ? 'they' : 'the person who adds it') + ' and an owner of ' + tk.place.owner + ' can change or remove it.'));
+    add(form, add(el('p', 'admin__bar tkdlg__bar'), btn('Close', true, function () { d.close(); })));
+    add(d, form);
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  }
+
+  // The repositories a token is on: an organization secret's own list of repositories, which GitHub
+  // keeps, so switching one is a single call and takes effect at the next run there.
+  function reachBox(slot) {
+    var box = el('div', 'tkdlg__reach');
+    add(box, el('p', 'tkdlg__fact', 'On in these repositories'));
+    var list = el('div', 'tkdlg__repos');
+    add(box, list);
+    none(list, 'Reading...');
+    var path = tk.place.base + '/secrets/' + slotSecret(slot);
+    readOne(path).then(function (have) {
+      if (!have) throw new Error('GitHub does not list this token\'s secret');
+      if (have.visibility !== 'selected') {
+        clear(list);
+        none(list, have.visibility === 'all' ? 'On in every repository of ' + tk.place.owner + '.' : 'On in every private repository of ' + tk.place.owner + '.');
+        return null;
+      }
+      return listed(path + '/repositories', 'repositories');
+    }).then(function (on) {
+      if (!on) return;
+      clear(list);
+      var mine = repos().filter(function (r) { return r.split('/')[0].toLowerCase() === tk.place.owner.toLowerCase(); });
+      var rows = on.map(function (r) { return { name: r.full_name, id: r.id, on: true }; });
+      mine.forEach(function (name) { if (!rows.some(function (r) { return r.name.toLowerCase() === name.toLowerCase(); })) rows.push({ name: name, id: null, on: false }); });
+      rows.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      rows.forEach(function (r, i) { add(list, reachTick(path, r, i)); });
+    }).catch(function (e) { clear(list); none(list, 'Could not read where it is on: ' + e.message); });
+    return box;
+  }
+  function reachTick(path, r, i) {
+    var label = tickOf('tk-d-repo-' + i, r.on, r.name);
+    var tick = label.querySelector('input');
+    tick.addEventListener('change', function () {
+      tick.disabled = true;
+      var id = r.id ? Promise.resolve(r.id) : gh('GET', '/repos/' + r.name).then(function (x) { return (r.id = x.data.id); });
+      id.then(function (n) {
+        return gh(tick.checked ? 'PUT' : 'DELETE', path + '/repositories/' + n);
+      }).then(function () {
+        tick.disabled = false;
+        say(r.name + (tick.checked ? ' can use this token from its next run.' : ' no longer sees this token.'));
+      }, function (e) {
+        tick.disabled = false;
+        tick.checked = !tick.checked;
+        say('Could not switch it on ' + r.name + ': ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+      });
+    });
+    return label;
   }
 
   // the settings are read again just before the write, so a change another page made meanwhile stays
