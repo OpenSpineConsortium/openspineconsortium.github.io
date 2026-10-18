@@ -3043,7 +3043,8 @@
   // and its settings, and takes it off SYMPHONY_CLAUDE_ACCOUNTS.
   var SETTINGS_VARIABLE = SLOT_PREFIX + 'SETTINGS';
   var TILE_SLOTS = ['main', '1', '2', '3', '4', '5', '6', '7', '8'];
-  var MODELS = [['', 'The worker\'s own model'], ['claude-fable-5-1', 'Fable 5.1'], ['claude-opus-5-5', 'Opus 5.5'],
+  // not MODELS, which the cost page's prices hold in the same scope
+  var TILE_MODELS = [['', 'The worker\'s own model'], ['claude-fable-5-1', 'Fable 5.1'], ['claude-opus-5-5', 'Opus 5.5'],
                 ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5']];
   var EFFORTS = [['', 'The model\'s default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
   // as tools/pool.py's MODEL_SHAPE, so the page never writes a value the workers would leave out
@@ -3052,7 +3053,7 @@
 
   function tileName(slot) { return tk.labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot); }
   function modelWord(model) {
-    for (var i = 0; i < MODELS.length; i++) if (MODELS[i][0] === (model || '')) return i ? MODELS[i][1] : 'Worker\'s model';
+    for (var i = 0; i < TILE_MODELS.length; i++) if (TILE_MODELS[i][0] === (model || '')) return i ? TILE_MODELS[i][1] : 'Worker\'s model';
     return model;
   }
   function familyOf(model) {
@@ -3191,9 +3192,9 @@
     label.value = tk.labels[slot] || '';
     var labelField = labelled(label, 'Name');
     add(form, labelField);
-    var model = selectOf('tk-d-model', MODELS, s.model);
+    var model = selectOf('tk-d-model', TILE_MODELS, s.model);
     var effort = selectOf('tk-d-effort', EFFORTS, s.effort);
-    var fallback = selectOf('tk-d-fallback', [['', 'Don\'t switch']].concat(MODELS.slice(1)), s.fallback);
+    var fallback = selectOf('tk-d-fallback', [['', 'Don\'t switch']].concat(TILE_MODELS.slice(1)), s.fallback);
     add(form, add(el('div', 'tkdlg__row'), labelled(model, 'Model'), labelled(effort, 'Thinking strength')));
     add(form, labelled(fallback, 'When its model\'s weekly limit runs out, switch to'));
     add(form, tickOf('tk-d-resume', s.resume !== false, 'Resume by itself when its limit resets'));
