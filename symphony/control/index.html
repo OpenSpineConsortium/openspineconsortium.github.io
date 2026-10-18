@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610181009">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610181009">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610181009">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610181012">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610181012">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610181012">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -352,16 +352,10 @@
             <div class="admin__box console__scroll">
               <h2 id="h-assistant" class="console__boxh">Assistant</h2>
               <details class="console__help console__help--inline"><summary>How the assistant answers</summary><div>
-                <p>Ask the repository&rsquo;s own Claude about the board: what is claimed, what is blocked, what to take next, where something stands. It answers from GitHub Actions on the repository&rsquo;s own Claude token and only reads (the page offers the box only where the repository&rsquo;s workflow carries the assistant, the file <code>.github/symphony/assistant.md</code> on its default branch), through an issue of yours labelled <code>assistant</code> that the page opens once per repository (&ldquo;Assistant: your login&rdquo;); each question is one comment on that issue and one run of the Claude workflow, and the answer comes back here, since the page reads the issue&rsquo;s comments every few seconds while it waits. The workflow answers only people with write access to the repository. When the answer names an issue or a board section, the page opens the Tasks or Board tab and centres that row, filters the tables, or scrolls to the section, and offers a link that opens the issue on GitHub; acting on an answer opens no tab by itself and changes nothing in the repository: the page writes only the label, the issue and your questions, each on a press.</p>
+                <p>Ask the repository&rsquo;s own Claude about the board: what is claimed, what is blocked, what to take next, where something stands. It answers from GitHub Actions on the repository&rsquo;s own Claude token and only reads (the page offers the box only where the repository&rsquo;s workflow carries the assistant, the file <code>.github/symphony/assistant.md</code> on its default branch), through an issue of yours labelled <code>assistant</code> that the page opens once per repository (&ldquo;Assistant: your login&rdquo;); each question is one comment on that issue and one run of the Claude workflow, and the answer comes back here, since the page reads the issue&rsquo;s comments every few seconds while it waits. The workflow answers only people with write access to the repository. When the answer names an issue, a board section or a tab, the page opens it, centres that row, filters the tables or scrolls to the section, and offers a link that opens the issue on GitHub. When the answer proposes something that changes the repository (run the workers, the board, the checks or the metrics, give a task to a worker, merge a pull request) or drafts a task or an @claude prompt, the page shows it as a button that says exactly what it does, and nothing happens until you press it; the press runs the panel&rsquo;s own button for it, as you, so Claude itself never writes. A merge still asks you to confirm on the Pull requests tab, and a draft only fills the form for you to send. Claude in Chrome is not needed: the page reads Claude&rsquo;s answer and does the clicking on your word.</p>
               </div></details>
-              <p id="cp-as-state" class="admin__lead">Reading...</p>
-              <div id="cp-as-box" class="hidden">
-                <label for="cp-as-q">The question</label>
-                <textarea id="cp-as-q" rows="3"></textarea>
-                <p class="admin__bar"><button id="cp-as-ask" type="button" class="console__primary">Ask the assistant</button> <button id="cp-as-stop" type="button" class="quiet hidden">Stop watching</button> <button id="cp-as-again" type="button" class="quiet hidden">Ask again</button></p>
-              </div>
-              <div id="cp-as-answer" class="control__answer control__assistant"></div>
-              <p id="cp-as-actions" class="admin__lead"></p>
+              <p class="admin__lead">The assistant is the <strong>Ask Claude</strong> bar at the foot of the console, on every tab, so you can ask while you look at the board, the tasks or the pull requests. Its answer opens over the tab, above the bar.</p>
+              <div><button id="cp-as-goto" type="button" class="quiet">Go to the Ask Claude bar</button></div>
             </div>
           </div>
         </section>
@@ -452,6 +446,7 @@
 
       </div>
     </div>
+
   </div>
   <!-- the Ask Claude bar's place, frozen above the status line like it; the assistant fills it
        (its own code), and while it is empty it takes no room -->
@@ -518,8 +513,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610181009"></script>
+<script src="/assets/js/main.js?v=202610181012"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610181009"></script>
+<script src="/assets/js/symphony-panel.js?v=202610181012"></script>
 </body>
 </html>

@@ -1761,9 +1761,12 @@
   // vocabulary is .github/symphony/assistant.md there). The action posts a progress comment first,
   // edits it as it works, and when the run ends writes a header in front of whatever the comment
   // holds, so the page compares bodies, never counts comments, and reads a body as the answer only
-  // once that header opens it. The page executes only the few lines of the fenced block the answer
-  // may end with, each of them a read of what the page already shows: nothing here writes to the
-  // repository but the label, the issue and the comments, each on a press.
+  // once that header opens it. The page executes by itself only the lines of the fenced block the
+  // answer may end with that read what the page already shows; a line that would change something
+  // is offered as a button that presses the panel's own button for it, as the person, so nothing
+  // here writes to the repository but the label, the issue and the comments, each on a press, and
+  // what the person presses. The assistant is the Ask Claude bar at the console's foot, on every
+  // tab, and its answer opens in a drawer above the bar.
   var ASSISTANT_LABEL = 'assistant';
   // the file the repository's workflow appends to the assistant's system prompt: a repository
   // without it on its default branch has no assistant, and a question there would run as an
@@ -1880,6 +1883,7 @@
     a.login = shownLogin;
     clear($('cp-as-answer'));
     $('cp-as-actions').textContent = '';
+    assistantDrawer(false);
     assistantRedraw();
     assistantButtons(false, false, false);
     if (!s.repo) { assistantWords(['No repository is chosen.']); return; }
@@ -2058,6 +2062,7 @@
     a.watching = true;
     clear($('cp-as-answer'));
     $('cp-as-actions').textContent = '';
+    assistantDrawer(false);
     assistantButtons(true, true, false);
     assistantWaitingWords();
     assistantSchedule();
@@ -2148,7 +2153,10 @@
   // context, is shown as words beside the page's own Open #N links rather than as a link
   function assistantShow(body) {
     var box = $('cp-as-answer');
-    box.innerHTML = markdown(body.replace(/<img\b[^>]*>/gi, ''));
+    // the symphony block is the page's to act on, shown as the actions above the answer, not as code
+    // the same block assistantBlock reads, so what is hidden is exactly what is acted on
+    box.innerHTML = markdown(body.replace(/\r/g, '').replace(/<img\b[^>]*>/gi, '').replace(ASSISTANT_BLOCK, '$1'));
+    assistantDrawer(true);
     var links = box.querySelectorAll('a');
     for (var i = 0; i < links.length; i++) {
       var host = '';
@@ -2176,8 +2184,9 @@
   // The lines of the answer's fenced block whose info string is symphony, read from the raw comment,
   // since the renderer drops the fence with its info string. Only the five forms are acted on, each
   // of them a read of what the page already shows; any other line is shown as written.
+  var ASSISTANT_BLOCK = /(^|\n)```symphony[ \t]*\n([\s\S]*?)\n[ \t]*```/;
   function assistantBlock(body) {
-    var m = /(^|\n)```symphony[ \t]*\n([\s\S]*?)\n[ \t]*```/.exec(String(body).replace(/\r/g, ''));
+    var m = ASSISTANT_BLOCK.exec(String(body).replace(/\r/g, ''));
     return m ? m[2].split('\n').map(function (l) { return l.trim(); }).filter(Boolean) : [];
   }
   function assistantRun(body) {
@@ -2191,6 +2200,12 @@
       else if ((m = /^open\s+#([0-9]{1,9})$/i.exec(line))) said = assistantOpen(Number(m[1]));
       else if ((m = /^filter\s+(blocked|todo|mine|none)$/i.exec(line))) said = assistantFilter(m[1].toLowerCase());
       else if ((m = /^show\s+(queue|blockers|overlaps|given|dependencies)$/i.exec(line))) said = assistantShowSection(m[1].toLowerCase());
+      else if ((m = /^tab\s+([a-z]{1,20})$/i.exec(line))) said = assistantTab(m[1].toLowerCase());
+      else if ((m = /^run\s+(workers|board|checks|metrics)$/i.exec(line))) said = assistantRunOffer(m[1].toLowerCase());
+      else if ((m = /^give\s+#([0-9]{1,9})\s+to\s+([a-z0-9-]{1,39})$/i.exec(line))) said = assistantGiveOffer(Number(m[1]), m[2].toLowerCase());
+      else if ((m = /^merge\s+#([0-9]{1,9})$/i.exec(line))) said = assistantMergeOffer(Number(m[1]));
+      else if ((m = /^task:?\s+(.{1,200})$/i.exec(line))) said = assistantTaskOffer(m[1].trim());
+      else if ((m = /^ask(?:\s+#([0-9]{1,9}))?\s*:?\s+(.{1,2000})$/i.exec(line))) said = assistantAskOffer(m[1] || '', m[2].trim());
       else said = 'Not acted on, shown as written: ' + line;
       if (i) add(box, ' ');
       add(box, said);
@@ -2229,7 +2244,8 @@
   // marks the focused row and hides the rows the filter leaves out, in every task table, and says
   // so above the tables; called again whenever the tables are rendered afresh
   function assistantRedraw() {
-    var rows = document.querySelectorAll('#cp-app table.admin__stack tbody tr[data-number]:not([data-pull])');
+    // the task tables alone: the Pull requests tab's rows carry data-number too, for "merge #N"
+    var rows = document.querySelectorAll(CONSOLE_TASK_TABLES.map(function (id) { return '#' + id + ' tbody tr[data-number]'; }).join(','));
     var out = { row: null, shown: 0, total: rows.length };
     for (var i = 0; i < rows.length; i++) {
       var tr = rows[i];
@@ -2263,10 +2279,186 @@
     }
     return 'The board has no ' + name + ' section yet' + (key === 'dependencies' ? ' (the board draws one once dependencies are recorded)' : '') + '.';
   }
+  // A tab the answer names opens, as a rail button would; only the rail's own tabs
+  function assistantTab(name) {
+    var tab = consoleTabs().filter(function (t) { return t.getAttribute('data-tab') === name; })[0];
+    if (!tab) return 'Not acted on: the panel has no tab "' + name + '".';
+    showTab(name);
+    return 'Opened the ' + tab.textContent.replace(/[0-9]+$/, '').replace(/^\W+/, '').trim() + ' tab.';
+  }
+
+  // The lines that would change the repository or fill a form are offered, never run: each is a
+  // button that says what it does and, on a press, runs the panel's own handler for the same thing,
+  // as the person signed in, once. Claude's answer can be steered by any text it read (an issue
+  // anyone may open on a public repository), so a press is the person's word for each change, and
+  // a press made after the page moved to another repository or another sign-in does nothing. A
+  // Refresh of the same repository keeps the buttons; each reads what it acts on when pressed. A
+  // run that refuses (returns false) gives the button back, so a press made too early is not lost.
+  function assistantOffer(label, words, run) {
+    var a = assistant, repo = a.repo, login = a.login;
+    var row = el('div', 'console__askact');
+    var b = btn(label, false, function () {
+      if (a !== assistant || repo !== state.repo || login !== shownLogin) { say('That button belonged to an answer for ' + repo + ' as ' + login + ', and the page has moved on; ask again.', true); return; }
+      b.disabled = true;
+      if (run() === false) b.disabled = false;
+    });
+    add(row, b, ' ', words);
+    return row;
+  }
+  var ASSISTANT_RUNS = { workers: 'cp-run-workers', board: 'cp-run-board', checks: 'cp-run-ci', metrics: 'cp-run-metrics' };
+  function assistantRunOffer(key) {
+    var target = $(ASSISTANT_RUNS[key]);
+    var name = target ? target.querySelector('.launch__name').textContent : key;
+    return assistantOffer(name, 'Starts that workflow on the default branch, as you, as the Command tab\'s button does.', function () { $(ASSISTANT_RUNS[key]).click(); });
+  }
+  function assistantGiveOffer(n, name) {
+    var g = sortIssues(state.issues);
+    var it = g.queue.concat(g.given, g.blocked, g.blockers).filter(function (x) { return x.number === n; })[0];
+    if (!it) return 'Not offered: #' + n + ' is not an issue the page can give, one in the Queue, Given to workers, Blocked or Blockers.';
+    if (workerNames().indexOf(name) < 0) return 'Not offered: no worker named ' + name + ' is registered.';
+    return assistantOffer('Give #' + n + ' to ' + name, '"' + it.title + '": puts the label worker:' + name + ' on it, as the Tasks tab\'s Give to does.', function () {
+      var g2 = sortIssues(state.issues);
+      var now = g2.queue.concat(g2.given, g2.blocked, g2.blockers).filter(function (x) { return x.number === n; })[0];
+      if (!now) { say('#' + n + ' can no longer be given: it is claimed, in review or closed since the answer came.', true); return false; }
+      giveTo(now, name);
+    });
+  }
+  function assistantMergeOffer(n) {
+    var pr = state.pulls.filter(function (x) { return x.number === n; })[0];
+    if (!pr) return 'Not offered: #' + n + ' is not an open pull request the page lists.';
+    return assistantOffer('Merge #' + n + '...', '"' + pr.title + '" into ' + pr.base.ref + ': opens the Pull requests tab and presses its Merge, and you confirm there.', function () {
+      var row = assistantPullRow(n);
+      var m = row ? Array.prototype.filter.call(row.querySelectorAll('button'), function (x) { return /^(Merge|Confirm: merge)\b/.test(x.textContent); })[0] : null;
+      if (!m) { say('#' + n + ' is no longer on the Pull requests tab; press Refresh.', true); return false; }
+      assistantDrawer(false);
+      revealTab(row);
+      scrollInDeck(row, { block: 'center' });
+      var cur = state.pulls.filter(function (x) { return x.number === n; })[0] || pr;
+      if (m.disabled) { say('#' + n + ' cannot be merged from here yet: ' + (cur.draft ? 'it is a draft.' : 'its checks have not all passed, or are still being read.'), true); return false; }
+      if (!m.getAttribute('data-armed')) m.click();
+      say('Press "' + m.textContent + '" beside #' + n + ' to merge it, or Cancel.');
+    });
+  }
+  // the pull request's element on the Pull requests tab, by its data-number, or else the row whose
+  // first link is its number, as the table drew it before the tab's pictures
+  function assistantPullRow(n) {
+    var tab = $('tab-pulls');
+    if (!tab) return null;
+    var el1 = tab.querySelector('[data-number="' + n + '"]');
+    if (el1) return el1;
+    return Array.prototype.filter.call(tab.querySelectorAll('tr'), function (tr) {
+      var a = tr.querySelector('a');
+      return !!a && a.textContent === '#' + n;
+    })[0] || null;
+  }
+  function assistantTaskOffer(title) {
+    return assistantOffer('Draft the task', '"' + title + '": fills Queue a task with this title; you write the goal and the acceptance and press Queue.', function () {
+      assistantDrawer(false);
+      $('cp-task-title').value = title;
+      revealTab($('cp-task-title'));
+      $('cp-task-goal').focus({ preventScroll: true });
+      scrollInDeck($('cp-task-title'));
+    });
+  }
+  function assistantAskOffer(target, text) {
+    return assistantOffer(target ? 'Draft @claude on #' + target : 'Draft @claude on a new issue', '"' + text + '": fills Ask Claude to do it; Claude works on it with the tools that write only once you press Ask Claude there.', function () {
+      assistantDrawer(false);
+      $('cp-prompt').value = text;
+      $('cp-prompt-target').value = target;
+      revealTab($('cp-prompt'));
+      $('cp-prompt').focus({ preventScroll: true });
+      scrollInDeck($('cp-prompt'));
+    });
+  }
+
+  // the drawer above the bar holds the answer; Answer opens it again once closed
+  function assistantDrawer(open) {
+    var d = $('cp-as-drawer'), t = $('cp-as-toggle');
+    if (!d) return;
+    var has = !!$('cp-as-answer').firstChild;
+    d.hidden = !(open && has);
+    t.classList[has ? 'remove' : 'add']('hidden');
+    t.setAttribute('aria-expanded', d.hidden ? 'false' : 'true');
+    t.textContent = d.hidden ? 'Answer' : 'Hide answer';
+  }
+  // the box grows with the question, up to the few lines the bar allows, and Enter sends it
+  function assistantFit() {
+    var q = $('cp-as-q');
+    q.style.height = 'auto';
+    q.style.height = q.scrollHeight + 2 + 'px';
+  }
+  // The bar and its drawer are made here, into the frame's empty #cp-askbar (which the frame hides
+  // while it is empty) and over the foot of the stage, since the bar scrolls inside itself and would
+  // clip a drawer it held
+  function assistantBuildBar() {
+    var bar = $('cp-askbar'), stage = document.querySelector('#console .console__stage');
+    if (!bar || !stage || $('cp-as-q')) return;
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'Ask Claude');
+    var row = el('div', 'console__askrow');
+    add(row, el('span', 'console__askname', '❖ Ask Claude'));
+    var box = el('div', 'console__askbox hidden');
+    box.id = 'cp-as-box';
+    var q = el('textarea');
+    q.id = 'cp-as-q';
+    q.rows = 1;
+    q.setAttribute('aria-label', 'The question');
+    q.placeholder = 'Ask, or tell Claude what to do here (Enter sends)';
+    var ask = el('button', 'console__primary', 'Ask');
+    ask.id = 'cp-as-ask';
+    var stop = el('button', 'quiet hidden', 'Stop watching');
+    stop.id = 'cp-as-stop';
+    var again = el('button', 'quiet hidden', 'Ask again');
+    again.id = 'cp-as-again';
+    [ask, stop, again].forEach(function (b) { b.type = 'button'; });
+    add(box, q, ask, stop, again);
+    var st = el('p', 'admin__lead', 'Reading...');
+    st.id = 'cp-as-state';
+    var toggle = el('button', 'quiet hidden', 'Answer');
+    toggle.id = 'cp-as-toggle';
+    toggle.type = 'button';
+    toggle.setAttribute('aria-controls', 'cp-as-drawer');
+    toggle.setAttribute('aria-expanded', 'false');
+    add(row, box, st, toggle);
+    bar.appendChild(row);
+    var drawer = el('div', 'console__askdrawer');
+    drawer.id = 'cp-as-drawer';
+    drawer.hidden = true;
+    drawer.setAttribute('role', 'region');
+    drawer.setAttribute('aria-label', 'Claude’s answer');
+    var head = el('div', 'console__askhead');
+    var close = el('button', 'quiet', 'Close');
+    close.id = 'cp-as-close';
+    close.type = 'button';
+    add(head, el('strong', '', 'Claude’s answer'), close);
+    var body = el('div', 'console__askbody');
+    var answer = el('div', 'control__answer control__assistant');
+    answer.id = 'cp-as-answer';
+    var acts = el('div', 'console__askactions');
+    acts.id = 'cp-as-actions';
+    add(body, acts, answer);
+    add(drawer, head, body);
+    stage.appendChild(drawer);
+  }
   function initAssistant() {
+    assistantBuildBar();
     $('cp-as-ask').addEventListener('click', assistantAsk);
     $('cp-as-stop').addEventListener('click', function () { assistantStop('pressed'); });
     $('cp-as-again').addEventListener('click', function () { if (assistant.last) { $('cp-as-q').value = assistant.last; assistantAsk(); } });
+    $('cp-as-q').addEventListener('input', assistantFit);
+    $('cp-as-q').addEventListener('keydown', function (e) {
+      // 229 is the key a browser reports while an input method composes, Safari's last Enter included
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      if (!$('cp-as-ask').disabled) assistantAsk();
+    });
+    $('cp-as-toggle').addEventListener('click', function () { assistantDrawer($('cp-as-drawer').hidden); });
+    $('cp-as-close').addEventListener('click', function () { assistantDrawer(false); $('cp-as-toggle').focus(); });
+    // Escape shuts the drawer from inside it or from the bar
+    [$('cp-as-drawer'), $('cp-askbar')].forEach(function (n) {
+      n.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cp-as-drawer').hidden) { assistantDrawer(false); $('cp-as-toggle').focus(); } });
+    });
+    if ($('cp-as-goto')) $('cp-as-goto').addEventListener('click', function () { $('cp-as-q').focus(); });
   }
 
   /* ============================================================
