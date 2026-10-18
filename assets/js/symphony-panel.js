@@ -755,6 +755,16 @@
       select.appendChild(o);
     });
     select.disabled = !list.length;
+    if (select.id === 'cp-repo') showRepoName(list.indexOf(current) >= 0 ? current : list[0] || '');
+  }
+  // the side column's whole name, the owner on its own line, under the select laid over it
+  function showRepoName(name) {
+    var shown = $('cp-repo-shown');
+    if (!shown) return;
+    clear(shown);
+    if (!name) { shown.textContent = 'No repository listed yet'; return; }
+    var cut = name.indexOf('/') + 1;
+    add(shown, el('span', '', name.slice(0, cut)), name.slice(cut));
   }
 
   /* ---------- the sign-in box, shared by both pages ---------- */
@@ -1303,6 +1313,7 @@
   function loadRepo(name) {
     var s = state = emptyState(name);
     $('cp-repo-name').textContent = name;
+    showRepoName(name);
     $('cp-on-github').href = 'https://github.com/' + name;
     $('cp-board-link').href = 'https://github.com/' + name + '/blob/board/STATE.md';
     $('cp-actions-link').href = 'https://github.com/' + name + '/actions';
@@ -1499,7 +1510,7 @@
     var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
     if (panel && panel.hidden) showTab(panel.getAttribute('data-tab-panel'));
   }
-  // scrollIntoView moves every box around the node, the window too, which would carry the bar and
+  // scrollIntoView moves every box around the node, the window too, which would carry the header and
   // the strip out of sight; while the deck holds the window, the window is put back where it was
   function scrollInDeck(node, how) {
     var x = window.pageXOffset || 0, y = window.pageYOffset || 0;
@@ -1546,6 +1557,13 @@
   function initConsole() {
     var c = $('console');
     if (!c) return;
+    // the deck's foot holds the page's message; Clear empties it
+    // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
+    if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
+      if ($('msg').querySelector('input:not(:disabled)')) return;
+      clear($('msg'));
+      $('msg').className = 'admin__box';
+    });
     fitConsole();
     window.addEventListener('resize', fitConsole);
     window.addEventListener('load', fitConsole);
@@ -2247,7 +2265,7 @@
     var repo = $('cost-repo').value;
     var box = $('cost-measured');
     clear(box);
-    if (!repo) { none(box, 'Choose a repository in the bar above first.'); return; }
+    if (!repo) { none(box, 'Choose a repository in the side column first.'); return; }
     writeKey(KEY_REPO, repo, true);
     none(box, 'Reading the branch metrics of ' + repo + '...');
     var metaRead = gh('GET', '/repos/' + repo).then(function (r) { return r.data; }).catch(function () { return null; });
@@ -2568,7 +2586,7 @@
     clear($('tk-assign'));
     $('tk-auto').textContent = '';
     tokensFor = repo;
-    if (!repo) { say('Choose a repository in the bar above first.', true); return; }
+    if (!repo) { say('Choose a repository in the side column first.', true); return; }
     writeKey(KEY_REPO, repo, true);
     var tr = el('tr');
     add(tr, el('td', 'admin__none', 'Reading the branch pool of ' + repo + '...')).firstChild.colSpan = 6;
