@@ -4242,7 +4242,12 @@
   var CROWD_VARIABLE = 'CLAUDE_CROWD';
   // the wizard's label shape (scripts/tokens.py LABEL_SHAPE): a word, never an e-mail address
   var SLOT_LABEL = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$/;
-  var SECRETS_NEEDED = ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions (for a personal account\'s repository, the repository permissions Secrets and Variables).';
+  // what a 403 or 404 on a slot's secret or variable means, for where the slots live: an organization's
+  // pool, or a personal account's repository, which takes the App's repository permissions instead
+  function secretsNeeded(place) {
+    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
+    return ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions.';
+  }
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
   function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return POOL_SLOTS.indexOf(w) >= 0; }); }
@@ -4253,7 +4258,10 @@
     return gh('GET', '/repos/' + repo).then(function (r) {
       var org = r.data.owner && r.data.owner.type === 'Organization';
       var owner = r.data.owner.login;
-      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
+      // GitHub says whether the signed-in person administers the repository; a secret needs that,
+      // or for an organization's pool, an owner of the organization
+      var admin = r.data.permissions ? !!r.data.permissions.admin : null;
+      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, admin: admin, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
     });
   }
   // GitHub lists secrets, variables and a secret's repositories as an object holding the array
@@ -4520,7 +4528,7 @@
       var hint = Promise.resolve('');
       if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
       else if ((step === 'workflow' || step === 'dispatch' || step === 'issue') && e.status === 403) hint = Promise.resolve(ACTIONS_NEEDED);
-      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(SECRETS_NEEDED);
+      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(secretsNeeded(place));
       hint.then(function (text) { view.tell(e.message + text, true); });
     });
   }
@@ -4629,6 +4637,16 @@
   function knownModel(m) { return TILE_MODELS.some(function (t) { return t[0] && t[0] === m; }); }
   var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' };
 
+  // why the signed-in person can add no token where the repository's slots live, said before the
+  // press, since GitHub would refuse the first write with a bare 403
+  function cannotAdd() {
+    var place = tk.place;
+    if (!place || place.admin !== false) return '';
+    if (place.org && tk.admin) return '';
+    return place.org
+      ? 'Only an owner of ' + place.owner + ' can add a token to its pool, and you are not one. Pick a repository of your own in the Repository box and add your token there, or ask an owner of ' + place.owner + '.'
+      : 'Only ' + place.owner + ', who owns this repository, can add its tokens. Pick a repository of your own in the Repository box.';
+  }
   function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
   function canChange(slot) {
     return tk.admin || (!!shownLogin && ownerOf(slot).toLowerCase() === shownLogin.toLowerCase());
@@ -4840,7 +4858,10 @@
     add(form, el('h3', 'console__boxh', adding ? 'Add a token' : tileName(slot)));
     var free = TILE_SLOTS.filter(function (n) { return !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(n)]; });
     if (adding) {
-      slot = free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '';
+      // a personal repository's first token is its main one, which @claude and the workers read and
+      // which needs no variable; elsewhere main stays for last
+      var mainFree = free.indexOf('main') >= 0;
+      slot = (!tk.place.org && mainFree) ? 'main' : (free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '');
       if (!slot) add(form, el('p', 'admin__lead', 'All 32 slots and main are set: remove one with its \u00d7, or renew one from its tile.'));
     } else if (!canChange(slot)) { drawSomeoneElses(d, form, slot); return; }
     var label = el('input');
@@ -4897,13 +4918,15 @@
       if (owner && owner.value.trim() && !LOGIN.test(owner.value.trim())) return 'Belongs to takes a GitHub login, such as ' + (shownLogin || 'octocat') + '.';
       return '';
     }
-    function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''); }
+    function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''); }
     var bar = el('p', 'admin__bar tkdlg__bar');
     var cancel = btn('Cancel', true, function () { d.close(); });
     var save = el('button', 'console__primary', adding ? 'Save and sign in' : 'Save');
     save.type = 'button';
     save.id = adding ? 'tk-start' : 'tk-save';
     if (adding && !slot) save.disabled = true;
+    var barred = adding && cannotAdd();
+    if (barred) { save.disabled = true; problem.hidden = false; problem.textContent = barred; }
     save.addEventListener('click', function () {
       var why = check();
       if (why) { problem.hidden = false; problem.textContent = why; return; }
@@ -4993,7 +5016,7 @@
       }, function (e) {
         tick.disabled = false;
         tick.checked = !tick.checked;
-        say('Could not switch it on ' + r.name + ': ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+        say('Could not switch it on ' + r.name + ': ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''), true);
       });
     });
     return label;
@@ -5144,8 +5167,13 @@
       if (Object.keys(setting).length) all[slot] = setting; else delete all[slot];
       tk.settings = all;
       return writeVariable(place, SETTINGS_VARIABLE, JSON.stringify(all), ids);
-    }).then(function () {
-      if (slot === 'main') return;
+    }).catch(function (e) {
+      // a personal repository whose App installation lacks the repository permission Variables
+      // still takes its main token, which needs no variable; its settings wait for the permission
+      if (!place.org && slot === 'main' && e.status === 403) { tk.noVariables = true; return 'skip'; }
+      throw e;
+    }).then(function (skipped) {
+      if (slot === 'main' || skipped === 'skip') return;
       var name = SLOT_PREFIX + slot + '_LABEL';
       if (labelText) return writeVariable(place, name, labelText, ids).then(function () { tk.labels[slot] = labelText; });
       if (!tk.labels[slot]) return;
@@ -5186,7 +5214,7 @@
       readTokenPlace(tk.repo, reading);
     }).catch(function (e) {
       button.disabled = false;
-      say('Removing ' + name + ' stopped: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+      say('Removing ' + name + ' stopped: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''), true);
     });
   }
 
