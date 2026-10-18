@@ -259,16 +259,19 @@ robots: noindex
             <div class="console__head">
               <h2 id="h-slots" class="console__h">Claude accounts</h2>
               <p class="console__jumps">
-                <button id="tk-add-top" type="button" class="chip chip--go">&#43; Add a Claude account</button>
+                <button id="tk-add-top" type="button" class="chip chip--go">&#43; Add Token</button>
                 <button id="tk-probe" type="button" class="chip" title="Starts the workflow Pool, which asks each slot for one word on Haiku">Read every slot now</button>
                 <button id="tk-reload" type="button" class="chip">Read the pool again</button>
               </p>
               <details class="console__help"><summary>How the readings are taken and how auto picks a slot</summary><div>
                 <p>A slot is an organization secret, <code>SYMPHONY_CLAUDE_1</code> to <code>SYMPHONY_CLAUDE_8</code>; <code>main</code> is <code>CLAUDE_CODE_OAUTH_TOKEN</code>. GitHub never gives a secret back, so the page reads only the readings on the repository&rsquo;s branch <code>pool</code>: what each worker&rsquo;s run saw in Claude&rsquo;s answers, what the workflow Pool&rsquo;s one-word probes saw, and what cswap on your machine sent with <code>python3 scripts/tokens.py usage</code>, the only source of the per-model limits such as Fable&rsquo;s. No reading holds a token. &ldquo;Read every slot now&rdquo; starts the workflow Pool, which asks each slot of <code>SYMPHONY_CLAUDE_ACCOUNTS</code> for one word on Haiku: that spends one word of each slot&rsquo;s window, so nothing reads them on a schedule.</p>
+                <p>Each token is a tile. Press one for its settings: its name, the model and thinking strength its runs take, the lesser model to switch to when its model&rsquo;s weekly limit runs out, whether it comes back by itself when its limit resets (off, it waits for Resume), and Pause. They are kept in the variable <code>SYMPHONY_CLAUDE_SETTINGS</code>, which the workers in Actions read at the start of each run. The &times; on a tile deletes that token&rsquo;s secret, name and settings and takes it off <code>SYMPHONY_CLAUDE_ACCOUNTS</code>; the token itself stays good until it expires, so revoke it on claude.ai to stop it everywhere.</p>
                 <p>A slot is held once a window or a model limit reaches 90 percent, until it resets, or for five hours from its reading when its reset is not known. A worker on auto takes, at the start of each run, the free slot with the most room in five hours and then seven days, and the workers of one run take different free slots; a run already going finishes on its account. The Fable limit and the other per-model ones come only from cswap: run <code>python3 scripts/tokens.py usage</code> on your machine to send them.</p>
               </div></details>
             </div>
             <div class="console__scroll">
+              <div id="tk-tiles" class="toks" aria-label="Claude tokens"></div>
+              <dialog id="tk-dialog" class="tkdlg" aria-label="A Claude token's settings"></dialog>
               <div class="table-scroll"><table id="tk-slots" class="admin__stack"><thead><tr><th>Slot</th><th>5 hours</th><th>7 days</th><th>Per-model weekly limits</th><th>State</th><th>Last read</th></tr></thead><tbody></tbody></table></div>
               <p id="tk-auto" class="admin__lead"></p>
               <h3 id="h-assign">Which account each worker runs on</h3>
