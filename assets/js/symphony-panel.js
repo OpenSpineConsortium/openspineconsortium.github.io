@@ -4261,7 +4261,9 @@
       // GitHub says whether the signed-in person administers the repository; a secret needs that,
       // or for an organization's pool, an owner of the organization
       var admin = r.data.permissions ? !!r.data.permissions.admin : null;
-      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, admin: admin, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
+      // and whether they may write to it, which lets the Token run store their token in the pool
+      var push = r.data.permissions ? !!r.data.permissions.push : null;
+      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, admin: admin, push: push, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
     });
   }
   // GitHub lists secrets, variables and a secret's repositories as an object holding the array
@@ -4322,7 +4324,8 @@
   function refuseCrowd(names, place) {
     var orgWide = place.org ? gh('GET', place.base + '/variables/' + CROWD_VARIABLE).then(function (r) {
       if (String((r.data && r.data.value) || '').trim().toLowerCase() === 'true') throw new Error('The organization ' + place.owner + ' is in crowd mode (its variable ' + CROWD_VARIABLE + ' is true): its repositories hold no Claude token, so nothing was saved.');
-    }, function (e) { if (e.status !== 404) throw e; }) : Promise.resolve();
+    // someone who is not an owner may not read it, and the Token run reads it then (vars.CLAUDE_CROWD)
+    }, function (e) { if (e.status !== 404 && e.status !== 403) throw e; }) : Promise.resolve();
     return orgWide.then(function () { return Promise.all(names.map(function (name) {
       return gh('GET', '/repos/' + name + '/actions/variables/' + CROWD_VARIABLE).then(function (r) {
         if (String((r.data && r.data.value) || '').trim().toLowerCase() === 'true') throw new Error(name + ' is in crowd mode (its variable ' + CROWD_VARIABLE + ' is true): it holds no Claude token, so nothing was saved.');
@@ -4374,6 +4377,7 @@
     link: '<!-- symphony-token: sign-in -->',
     code: '<!-- symphony-token: code -->',
     sealed: '<!-- symphony-token: sealed -->',
+    stored: '<!-- symphony-token: stored -->',
     failed: '<!-- symphony-token: failed -->'
   };
   var RUN_BOT = 'github-actions[bot]';
@@ -4449,7 +4453,8 @@
     }
     var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets', stopped = false;
     var renewing = wanted && tk.secrets && tk.secrets[slotSecret(wanted)];
-    var view = signInView((renewing ? 'Renew ' + tileName(wanted) : 'Add a token') + ' on ' + repo);
+    var pooled = intoPool(place);
+    var view = signInView((renewing ? 'Renew ' + tileName(wanted) : pooled ? 'Add your token to ' + place.owner + '\'s pool' : 'Add a token') + ' on ' + repo);
     // a stop frees Add Token at once, whatever call is on its way; the chain ends quietly when it answers
     var run = tokenRun = { view: view, repo: repo, wanted: wanted || '', era: ends, stop: function () {
       stopped = true;
@@ -4469,8 +4474,11 @@
     drawTiles();
     view.tell('Starting the sign-in on GitHub Actions...');
     refuseCrowd([repo], place).then(function () {
-      return readSecrets(place);
+      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one.');
+      // the run itself finds the free slot, since only an owner may read the pool's secrets
+      return pooled ? {} : readSecrets(place);
     }).then(unlessStopped).then(function (by) {
+      if (pooled) { step = 'workflow'; return gh('GET', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW); }
       slot = wanted || POOL_SLOTS.filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
       if (!slot) throw new Error('All 32 slots are set; remove one with its X, or renew one from its tile.');
       mainMissing = slot !== 'main' && !by[MAIN_SECRET];
@@ -4485,11 +4493,11 @@
         throw off;
       }
       step = 'secrets';
-      return gh('GET', place.base + '/secrets/public-key');
+      return pooled ? { data: null } : gh('GET', place.base + '/secrets/public-key');
     }).then(unlessStopped).then(function (r) {
       key = r.data;
       step = 'issue';
-      return gh('POST', '/repos/' + repo + '/issues', { title: 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
+      return gh('POST', '/repos/' + repo + '/issues', { title: pooled ? 'Add a Claude account to ' + place.owner + '\'s pool' : 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
         body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml). The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
     }).then(function (r) {
       issue = r.data.number;
@@ -4497,12 +4505,13 @@
       return gh('GET', '/repos/' + repo);
     }).then(unlessStopped).then(function (r) {
       return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
-        { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), key: key.key, key_id: key.key_id } });
+        { ref: r.data.default_branch || 'main', inputs: pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id } });
     }).then(function () {
       step = 'run';
       view.tell('The sign-in is starting; its button appears here in about a minute.');
-      return followRun(repo, issue, key.key_id, view, function () { return stopped; });
+      return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
+      if (pooled) return { pooled: sealed.stored };
       // the token is sealed and on its way into the secret, which a stop now would only cut short
       view.stop.hidden = true;
       step = 'secrets';
@@ -4515,6 +4524,12 @@
     }).then(function (alsoMain) {
       closeRunIssue(repo, issue);
       over();
+      if (alsoMain && alsoMain.pooled) {
+        view.tell('Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours. An owner of ' + place.owner + ' sets its model and the repositories it runs on.');
+        view.close.textContent = 'Done';
+        readTokenPlace(repo, reading);
+        return;
+      }
       view.tell(tileName(slot) + ' is saved' + (alsoMain ? ', and as main too, which @claude and the workers read and which was not set yet' : '') + '. Its use shows on its tile after its first run, or press its tile and Read use now.');
       view.close.textContent = 'Done';
       readTokenPlace(repo, reading);
@@ -4547,8 +4562,13 @@
           for (var i = 0; i < said.length; i++) {
             var lines = String(said[i].body || '').trim().split('\n');
             if (lines[0] === TOKEN_MARK.failed) { reject(new Error('The run stopped: ' + lines.slice(1).join(' '))); return; }
+            if (lines[0] === TOKEN_MARK.stored && !keyId) {
+              if (!/^([1-9]|[12][0-9]|3[0-2])$/.test(lines[1] || '')) { reject(new Error('The run said it stored the token, but not in which slot; see the issue, and ask an owner to look at the pool.')); return; }
+              resolve({ stored: lines[1] });
+              return;
+            }
             if (lines[0] === TOKEN_MARK.sealed) {
-              if (lines[1] !== keyId || !/^[A-Za-z0-9+\/=]{40,}$/.test(lines[2] || '')) { reject(new Error('The run posted a sealed token for another key; nothing was saved. Press Add a Claude account again.')); return; }
+              if (!keyId || lines[1] !== keyId || !/^[A-Za-z0-9+\/=]{40,}$/.test(lines[2] || '')) { reject(new Error('The run posted a sealed token for another key; nothing was saved. Press Add a Claude account again.')); return; }
               resolve(lines[2]);
               return;
             }
@@ -4641,12 +4661,18 @@
   // press, since GitHub would refuse the first write with a bare 403
   function cannotAdd() {
     var place = tk.place;
-    if (!place || place.admin !== false) return '';
-    if (place.org && tk.admin) return '';
-    return place.org
-      ? 'Only an owner of ' + place.owner + ' can add a token to its pool, and you are not one. Pick a repository of your own in the Repository box and add your token there, or ask an owner of ' + place.owner + '.'
-      : 'Only ' + place.owner + ', who owns this repository, can add its tokens. Pick a repository of your own in the Repository box.';
+    if (!place) return '';
+    if (place.org) {
+      if (tk.admin || place.push !== false) return '';
+      return 'Adding a token to ' + place.owner + '\'s pool takes write access to this repository, which you do not have. Ask an owner of ' + place.owner + ' to share it with you, or pick a repository of your own in the Repository box.';
+    }
+    if (place.admin !== false) return '';
+    return 'Only ' + place.owner + ', who owns this repository, can add its tokens. Pick a repository of your own in the Repository box.';
   }
+  // someone who may write to an organization's repository but is not an owner of the organization,
+  // whom GitHub lets write none of its secrets: the Token run stores their token in a free slot of the
+  // pool itself, with the App's key, marked as theirs (the owner's choice of 2026-10-18)
+  function intoPool(place) { return !!place && place.org && !tk.admin; }
   function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
   function canChange(slot) {
     return tk.admin || (!!shownLogin && ownerOf(slot).toLowerCase() === shownLogin.toLowerCase());
@@ -4726,7 +4752,8 @@
     add(plus, el('span', 'tok__plus', waiting ? '\u2026' : '+'), el('span', 'tok__name', waiting ? 'Sign-in waiting' : 'Add Token'));
     plus.addEventListener('click', function () { if (tokenRun && tokenRun.era === ends) tokenRun.view.show(''); else openTokenDialog('', true); });
     add(box, add(el('div', 'tok'), plus));
-    if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
+    if (unread && intoPool(tk.place)) add(box, el('p', 'admin__none toks__note', 'Only an owner of ' + tk.place.owner + ' sees the tokens in its pool; Add Token puts yours in a free slot, marked as yours.'));
+    else if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
     drawSide();
   }
 
@@ -4856,6 +4883,7 @@
     var form = el('form', 'tkdlg__form');
     form.method = 'dialog';
     add(form, el('h3', 'console__boxh', adding ? 'Add a token' : tileName(slot)));
+    if (adding && intoPool(tk.place)) { drawPoolAdd(d, form); return; }
     var free = TILE_SLOTS.filter(function (n) { return !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(n)]; });
     if (adding) {
       // a personal repository's first token is its main one, which @claude and the workers read and
@@ -4964,6 +4992,25 @@
     model.focus();
   }
 
+  // Add Token for someone who is not an owner of the organization: no settings to save, since only an
+  // owner may write them; the run picks the free slot and marks it as theirs
+  function drawPoolAdd(d, form) {
+    var problem = el('p', 'admin__warn tkdlg__problem');
+    var barred = cannotAdd();
+    problem.hidden = !barred;
+    problem.textContent = barred;
+    add(form, el('p', 'admin__lead', 'Your Claude token goes into the next free slot of ' + tk.place.owner + '\'s pool, marked as yours. The sign-in runs on GitHub Actions in ' + tk.repo + ', and the token is never shown on this page, in the issue or in the log.'));
+    add(form, el('p', 'admin__lead tkdlg__faint', 'An owner of ' + tk.place.owner + ' sets its model and the repositories it runs on, and can remove it.'));
+    add(form, problem);
+    var save = el('button', 'console__primary', 'Sign in');
+    save.type = 'button';
+    save.id = 'tk-start';
+    save.disabled = !!barred;
+    save.addEventListener('click', function () { save.disabled = true; addByActions(tk.repo, tk.place, $('tk-tile-add') || save, ''); });
+    add(form, add(el('p', 'admin__bar tkdlg__bar'), btn('Cancel', true, function () { d.close(); }), ' ', save));
+    add(d, form);
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  }
   function drawSomeoneElses(d, form, slot) {
     var s = tk.settings[slot] || {};
     add(form, el('p', 'tkdlg__fact', 'Model: ' + modelWord(s.model) + (s.effort ? ', thinking ' + s.effort : '') + (s.fallback ? '; switches to ' + modelWord(s.fallback) + ' when its model\'s weekly limit runs out' : '')));
