@@ -1169,6 +1169,118 @@
       return loadIssues(s);
     });
   }
+  /* ---------- the Agents tab ---------- */
+  // The agents are .github/symphony/agents.json and the files under .claude/agents/ it names
+  // (symphony-template's docs/agents/AGENTS.md). Each row shows what the agent is for, the tools its
+  // file lists and where it came from; the Tokens cell is the Tokens tab's own control,
+  // tokenAssignBox(repo, agentName), which knows where tokens live and who may change them, so this
+  // tab writes no token setting itself. Run and Import start the Agents workflow, agents.yml.
+  var AGENTS_REGISTRY = '.github/symphony/agents.json';
+  function frontMatter(text) {
+    var lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+    var found = {};
+    if (lines[0] !== '---') return found;
+    var key = '';
+    for (var i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+      var line = lines[i];
+      if (/^\s/.test(line)) {
+        var item = line.trim();
+        if (key && item.indexOf('- ') === 0 && Array.isArray(found[key])) found[key].push(item.slice(2).trim());
+        continue;
+      }
+      var at = line.indexOf(':');
+      if (at < 0) continue;
+      key = line.slice(0, at).trim();
+      var value = line.slice(at + 1).trim().replace(/^(['"])(.*)\1$/, '$2');
+      found[key] = value || [];
+    }
+    return found;
+  }
+  function toolsOf(value) {
+    if (Array.isArray(value)) return value;
+    return String(value || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+  }
+  function loadAgents(s) {
+    var body = $('cp-agents').querySelector('tbody');
+    var note = $('cp-agents-note');
+    return file(s.repo, AGENTS_REGISTRY).then(function (text) {
+      var registry = JSON.parse(text);
+      var names = Object.keys(registry && registry.agents || {});
+      return Promise.all(names.map(function (name) {
+        return file(s.repo, '.claude/agents/' + name + '.md').then(frontMatter, function () { return { description: 'its file .claude/agents/' + name + '.md could not be read' }; })
+          .then(function (head) { return { name: name, entry: registry.agents[name] || {}, head: head }; });
+      }));
+    }).catch(function (e) {
+      if (e.status === 404) return null;
+      if (!stale(s)) failed(s, 'the agents', e);
+      return [];
+    }).then(function (agents) {
+      if (stale(s)) return;
+      s.agents = agents || [];
+      clear(body);
+      note.textContent = agents === null ? 'This repository lists no agents yet: it was made before agents existed, and the template\'s next update brings the reviewer, developer and tester.' : '';
+      var choose = $('cp-a-agent');
+      clear(choose);
+      s.agents.forEach(function (a) { var o = el('option', '', a.name); o.value = a.name; choose.appendChild(o); });
+      if (agents && !agents.length) { var none = el('tr'); add(none, el('td', 'admin__none', 'No agents listed.')).firstChild.colSpan = 8; body.appendChild(none); }
+      s.agents.forEach(function (a) {
+        var tr = el('tr');
+        add(tr, add(el('td'), link('https://github.com/' + s.repo + '/blob/' + ((s.meta && s.meta.default_branch) || 'main') + '/.claude/agents/' + a.name + '.md', a.name)));
+        add(tr, el('td', '', a.entry.purpose || ''));
+        add(tr, el('td', '', typeof a.head.description === 'string' ? a.head.description : ''));
+        var tools = toolsOf(a.head.tools);
+        var toolCell = el('td', '', tools.length ? tools.length + (tools.length === 1 ? ' tool' : ' tools') : 'every tool');
+        toolCell.title = tools.join(', ');
+        add(tr, toolCell);
+        var runs = a.entry.runs === 'pull_request' ? 'on every pull request' : 'by hand';
+        if (a.entry.workers && a.entry.workers.length) runs += '; workers ' + a.entry.workers.join(', ');
+        add(tr, el('td', '', runs));
+        add(tr, el('td', '', a.entry.source === 'symphony' ? 'Symphony' : a.entry.source === 'local' ? 'written here' : (a.entry.source || '')));
+        var tokens = el('td');
+        if (typeof window.tokenAssignBox === 'function') {
+          try { var box = window.tokenAssignBox(s.repo, a.name); if (box) tokens.appendChild(box); } catch (e) { tokens.textContent = 'the token box failed: ' + e.message; }
+        } else {
+          tokens.textContent = 'the main token, until the Tokens tab gives it others';
+        }
+        add(tr, tokens);
+        var go = el('button', '', 'Run');
+        go.type = 'button';
+        go.addEventListener('click', function () { choose.value = a.name; $('cp-a-target').focus(); say('Name the pull request or issue for ' + a.name + ', then press Run it.'); });
+        add(tr, add(el('td'), go));
+        body.appendChild(tr);
+      });
+    });
+  }
+  function dispatchAgents(inputs, label) {
+    var s = state;
+    var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
+    say('Starting ' + label + '...');
+    return gh('POST', '/repos/' + s.repo + '/actions/workflows/agents.yml/dispatches', { ref: branch, inputs: inputs }).then(function () {
+      say(label + ' is queued on ' + branch + '; the Runs tab shows it within a minute.');
+      setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
+    }).catch(function (e) {
+      say(e.status === 404 ? 'This repository has no Agents workflow yet (.github/workflows/agents.yml); the template\'s next update brings it.'
+        : e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write on the sign-in or the token.' : ''), true);
+    });
+  }
+  function runAgent() {
+    var agent = $('cp-a-agent').value;
+    var target = ($('cp-a-target').value || '').trim();
+    if (!agent) { say('Choose an agent first.', true); return; }
+    if (!/^[1-9][0-9]{0,8}$/.test(target)) { say('Give the number of the pull request or issue it works on.', true); return; }
+    dispatchAgents({ agent: agent, target: target }, 'the agent ' + agent + ' on #' + target);
+  }
+  function importAgent() {
+    var source = ($('cp-a-source').value || '').trim();
+    var name = ($('cp-a-name').value || '').trim();
+    if (!/^(https:\/\/\S+|[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}\/\S+\.md(@\S+)?)$/.test(source)) { say('Give OWNER/REPO/PATH.md, perhaps with @branch, or an https address.', true); return; }
+    if (name && !/^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/.test(name)) { say('A name is lower case letters, digits and inner dashes, up to 39.', true); return; }
+    var inputs = { 'import': source };
+    if (name) inputs.name = name;
+    if ($('cp-a-purpose').value) inputs.purpose = $('cp-a-purpose').value;
+    dispatchAgents(inputs, 'the import of ' + source);
+  }
+
   function conclusionWord(run) {
     if (run.status !== 'completed') return run.status.replace(/_/g, ' ');
     return run.conclusion ? run.conclusion.replace(/_/g, ' ') : 'completed';
@@ -1358,7 +1470,7 @@
     if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
-      return Promise.all([loadBoard(s), loadWorkers(s), loadRuns(s), loadPulls(s)]);
+      return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
     }).then(function () {
       if (stale(s)) return;
       s.ready = true;
@@ -1560,7 +1672,7 @@
   function consoleRows(id) {
     var t = $(id);
     if (!t) return 0;
-    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector('.admin__none'); }).length;
+    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector(':scope > td.admin__none'); }).length;
   }
   function countConsole() {
     Array.prototype.forEach.call(document.querySelectorAll('#console [data-count]'), function (span) {
@@ -1731,6 +1843,8 @@
     });
     $('cp-task-queue').addEventListener('click', queueTask);
     $('cp-w-add').addEventListener('click', addWorker);
+    $('cp-a-run').addEventListener('click', runAgent);
+    $('cp-a-import').addEventListener('click', importAgent);
     $('cp-prompt-ask').addEventListener('click', function () { askClaude(false); });
     $('cp-prompt-task').addEventListener('click', function () { askClaude(true); });
     $('cp-run-workers').addEventListener('click', function () { dispatch('workers.yml', 'the workers'); });

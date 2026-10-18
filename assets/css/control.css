@@ -592,3 +592,6 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 @media (max-width: 760px) { .tkwrap { flex-direction: column; } .tkside { position: relative; width: auto; align-self: stretch; } }
 .tkassign { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .tkassign .admin__bar, .tkassign .tkdlg__fact { flex-basis: 100%; margin: 0; }
+.console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
+.console .console__note:empty { display: none; }
+.console .console__boxh--next { margin-top: 18px; }
