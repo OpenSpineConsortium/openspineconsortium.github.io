@@ -60,7 +60,6 @@ body_class: page-console
           <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
           <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#10022;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
-          <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
           <button type="button" role="tab" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
           <button type="button" role="tab" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
@@ -95,8 +94,8 @@ body_class: page-console
               <button id="cp-run-board" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#8635;</span><span class="launch__name">Rewrite the board</span><span class="launch__note">The board workflow reads the issues and branches again</span></button>
               <button id="cp-run-ci" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#10003;</span><span class="launch__name">Run the checks</span><span class="launch__note">The required check, on the default branch</span></button>
               <button id="cp-run-metrics" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#8721;</span><span class="launch__name">Run the metrics now</span><span class="launch__note">Writes the branch metrics</span></button>
-              <button type="button" class="launch launch--plan" data-goto="tasks" data-focus="cp-task-title"><span class="launch__icon" aria-hidden="true">&#43;</span><span class="launch__name">Queue a task</span><span class="launch__note">An issue labelled todo for the workers</span></button>
-              <button type="button" class="launch launch--plan" data-goto="ask" data-focus="cp-prompt"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">@claude on a new issue, or the assistant</span></button>
+              <button type="button" class="launch launch--plan" data-goto="tasks" data-open="dlg-task"><span class="launch__icon" aria-hidden="true">&#43;</span><span class="launch__name">Add a task</span><span class="launch__note">For the workers, or for @claude now</span></button>
+              <button type="button" class="launch launch--plan" data-focus="cp-as-q"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">The bar at the foot, on every tab</span></button>
               <button type="button" class="launch launch--plan" data-goto="tokens"><span class="launch__icon" aria-hidden="true">&#9919;</span><span class="launch__name">Tokens</span><span class="launch__note">Your Claude tokens, their use and settings</span></button>
               <button type="button" class="launch launch--plan" data-goto="repos" data-focus="cp-add-name"><span class="launch__icon" aria-hidden="true">&#8853;</span><span class="launch__name">Add a repository</span><span class="launch__note">Put one on the list, or set Symphony up on it</span></button>
             </div>
@@ -115,53 +114,39 @@ body_class: page-console
           <div class="console__scroll"><div class="admin__box control__board" id="cp-board"></div></div>
         </section>
 
-        <!-- Tasks -->
-        <section class="console__panel console__panel--split" id="tab-tasks" data-tab-panel="tasks" role="tabpanel" aria-labelledby="rail-tasks" hidden>
-          <div class="console__col">
-            <div class="console__head">
-              <h2 id="h-tasks" class="console__h">Tasks</h2>
-              <p class="console__jumps">
-                <button type="button" class="chip" data-jump="cp-queue">Queue <span data-count="cp-queue"></span></button>
-                <button type="button" class="chip" data-jump="cp-given">Given <span data-count="cp-given"></span></button>
-                <button type="button" class="chip" data-jump="cp-claimed">At work <span data-count="cp-claimed"></span></button>
-                <button type="button" class="chip" data-jump="cp-review">In review <span data-count="cp-review"></span></button>
-                <button type="button" class="chip" data-jump="cp-blocked">Blocked <span data-count="cp-blocked"></span></button>
-                <button type="button" class="chip" data-jump="cp-epics">Epics <span data-count="cp-epics"></span></button>
-              </p>
-              <details class="console__help"><summary>How tasks work</summary><div>
-                <p>The open issues by the protocol&rsquo;s labels. An issue labelled <code>todo</code> and held by nobody is free for any session or worker to claim; one a worker&rsquo;s label names waits for that worker; a claim is a branch <code>claude/N</code>. Give an issue to a worker from its row, or ask Claude about it. Open <a id="cp-task-form-link" href="https://github.com" target="_blank" rel="noopener">the Task form on GitHub</a> for the same with GitHub&rsquo;s own page.</p>
-              </div></details>
-            </div>
-            <p id="cp-as-filter" class="admin__lead"></p>
-            <div class="console__scroll console__kanban">
-              <h3 data-col="queue"><span>Queue: unclaimed, given to no worker</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
-              <div class="table-scroll"><table id="cp-queue" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="given"><span>Given to workers, not yet claimed</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
-              <div class="table-scroll"><table id="cp-given" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="claimed"><span>Claimed, at work</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
-              <div class="table-scroll"><table id="cp-claimed" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="review"><span>In review</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
-              <div class="table-scroll"><table id="cp-review" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="blocked"><span>Blocked, and blockers</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
-              <div class="table-scroll"><table id="cp-blocked" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="epics"><span>Epics, which the coordinator plans</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
-              <div class="table-scroll"><table id="cp-epics" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <p id="cp-other" class="admin__lead"></p>
-            </div>
+        <!-- Tasks: the open issues as six lists of cards; + Add task opens its dialog, and each card
+             opens its status on a press, its settings on the gear, and closes on the X -->
+        <section class="console__panel" id="tab-tasks" data-tab-panel="tasks" role="tabpanel" aria-labelledby="rail-tasks" hidden>
+          <div class="console__head">
+            <h2 id="h-tasks" class="console__h">Tasks</h2>
+            <button type="button" class="console__add" data-open="dlg-task" id="cp-task-new">+ Add task</button>
+            <p class="console__jumps">
+              <button type="button" class="chip" data-jump="cp-queue">Queue <span data-count="cp-queue"></span></button>
+              <button type="button" class="chip" data-jump="cp-given">Given <span data-count="cp-given"></span></button>
+              <button type="button" class="chip" data-jump="cp-claimed">At work <span data-count="cp-claimed"></span></button>
+              <button type="button" class="chip" data-jump="cp-review">In review <span data-count="cp-review"></span></button>
+              <button type="button" class="chip" data-jump="cp-blocked">Blocked <span data-count="cp-blocked"></span></button>
+              <button type="button" class="chip" data-jump="cp-epics">Epics <span data-count="cp-epics"></span></button>
+            </p>
+            <details class="console__help"><summary>How tasks work</summary><div>
+              <p>The open issues by the protocol&rsquo;s labels. An issue labelled <code>todo</code> and held by nobody is free for any session or worker to claim; one a worker&rsquo;s label names waits for that worker; a claim is a branch <code>claude/N</code>. + Add task queues one for the workers, or hands it to <code>@claude</code> at once. Press a card for where it stands, its gear to give it to a worker or ask Claude on it, its &times; to close it. Open <a id="cp-task-form-link" href="https://github.com" target="_blank" rel="noopener">the Task form on GitHub</a> for the same with GitHub&rsquo;s own page.</p>
+            </div></details>
           </div>
-          <div class="console__col console__col--side">
-            <div class="admin__box console__scroll">
-              <h3 class="console__boxh">Queue a task</h3>
-              <p class="admin__lead">Opens an issue labelled <code>todo</code> in the Task form&rsquo;s shape. A worker in Actions wakes on the label; any session may claim it.</p>
-              <label for="cp-task-title">Title</label><input id="cp-task-title" maxlength="200">
-              <label for="cp-task-goal">Goal: what is true when this is done</label>
-              <textarea id="cp-task-goal" rows="3"></textarea>
-              <label for="cp-task-acceptance">Acceptance: how a reviewer tells it is done, and which checks must pass</label>
-              <textarea id="cp-task-acceptance" rows="2"></textarea>
-              <label for="cp-task-files">Files likely touched, one a line (so overlapping claims show on the board before they meet)</label>
-              <textarea id="cp-task-files" rows="2" autocapitalize="off" spellcheck="false"></textarea>
-              <div><button id="cp-task-queue" type="button" class="console__primary">Queue the task</button></div>
-            </div>
+          <p id="cp-as-filter" class="admin__lead"></p>
+          <div class="console__scroll console__kanban">
+            <h3 data-col="queue"><span>Queue: unclaimed, given to no worker</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
+            <div class="table-scroll"><table id="cp-queue" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <h3 data-col="given"><span>Given to workers, not yet claimed</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
+            <div class="table-scroll"><table id="cp-given" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <h3 data-col="claimed"><span>Claimed, at work</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
+            <div class="table-scroll"><table id="cp-claimed" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <h3 data-col="review"><span>In review</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
+            <div class="table-scroll"><table id="cp-review" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <h3 data-col="blocked"><span>Blocked, and blockers</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
+            <div class="table-scroll"><table id="cp-blocked" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <h3 data-col="epics"><span>Epics, which the coordinator plans</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
+            <div class="table-scroll"><table id="cp-epics" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
+            <p id="cp-other" class="admin__lead"></p>
           </div>
         </section>
 
@@ -194,121 +179,29 @@ body_class: page-console
           <div class="console__scroll"><div class="table-scroll"><table id="cp-runs" class="admin__stack console__cards"><thead><tr><th>Workflow</th><th>Event</th><th>Branch</th><th>Outcome</th><th>Started by</th><th>Started</th></tr></thead><tbody></tbody></table></div></div>
         </section>
 
-        <!-- Workers -->
-        <section class="console__panel console__panel--split" id="tab-workers" data-tab-panel="workers" role="tabpanel" aria-labelledby="rail-workers" hidden>
-          <div class="console__col">
-            <div class="console__head">
-              <h2 id="h-workers" class="console__h">Workers</h2>
-              <details class="console__help"><summary>Where workers are kept</summary><div>
-                <p>The registry under <code>.github/symphony/workers/</code>: each routine or worker in Actions is one file there, and a person&rsquo;s sessions need none. Adding one opens the &ldquo;Add a worker&rdquo; issue; its workflow checks the answers and opens the pull request that adds the file, which joins the registry when it merges. The same form on GitHub: <a id="cp-worker-form-link" href="https://github.com" target="_blank" rel="noopener">Add a worker</a>.</p>
-              </div></details>
-            </div>
-            <div class="console__scroll"><div class="table-scroll"><table id="cp-workers" class="admin__stack console__cards"><thead><tr><th>Name</th><th>Runs</th><th>For</th><th>Area</th><th>Lands</th><th>Model</th><th>Turns</th><th>Rounds</th></tr></thead><tbody></tbody></table></div></div>
+        <!-- Workers: one card each, + Add worker last; a card's gear proposes a change, its X its removal -->
+        <section class="console__panel" id="tab-workers" data-tab-panel="workers" role="tabpanel" aria-labelledby="rail-workers" hidden>
+          <div class="console__head">
+            <h2 id="h-workers" class="console__h">Workers</h2>
+            <button type="button" class="console__add" data-open="dlg-worker" id="cp-worker-new">+ Add worker</button>
+            <details class="console__help"><summary>Where workers are kept</summary><div>
+              <p>The registry under <code>.github/symphony/workers/</code>: each routine or worker in Actions is one file there, and a person&rsquo;s sessions need none. + Add worker opens the &ldquo;Add a worker&rdquo; issue; its workflow checks the answers and opens the pull request that adds the file, which joins the registry when it merges. A card&rsquo;s gear opens a pull request that changes its file, and its &times; one that removes it; neither changes anything until it merges. The same form on GitHub: <a id="cp-worker-form-link" href="https://github.com" target="_blank" rel="noopener">Add a worker</a>.</p>
+            </div></details>
           </div>
-          <div class="console__col console__col--side">
-            <div class="admin__box console__scroll">
-              <h3 class="console__boxh">Add a worker</h3>
-              <p class="console__lead">Press where it runs and how its work lands, give it a name, and press Add.</p>
-              <!-- the tiles set the two selects, which stay the source the add reads -->
-              <div class="wtiles" role="group" aria-label="Where it runs" data-for="cp-w-runs">
-                <button type="button" class="wtile" data-index="0" aria-pressed="true"><span class="wtile__icon" aria-hidden="true">&#9881;</span><b>GitHub Actions</b><small>On this repository&rsquo;s Claude token</small></button>
-                <button type="button" class="wtile" data-index="1" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#8635;</span><b>A routine</b><small>On someone&rsquo;s Claude account</small></button>
-                <button type="button" class="wtile" data-index="2" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#9673;</span><b>Sessions</b><small>A person&rsquo;s own, local or cloud</small></button>
-              </div>
-              <div class="wtiles wtiles--two" role="group" aria-label="How its pull requests land" data-for="cp-w-lands">
-                <button type="button" class="wtile" data-index="0" aria-pressed="true"><span class="wtile__icon" aria-hidden="true">&#10003;</span><b>You merge</b><small>The owner merges each one</small></button>
-                <button type="button" class="wtile" data-index="1" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#8634;</span><b>Auto-merge</b><small>Once the check is green</small></button>
-              </div>
-              <div class="console__shadow" aria-hidden="true">
-                <label for="cp-w-runs">Where it runs</label><select id="cp-w-runs" tabindex="-1">
-                  <option>actions: GitHub Actions, on this repository's Claude token</option>
-                  <option>routine: a routine on someone's Claude account</option>
-                  <option>session: a person's own sessions, local or in the cloud</option>
-                </select>
-                <label for="cp-w-lands">How its pull requests land</label><select id="cp-w-lands" tabindex="-1">
-                  <option>owner: the owner merges each pull request</option>
-                  <option>auto-merge: GitHub merges it once the check is green</option>
-                </select>
-              </div>
-              <label for="cp-w-name">Name, after its job (lower case, digits, inner dashes)</label><input id="cp-w-name" placeholder="nightly" maxlength="39" autocapitalize="off" spellcheck="false">
-              <label for="cp-w-about">What it is for, one line</label><input id="cp-w-about" maxlength="200">
-              <details class="console__more"><summary>More settings: model, turns, area, account</summary>
-                <div class="admin__row">
-                  <div><label for="cp-w-model">Model (empty for the default)</label><input id="cp-w-model" placeholder="sonnet" maxlength="60" autocapitalize="off" spellcheck="false"></div>
-                  <div><label for="cp-w-turns">Turns per run (1 to 500; empty for 80)</label><input id="cp-w-turns" inputmode="numeric" maxlength="3"></div>
-                  <div><label for="cp-w-rounds">Rounds in a row (1 to 50; empty for 6)</label><input id="cp-w-rounds" inputmode="numeric" maxlength="2"></div>
-                </div>
-                <label for="cp-w-area">Area: paths or globs it prefers, one a line; empty means anywhere</label>
-                <textarea id="cp-w-area" rows="2" placeholder="docs/" autocapitalize="off" spellcheck="false"></textarea>
-                <label for="cp-w-account">Claude account, as a note of whose it is; never a credential</label>
-                <input id="cp-w-account" maxlength="120">
-              </details>
-              <div><button id="cp-w-add" type="button" class="console__primary">+ Add the worker</button></div>
-            </div>
-          </div>
+          <div class="console__scroll"><div class="table-scroll"><table id="cp-workers" class="admin__stack console__cards"><thead><tr><th>Name</th><th>Runs</th><th>For</th><th>Area</th><th>Lands</th><th>Model</th><th>Turns</th><th>Rounds</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div></div>
         </section>
 
         <!-- Agents: the repository's agents, which tokens each may run on, running and importing them -->
-        <section class="console__panel console__panel--split" id="tab-agents" data-tab-panel="agents" role="tabpanel" aria-labelledby="rail-agents" hidden>
-          <div class="console__col">
-            <div class="console__head">
-              <h2 id="h-agents" class="console__h">Agents</h2>
-              <details class="console__help"><summary>What an agent is</summary><div>
-                <p>An agent is a set of instructions and the tools it may use, kept as a Claude Code subagent file under <code>.claude/agents/</code> and listed in <code>.github/symphony/agents.json</code> with its purpose. Any session in the repository can hand it work by name; Run starts it in GitHub Actions on a pull request or issue, on the tokens you give it here, which is how usage is divided between review, development and testing; and coordbench and flowbench measure the same file. Import brings one in from another repository or an address by pull request, so it joins only once someone merges it.</p>
-              </div></details>
-            </div>
-            <p id="cp-agents-note" class="console__note"></p>
-            <div class="console__scroll"><div class="table-scroll"><table id="cp-agents" class="admin__stack console__cards"><thead><tr><th>Name</th><th>Purpose</th><th>What it does</th><th>Tools</th><th>Runs</th><th>From</th><th>Tokens</th><th></th></tr></thead><tbody></tbody></table></div></div>
+        <section class="console__panel" id="tab-agents" data-tab-panel="agents" role="tabpanel" aria-labelledby="rail-agents" hidden>
+          <div class="console__head">
+            <h2 id="h-agents" class="console__h">Agents</h2>
+            <button type="button" class="console__add" data-open="dlg-import" id="cp-agent-new">+ Import agent</button>
+            <details class="console__help"><summary>What an agent is</summary><div>
+              <p>An agent is a set of instructions and the tools it may use, kept as a Claude Code subagent file under <code>.claude/agents/</code> and listed in <code>.github/symphony/agents.json</code> with its purpose. Any session in the repository can hand it work by name; its gear runs it in GitHub Actions on a pull request or issue and sets the tokens it runs on, which is how usage is divided between review, development and testing; and coordbench and flowbench measure the same file. + Import agent brings one in from another repository or an address by pull request, so it joins only once someone merges it; its &times; opens the pull request that removes it.</p>
+            </div></details>
           </div>
-          <div class="console__col console__col--side">
-            <div class="admin__box console__scroll">
-              <h3 class="console__boxh">Run an agent</h3>
-              <div class="admin__row">
-                <div><label for="cp-a-agent">Agent</label><select id="cp-a-agent"></select></div>
-                <div><label for="cp-a-target">Pull request or issue number</label><input id="cp-a-target" inputmode="numeric" maxlength="9" placeholder="12"></div>
-              </div>
-              <div><button id="cp-a-run" type="button" class="console__primary">Run it</button></div>
-              <h3 class="console__boxh console__boxh--next">Import an agent</h3>
-              <label for="cp-a-source">From OWNER/REPO/PATH.md (add @branch or @tag to pin it), or the https address of the raw file</label>
-              <input id="cp-a-source" placeholder="someone/agents/review/security.md@v1" maxlength="400" autocapitalize="off" spellcheck="false">
-              <div class="admin__row">
-                <div><label for="cp-a-name">Name here (empty keeps its own)</label><input id="cp-a-name" maxlength="39" autocapitalize="off" spellcheck="false"></div>
-                <div><label for="cp-a-purpose">Purpose</label><select id="cp-a-purpose">
-                  <option value="">guess from its description</option>
-                  <option value="review">review</option>
-                  <option value="develop">develop</option>
-                  <option value="test">test</option>
-                  <option value="other">other</option>
-                </select></div>
-              </div>
-              <div><button id="cp-a-import" type="button" class="console__primary">Import it by pull request</button></div>
-              <p class="console__note">An imported agent carries only its name, description, tools, model and colour, nothing that runs on its own; read its instructions and tools in the pull request before you merge it.</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Ask Claude: @claude and the assistant -->
-        <section class="console__panel console__panel--split console__panel--even" id="tab-ask" data-tab-panel="ask" role="tabpanel" aria-labelledby="rail-ask" hidden>
-          <div class="console__col">
-            <div class="admin__box console__scroll">
-              <h2 id="h-prompt" class="console__boxh">Ask Claude to do it</h2>
-              <p class="admin__lead"><strong>Ask Claude</strong> opens an issue that mentions <code>@claude</code>, or comments on the issue or pull request whose number you give, and the repository&rsquo;s Claude workflow answers there on the repository&rsquo;s own Claude token, within the turn cap the workflow sets. <strong>Queue as a task</strong> files the same words as a task for the workers and the sessions instead.</p>
-              <label for="cp-prompt">The prompt</label>
-              <textarea id="cp-prompt" rows="5"></textarea>
-              <label for="cp-prompt-target">On issue or pull request number (empty opens a new issue)</label><input id="cp-prompt-target" inputmode="numeric" placeholder="e.g. 12" maxlength="9">
-              <div><button id="cp-prompt-ask" type="button" class="console__primary">Ask Claude</button> <button id="cp-prompt-task" type="button" class="quiet">Queue as a task</button></div>
-            </div>
-          </div>
-          <div class="console__col">
-            <div class="admin__box console__scroll">
-              <h2 id="h-assistant" class="console__boxh">Assistant</h2>
-              <details class="console__help console__help--inline"><summary>How the assistant answers</summary><div>
-                <p>Ask the repository&rsquo;s own Claude about the board: what is claimed, what is blocked, what to take next, where something stands. It answers from GitHub Actions on the repository&rsquo;s own Claude token and only reads (the page offers the box only where the repository&rsquo;s workflow carries the assistant, the file <code>.github/symphony/assistant.md</code> on its default branch), through an issue of yours labelled <code>assistant</code> that the page opens once per repository (&ldquo;Assistant: your login&rdquo;); each question is one comment on that issue and one run of the Claude workflow, and the answer comes back here, since the page reads the issue&rsquo;s comments every few seconds while it waits. The workflow answers only people with write access to the repository. When the answer names an issue, a board section or a tab, the page opens it, centres that row, filters the tables or scrolls to the section, and offers a link that opens the issue on GitHub. When the answer proposes something that changes the repository (run the workers, the board, the checks or the metrics, give a task to a worker, merge a pull request) or drafts a task or an @claude prompt, the page shows it as a button that says exactly what it does, and nothing happens until you press it; the press runs the panel&rsquo;s own button for it, as you, so Claude itself never writes. A merge still asks you to confirm on the Pull requests tab, and a draft only fills the form for you to send. Claude in Chrome is not needed: the page reads Claude&rsquo;s answer and does the clicking on your word.</p>
-              </div></details>
-              <p class="admin__lead">The assistant is the <strong>Ask Claude</strong> bar at the foot of the console, on every tab, so you can ask while you look at the board, the tasks or the pull requests. Its answer opens over the tab, above the bar.</p>
-              <div><button id="cp-as-goto" type="button" class="quiet">Go to the Ask Claude bar</button></div>
-            </div>
-          </div>
+          <p id="cp-agents-note" class="console__note"></p>
+          <div class="console__scroll"><div class="table-scroll"><table id="cp-agents" class="admin__stack console__cards"><thead><tr><th>Name</th><th>Purpose</th><th>What it does</th><th>Tools</th><th>Runs</th><th>From</th><th>Tokens</th><th></th></tr></thead><tbody></tbody></table></div></div>
         </section>
 
         <!-- Tokens: one tile per Claude token, + Add Token last; everything else is in a tile's dialog -->
@@ -389,7 +282,7 @@ body_class: page-console
         <section class="console__panel" id="tab-about" data-tab-panel="about" role="tabpanel" aria-labelledby="rail-about" hidden>
           <div class="console__scroll">
             <h2 class="console__h">About the control panel</h2>
-            <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#leaders</code>, <code>#share</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
+            <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#agents</code>, <code>#tokens</code>, <code>#leaders</code>, <code>#share</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
             <h3 id="h-privacy">What this page keeps and sends</h3>
             <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the layout you set (the sizes you dragged the parts to and the text size), the plan you chose on the cost page, the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; on the Share tab, an invitation to the GitHub user you name, sent to GitHub as you, and an address you type to GitHub&rsquo;s user search to find that user, while its mail buttons open Gmail, Outlook, your email app or your device&rsquo;s share sheet with a note you send yourself; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
           </div>
@@ -397,6 +290,82 @@ body_class: page-console
 
       </div>
     </div>
+
+    <!-- The dialogs every + and every gear opens: nothing on the tabs is a form. Each opens over the
+         console (showModal), so the tab under it stays as it was. -->
+    <dialog id="dlg-task" class="tkdlg cpdlg" aria-labelledby="dlg-task-h">
+      <form method="dialog" class="tkdlg__form">
+        <h3 id="dlg-task-h" class="console__boxh">Add a task</h3>
+        <div class="tkdlg__field"><label for="cp-task-title">Title</label><input id="cp-task-title" maxlength="200" autocomplete="off"></div>
+        <div class="tkdlg__field"><label for="cp-task-goal">What is true when it is done</label><textarea id="cp-task-goal" rows="3"></textarea></div>
+        <details class="console__more"><summary>Acceptance and files</summary>
+          <div class="tkdlg__field"><label for="cp-task-acceptance">How a reviewer tells it is done (empty: the goal holds and the check passes)</label><textarea id="cp-task-acceptance" rows="2"></textarea></div>
+          <div class="tkdlg__field"><label for="cp-task-files">Files likely touched, one a line</label><textarea id="cp-task-files" rows="2" autocapitalize="off" spellcheck="false"></textarea></div>
+        </details>
+        <p class="tkdlg__bar"><button id="cp-task-queue" type="button" class="console__primary">Queue for the workers</button> <button id="cp-task-ask" type="button">Ask @claude now</button> <button type="submit" class="quiet">Cancel</button></p>
+        <p class="tkdlg__note admin__lead">Queue opens an issue labelled <code>todo</code> that a worker in Actions wakes on and any session may claim. Ask @claude now opens the issue mentioning <code>@claude</code>, and the repository&rsquo;s Claude workflow works on it at once, on the repository&rsquo;s own Claude token.</p>
+      </form>
+    </dialog>
+    <dialog id="dlg-worker" class="tkdlg cpdlg" aria-labelledby="dlg-worker-h">
+      <form method="dialog" class="tkdlg__form">
+        <h3 id="dlg-worker-h" class="console__boxh">Add a worker</h3>
+        <!-- the tiles set the two selects, which stay the source the add reads -->
+        <div class="wtiles" role="group" aria-label="Where it runs" data-for="cp-w-runs">
+          <button type="button" class="wtile" data-index="0" aria-pressed="true"><span class="wtile__icon" aria-hidden="true">&#9881;</span><b>GitHub Actions</b><small>This repository&rsquo;s Claude token</small></button>
+          <button type="button" class="wtile" data-index="1" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#8635;</span><b>A routine</b><small>Someone&rsquo;s Claude account</small></button>
+          <button type="button" class="wtile" data-index="2" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#9673;</span><b>Sessions</b><small>A person&rsquo;s own</small></button>
+        </div>
+        <div class="wtiles wtiles--two" role="group" aria-label="How its pull requests land" data-for="cp-w-lands">
+          <button type="button" class="wtile" data-index="0" aria-pressed="true"><span class="wtile__icon" aria-hidden="true">&#10003;</span><b>You merge</b><small>The owner merges each one</small></button>
+          <button type="button" class="wtile" data-index="1" aria-pressed="false"><span class="wtile__icon" aria-hidden="true">&#8634;</span><b>Auto-merge</b><small>Once the check is green</small></button>
+        </div>
+        <div class="console__shadow" aria-hidden="true">
+          <label for="cp-w-runs">Where it runs</label><select id="cp-w-runs" tabindex="-1">
+            <option>actions: GitHub Actions, on this repository's Claude token</option>
+            <option>routine: a routine on someone's Claude account</option>
+            <option>session: a person's own sessions, local or in the cloud</option>
+          </select>
+          <label for="cp-w-lands">How its pull requests land</label><select id="cp-w-lands" tabindex="-1">
+            <option>owner: the owner merges each pull request</option>
+            <option>auto-merge: GitHub merges it once the check is green</option>
+          </select>
+        </div>
+        <div class="tkdlg__row">
+          <div class="tkdlg__field"><label for="cp-w-name">Name, after its job</label><input id="cp-w-name" placeholder="nightly" maxlength="39" autocapitalize="off" spellcheck="false" autocomplete="off"></div>
+          <div class="tkdlg__field"><label for="cp-w-about">What it is for</label><input id="cp-w-about" maxlength="200" autocomplete="off"></div>
+        </div>
+        <details class="console__more"><summary>Model, turns, area, account</summary>
+          <div class="tkdlg__row tkdlg__row--three">
+            <div class="tkdlg__field"><label for="cp-w-model">Model (empty: default)</label><input id="cp-w-model" placeholder="sonnet" maxlength="60" autocapitalize="off" spellcheck="false"></div>
+            <div class="tkdlg__field"><label for="cp-w-turns">Turns a run (empty: 80)</label><input id="cp-w-turns" inputmode="numeric" maxlength="3"></div>
+            <div class="tkdlg__field"><label for="cp-w-rounds">Rounds (empty: 6)</label><input id="cp-w-rounds" inputmode="numeric" maxlength="2"></div>
+          </div>
+          <div class="tkdlg__field"><label for="cp-w-area">Area: paths or globs, one a line (empty: anywhere)</label><textarea id="cp-w-area" rows="2" placeholder="docs/" autocapitalize="off" spellcheck="false"></textarea></div>
+          <div class="tkdlg__field"><label for="cp-w-account">Claude account, as a note of whose; never a credential</label><input id="cp-w-account" maxlength="120"></div>
+        </details>
+        <p class="tkdlg__bar"><button id="cp-w-add" type="button" class="console__primary">+ Add the worker</button> <button type="submit" class="quiet">Cancel</button></p>
+      </form>
+    </dialog>
+    <dialog id="dlg-import" class="tkdlg cpdlg" aria-labelledby="dlg-import-h">
+      <form method="dialog" class="tkdlg__form">
+        <h3 id="dlg-import-h" class="console__boxh">Import an agent</h3>
+        <div class="tkdlg__field"><label for="cp-a-source">From OWNER/REPO/PATH.md (add @branch or @tag to pin it), or the raw file&rsquo;s https address</label><input id="cp-a-source" placeholder="someone/agents/review/security.md@v1" maxlength="400" autocapitalize="off" spellcheck="false" autocomplete="off"></div>
+        <div class="tkdlg__row">
+          <div class="tkdlg__field"><label for="cp-a-name">Name here (empty keeps its own)</label><input id="cp-a-name" maxlength="39" autocapitalize="off" spellcheck="false"></div>
+          <div class="tkdlg__field"><label for="cp-a-purpose">Purpose</label><select id="cp-a-purpose">
+            <option value="">guess from its description</option>
+            <option value="review">review</option>
+            <option value="develop">develop</option>
+            <option value="test">test</option>
+            <option value="other">other</option>
+          </select></div>
+        </div>
+        <p class="tkdlg__bar"><button id="cp-a-import" type="button" class="console__primary">Import it by pull request</button> <button type="submit" class="quiet">Cancel</button></p>
+        <p class="tkdlg__note admin__lead">An imported agent carries only its name, description, tools, model and colour, nothing that runs on its own; read its instructions and tools in the pull request before you merge it.</p>
+      </form>
+    </dialog>
+    <!-- one dialog for a card's status (a press on it) and its settings (its gear), drawn by the script -->
+    <dialog id="dlg-item" class="tkdlg cpdlg cpdlg--wide" aria-label="Details"></dialog>
 
   </div>
   <!-- the Ask Claude bar's place, frozen above the status line like it; the assistant fills it
