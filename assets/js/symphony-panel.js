@@ -3285,7 +3285,11 @@
     toggle.type = 'button';
     toggle.setAttribute('aria-controls', 'cp-as-drawer');
     toggle.setAttribute('aria-expanded', 'false');
-    add(row, box, st, toggle);
+    var own = el('button', 'quiet', 'Ask in claude.ai');
+    own.id = 'cp-as-own';
+    own.type = 'button';
+    own.title = 'Opens claude.ai in a new tab, on your own account, with the question and what this page shows';
+    add(row, box, st, own, toggle);
     bar.appendChild(row);
     var drawer = el('div', 'console__askdrawer');
     drawer.id = 'cp-as-drawer';
@@ -3306,9 +3310,46 @@
     add(drawer, splitGrip('drawer', 'the answer'), head, body);
     stage.appendChild(drawer);
   }
+  // "Ask in claude.ai" opens the question on the person's own claude.ai account, in a new tab, with a
+  // line or two naming what the page shows, so that Claude there, with whatever the person connected
+  // to that account (their OneDrive among them), starts where the person is. It needs no write access
+  // and no assistant file, since the repository's workflow is not asked: the page sends nothing and
+  // writes nothing for it, the words travel in the new tab's address alone, which is why the whole is
+  // cut to what an address carries.
+  var OWN_CLAUDE = 'https://claude.ai/new?q=';
+  var OWN_CLAUDE_MAX = 2000;
+  function askInClaudeContext() {
+    var s = state, a = assistant, lines = [];
+    var tab = consoleTab || 'command';
+    var rail = document.querySelector('.console__rail [data-tab="' + tab + '"] .rail__name');
+    var name = rail ? (rail.textContent || '').trim() : tab;
+    lines.push('I am looking at the Symphony control panel' + (s.repo ? ' for ' + s.repo + ' (https://github.com/' + s.repo + ')' : '') + ', on its ' + name + ' tab.');
+    if (tab === 'explore') {
+      var here = exCurrent();
+      if (here && explore.path.length > 1) lines.push('I am at: ' + explore.path.slice(1).map(function (n) { return n.title; }).join(' > ') + (here.url ? ' (' + here.url + ')' : '') + '.');
+    } else if (tab === 'folders') {
+      var where = crumbs.map(function (c) { return c.name; }).join('/');
+      var it = explorer.items.filter(function (x) { return String(x.id) === explorer.selected; })[0];
+      if (where) lines.push('The OneDrive folder open is ' + where + '.');
+      if (it) lines.push('The item chosen is ' + String(it.name || '') + (httpsOnly(it.webUrl) ? ' (' + httpsOnly(it.webUrl) + ')' : '') + '.');
+    } else if (a.s === s && a.focus) {
+      lines.push('The task I am on is #' + a.focus + ' (https://github.com/' + s.repo + '/issues/' + a.focus + ').');
+    }
+    return lines.join('\n');
+  }
+  function askInClaude() {
+    var text = ($('cp-as-q').value || '').trim();
+    var whole = (text ? text + '\n\n' : '') + askInClaudeContext();
+    if (whole.length > OWN_CLAUDE_MAX) {
+      whole = whole.slice(0, OWN_CLAUDE_MAX);
+      assistantWords(['A link carries at most ' + OWN_CLAUDE_MAX + ' characters, so claude.ai opened with the first ' + OWN_CLAUDE_MAX + ' of the question.'], true);
+    }
+    window.open(OWN_CLAUDE + encodeURIComponent(whole), '_blank', 'noopener');
+  }
   function initAssistant() {
     assistantBuildBar();
     $('cp-as-ask').addEventListener('click', assistantAsk);
+    $('cp-as-own').addEventListener('click', askInClaude);
     $('cp-as-stop').addEventListener('click', function () { assistantStop('pressed'); });
     $('cp-as-again').addEventListener('click', function () { if (assistant.last) { $('cp-as-q').value = assistant.last; assistantAsk(); } });
     $('cp-as-q').addEventListener('input', assistantFit);
