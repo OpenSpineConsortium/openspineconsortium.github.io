@@ -234,6 +234,8 @@
     ended = true;
     ends++;
     state = emptyState(state.repo);
+    // a drive connected under this sign-in goes with it, whatever ended it
+    dropDrive();
   }
   function forgetToken() {
     endHere();
@@ -1866,6 +1868,9 @@
       // a sign-in, perhaps as someone else, reads the Tokens tab again rather than show the last one's
       tokensFor = null;
       foldersFor = null;
+      // a drive connected under another account than the one GitHub names now is dropped here,
+      // and one connected before any was named is bound to this one
+      heldDrive();
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
       if (name) loadRepo(name);
@@ -3935,15 +3940,17 @@
   // the folder's shape as drive-sync.yml reads it, one path segment; it ends in no dot or blank,
   // which the workflow's rule admits and Windows refuses
   var FOLDER_NAME = /^[A-Za-z0-9_]([A-Za-z0-9_. -]{0,78}[A-Za-z0-9_])?$/;
-  var SECRETS_WAITING = 'SymphonyBoard\'s Secrets permission is still waiting on the owner (403), so the secret could not be saved and nothing else was written; a fine-grained token with Secrets: read and write would do it meanwhile.';
   // the connection, in this page's memory alone, with the GitHub account it belongs to; the
   // provider the service listed; what is ticked, and the repository whose file ticked it
   var drive = null;
   var driveConfig = null;
   var driveAsked = false;
-  var picked = {};
+  var picked = Object.create(null);
   var pickedOrder = [];
+  // the repository whose file put its folder's name in the box
   var prefilled = '';
+  // the pull request Track made this sitting for a repository whose default branch takes only those
+  var pendingPull = Object.create(null);
   var crumbs = [];
   var tracked = null;
   var folderReading = 0;
@@ -3952,6 +3959,33 @@
   // was last drawn for
   var foldersFor = null;
   var listedFor = null;
+  // The drive's refresh token is sealed in this browser for the repository's public key, as GitHub's
+  // own secrets page seals a secret, with the vendored sealed box (tweetnacl and blake2b); the Tokens
+  // tab no longer seals anything, so the tab keeps the loader and its two base64 helpers itself
+  var SEALEDBOX_JS = '/assets/js/vendor/sealedbox.js';
+  var sealer = null;
+  function loadSealer() {
+    if (sealer) return sealer;
+    sealer = new Promise(function (resolve, reject) {
+      if (window.sealedBox) { resolve(window.sealedBox); return; }
+      var s = document.createElement('script');
+      s.src = SEALEDBOX_JS;
+      s.onload = function () { window.sealedBox ? resolve(window.sealedBox) : reject(new Error('The sealing script loaded without its function.')); };
+      s.onerror = function () { sealer = null; reject(new Error('The sealing script could not be loaded; try again.')); };
+      document.head.appendChild(s);
+    });
+    return sealer;
+  }
+  function fromBase64(text) {
+    var bin = atob(text), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function toBase64(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
 
   function driveAddress() { return location.origin + DRIVE_RETURN; }
   function foldersRepo() { return state && state.repo ? state.repo : ''; }
@@ -3970,6 +4004,20 @@
     try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } catch (e) { /* the address stays */ }
   }
   function syncLink(repo) { return 'https://github.com/' + repo + '/actions/workflows/' + DRIVE_WORKFLOW; }
+  // a repository anyone can read: what comes down from the drive, and drive.json's names, are public there
+  function isPublic(meta) { return !!meta && (meta.visibility === 'public' || meta.private === false); }
+  // a refusal the page has already put in words, which the catch says as it is
+  function plain(text) { var e = new Error(text); e.plain = true; return e; }
+  function installationsPage(repo) {
+    var org = !!(state && state.meta && state.meta.owner && state.meta.owner.type === 'Organization');
+    return org ? 'https://github.com/organizations/' + repo.split('/')[0] + '/settings/installations' : 'https://github.com/settings/installations';
+  }
+  // GitHub's 403 on a repository's secrets: SymphonyBoard's permission where the person signed in
+  // with GitHub, the token's own where they pasted one
+  function secretsRefused(repo) {
+    if (signedInByApp()) return 'SymphonyBoard cannot reach the secrets of ' + repo + ' (403): it needs the repository permission Secrets (read and write) accepted on its installation, at ' + installationsPage(repo) + '; a fine-grained token with Secrets: Read and write does it meanwhile.';
+    return 'This token cannot reach the secrets of ' + repo + ' (403): it needs the repository permission Secrets: Read and write on ' + repo + '.';
+  }
   function tabLink(repo) { return location.origin + DRIVE_RETURN + '?repo=' + encodeURIComponent(repo) + '#folders'; }
   function readJson(key) {
     try { return JSON.parse(sessionStorage.getItem(key) || 'null'); } catch (e) { return null; }
@@ -3991,13 +4039,14 @@
   // the drive, what was ticked in it and its list go with the sign-in they were made under
   function dropDrive() {
     drive = null;
-    picked = {};
+    picked = Object.create(null);
     pickedOrder = [];
     prefilled = '';
     crumbs = [];
     tracked = null;
     listedFor = null;
     foldersFor = null;
+    pendingPull = Object.create(null);
     if (!$('fd-browser')) return;
     clear($('fd-tracked'));
     drawPicked();
@@ -4018,10 +4067,13 @@
   }
   function showConnectState() {
     var button = $('fd-connect'), note = $('fd-connect-note');
+    // the next step's button is the one filled: Connect until a drive is held, then Track
+    button.classList.toggle('console__primary', !drive);
+    $('fd-track').classList.toggle('console__primary', !!drive);
     if (drive) {
       button.disabled = false;
       button.textContent = 'Connect OneDrive again';
-      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', for this page until Track, Forget the token or a reload.';
+      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', for this page until Track, a sign-out or a reload.';
       return;
     }
     button.textContent = 'Connect OneDrive';
@@ -4084,7 +4136,13 @@
     if (!code && !error) return Promise.resolve(false);
     var kept = readJson(KEY_DRIVE), github = readJson(KEY_STATE);
     var ours = !!(kept && state && kept.state === state && kept.verifier);
-    if (!ours && github) return Promise.resolve(false);
+    if (!ours && github) {
+      // GitHub's own return: a drive connection still pending beside it was abandoned
+      if (kept && github.state === state) forgetDriveState();
+      return Promise.resolve(false);
+    }
+    // the drive's own return: a GitHub sign-in still pending beside it was abandoned
+    if (ours && github) { try { sessionStorage.removeItem(KEY_STATE); } catch (e) { /* nothing kept */ } }
     if (!kept) { stripDriveParams(['session_state', 'admin_consent']); return Promise.resolve(false); }
     forgetDriveState();
     stripDriveParams();
@@ -4098,17 +4156,17 @@
     say('Connecting OneDrive...');
     return exchange('/drive/connect', { provider: kept.provider, code: code, code_verifier: kept.verifier, redirect_uri: driveAddress() }).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without the drive\'s access token.');
-      if (!answer.refresh_token) throw new Error('Microsoft gave no refresh token (the consent did not include keeping access), so the sync could not run; press Connect OneDrive and allow it.');
+      if (!answer.refresh_token) throw new Error('Microsoft gave no refresh token, so the sync could not run: the consent did not include keeping access when you are away.');
       drive = { provider: kept.provider, access: answer.access_token, refresh: answer.refresh_token, expiresAt: Date.now() + (Number(answer.expires_in) || 3600) * 1000, owner: '', login: '' };
-      say('OneDrive is connected for this page. Tick what to track in the list (step 2).');
+      say('OneDrive is connected for this page. Tick what to track in the list.');
       return true;
     }).catch(function (e) { say(e.message + ' Press Connect OneDrive to try again.', true); return true; });
   }
   // the access token for a Graph call, renewed through the service when its hour is nearly up
   function driveAccess() {
-    if (!drive) return Promise.reject(new Error('No drive is connected to this page: press Connect OneDrive first.'));
-    if (Date.now() < drive.expiresAt - 60000) return Promise.resolve(drive.access);
-    var d = drive;
+    var d = heldDrive();
+    if (!d) return Promise.reject(new Error('No drive is connected to this page: press Connect OneDrive first.'));
+    if (Date.now() < d.expiresAt - 60000) return Promise.resolve(d.access);
     return exchange('/drive/token', { provider: d.provider, refresh_token: d.refresh }).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without an access token.');
       if (drive !== d) throw new Error('The connection changed while its token was renewed.');
@@ -4119,7 +4177,8 @@
   }
   function graph(url) {
     return driveAccess().then(function (access) {
-      var full = url.indexOf('https://') === 0 ? url : GRAPH + url;
+      // a full address is Graph's next page, and the token goes to Graph alone
+      var full = url.indexOf(GRAPH + '/') === 0 ? url : GRAPH + url;
       return fetch(full, { headers: { 'Authorization': 'Bearer ' + access, 'Accept': 'application/json' }, signal: within(30000) }).catch(function () { throw new Error('Microsoft Graph could not be reached.'); });
     }).then(function (r) {
       return r.text().then(function (t) {
@@ -4141,7 +4200,7 @@
       return graph(next).then(function (page) {
         if (Array.isArray(page.value)) out = out.concat(page.value);
         var more = page['@odata.nextLink'];
-        if (more && left <= 1) { out.cut = true; return out; }
+        if (more && (left <= 1 || typeof more !== 'string' || more.indexOf(GRAPH + '/') !== 0)) { out.cut = true; return out; }
         return more ? step(more, left - 1) : out;
       });
     }
@@ -4160,12 +4219,12 @@
   function itemOf(it) {
     return { id: String(it.id || ''), name: String(it.name || ''), drive: it.parentReference && it.parentReference.driveId ? String(it.parentReference.driveId) : '' };
   }
-  // a tick or an untick makes what is ticked the person's own, no longer a repository's file's
-  function tick(it, on) {
+  // an item ticked in the drive's list is the person's own; one a repository's file ticked carries
+  // that repository's name, so choosing another repository lets it go
+  function tick(it, on, from) {
     var item = itemOf(it);
     if (!item.id) return;
-    prefilled = '';
-    if (on && !picked[item.id]) { picked[item.id] = item; pickedOrder.push(item.id); }
+    if (on && !picked[item.id]) { item.from = from || ''; picked[item.id] = item; pickedOrder.push(item.id); }
     if (!on && picked[item.id]) { delete picked[item.id]; pickedOrder = pickedOrder.filter(function (id) { return id !== item.id; }); }
     drawPicked();
   }
@@ -4175,14 +4234,12 @@
     pickedOrder.forEach(function (id) {
       var item = picked[id];
       var li = add(el('li'), el('code', '', item.name));
-      add(li, btn('Untick', true, function () {
-        tick(item, false);
-        var box = document.querySelector('#fd-items input[data-id="' + item.id.replace(/"/g, '') + '"]');
-        if (box) box.checked = false;
-      }));
+      add(li, btn('Untick', true, function () { tick(item, false); }));
       list.appendChild(li);
     });
     $('fd-picked-head').textContent = pickedOrder.length ? 'Ticked, ' + plural(pickedOrder.length, 'item') + ':' : 'Nothing ticked yet.';
+    // the drive's list shows what is ticked, whichever answered first, the drive's or the repository's
+    Array.prototype.forEach.call(document.querySelectorAll('#fd-items input[data-id]'), function (box) { box.checked = !!picked[box.getAttribute('data-id')]; });
   }
   function kindOf(it) {
     if (it.folder) return 'folder' + (typeof it.folder.childCount === 'number' ? ', ' + plural(it.folder.childCount, 'item') : '');
@@ -4214,7 +4271,7 @@
   function listFolder() {
     var asked = ++listing;
     drawBrowser();
-    if (!drive) return;
+    if (!heldDrive()) return;
     var here = crumbs.length ? crumbs[crumbs.length - 1] : null;
     var url = here ? '/me/drive/items/' + encodeURIComponent(here.id) + '/children' + GRAPH_SELECT : '/me/drive/root/children' + GRAPH_SELECT;
     graphChildren(url).then(function (items) {
@@ -4258,25 +4315,48 @@
     clear(box);
     // the workflow is there (true), missing (false), or could not be read (the error)
     if (workflow !== true) {
-      none(box, repo + ' has no .github/workflows/' + DRIVE_WORKFLOW + (workflow === false ? ': it was not made from the template, or from one older than the drive sync, so there is no run to track a drive with. Make one in step 3, or bring the workflow in.' : ' that could be read (' + workflow.message + ').'));
-      if (workflow === false) { $('fd-track').disabled = true; return; }
+      none(box, repo + ' has no .github/workflows/' + DRIVE_WORKFLOW + (workflow === false ? ': it was not made from the template, or from one older than the drive sync, so there is no run to track a drive with. Make one in step 2 (GitHub\'s form for the enterprise\'s members, the front door for anyone else), or bring the workflow in.' : ' that could be read (' + workflow.message + ').'));
+      if (workflow === false) { $('fd-track').disabled = true; drawPull(box, repo); return; }
     }
-    $('fd-track').disabled = false;
-    if (!config) { none(box, repo + ' tracks no drive yet: the steps beside this set one up.'); return; }
+    // a sign-in that cannot reach the repository's secrets is told so before Connect, not after it
+    var refused = !!(secret && secret.unread && secret.unread.status === 403);
+    $('fd-track').disabled = refused;
+    if (refused) none(box, secretsRefused(repo));
+    if (!config) { none(box, repo + ' tracks no drive yet' + (refused ? '.' : ': the steps in this tab set one up.')); drawPull(box, repo); return; }
     var items = trackedItems(config);
     var p = add(el('p', 'admin__lead'), repo + ' tracks ' + plural(items.length, 'item') + ' of ' + driveName(config.provider) + ' in ', el('code', '', String(config.folder || 'papers') + '/'), ': ');
     items.forEach(function (i, n) { add(p, n ? ', ' : '', el('code', '', String(i.name || i.id))); });
     add(p, '.');
     box.appendChild(p);
     var when = typeof config.connected === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(config.connected) ? config.connected : '';
-    var life = config.provider === 'microsoft'
-      ? (when ? 'Connected ' + when + '; a OneDrive refresh token lasts ' + MS_REFRESH_DAYS + ' days, so press Connect OneDrive again by ' + daysAfter(when, MS_REFRESH_DAYS) + ', then Track, which replaces the secret and the date.' : 'A OneDrive refresh token lasts ' + MS_REFRESH_DAYS + ' days from the connection, whose date the file does not say: Connect and Track again to record it.')
-      : (when ? 'Connected ' + when + '; a Google refresh token lasts until it goes six months unused.' : 'A Google refresh token lasts until it goes six months unused.');
-    var kept = secret && secret.unread ? 'Whether the secret ' + DRIVE_SECRET + ' is set could not be read (' + secret.unread.message + ').'
+    var lapsed = lapsedOn(config);
+    var life;
+    if (config.provider !== 'microsoft') life = when ? 'Connected ' + when + '; a Google refresh token lasts until it goes six months unused.' : 'A Google refresh token lasts until it goes six months unused.';
+    else if (!when) life = 'A OneDrive refresh token lasts ' + MS_REFRESH_DAYS + ' days from the connection, whose date the file does not say: Connect and Track again to record it.';
+    else if (lapsed) life = 'Connected ' + when + '; a OneDrive refresh token lasts ' + MS_REFRESH_DAYS + ' days, so this connection ran out on ' + lapsed + ', and every sync since stops before it reaches the drive: press Connect OneDrive, then Track, which replaces the secret and the date.';
+    else {
+      var due = daysAfter(when, MS_REFRESH_DAYS), left = daysBetween(dayOf(new Date()), due);
+      life = 'Connected ' + when + '; a OneDrive refresh token lasts ' + MS_REFRESH_DAYS + ' days, so press Connect OneDrive again by ' + due + (left <= 14 ? ' (in ' + plural(left, 'day') + ')' : '') + ', then Track, which replaces the secret and the date.';
+    }
+    var kept = secret && secret.unread ? (refused ? '' : 'Whether the secret ' + DRIVE_SECRET + ' is set could not be read (' + secret.unread.message + ').')
       : secret ? 'The secret ' + DRIVE_SECRET + ' is set' + (secret.updated_at ? ', updated ' + stamp(secret.updated_at) : '') + '.'
       : 'The secret ' + DRIVE_SECRET + ' is not set, so the sync ends at once: press Connect OneDrive, then Track.';
-    add(box, el('p', 'admin__lead', life + ' ' + kept));
-    add(box, add(el('p', 'admin__bar'), btn('Sync now', false, function (ev) { syncNow(repo, ev.currentTarget); }), ' ', link(syncLink(repo), 'the runs of ' + DRIVE_WORKFLOW)));
+    add(box, el('p', 'admin__lead', life + (kept ? ' ' + kept : '')));
+    add(box, add(el('p', 'admin__bar'), btn('Sync now', false, function (ev) { syncNow(repo, ev.currentTarget, lapsed); }), ' ', link(syncLink(repo), 'the runs of ' + DRIVE_WORKFLOW)));
+    drawPull(box, repo);
+  }
+  // the day a OneDrive connection the file records ran out, or '' while it still holds
+  function lapsedOn(config) {
+    if (!config || config.provider !== 'microsoft' || typeof config.connected !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(config.connected)) return '';
+    var due = daysAfter(config.connected, MS_REFRESH_DAYS);
+    return due && due <= dayOf(new Date()) ? due : '';
+  }
+  function daysBetween(from, to) { return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000); }
+  // the pull request Track made this sitting, which the default branch's file does not show yet
+  function drawPull(box, repo) {
+    var url = pendingPull[repo];
+    if (!url) return;
+    add(box, add(el('p', 'admin__lead'), 'Track\'s ' + DRIVE_FILE + ' rides ', link(url, 'this pull request'), ': once it is merged, press Sync now. Until then the half-hourly sync runs with the new secret on the drive.json the default branch already holds, or does nothing where it holds none.'));
   }
   function readTracked(repo) {
     return file(repo, DRIVE_FILE).then(function (text) {
@@ -4285,16 +4365,26 @@
   }
   // What ticked itself from one repository's file is that repository's, so choosing another
   // repository in the bar lets it go, and the folder's name with it, before the other is read;
-  // what the person ticked stays, to be tracked wherever they choose
+  // what the person ticked in the drive's list stays, to be tracked wherever they choose
   function letPrefilledGo(repo) {
-    if (!prefilled || prefilled === repo) return;
-    var folder = $('fd-folder');
-    if (tracked && folder.value === String(tracked.folder || '')) folder.value = 'papers';
-    picked = {};
-    pickedOrder = [];
-    prefilled = '';
+    if (prefilled && prefilled !== repo) {
+      var folder = $('fd-folder');
+      if (tracked && folder.value === String(tracked.folder || '')) folder.value = 'papers';
+      prefilled = '';
+    }
+    var gone = pickedOrder.filter(function (id) { return picked[id].from && picked[id].from !== repo; });
+    if (!gone.length) return;
+    gone.forEach(function (id) { delete picked[id]; });
+    pickedOrder = pickedOrder.filter(function (id) { return !!picked[id]; });
     drawPicked();
-    Array.prototype.forEach.call(document.querySelectorAll('#fd-items input[data-id]'), function (box) { box.checked = false; });
+  }
+  // whether the chosen repository is public, said beside Track with a box to tick, never ticked
+  // beforehand; a repository read again asks again
+  function showPublic(meta) {
+    var row = $('fd-public-row');
+    var open = isPublic(meta);
+    if (row.hidden === open) $('fd-public').checked = false;
+    row.hidden = !open;
   }
   // the chosen repository's file, whether its secret is set and whether it has the workflow, read
   // for the repository the bar shows; an answer about a repository no longer chosen is dropped
@@ -4305,24 +4395,26 @@
     foldersFor = repo;
     tracked = null;
     clear($('fd-tracked'));
-    $('fd-track').textContent = repo ? 'Track in ' + repo : 'Track';
-    $('fd-create-note').textContent = repo ? 'Only for a new one; the bar has ' + repo + '.' : 'No repository is chosen in the bar yet.';
-    if (!repo) { $('fd-track').disabled = true; none($('fd-tracked'), 'No repository is chosen: choose one in the bar, or make one in step 3.'); return; }
+    $('fd-track-head').textContent = repo ? '3. Track in ' + repo : '3. Track';
+    $('fd-public').checked = false;
+    $('fd-public-row').hidden = true;
+    if (!repo) { $('fd-track').disabled = true; none($('fd-tracked'), 'No repository is chosen: choose one in the bar, or make one in step 2.'); return; }
     if (!token) { $('fd-track').disabled = true; none($('fd-tracked'), 'Sign in to read what ' + repo + ' tracks.'); return; }
     none($('fd-tracked'), 'Reading ' + repo + '...');
     Promise.all([
       readTracked(repo),
       readOne('/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET).catch(function (e) { return { unread: e }; }),
-      readOne('/repos/' + repo + '/contents/.github/workflows/' + DRIVE_WORKFLOW).then(function (found) { return !!found; }, function (e) { return e; })
+      readOne('/repos/' + repo + '/contents/.github/workflows/' + DRIVE_WORKFLOW).then(function (found) { return !!found; }, function (e) { return e; }),
+      readOne('/repos/' + repo).catch(function () { return null; })
     ]).then(function (all) {
       if (asked !== folderReading) return;
       tracked = all[0];
       drawTracked(repo, tracked, all[1], all[2]);
+      showPublic(all[3]);
       // what the repository tracks is ticked already, so Connect again needs no second pick
       if (tracked && !pickedOrder.length) {
-        trackedItems(tracked).forEach(function (i) { tick({ id: i.id, name: i.name, parentReference: { driveId: i.drive } }, true); });
-        if (typeof tracked.folder === 'string' && FOLDER_NAME.test(tracked.folder)) $('fd-folder').value = tracked.folder;
-        prefilled = pickedOrder.length ? repo : '';
+        trackedItems(tracked).forEach(function (i) { tick({ id: i.id, name: i.name, parentReference: { driveId: i.drive } }, true, repo); });
+        if (typeof tracked.folder === 'string' && FOLDER_NAME.test(tracked.folder)) { $('fd-folder').value = tracked.folder; prefilled = repo; }
       }
     }).catch(function (e) { if (asked === folderReading) { foldersFor = null; clear($('fd-tracked')); none($('fd-tracked'), repo + ' could not be read: ' + e.message); } });
   }
@@ -4351,7 +4443,7 @@
       if (!added.length) {
         say('None of the ' + NEWEST + ' newest repositories ' + (signedInByApp() ? 'the sign-in' : 'this token') + ' reaches is new to the list and made from the template. ' + (signedInByApp()
           ? 'Signed in with GitHub, the page reaches only the repositories SymphonyBoard is installed on: add the new one to its installation, at https://github.com/apps/' + APP_SLUG + '/installations/new, then press this again.'
-          : 'A fine-grained token reaches only the repositories it was made for.') + ' One listed already is chosen in the bar.');
+          : 'A fine-grained token reaches only the repositories it was made for.') + ' One made on GitHub\'s form without the template, which the form gives the enterprise\'s members alone, is neither: set it up through the front door in step 2.' + (repos().length ? ' The bar keeps the one chosen.' : ''));
         return;
       }
       added.forEach(rememberRepo);
@@ -4359,25 +4451,28 @@
       loadRepo(added[0]);
     }).catch(function (e) { button.disabled = false; say(e.message, true); });
   }
-  function dispatchSync(repo, branch) {
-    return gh('POST', '/repos/' + repo + '/actions/workflows/' + DRIVE_WORKFLOW + '/dispatches', { ref: branch });
+  function dispatchSync(repo, branch, account) {
+    return gh('POST', '/repos/' + repo + '/actions/workflows/' + DRIVE_WORKFLOW + '/dispatches', { ref: branch }, undefined, false, account);
   }
+  // short words for #msg, whose links are the tab's own, drawn in it
   function dispatchWords(repo, e) {
-    if (e.status === 403) return 'The sync could not be started from here (403: the sign-in holds no Actions right). Open ' + syncLink(repo) + ' and press "Run workflow".';
-    if (e.status === 404) return 'The sync could not be started from here (404): ' + repo + ' has no ' + DRIVE_WORKFLOW + ' on its default branch. Open ' + syncLink(repo) + ' once the workflow is there.';
-    return 'The sync could not be started from here: ' + e.message + ' Open ' + syncLink(repo) + ' and press "Run workflow".';
+    if (e.status === 403) return 'The sync could not be started from here (403: no Actions permission); press "Run workflow" at the runs link in this tab.';
+    if (e.status === 404) return 'The sync could not be started from here (404): ' + repo + ' has no ' + DRIVE_WORKFLOW + ' on its default branch.';
+    return 'The sync could not be started from here (' + e.message + '); press "Run workflow" at the runs link in this tab.';
   }
-  function syncNow(repo, button) {
+  function syncNow(repo, button, lapsed) {
     if (button) button.disabled = true;
     say('Starting the drive sync of ' + repo + '...');
     gh('GET', '/repos/' + repo).then(function (r) { return dispatchSync(repo, r.data.default_branch || 'main'); }).then(function () {
       if (button) button.disabled = false;
-      say('The drive sync of ' + repo + ' is queued; its summary says what came down and what went up: ' + syncLink(repo));
+      if (lapsed) say('The drive sync of ' + repo + ' is queued, but it will stop at the token trade: the OneDrive connection ran out on ' + lapsed + '. Press Connect OneDrive, then Track.', true);
+      else say('The drive sync of ' + repo + ' is queued; its summary says what came down and what went up.');
     }).catch(function (e) { if (button) button.disabled = false; say(dispatchWords(repo, e), true); });
   }
   // the file on the default branch, or, where that branch takes only pull requests, on a branch of
-  // its own with a pull request to merge; the sha travels with a file that is already there
-  function writeDriveFile(repo, branch, config) {
+  // its own with a pull request to merge; the sha travels with a file that is already there, and
+  // every write goes out for the account Track was pressed as
+  function writeDriveFile(repo, branch, config, account) {
     var path = '/repos/' + repo + '/contents/' + DRIVE_FILE;
     var content = toBase64(new TextEncoder().encode(JSON.stringify(config, null, 2) + '\n'));
     var message = 'Track ' + plural(trackedItems(config).length, 'item') + ' of ' + driveName(config.provider) + ' in ' + config.folder;
@@ -4385,19 +4480,30 @@
       return readOne(path + '?ref=' + encodeURIComponent(on)).then(function (have) {
         var body = { message: message, content: content, branch: on };
         if (have && have.sha) body.sha = have.sha;
-        return gh('PUT', path, body);
+        return gh('PUT', path, body, undefined, false, account);
       });
     }
     return put(branch).then(function () { return { branch: branch }; }, function (e) {
       if (e.status !== 403 && e.status !== 409 && e.status !== 422) throw e;
-      // the default branch refused the commit: a branch and a pull request, as the Tokens tab does
+      // The default branch refused the commit: a branch of the tab's own and a pull request. The
+      // branch holds the default branch's head and this one commit, so a branch of that name left
+      // from an earlier Track, or pushed by anyone else, is set back to that head first, and the pull
+      // request asks the person to merge nothing they did not ask for; where it cannot be set back,
+      // nothing is committed on it
+      var head = '';
       return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(branch)).then(function (r) {
-        return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + DRIVE_BRANCH, sha: r.data.object.sha }).catch(function (e2) { if (e2.status !== 422) throw e2; });
+        head = r.data.object.sha;
+        return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + DRIVE_BRANCH, sha: head }, undefined, false, account).catch(function (e2) {
+          if (e2.status !== 422) throw e2;
+          return gh('PATCH', '/repos/' + repo + '/git/refs/heads/' + DRIVE_BRANCH, { sha: head, force: true }, undefined, false, account).catch(function (e3) {
+            throw new Error('the branch ' + DRIVE_BRANCH + ' is there already and could not be set back to ' + branch + ' (' + e3.message + '); delete it on GitHub and press Track again.');
+          });
+        });
       }).then(function () { return put(DRIVE_BRANCH); }).then(function () {
         return ghList('/repos/' + repo + '/pulls?state=open&head=' + encodeURIComponent(repo.split('/')[0] + ':' + DRIVE_BRANCH), 1);
       }).then(function (open) {
         if (open.length) return { branch: DRIVE_BRANCH, pull: open[0].html_url };
-        return gh('POST', '/repos/' + repo + '/pulls', { title: message, head: DRIVE_BRANCH, base: branch, body: 'Made from the Folders tab of the control panel: ' + DRIVE_FILE + ' says what the drive sync tracks. Merge it, then press Sync now on the tab: ' + tabLink(repo) })
+        return gh('POST', '/repos/' + repo + '/pulls', { title: message, head: DRIVE_BRANCH, base: branch, body: 'Made from the Folders tab of the control panel: ' + DRIVE_FILE + ' says what the drive sync tracks. Merge it, then press Sync now on the tab: ' + tabLink(repo) }, undefined, false, account)
           .then(function (r) { return { branch: DRIVE_BRANCH, pull: r.data.html_url }; });
       });
     });
@@ -4407,50 +4513,60 @@
     var repo = foldersRepo();
     var folder = ($('fd-folder').value || '').trim();
     var d = heldDrive();
-    if (!repo) { say('Choose a repository in the bar first (or make one in step 3).', true); return; }
+    if (!repo) { say('Choose a repository in the bar first (or make one in step 2).', true); return; }
     if (!d || !d.refresh) { showConnectState(); drawBrowser(); say('Connect OneDrive first (step 1): the drive\'s refresh token is what the repository keeps.', true); return; }
-    if (!pickedOrder.length) { say('Tick at least one file or folder to track (step 2).', true); return; }
+    if (!pickedOrder.length) { say('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
     if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { say('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
     button.disabled = true;
+    // the drive is the account's it was connected under, and every write of the chain goes out for
+    // that account, so a token another tab puts in place meanwhile stops the chain
+    var account = d.login || shownLogin;
     var refresh = d.refresh;
-    var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { return picked[id]; }), connected: dayOf(new Date()) };
+    var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { var i = picked[id]; return { id: i.id, name: i.name, drive: i.drive }; }), connected: dayOf(new Date()) };
     var branch = '', wrote = null, saved = false;
     say('Sealing the drive\'s refresh token in this browser and saving ' + DRIVE_SECRET + ' on ' + repo + '...');
     gh('GET', '/repos/' + repo).then(function (r) {
       branch = r.data.default_branch || 'main';
+      // what comes down from the drive is the repository's, so a public one is tracked into only
+      // once the person has ticked that they know it
+      if (isPublic(r.data) && !$('fd-public').checked) {
+        showPublic(r.data);
+        throw plain(repo + ' is public, so the files you tick, their names and the comments in them would be readable by anyone: tick the box under Track to go on, or choose a private repository in the bar.');
+      }
       return Promise.all([loadSealer(), gh('GET', '/repos/' + repo + '/actions/secrets/public-key')]);
     }).then(function (both) {
       var sealed = toBase64(both[0](new TextEncoder().encode(refresh), fromBase64(both[1].data.key)));
       refresh = '';
-      return gh('PUT', '/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET, { encrypted_value: sealed, key_id: both[1].data.key_id });
+      return gh('PUT', '/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET, { encrypted_value: sealed, key_id: both[1].data.key_id }, undefined, false, account);
     }).then(function () {
       saved = true;
       say('The secret is saved; writing ' + DRIVE_FILE + '...');
-      return writeDriveFile(repo, branch, config);
+      return writeDriveFile(repo, branch, config, account);
     }).then(function (w) {
       wrote = w;
       if (w.pull) return null;
       say('The file is written; starting the first sync...');
-      return dispatchSync(repo, branch).then(function () { return true; }, function (e) { return e; });
+      return dispatchSync(repo, branch, account).then(function () { return true; }, function (e) { return e; });
     }).then(function (started) {
       // the drive's tokens are of no more use here: the repository holds the refresh token now
       if (drive === d) { drive = null; listedFor = null; }
       button.disabled = false;
       showConnectState();
       drawBrowser();
-      var words = repo + ' tracks ' + plural(config.items.length, 'item') + ' of OneDrive in ' + folder + '/. ';
-      if (wrote.pull) words += 'Its default branch takes only pull requests, so ' + DRIVE_FILE + ' rides ' + wrote.pull + ': merge it, then press Sync now. ';
-      else if (started === true) words += 'The first sync is queued: ' + syncLink(repo) + ' shows it, and its pull request drive/sync brings the files in. ';
-      else words += dispatchWords(repo, started) + ' ';
-      words += 'The drive\'s tokens are dropped from this page; a OneDrive connection lasts ' + MS_REFRESH_DAYS + ' days, until ' + daysAfter(config.connected, MS_REFRESH_DAYS) + '.';
+      if (wrote.pull) pendingPull[repo] = wrote.pull; else delete pendingPull[repo];
+      var words = repo + ' tracks ' + plural(config.items.length, 'item') + ' of OneDrive in ' + folder + '/, and the drive\'s tokens are dropped from this page. ';
+      if (wrote.pull) words += 'Its default branch takes only pull requests: merge the one linked in this tab, then press Sync now.';
+      else if (started === true) words += 'The first sync is queued.';
+      else words += dispatchWords(repo, started);
       say(words, started !== true && !wrote.pull);
       if (foldersRepo() === repo) loadFolders();
     }).catch(function (e) {
       refresh = '';
       button.disabled = false;
-      if (!saved && e.status === 403) say(SECRETS_WAITING, true);
+      if (e.plain) say(e.message, true);
+      else if (!saved && e.status === 403) say(secretsRefused(repo), true);
       else if (!saved) say('The secret could not be saved (' + e.message + '), so nothing else was written. Press Track to try again.', true);
-      else say('The secret ' + DRIVE_SECRET + ' is saved, but ' + DRIVE_FILE + ' could not be written: ' + e.message + ' Press Track to write it again (the secret is sealed once more, which is harmless).', true);
+      else say('The secret ' + DRIVE_SECRET + ' is saved, but ' + DRIVE_FILE + ' could not be written: ' + e.message + ' Until it is, the half-hourly sync runs with the new secret on the drive.json the default branch holds, if any. Press Track to write it again.', true);
     });
   }
 
