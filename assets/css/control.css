@@ -230,6 +230,34 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 @media (prefers-reduced-motion: reduce) { .console .console__status #msg.console__flash { animation-duration: 0.4s; } }
 .console__status:has(#msg:empty) .console__statusx, .console__status:has(#msg input:not(:disabled)) .console__statusx { visibility: hidden; }
 
+/* inside the Ask Claude bar (the frame draws the bar, symphony-panel.js fills it): the name, the
+   question box with its buttons, the state line; the answer's drawer is laid over the foot of the
+   stage, so nothing in the layout moves when it opens */
+.console:has(#cp-app.hidden) .console__askbar { display: none; }
+.console__askrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.console__askname { flex: 0 0 auto; color: var(--teal); font-weight: 600; font-size: 0.88rem; white-space: nowrap; }
+.console__askbox { flex: 1 1 62%; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.console__askbox.hidden { display: none; }
+.console .console__askbox textarea { flex: 1 1 auto; min-width: 0; margin: 0; padding: 6px 10px; min-height: 2.2em; max-height: 7.5em; resize: none; font-size: 0.9rem; line-height: 1.35; }
+.console .console__askrow button { margin: 0; padding: 5px 14px; font-size: 0.85rem; white-space: nowrap; }
+.console .console__askrow #cp-as-state { flex: 1 1 38%; min-width: 0; margin: 0; max-height: 2.7em; overflow: auto; font-size: 0.78rem; line-height: 1.35; }
+.console .console__stage { position: relative; }
+.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: min(70%, 520px); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
+.console__askdrawer[hidden] { display: none; }
+.console__askhead { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.console .console__askhead button { margin: 0; padding: 4px 12px; font-size: 0.82rem; }
+.console__askbody { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 10px 12px; }
+.console__askbody .control__answer { margin-top: 0; }
+.console__askactions:empty { display: none; }
+.console__askactions { margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; color: var(--ink-soft); }
+.console__askact { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.console .console__askact button { margin: 0; padding: 5px 14px; }
+@media (max-width: 900px), (max-height: 520px) {
+  .console__askrow { flex-wrap: wrap; }
+  .console__askbox, .console .console__askrow #cp-as-state { flex-basis: 100%; }
+  .console__askdrawer { position: fixed; top: 72px; bottom: auto; max-height: 55vh; }
+}
+
 /* the repository's whole name, wrapped, with the select laid over it, so a press opens the
    browser's own list */
 .console__pick { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 5px 26px 5px 9px; }
