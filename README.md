@@ -242,8 +242,10 @@ Beethoven has two editions, and both live under `/beethoven/`:
   and renders, acting only on the few lines of its `symphony` block: focus, open, filter, show),
   draws each open epic's tasks and what blocks them (its Dependencies section: GitHub's sub-issues
   and blocked-by relations, read as the person, built to the same Mermaid text the protocol's board
-  writes and drawn by the vendored Mermaid 12.2.0, `assets/js/vendor/mermaid.min.js`, MIT, loaded
-  only when there is a chart to draw, with a table under each chart; it writes nothing),
+  writes, with one entity more, `%` as `#37;`, so that no title can hold a Mermaid directive, and
+  drawn by the vendored Mermaid 12.2.0, `assets/js/vendor/mermaid.min.js`, MIT, loaded only when
+  there is a chart to draw, with a table under each chart; the Board box draws the charts the
+  board's own text holds the same way; it writes nothing),
   starts the workers, the board, the checks and the
   metrics by hand, merges a green pull request (the token needs Contents: Read and write for that), and gives the two presses that set Symphony up on
   a repository named without the topic `symphony`. Every state is written in words and every action

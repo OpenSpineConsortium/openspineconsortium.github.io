@@ -3,9 +3,10 @@ Copyright 2026 Gregory Schwing and the OpenSpine Consortium contributors.
 
 Licensed under the Apache License, Version 2.0 (see the LICENSE file).
 
-Third-party code carried under assets/js/vendor/ keeps its own licence beside or inside the file:
+The third-party code named here keeps its own licence beside or inside its file:
 
 Mermaid 12.2.0 (assets/js/vendor/mermaid.min.js, the npm package's dist/mermaid.min.js, unchanged)
 is Copyright (c) 2014 - 2022 Knut Sveidqvist and released under the MIT License; the licence text
-is assets/js/vendor/mermaid.LICENSE, and the notices of the libraries bundled inside it are in the
-comment at the end of the file. The control panel loads it only when it has a chart to draw.
+is assets/js/vendor/mermaid.LICENSE; the licence comments esbuild kept of libraries bundled inside
+it (DOMPurify, lodash, parts of cytoscape) are in the comment at the end of the file, and the rest
+are as the npm package ships them. The control panel loads it only when it has a chart to draw.

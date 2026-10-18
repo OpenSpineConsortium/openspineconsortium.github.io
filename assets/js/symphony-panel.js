@@ -681,9 +681,14 @@
     });
     return s;
   }
-  function markdown(src) {
+  // charts says a Mermaid block is a chart to draw: the board's own Dependencies section, which
+  // loadBoard draws in place (boardCharts), so the Board box never shows a chart as text; anything
+  // else, an assistant's answer among them, shows such a block as text, as it shows any code
+  function markdown(src, charts) {
     var lines = escapeHtml(String(src).replace(/<!--[\s\S]*?-->/g, '').replace(/\r/g, '')).split('\n');
-    var out = [], i = 0, para = [], list = null, table = null, code = false;
+    var out = [], i = 0, para = [], list = null, table = null, code = false, chart = [];
+    // a chart's lines, escaped with the rest, sit in the attribute the drawing reads
+    function chartHost() { return '<div class="control__chart" data-chart="' + chart.join('\n') + '">Drawing the chart...</div>'; }
     function flushPara() { if (para.length) { out.push('<p>' + inline(para.join(' ')) + '</p>'); para = []; } }
     function flushList() { if (list) { out.push('<ul>' + list.map(function (x) { return '<li>' + inline(x) + '</li>'; }).join('') + '</ul>'); list = null; } }
     function cells(row) {
@@ -706,9 +711,13 @@
       var line = lines[i];
       if (/^```/.test(line)) {
         flushPara(); flushList(); flushTable();
-        if (code) { out.push('</pre>'); code = false; } else { out.push('<pre class="admin__text">'); code = true; }
+        if (code === 'chart') { out.push(chartHost()); code = false; }
+        else if (code) { out.push('</pre>'); code = false; }
+        else if (charts && /^```mermaid\s*$/.test(line)) { chart = []; code = 'chart'; }
+        else { out.push('<pre class="admin__text">'); code = true; }
         continue;
       }
+      if (code === 'chart') { chart.push(line); continue; }
       if (code) { out.push(line); continue; }
       var h = /^(#{1,6})\s+(.*)$/.exec(line);
       if (h) { flushPara(); flushList(); flushTable(); var n = Math.min(h[1].length + 1, 6); out.push('<h' + n + '>' + inline(h[2]) + '</h' + n + '>'); continue; }
@@ -720,7 +729,7 @@
       para.push(line.trim());
     }
     flushPara(); flushList(); flushTable();
-    if (code) out.push('</pre>');
+    if (code === 'chart') out.push(chartHost()); else if (code) out.push('</pre>');
     return out.join('\n');
   }
 
@@ -968,7 +977,12 @@
   function emptyState(name) { return { repo: name, meta: null, issues: [], workers: [], runs: [], pulls: [], boardAt: '', ready: false, failed: [] }; }
   var state = emptyState('');
   function stale(s) { return s !== state; }
-  function failed(s, what, e) { s.failed.push(what + ' (' + e.message + ')'); }
+  // one entry per thing that could not be read, the latest, since a loader run again in place (after
+  // Give to, a merge, a question) would otherwise say the same failure twice in the summary
+  function failed(s, what, e) {
+    s.failed = s.failed.filter(function (f) { return f.indexOf(what + ' (') !== 0; });
+    s.failed.push(what + ' (' + e.message + ')');
+  }
 
   function labelsOf(issue) { return (issue.labels || []).map(labelName); }
   function workerOf(labels) {
@@ -985,7 +999,8 @@
       if (l.indexOf(ASSISTANT_LABEL) >= 0 && /^Assistant: /.test(String(it.title || ''))) return;
       var worker = workerOf(l);
       if (l.indexOf('blocker') >= 0) g.blockers.push(it);
-      // a goal, which a person breaks into epics, is planned as an epic is, so it is listed with them
+      // a goal, like an epic, is taken whole by nobody: a person breaks it into epics and the
+      // coordinator plans each epic, so it is listed with them
       else if (l.indexOf('epic') >= 0 || l.indexOf('goal') >= 0) g.epics.push(it);
       else if (l.indexOf('in-review') >= 0) g.review.push(it);
       else if (l.indexOf('claimed') >= 0) g.claimed.push(it);
@@ -1093,7 +1108,8 @@
     var box = $('cp-board');
     return file(s.repo, 'STATE.md', 'board').then(function (text) {
       if (stale(s)) return;
-      box.innerHTML = markdown(text);
+      box.innerHTML = markdown(text, true);
+      boardCharts(s, box);
       return gh('GET', '/repos/' + s.repo + '/branches/board').then(function (r) {
         if (stale(s)) return;
         var when = r.data && r.data.commit && r.data.commit.commit && r.data.commit.commit.committer ? r.data.commit.commit.committer.date : '';
@@ -1236,9 +1252,11 @@
       button.disabled = false;
     });
   }
+  // the read is kept on the state, so the Dependencies section, drawn from the issues read beside
+  // it, can wait for the claim branches the pull requests show (graphClaimed)
   function loadPulls(s) {
     var body = $('cp-pulls').querySelector('tbody');
-    return ghList('/repos/' + s.repo + '/pulls?state=open&per_page=100', 2).then(function (pulls) {
+    var read = ghList('/repos/' + s.repo + '/pulls?state=open&per_page=100', 2).then(function (pulls) {
       if (stale(s)) return;
       s.pulls = pulls;
       clear(body);
@@ -1268,6 +1286,8 @@
       clear(body);
       var tr = el('tr'); add(tr, el('td', 'admin__none', 'The pull requests could not be read: ' + e.message)).firstChild.colSpan = 7; body.appendChild(tr);
     });
+    s.pullsRead = read;
+    return read;
   }
 
   function summary() {
@@ -1323,6 +1343,7 @@
       failed(s, 'the repository', e);
       s.ready = true;
       say(e.message, true);
+      graphReset('Not drawn: the repository could not be read.', true);
       summary();
     });
   }
@@ -1479,7 +1500,7 @@
       dropKey(KEY_REPO);
       say(state.repo + ' is off the list.');
       var next = repos()[0];
-      if (next) loadRepo(next); else { state = emptyState(''); fillRepoSelect($('cp-repo'), ''); $('cp-summary').textContent = 'No repository listed. Add one below.'; }
+      if (next) loadRepo(next); else { state = emptyState(''); fillRepoSelect($('cp-repo'), ''); $('cp-summary').textContent = 'No repository listed. Add one below.'; graphReset(GRAPH_NO_REPOSITORY); }
     });
     $('cp-task-queue').addEventListener('click', queueTask);
     $('cp-w-add').addEventListener('click', addWorker);
@@ -1495,7 +1516,7 @@
     function start() {
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
-      if (name) loadRepo(name); else $('cp-summary').textContent = 'No repository listed yet. Find them, or add one by name, below.';
+      if (name) loadRepo(name); else { $('cp-summary').textContent = 'No repository listed yet. Find them, or add one by name, below.'; graphReset(GRAPH_NO_REPOSITORY); }
     }
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
@@ -2033,16 +2054,24 @@
   // epics. Mermaid draws them, 12.2.0 (MIT; assets/js/vendor/mermaid.min.js, the npm package's own
   // build unchanged, its licence in mermaid.LICENSE beside it), loaded from the site only when there
   // is a chart to draw, as the sealing script is, and told to draw at its strict level. A title is
-  // untrusted: it is folded, cut and written as entities exactly as the board writes it and never
-  // raw, so what reaches the drawing is text, and the tables under the charts show it as text too.
-  // The section reads and never writes.
+  // untrusted: it is folded, cut and written as entities as the board writes it, with one entity more
+  // (graphLabel), and never raw, so what reaches the drawing is text, and the tables under the charts
+  // show it as text too. The section reads and never writes.
   var MERMAID_JS = '/assets/js/vendor/mermaid.min.js';
   // the most reads of GitHub one draw makes, each page of a list one read; a draw that would need
   // more says so and draws nothing, since a section half drawn would mislead (one line, so a check
   // can lower it)
   var GRAPH_READS_MAX = 60;
+  // the calls of the token's hour a draw leaves for the rest of the page, its tables, its writes and
+  // the assistant's waiting, as the board keeps a reserve of its own: a draw whose read finds fewer
+  // left stops there and says so
+  var GRAPH_RESERVE = 100;
   // a node's label is cut to this many characters, as the board cuts it
   var GRAPH_LABEL_WIDTH = 40;
+  // the section's words while no repository is chosen, the same the page is served with
+  var GRAPH_NO_REPOSITORY = 'Nothing to draw yet: no repository is chosen.';
+  // how a person starts, said wherever there is nothing to draw
+  var GRAPH_START = 'To start, label an issue epic, open it on GitHub and add its tasks under Sub-issues (Create sub-issue, or Add existing issue); on a task, add what must close first under Relationships (Blocked by); then press Refresh.';
   // the five classes every chart ends with, a node's shade being its state (board.NODE_CLASSES)
   var GRAPH_CLASSES = [
     'classDef todo fill:#ffffff,stroke:#0e8a16,color:#000000',
@@ -2056,6 +2085,7 @@
   // the whitespace Python's str.split() and rstrip() take, which the board collapses and trims by
   var GRAPH_SPACE = /[ \t\n\v\f\r\x1c-\x1f]+/;
   var GRAPH_SPACE_END = /[ \t\n\v\f\r\x1c-\x1f]+$/;
+  var GRAPH_SPACE_START = /^[ \t\n\v\f\r\x1c-\x1f]+/;
   var mermaidLoad = null;
   var graphRenders = 0;
 
@@ -2091,46 +2121,68 @@
   function graphFold(text) { return String(text).normalize('NFKD').replace(/[^\x00-\x7f]/g, ''); }
   // a node's text, byte for byte the board's: the number, the title folded, one-spaced and cut, the
   // characters that could end the label as entities ("#" first, since the entities carry one), and
-  // the sub-issues' progress where there is any
+  // the sub-issues' progress where there is any. One pair more than the board writes, "%" as #37;,
+  // which Mermaid decodes to the character: it scans the whole text for a directive, %%{ ... }%%,
+  // before it reads the entities, so a title holding %%{ would break or edit the chart. The same
+  // pair is proposed for the library's node_label; until it takes it, a title with a "%" is the one
+  // byte the two texts differ in, drawn the same. Mermaid still reads a label further, harmlessly at
+  // its strict level, and the board's text alike: an HTML entity a title holds (&lt;b&gt;) shows
+  // decoded, $$...$$ is typeset by its KaTeX, a title of the form "style x:#f;" loses its last
+  // semicolon, and NUL and DEL are dropped; the table under the chart shows the title as it is.
   function graphLabel(issue) {
     var title = graphFold(issue.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
     if (title.length > GRAPH_LABEL_WIDTH) title = title.slice(0, GRAPH_LABEL_WIDTH - 3).replace(GRAPH_SPACE_END, '') + '...';
-    [['#', '#35;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']].forEach(function (pair) { title = title.split(pair[0]).join(pair[1]); });
+    [['#', '#35;'], ['%', '#37;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']].forEach(function (pair) { title = title.split(pair[0]).join(pair[1]); });
     var label = '#' + issue.number + (title ? ' ' + title : '');
     if (issue.progress && issue.progress[1] > 0) label += ' (' + issue.progress[0] + '/' + issue.progress[1] + ')';
     return label;
   }
-  // a node's state as its class: closed first, then in review, then claimed by its label, then
-  // labelled blocked, then todo; "" for an issue in none of them, drawn plain. The board also counts
-  // an unreleased claude/<issue> branch as claimed; the page reads no branches, so a claim whose
-  // label is not on yet is drawn by its labels alone.
-  function graphClass(issue) {
+  // a node's state as its class: closed first, then in review, then claimed (the label, or a claim
+  // branch the open pull requests show, graphClaimed), then labelled blocked, then todo; "" for an
+  // issue in none of them, drawn plain
+  function graphClass(issue, claimed) {
     var l = issue.labels;
     if (issue.closed) return 'closed';
     if (l.indexOf('in-review') >= 0) return 'review';
-    if (l.indexOf('claimed') >= 0) return 'claimed';
+    if (l.indexOf('claimed') >= 0 || claimed[issue.number]) return 'claimed';
     if (l.indexOf('blocked') >= 0) return 'blocked';
     return l.indexOf('todo') >= 0 ? 'todo' : '';
   }
-  function graphNodeLine(issue) {
-    var c = graphClass(issue);
+  // the claims the open pull requests show, by issue number: the board also counts an unreleased
+  // claude/<issue> branch as claimed, and every claim opens its draft at once (the protocol, Work in
+  // the open), so the branch of each open pull request from this repository, never a fork's, stands
+  // in for the branches the page does not read; a claim with no draft yet, or one released and not
+  // yet renamed, is drawn by its labels alone, the one difference left from the board
+  function graphClaimed(pulls, repo) {
+    var claimed = {};
+    (pulls || []).forEach(function (pr) {
+      var head = pr && isPlain(pr.head) ? pr.head : {};
+      var m = /^claude\/([1-9][0-9]{0,8})$/.exec(String(head.ref || ''));
+      var own = isPlain(head.repo) && typeof head.repo.full_name === 'string' && head.repo.full_name.toLowerCase() === repo.toLowerCase();
+      if (m && own) claimed[Number(m[1])] = true;
+    });
+    return claimed;
+  }
+  function graphNodeLine(draw, issue) {
+    var c = graphClass(issue, draw.claimed);
     return 'i' + issue.number + '["' + graphLabel(issue) + '"]' + (c ? ':::' + c : '');
   }
   // one flowchart's text: the nodes in number order, the edges each once and sorted as strings, the
   // five classes; the bytes between the fences of the board's block
-  function graphChart(nodes, edges) {
+  function graphChart(draw, nodes, edges) {
     var seen = {}, once = [];
     edges.forEach(function (e) { if (!seen[e]) { seen[e] = true; once.push(e); } });
     once.sort();
     var lines = ['flowchart TD'];
-    nodes.slice().sort(function (a, b) { return a.number - b.number; }).forEach(function (n) { lines.push('  ' + graphNodeLine(n)); });
+    nodes.slice().sort(function (a, b) { return a.number - b.number; }).forEach(function (n) { lines.push('  ' + graphNodeLine(draw, n)); });
     once.forEach(function (e) { lines.push('  ' + e); });
     GRAPH_CLASSES.forEach(function (c) { lines.push('  ' + c); });
     return lines.join('\n');
   }
-  // an epic's heading as the board writes it, the title folded; a pipe needs no escape on a page
+  // an epic's heading as the board writes it, the title folded and trimmed of the characters the
+  // board strips; a pipe needs no escape on a page
   function graphHeading(epic) {
-    var title = graphFold(epic.title.replace(/[\r\n]/g, ' ')).trim();
+    var title = graphFold(epic.title.replace(/[\r\n]/g, ' ')).replace(GRAPH_SPACE_START, '').replace(GRAPH_SPACE_END, '');
     return 'Epic #' + epic.number + (title ? ': ' + title : '') + (epic.progress && epic.progress[1] > 0 ? ' (' + epic.progress[0] + '/' + epic.progress[1] + ')' : '');
   }
 
@@ -2163,9 +2215,12 @@
     var out = [];
     function step(p) {
       if (!graphLive(draw)) return Promise.resolve(out);
-      if (draw.reads >= GRAPH_READS_MAX) { var e = new Error('cap'); e.cap = true; return Promise.reject(e); }
+      if (draw.reads >= GRAPH_READS_MAX) { var e = new Error('more than ' + GRAPH_READS_MAX + ' reads'); e.cap = true; return Promise.reject(e); }
+      if (draw.left !== null && draw.left < GRAPH_RESERVE) { var low = new Error('fewer than ' + GRAPH_RESERVE + ' calls left on the token'); low.reserve = true; return Promise.reject(low); }
       draw.reads++;
       return gh('GET', p).then(function (r) {
+        var left = rateLeft(r.headers);
+        if (left !== null) draw.left = left;
         if (Array.isArray(r.data)) out = out.concat(r.data);
         var n = nextPage(r.headers);
         return n ? step(n) : out;
@@ -2176,14 +2231,19 @@
       throw e;
     });
   }
+  // the calls GitHub says the token has left this hour, or null where its answer does not say
+  function rateLeft(headers) {
+    var v = headers && headers.get ? headers.get('X-RateLimit-Remaining') : null;
+    return typeof v === 'string' && /^[0-9]{1,9}$/.test(v) ? Number(v) : null;
+  }
   // a planned issue's sub-issues, pull requests and another repository's issues left out, and, for
   // an epic's, the issues blocking each; a goal's sub-issues are epics, whose chart draws no
   // relation of the epic's own, so their blockers are not read
   function graphReadParent(draw, parent) {
     var number = parent.number, isEpic = parent.labels.indexOf('epic') >= 0;
     draw.reading = 'the sub-issues of #' + number;
-    return graphList(draw, '/repos/' + draw.s.repo + '/issues/' + number + '/sub_issues?per_page=100').then(function (list) {
-      var children = list.filter(function (c) { return isPlain(c) && !('pull_request' in c) && inRepository(c, draw.s.repo); });
+    return graphList(draw, '/repos/' + draw.repo + '/issues/' + number + '/sub_issues?per_page=100').then(function (list) {
+      var children = list.filter(function (c) { return isPlain(c) && !('pull_request' in c) && inRepository(c, draw.repo); });
       if (children.length) draw.subIssues[number] = children.map(function (c) { return Number(c.number); });
       children.forEach(function (c) { graphRemember(draw, c); });
       if (!isEpic) return;
@@ -2195,37 +2255,53 @@
     var rec = graphIssue(child), number = rec.number;
     if (rec.blockedByTotal === 0 || Object.prototype.hasOwnProperty.call(draw.blockedBy, number)) return Promise.resolve();
     draw.reading = 'the issues blocking #' + number;
-    return graphList(draw, '/repos/' + draw.s.repo + '/issues/' + number + '/dependencies/blocked_by?per_page=100').then(function (list) {
-      var blockers = list.filter(function (b) { return isPlain(b) && inRepository(b, draw.s.repo); });
+    return graphList(draw, '/repos/' + draw.repo + '/issues/' + number + '/dependencies/blocked_by?per_page=100').then(function (list) {
+      var blockers = list.filter(function (b) { return isPlain(b) && inRepository(b, draw.repo); });
       draw.blockedBy[number] = blockers.map(function (b) { return Number(b.number); }).sort(function (a, b) { return a - b; });
       blockers.forEach(function (b) { graphRemember(draw, b); });
     });
   }
   // the whole draw: from the open issues the page holds, the sub-issues of each open issue labelled
   // epic or goal whose summary does not say it has none, by number, then the charts and their tables;
-  // called whenever the task tables are rendered afresh and never on a timer of its own
+  // called whenever the task tables are rendered afresh and never on a timer of its own. The
+  // repository is named as GitHub names it (the record loadMeta read): a name the person typed or
+  // the page remembered may be an old one GitHub still answers to, while every issue it lists
+  // carries the new one.
   function loadGraph(s) {
-    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, reads: 0, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
+    var repo = s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo;
+    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: null, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
     var open = s.issues.filter(function (it) { return !it.pull_request; });
     open.forEach(function (it) { draw.listed[Number(it.number)] = graphIssue(it); });
     var planned = open.filter(function (it) { return graphPlanned(draw.listed[Number(it.number)]) && !owesNoRead(it); })
       .map(function (it) { return draw.listed[Number(it.number)]; }).sort(function (a, b) { return a.number - b.number; });
     if (!planned.length) {
-      graphReset('Nothing to draw: no open issue labelled epic or goal has sub-issues. GitHub adds one from the issue\'s own page, under Sub-issues (Create sub-issue, or Add existing issue), and a blocked-by relation under Relationships; the page draws them at the next Refresh.');
+      graphReset('Nothing to draw yet: no open issue labelled epic or goal has sub-issues. ' + GRAPH_START + graphCut(draw));
       return Promise.resolve();
     }
     graphReset('Reading the sub-issues of ' + plural(planned.length, 'epic or goal', 'epics and goals') + '...');
     return planned.reduce(function (p, parent) { return p.then(function () { return graphReadParent(draw, parent); }); }, Promise.resolve()).then(function () {
+      draw.reading = '';
+      // the pull requests are read beside the issues, and say which tasks a claim branch holds
+      return s.pullsRead;
+    }).then(function () {
       if (!graphLive(draw)) return;
+      draw.claimed = graphClaimed(s.pulls, repo);
       graphRender(draw);
     }).catch(function (e) {
       if (!graphLive(draw)) return;
       clear($('cp-graph'));
-      if (e.cap) graphWords('Not drawn: it would take more than ' + GRAPH_READS_MAX + ' reads of GitHub, the most this page makes for one draw; stopped at ' + draw.reading + '.', true);
-      else graphWords('Not drawn: reading ' + draw.reading + ' failed. ' + e.message, true);
+      if (e.cap) graphWords('Not drawn: it would take more than ' + GRAPH_READS_MAX + ' reads of GitHub, the most this page makes for one draw; stopped at ' + draw.reading + '. Closing the epics that are done makes it fewer.', true);
+      else if (e.reserve) graphWords('Not drawn: GitHub says this token has ' + draw.left + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for its other sections; stopped at ' + draw.reading + '. Press Refresh once GitHub\'s hourly limit has reset.', true);
+      else if (draw.reading) graphWords('Not drawn: reading ' + draw.reading + ' failed. ' + e.message, true);
+      // the reads ended, so what failed is the page's own laying out of them
+      else graphWords('Not drawn: ' + e.message, true);
       failed(s, 'the dependencies', e);
       if (s.ready) summary();
     });
+  }
+  // what the state says where the open list was cut, since an epic or goal beyond the cut is not drawn
+  function graphCut(draw) {
+    return draw.s.issues.more ? ' Only the first ' + draw.s.issues.length + ' open issues were read, so an epic or goal beyond them is not drawn.' : '';
   }
 
   /* ---------- the charts and their tables ---------- */
@@ -2261,7 +2337,7 @@
   }
   function graphIssueLink(draw, n) {
     var it = graphIssueOf(draw, n);
-    return link(it.html_url || 'https://github.com/' + draw.s.repo + '/issues/' + n, '#' + n);
+    return link(it.html_url || 'https://github.com/' + draw.repo + '/issues/' + n, '#' + n);
   }
   // what blocks a task, in words: the blockers the reads brought, a closed one said so, else the
   // count GitHub's summary gives where no read was made for it
@@ -2294,7 +2370,7 @@
       var tr = el('tr');
       add(tr, add(el('td'), graphIssueLink(draw, it.number)));
       add(tr, el('td', '', it.title));
-      add(tr, el('td', '', GRAPH_STATES[graphClass(it)]));
+      add(tr, el('td', '', GRAPH_STATES[graphClass(it, draw.claimed)]));
       add(tr, relationCell(draw, it));
       add(tr, el('td', '', workerOf(it.labels)));
       add(tr, add(el('td', 'admin__act'), btn('Centre its row', true, function () { graphFocus(it.number); })));
@@ -2302,14 +2378,14 @@
     });
     add(table, body);
     add(box, add(el('div', 'table-scroll'), table));
-    return { host: host, text: graphChart(chart.nodes, chart.edges) };
+    return { host: host, heading: heading, text: graphChart(draw, chart.nodes, chart.edges) };
   }
   function graphRender(draw) {
     var box = $('cp-graph');
     var goals = graphWithSubIssues(draw, 'goal'), epics = graphWithSubIssues(draw, 'epic');
     clear(box);
     if (!goals.length && !epics.length) {
-      graphWords('Nothing to draw: ' + plural(draw.reads, 'read') + ' of GitHub found no sub-issue of an open epic or goal in this repository.');
+      graphWords('Nothing to draw yet: ' + plural(draw.reads, 'read') + ' of GitHub found no sub-issue of an open epic or goal in this repository. ' + GRAPH_START + graphCut(draw));
       return;
     }
     var charts = [];
@@ -2317,10 +2393,20 @@
     epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy)); });
     var drawn = 'from ' + plural(draw.reads, 'read') + ' of GitHub: ' + plural(goals.length, 'goal') + ' and ' + plural(epics.length, 'epic') + ' with sub-issues';
     graphWords('Drawing ' + drawn + '...');
+    // each chart is drawn on its own, so one Mermaid cannot draw leaves the others drawn and is
+    // named, its table standing in for it
     loadMermaid().then(function (m) {
-      return charts.reduce(function (p, chart) { return p.then(function () { if (graphLive(draw)) return graphDraw(m, chart); }); }, Promise.resolve());
-    }).then(function () {
-      if (graphLive(draw)) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the tasks above.');
+      var undrawn = [];
+      return charts.reduce(function (p, chart) {
+        return p.then(function () {
+          if (!graphLive(draw)) return;
+          return graphDraw(m, chart).catch(function (e) { undrawn.push(chart.heading + ': ' + e.message); });
+        });
+      }, Promise.resolve()).then(function () { return undrawn; });
+    }).then(function (undrawn) {
+      if (!graphLive(draw)) return;
+      if (!undrawn.length) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the tasks above.' + graphCut(draw));
+      else graphWords('Drawn ' + (charts.length - undrawn.length) + ' of ' + plural(charts.length, 'chart') + ' ' + drawn + '; ' + plural(undrawn.length, 'chart') + ' could not be drawn (' + undrawn.join('; ') + '), and the table under ' + (undrawn.length === 1 ? 'it' : 'each') + ' says the same.' + graphCut(draw), true);
     }, function (e) {
       if (graphLive(draw)) graphWords('The charts could not be drawn (' + e.message + '); the tables say the same ' + drawn + '.', true);
     });
@@ -2332,12 +2418,16 @@
       var s = document.createElement('script');
       s.src = MERMAID_JS;
       s.onload = function () { window.mermaid ? resolve(window.mermaid) : reject(new Error('the drawing script loaded without its function')); };
-      s.onerror = function () { mermaidLoad = null; reject(new Error('the drawing script could not be loaded; press Refresh to try again')); };
+      s.onerror = function () { reject(new Error('the drawing script could not be loaded; press Refresh to try again')); };
       document.head.appendChild(s);
     }).then(function (m) {
       // nothing is drawn on load, no HTML of a label is trusted, and a failed drawing leaves no picture of its own on the page
       m.initialize({ startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true });
       return m;
+    }).catch(function (e) {
+      // whatever failed, the next draw tries the load again, as the words tell the person Refresh does
+      mermaidLoad = null;
+      throw e;
     });
     return mermaidLoad;
   }
@@ -2363,11 +2453,29 @@
   function graphFocus(n) {
     $('cp-graph-said').textContent = assistantFocus(n);
   }
+  // the charts the board's own text holds, its Dependencies section, drawn in place where the
+  // renderer put them (markdown), each on its own, so the board box never shows a chart as text
+  function boardCharts(s, box) {
+    var hosts = Array.prototype.slice.call(box.querySelectorAll('.control__chart[data-chart]'));
+    if (!hosts.length) return;
+    function undrawn(host, e) { host.textContent = 'This chart could not be drawn (' + e.message + '); the board on GitHub has it as text.'; }
+    loadMermaid().then(function (m) {
+      return hosts.reduce(function (p, host) {
+        return p.then(function () {
+          if (stale(s)) return;
+          return graphDraw(m, { host: host, text: host.getAttribute('data-chart') }).catch(function (e) { undrawn(host, e); });
+        });
+      }, Promise.resolve());
+    }).catch(function (e) { if (!stale(s)) hosts.forEach(function (host) { undrawn(host, e); }); });
+  }
+  // a node pressed, in the section's own charts or in the board's
   function initGraph() {
-    $('cp-graph').addEventListener('click', function (e) {
-      var node = e.target && e.target.closest ? e.target.closest('g.node') : null;
-      var m = node ? /-flowchart-i([0-9]{1,9})-[0-9]+$/.exec(node.id || '') : null;
-      if (m) graphFocus(Number(m[1]));
+    ['cp-graph', 'cp-board'].forEach(function (id) {
+      $(id).addEventListener('click', function (e) {
+        var node = e.target && e.target.closest ? e.target.closest('g.node') : null;
+        var m = node ? /-flowchart-i([0-9]{1,9})-[0-9]+$/.exec(node.id || '') : null;
+        if (m) graphFocus(Number(m[1]));
+      });
     });
   }
 
