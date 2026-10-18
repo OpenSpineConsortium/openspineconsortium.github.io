@@ -5154,7 +5154,7 @@
   // /drive/connect and the Microsoft app registration accept, the same page GitHub returns to
   var DRIVE_RETURN = '/symphony/control/';
   var GRAPH = 'https://graph.microsoft.com/v1.0';
-  var GRAPH_SELECT = '?$select=id,name,folder,file,size,parentReference,lastModifiedDateTime&$top=200';
+  var GRAPH_SELECT = '?$select=id,name,folder,file,size,parentReference,lastModifiedDateTime,webUrl&$top=200';
   var GRAPH_PAGES = 10;
   var MS_AUTHORIZE = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
   var MS_SCOPE = 'Files.ReadWrite offline_access';
@@ -5269,6 +5269,7 @@
     pickedOrder = [];
     prefilled = '';
     crumbs = [];
+    resetExplorer();
     tracked = null;
     listedFor = null;
     foldersFor = null;
@@ -5438,6 +5439,7 @@
       var who = d.owner && d.owner.user ? d.owner.user.displayName : '';
       drive.owner = (who || '') + (d.driveType ? ' (' + d.driveType + ')' : '');
       drive.id = typeof d.id === 'string' ? d.id : '';
+      drive.type = typeof d.driveType === 'string' ? d.driveType : '';
       showConnectState();
     }).catch(function () { /* the name is a nicety; the list says the rest */ });
   }
@@ -5468,69 +5470,455 @@
     // the drive's list shows what is ticked, whichever answered first, the drive's or the repository's
     Array.prototype.forEach.call(document.querySelectorAll('#fd-items input[data-id]'), function (box) { box.checked = !!picked[box.getAttribute('data-id')]; });
   }
-  function kindOf(it) {
-    if (it.folder) return 'folder' + (typeof it.folder.childCount === 'number' ? ', ' + plural(it.folder.childCount, 'item') : '');
-    if (typeof it.size === 'number') return it.size < 1024 ? it.size + ' B' : it.size < 1048576 ? Math.round(it.size / 1024) + ' KB' : (it.size / 1048576).toFixed(1) + ' MB';
+  /* ---------- the drive's list, drawn as a file explorer ---------- */
+  // The list reads as Windows' File Explorer does: a folder tree on the left, an address bar with
+  // Back, Forward and Up, the folder's items in Details or Large icons, sorted by a column's
+  // heading, and a status bar. A double click opens a folder, or a Word, Excel or PowerPoint file
+  // in its desktop app through Office's own address scheme, where it is edited in place on the
+  // drive; any other file opens on OneDrive's own page. Nothing here writes to the drive: the
+  // ticks are what Track records, as before.
+  var OFFICE_APPS = {
+    'ms-word': ['doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'rtf', 'odt'],
+    'ms-excel': ['xls', 'xlsx', 'xlsm', 'xlsb', 'xltx', 'xltm', 'csv', 'ods'],
+    'ms-powerpoint': ['ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'pot', 'potx', 'odp'],
+    'ms-visio': ['vsd', 'vsdx']
+  };
+  var FILE_KINDS = [
+    ['word', 'Word document', OFFICE_APPS['ms-word']],
+    ['excel', 'Excel workbook', OFFICE_APPS['ms-excel']],
+    ['powerpoint', 'PowerPoint presentation', OFFICE_APPS['ms-powerpoint']],
+    ['pdf', 'PDF document', ['pdf']],
+    ['image', 'Image', ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'tif', 'tiff', 'webp', 'heic', 'svg']],
+    ['video', 'Video', ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv']],
+    ['audio', 'Audio', ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac']],
+    ['archive', 'Compressed folder', ['zip', '7z', 'rar', 'tar', 'gz', 'tgz']],
+    ['code', 'Source code', ['py', 'js', 'ts', 'r', 'm', 'c', 'h', 'cpp', 'java', 'cs', 'go', 'rs', 'sh', 'ipynb', 'json', 'yml', 'yaml', 'html', 'css', 'sql', 'tex', 'md']],
+    ['text', 'Text document', ['txt', 'log']]
+  ];
+  // the colour of each kind's mark, Office's own where it has one
+  var KIND_COLORS = { folder: '#E8B33D', word: '#2B5797', excel: '#1E7145', powerpoint: '#C4421A', pdf: '#C1272D', image: '#7A4FB3', video: '#B03A7A', audio: '#2E8B8B', archive: '#8A6D3B', code: '#3C6E9E', text: '#6B6B6B', file: '#6B6B6B' };
+  var KIND_LETTERS = { word: 'W', excel: 'X', powerpoint: 'P', pdf: 'PDF', image: '', video: '', audio: '', archive: 'ZIP', code: '</>', text: 'TXT', file: '' };
+  var explorer = { view: 'details', sort: 'name', down: false, filter: '', back: [], forward: [], items: [], selected: '', open: Object.create(null), cache: Object.create(null), cacheFor: null };
+
+  function extOf(name) {
+    var m = /\.([A-Za-z0-9]{1,8})$/.exec(String(name || ''));
+    return m ? m[1].toLowerCase() : '';
+  }
+  function kindKey(it) {
+    if (it.folder) return 'folder';
+    var ext = extOf(it.name);
+    for (var i = 0; i < FILE_KINDS.length; i++) if (FILE_KINDS[i][2].indexOf(ext) >= 0) return FILE_KINDS[i][0];
     return 'file';
+  }
+  function kindName(it) {
+    if (it.folder) return 'File folder';
+    var key = kindKey(it);
+    for (var i = 0; i < FILE_KINDS.length; i++) if (FILE_KINDS[i][0] === key) return FILE_KINDS[i][1];
+    var ext = extOf(it.name);
+    return ext ? ext.toUpperCase() + ' file' : 'File';
+  }
+  function sizeOf(it) {
+    if (it.folder) return typeof it.folder.childCount === 'number' ? plural(it.folder.childCount, 'item') : '';
+    if (typeof it.size !== 'number') return '';
+    return it.size < 1024 ? it.size + ' B' : it.size < 1048576 ? Math.max(1, Math.round(it.size / 1024)).toLocaleString('en-US') + ' KB' : (it.size / 1048576).toFixed(1) + ' MB';
+  }
+  function officeApp(it) {
+    if (it.folder) return '';
+    var ext = extOf(it.name);
+    for (var app in OFFICE_APPS) if (OFFICE_APPS[app].indexOf(ext) >= 0) return app;
+    return '';
+  }
+  // the address an Office desktop app opens a drive's file at: a personal OneDrive's file by the
+  // drive's id and the file's path under d.docs.live.net, where Word, Excel and PowerPoint open it
+  // for editing and save back to it; a work or school drive's file at its own SharePoint address
+  function officeAddress(it) {
+    if (drive && drive.type === 'personal') {
+      var ref = it.parentReference || {};
+      var path = typeof ref.path === 'string' ? ref.path.replace(/^\/drive\/root:?/, '') : null;
+      var id = String(ref.driveId || drive.id || '');
+      if (path !== null && /^[0-9A-Za-z!]+$/.test(id)) {
+        // Graph may give the path percent-encoded; each segment is read plain, then encoded once
+        var parts = path.split('/').filter(Boolean).map(plainSegment).concat([String(it.name || '')]);
+        return 'https://d.docs.live.net/' + id + '/' + parts.map(encodeURIComponent).join('/');
+      }
+    }
+    return httpsOnly(it.webUrl);
+  }
+  function plainSegment(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
+  function httpsOnly(url) { return typeof url === 'string' && /^https:\/\//.test(url) ? url : ''; }
+  function openInBrowser(it) {
+    var url = httpsOnly(it.webUrl);
+    if (!url) { say('OneDrive gave no address for ' + it.name + '.', true); return; }
+    window.open(url, '_blank', 'noopener');
+  }
+  function openInApp(it) {
+    var app = officeApp(it), url = app ? officeAddress(it) : '';
+    if (!url) { openInBrowser(it); return; }
+    // ofe|u| is Office's "open for editing" command; the browser asks once whether to open the app
+    var a = el('a');
+    a.href = app + ':ofe|u|' + url;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    say('Opening ' + it.name + ' in ' + appName(app) + '. If nothing opens, the app is not installed here: right-click the file and choose Open in the browser.');
+  }
+  function appName(app) { return { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint', 'ms-visio': 'Visio' }[app] || 'its app'; }
+  function openItem(it) {
+    if (it.folder) { go(crumbs.concat([{ id: String(it.id), name: String(it.name || '') }])); return; }
+    if (officeApp(it)) openInApp(it); else openInBrowser(it);
+  }
+
+  // a mark for an item's kind, drawn here, so no picture comes from anywhere; its letters are the
+  // stylesheet's, from data-letter, so they are never part of the name's text
+  var SVG = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS(SVG, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function kindIcon(it, size) {
+    var key = kindKey(it), color = KIND_COLORS[key] || KIND_COLORS.file;
+    var mark = el('span', 'fx__mark');
+    mark.style.setProperty('--s', size + 'px');
+    mark.setAttribute('aria-hidden', 'true');
+    var s = svgEl('svg', { viewBox: '0 0 48 48', width: size, height: size, 'class': 'fx__icon' });
+    mark.appendChild(s);
+    if (key === 'folder') {
+      s.appendChild(svgEl('path', { d: 'M4 12a3 3 0 0 1 3-3h11l4 4h19a3 3 0 0 1 3 3v21a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z', fill: color }));
+      s.appendChild(svgEl('path', { d: 'M4 18h40v19a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z', fill: '#F4CB5E' }));
+      return mark;
+    }
+    s.appendChild(svgEl('path', { d: 'M10 4h20l10 10v28a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', fill: '#FFFFFF', stroke: '#9AA0A6', 'stroke-width': '1.5' }));
+    s.appendChild(svgEl('path', { d: 'M30 4v8a2 2 0 0 0 2 2h8', fill: 'none', stroke: '#9AA0A6', 'stroke-width': '1.5' }));
+    s.appendChild(svgEl('rect', { x: '4', y: '24', width: '30', height: '14', rx: '2', fill: color }));
+    var letter = KIND_LETTERS[key];
+    if (letter) { mark.setAttribute('data-letter', letter); if (letter.length > 2) mark.classList.add('fx__mark--long'); }
+    return mark;
+  }
+
+  // what the list holds, read once per folder per connection and kept until Refresh; the tree and
+  // the list share one read of a folder, the one in flight included
+  function cachedRead(id) {
+    if (explorer.cacheFor !== drive) { explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.cacheFor = drive; }
+    return explorer.cache[id || 'root'];
+  }
+  function readChildren(id) {
+    var key = id || 'root', have = cachedRead(id);
+    if (have) return have;
+    var url = id ? '/me/drive/items/' + encodeURIComponent(id) + '/children' + GRAPH_SELECT : '/me/drive/root/children' + GRAPH_SELECT;
+    var d = drive;
+    var read = graphChildren(url).then(function (items) {
+      var kept = items.filter(function (it) { return it && typeof it === 'object'; });
+      kept.cut = !!items.cut;
+      return kept;
+    });
+    explorer.cache[key] = read;
+    read.catch(function () { if (d === drive && explorer.cache[key] === read) delete explorer.cache[key]; });
+    return read;
+  }
+  function resetExplorer() {
+    explorer.back = []; explorer.forward = []; explorer.items = []; explorer.selected = ''; explorer.filter = '';
+    explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.cacheFor = null;
+  }
+  // moving to a folder: the path walked is kept for Back, and Forward is cleared, as Explorer does
+  function go(path) {
+    explorer.back.push(crumbs.slice());
+    explorer.forward = [];
+    crumbs = path;
+    explorer.selected = '';
+    explorer.filter = '';
+    listFolder();
+  }
+  function goBack() { if (!explorer.back.length) return; explorer.forward.push(crumbs.slice()); crumbs = explorer.back.pop(); explorer.selected = ''; explorer.filter = ''; listFolder(); }
+  function goForward() { if (!explorer.forward.length) return; explorer.back.push(crumbs.slice()); crumbs = explorer.forward.pop(); explorer.selected = ''; explorer.filter = ''; listFolder(); }
+  function goUp() { if (crumbs.length) go(crumbs.slice(0, -1)); }
+
+  function toolButton(label, title, enabled, onClick) {
+    var b = btn(label, true, onClick);
+    b.className = 'fx__tool';
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b.disabled = !enabled;
+    return b;
   }
   function drawBrowser() {
     var box = $('fd-browser');
     clear(box);
+    hideMenu();
     if (!drive) { none(box, 'Connect OneDrive first: the list of your files and folders is read as you, in this browser, once the drive is connected.'); return; }
-    var head = el('p', 'folders__crumbs');
-    add(head, btn('My files', true, function () { crumbs = []; listFolder(); }));
+    var win = el('div', 'fx');
+    // the toolbar: Back, Forward, Up, Refresh, the address, the search box and the view
+    var bar = el('div', 'fx__bar');
+    add(bar, toolButton('←', 'Back (Alt+Left)', explorer.back.length > 0, goBack),
+      toolButton('→', 'Forward (Alt+Right)', explorer.forward.length > 0, goForward),
+      toolButton('↑', 'Up to the folder above (Backspace)', crumbs.length > 0, goUp),
+      toolButton('↻', 'Refresh', true, function () { delete explorer.cache[crumbs.length ? crumbs[crumbs.length - 1].id : 'root']; listFolder(); }));
+    var address = el('nav', 'fx__address folders__crumbs');
+    address.setAttribute('aria-label', 'Where you are in the drive');
+    add(address, btn('OneDrive', true, function () { if (crumbs.length) go([]); }));
     crumbs.forEach(function (c, i) {
-      add(head, el('span', '', '/'), btn(c.name, true, function () { crumbs = crumbs.slice(0, i + 1); listFolder(); }));
+      add(address, el('span', 'fx__sep', '›'), btn(c.name, true, function () { if (i < crumbs.length - 1) go(crumbs.slice(0, i + 1)); }));
     });
-    box.appendChild(head);
-    var scroll = el('div', 'table-scroll');
-    var table = el('table', 'admin__stack');
-    table.id = 'fd-items';
-    var tr = el('tr');
-    ['Tick', 'Name', 'Kind', 'Changed', ''].forEach(function (h) { add(tr, el('th', '', h)); });
-    add(table, add(el('thead'), tr));
-    table.appendChild(el('tbody'));
-    box.appendChild(add(scroll, table));
-    var reading = el('tr');
-    add(reading, el('td', 'admin__none', 'Reading ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'your files') + '...')).firstChild.colSpan = 5;
-    table.querySelector('tbody').appendChild(reading);
+    bar.appendChild(address);
+    var search = el('input', 'fx__search');
+    search.type = 'search';
+    search.id = 'fd-search';
+    search.placeholder = 'Search ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'OneDrive');
+    search.setAttribute('aria-label', search.placeholder);
+    search.value = explorer.filter;
+    search.addEventListener('input', function () { explorer.filter = search.value; drawItems(); });
+    bar.appendChild(search);
+    var views = el('div', 'fx__views');
+    [['details', 'Details'], ['icons', 'Large icons']].forEach(function (v) {
+      var b = toolButton(v[1], v[1] + ' view', true, function () { explorer.view = v[0]; drawBrowser(); drawItems(); });
+      b.setAttribute('aria-pressed', String(explorer.view === v[0]));
+      views.appendChild(b);
+    });
+    win.appendChild(bar);
+    var body = el('div', 'fx__body');
+    var tree = el('div', 'fx__tree');
+    tree.id = 'fd-tree';
+    tree.setAttribute('role', 'tree');
+    tree.setAttribute('aria-label', 'Folders');
+    body.appendChild(tree);
+    var main = el('div', 'fx__main');
+    main.id = 'fd-main';
+    main.tabIndex = 0;
+    main.setAttribute('aria-label', 'Items in ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'OneDrive'));
+    main.addEventListener('keydown', onExplorerKey);
+    main.addEventListener('contextmenu', function (ev) { if (ev.target === main) ev.preventDefault(); });
+    none(main, 'Reading ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'your files') + '...');
+    body.appendChild(main);
+    win.appendChild(body);
+    // the status bar, with the two views at its right as Explorer keeps them
+    var foot = el('div', 'fx__foot');
+    var status = el('div', 'fx__status');
+    status.id = 'fd-status';
+    status.setAttribute('aria-live', 'polite');
+    add(foot, status, views);
+    win.appendChild(foot);
+    box.appendChild(win);
+    drawTree();
   }
   function listFolder() {
     var asked = ++listing;
     drawBrowser();
     if (!heldDrive()) return;
     var here = crumbs.length ? crumbs[crumbs.length - 1] : null;
-    var url = here ? '/me/drive/items/' + encodeURIComponent(here.id) + '/children' + GRAPH_SELECT : '/me/drive/root/children' + GRAPH_SELECT;
-    graphChildren(url).then(function (items) {
+    readChildren(here ? here.id : '').then(function (items) {
       if (asked !== listing) return;
-      var body = document.querySelector('#fd-items tbody');
-      clear(body);
-      var folders = items.filter(function (it) { return it && it.folder; }), files = items.filter(function (it) { return it && !it.folder; });
-      folders.concat(files).forEach(function (it) { body.appendChild(itemRow(it)); });
-      if (!items.length) { var tr = el('tr'); add(tr, el('td', 'admin__none', 'This folder is empty.')).firstChild.colSpan = 5; body.appendChild(tr); }
-      if (items.cut) { var cut = el('tr'); add(cut, el('td', 'admin__none', 'More than ' + (GRAPH_PAGES * 200) + ' items are here; only the first are listed. Tick the folder itself to track them all.')).firstChild.colSpan = 5; body.appendChild(cut); }
+      explorer.items = items;
+      drawItems();
     }).catch(function (e) {
       if (asked !== listing) return;
-      var body = document.querySelector('#fd-items tbody');
-      if (body) { clear(body); var tr = el('tr'); add(tr, el('td', 'admin__none', 'The list could not be read: ' + e.message)).firstChild.colSpan = 5; body.appendChild(tr); }
+      var main = $('fd-main');
+      if (main) { clear(main); none(main, 'The list could not be read: ' + e.message); }
     });
   }
-  function itemRow(it) {
-    var tr = el('tr');
+  function sortedItems() {
+    var q = explorer.filter.trim().toLowerCase();
+    var list = explorer.items.filter(function (it) { return !q || String(it.name || '').toLowerCase().indexOf(q) >= 0; });
+    var key = explorer.sort, dir = explorer.down ? -1 : 1;
+    function value(it) {
+      if (key === 'changed') return it.lastModifiedDateTime || '';
+      if (key === 'type') return kindName(it).toLowerCase();
+      if (key === 'size') return it.folder ? (it.folder.childCount || 0) : (it.size || 0);
+      return String(it.name || '').toLowerCase();
+    }
+    return list.sort(function (a, b) {
+      // folders come first whichever column sorts, as Explorer keeps them
+      if (!!a.folder !== !!b.folder) return a.folder ? -1 : 1;
+      var x = value(a), y = value(b);
+      return (x < y ? -1 : x > y ? 1 : 0) * dir;
+    });
+  }
+  function drawItems() {
+    var main = $('fd-main');
+    if (!main) return;
+    clear(main);
+    var list = sortedItems();
+    if (explorer.view === 'icons') main.appendChild(iconGrid(list)); else main.appendChild(detailsTable(list));
+    if (!explorer.items.length) none(main, 'This folder is empty.');
+    else if (!list.length) none(main, 'Nothing here matches "' + explorer.filter + '".');
+    if (explorer.items.cut) none(main, 'More than ' + (GRAPH_PAGES * 200) + ' items are here; only the first are listed. Tick the folder itself to track them all.');
+    drawStatus(list);
+    drawPicked();
+  }
+  function drawStatus(list) {
+    var status = $('fd-status');
+    if (!status) return;
+    var ticked = list.filter(function (it) { return picked[String(it.id || '')]; }).length;
+    status.textContent = plural(list.length, 'item') + (ticked ? '   ' + ticked + ' ticked' : '') + '   Double-click to open; right-click for more.';
+  }
+  function tickBox(it) {
     var box = el('input');
     box.type = 'checkbox';
     box.setAttribute('data-id', String(it.id || ''));
     box.checked = !!picked[String(it.id || '')];
     box.setAttribute('aria-label', 'Track ' + String(it.name || ''));
-    box.addEventListener('change', function () { tick(it, box.checked); });
-    add(tr, add(el('td'), box));
-    add(tr, add(el('td'), el(it.folder ? 'strong' : 'span', '', String(it.name || ''))));
-    add(tr, el('td', '', kindOf(it)));
-    add(tr, it.lastModifiedDateTime ? add(el('td'), timeEl(it.lastModifiedDateTime)) : el('td', '', ''));
-    var act = el('td');
-    if (it.folder) add(act, btn('Open', true, function () { crumbs.push({ id: String(it.id), name: String(it.name || '') }); listFolder(); }));
-    add(tr, act);
-    return tr;
+    box.addEventListener('change', function () { tick(it, box.checked); drawStatus(sortedItems()); });
+    box.addEventListener('dblclick', function (ev) { ev.stopPropagation(); });
+    return box;
+  }
+  function wire(node, it) {
+    node.setAttribute('data-item', String(it.id || ''));
+    node.addEventListener('click', function (ev) { if (ev.target.tagName !== 'INPUT') select(it.id); });
+    node.addEventListener('dblclick', function (ev) { if (ev.target.tagName !== 'INPUT') openItem(it); });
+    node.addEventListener('contextmenu', function (ev) { ev.preventDefault(); select(it.id); showMenu(it, ev.clientX, ev.clientY); });
+    if (explorer.selected === String(it.id)) node.classList.add('fx__selected');
+    return node;
+  }
+  function detailsTable(list) {
+    var scroll = el('div', 'table-scroll');
+    var table = el('table', 'fx__details');
+    table.id = 'fd-items';
+    var tr = el('tr');
+    add(tr, el('th', 'fx__tickh', ''));
+    [['name', 'Name'], ['changed', 'Date modified'], ['type', 'Type'], ['size', 'Size']].forEach(function (h) {
+      var th = el('th');
+      var b = btn(h[1] + (explorer.sort === h[0] ? (explorer.down ? ' ▾' : ' ▴') : ''), true, function () {
+        explorer.down = explorer.sort === h[0] ? !explorer.down : false;
+        explorer.sort = h[0];
+        drawItems();
+      });
+      b.className = 'fx__sort';
+      th.setAttribute('aria-sort', explorer.sort === h[0] ? (explorer.down ? 'descending' : 'ascending') : 'none');
+      add(tr, add(th, b));
+    });
+    add(table, add(el('thead'), tr));
+    var body = el('tbody');
+    list.forEach(function (it) {
+      var row = el('tr');
+      add(row, add(el('td'), tickBox(it)));
+      add(row, add(el('td', 'fx__name'), add(el('span', 'fx__namewrap'), kindIcon(it, 18), el(it.folder ? 'strong' : 'span', '', String(it.name || '')))));
+      add(row, it.lastModifiedDateTime ? add(el('td'), timeEl(it.lastModifiedDateTime)) : el('td', '', ''));
+      add(row, el('td', '', kindName(it)));
+      add(row, el('td', 'fx__size', sizeOf(it)));
+      body.appendChild(wire(row, it));
+    });
+    table.appendChild(body);
+    return add(scroll, table);
+  }
+  function iconGrid(list) {
+    var grid = el('div', 'fx__grid');
+    grid.id = 'fd-items';
+    list.forEach(function (it) {
+      var tile = el('div', 'fx__tile');
+      tile.title = String(it.name || '') + '\n' + kindName(it) + (sizeOf(it) ? ', ' + sizeOf(it) : '');
+      add(tile, tickBox(it), kindIcon(it, 56), el('span', 'fx__label', String(it.name || '')));
+      grid.appendChild(wire(tile, it));
+    });
+    return grid;
+  }
+  function select(id) {
+    explorer.selected = String(id || '');
+    Array.prototype.forEach.call(document.querySelectorAll('#fd-main [data-item]'), function (n) {
+      n.classList.toggle('fx__selected', n.getAttribute('data-item') === explorer.selected);
+    });
+  }
+  function onExplorerKey(ev) {
+    var list = sortedItems();
+    var at = list.findIndex(function (it) { return String(it.id) === explorer.selected; });
+    var step = explorer.view === 'icons' ? Math.max(1, Math.floor(($('fd-main').clientWidth || 600) / 112)) : 1;
+    if (ev.altKey && ev.key === 'ArrowLeft') { ev.preventDefault(); goBack(); return; }
+    if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); goForward(); return; }
+    if (ev.target.tagName === 'INPUT' && ev.key !== 'Enter') return;
+    var next = -1;
+    if (ev.key === 'ArrowDown') next = at + step;
+    else if (ev.key === 'ArrowUp') next = at < 0 ? 0 : at - step;
+    else if (ev.key === 'ArrowRight' && explorer.view === 'icons') next = at + 1;
+    else if (ev.key === 'ArrowLeft' && explorer.view === 'icons') next = at - 1;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = list.length - 1;
+    else if (ev.key === 'Enter' && at >= 0) { ev.preventDefault(); openItem(list[at]); return; }
+    else if (ev.key === ' ' && at >= 0) { ev.preventDefault(); var it = list[at]; tick(it, !picked[String(it.id)]); drawStatus(list); return; }
+    else if (ev.key === 'Backspace') { ev.preventDefault(); goUp(); return; }
+    else if (ev.key === 'ContextMenu' && at >= 0) { ev.preventDefault(); var n = document.querySelector('#fd-main [data-item="' + CSS.escape(explorer.selected) + '"]'); var r = n ? n.getBoundingClientRect() : { left: 0, bottom: 0 }; showMenu(list[at], r.left + 20, r.bottom); return; }
+    else return;
+    ev.preventDefault();
+    if (!list.length) return;
+    next = Math.max(0, Math.min(list.length - 1, next));
+    select(list[next].id);
+    var node = document.querySelector('#fd-main [data-item="' + CSS.escape(explorer.selected) + '"]');
+    if (node) node.scrollIntoView({ block: 'nearest' });
+  }
+
+  // the menu a right click opens on an item, Explorer's few verbs that fit a drive read here
+  function hideMenu() { var m = $('fd-menu'); if (m) m.remove(); }
+  function showMenu(it, x, y) {
+    hideMenu();
+    var menu = el('div', 'fx__menu');
+    menu.id = 'fd-menu';
+    menu.setAttribute('role', 'menu');
+    function entry(label, act) {
+      var b = btn(label, true, function () { hideMenu(); act(); });
+      b.setAttribute('role', 'menuitem');
+      menu.appendChild(b);
+    }
+    if (it.folder) entry('Open', function () { openItem(it); });
+    var app = officeApp(it);
+    if (app) entry('Open in ' + appName(app), function () { openInApp(it); });
+    if (!it.folder) entry('Open in the browser', function () { openInBrowser(it); });
+    if (it.folder && httpsOnly(it.webUrl)) entry('Open in OneDrive', function () { openInBrowser(it); });
+    var on = !!picked[String(it.id || '')];
+    entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
+    document.body.appendChild(menu);
+    var w = menu.offsetWidth, h = menu.offsetHeight;
+    menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
+    menu.style.top = Math.max(4, Math.min(y, window.innerHeight - h - 4)) + 'px';
+    var first = menu.querySelector('button');
+    if (first) first.focus();
+    menu.addEventListener('keydown', function (ev) {
+      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement);
+      if (ev.key === 'Escape') { ev.preventDefault(); hideMenu(); var main = $('fd-main'); if (main) main.focus(); }
+      else if (ev.key === 'ArrowDown') { ev.preventDefault(); items[(i + 1) % items.length].focus(); }
+      else if (ev.key === 'ArrowUp') { ev.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    });
+    setTimeout(function () {
+      document.addEventListener('mousedown', function away(ev) { if (!menu.contains(ev.target)) { hideMenu(); document.removeEventListener('mousedown', away); } });
+    }, 0);
+  }
+
+  // the folder tree: the drive's folders, each opened a level at a time, the path shown open
+  function drawTree() {
+    var tree = $('fd-tree');
+    if (!tree) return;
+    clear(tree);
+    var root = treeNode({ id: '', name: 'OneDrive' }, [], 0);
+    tree.appendChild(root);
+  }
+  function treeNode(folder, path, depth) {
+    var wrap = el('div', 'fx__branch');
+    var row = el('div', 'fx__node');
+    row.setAttribute('role', 'treeitem');
+    row.style.paddingLeft = (4 + depth * 14) + 'px';
+    var key = folder.id || 'root';
+    var here = crumbs.length ? crumbs[crumbs.length - 1].id : '';
+    var onPath = folder.id === '' || crumbs.some(function (c) { return c.id === folder.id; });
+    var open = explorer.open[key] !== undefined ? explorer.open[key] : onPath;
+    var twisty = btn(open ? '▾' : '▸', true, function (ev) { ev.stopPropagation(); explorer.open[key] = !open; drawTree(); });
+    twisty.className = 'fx__twisty';
+    twisty.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + folder.name);
+    var name = btn('', true, function () { if (folder.id !== here) go(path); });
+    name.className = 'fx__nodename';
+    add(name, kindIcon({ folder: {} }, 16), el('span', '', folder.name));
+    if (folder.id === here) { row.classList.add('fx__current'); row.setAttribute('aria-current', 'true'); }
+    row.setAttribute('aria-expanded', String(open));
+    add(row, twisty, name);
+    wrap.appendChild(row);
+    if (!open) return wrap;
+    var kids = el('div', 'fx__kids');
+    wrap.appendChild(kids);
+    function fill(items) {
+      clear(kids);
+      items.filter(function (it) { return it.folder; }).sort(function (a, b) { return String(a.name).toLowerCase() < String(b.name).toLowerCase() ? -1 : 1; }).forEach(function (f) {
+        kids.appendChild(treeNode({ id: String(f.id), name: String(f.name || '') }, path.concat([{ id: String(f.id), name: String(f.name || '') }]), depth + 1));
+      });
+    }
+    add(kids, el('div', 'fx__node fx__wait', 'Reading...')).lastChild.style.paddingLeft = (18 + depth * 14) + 'px';
+    readChildren(folder.id).then(fill, function () { clear(kids); add(kids, el('div', 'fx__node fx__wait', 'Could not be read')); });
+    return wrap;
   }
 
   /* ---------- the repository: what it tracks, the file, the secret, the sync ---------- */
@@ -5817,7 +6205,7 @@
     showConnectState();
     if (!driveConfig && !driveAsked) wireConnect();
     drawPicked();
-    if (d && listedFor !== d) { listedFor = d; nameDrive(); listFolder(); }
+    if (d && listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); listFolder(); }
     else if (!d) drawBrowser();
     if (foldersFor !== foldersRepo()) loadFolders();
   }
