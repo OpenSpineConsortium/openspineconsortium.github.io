@@ -4027,8 +4027,9 @@
   }
 
   /* ---------- the connection: Microsoft's consent, and the drive's tokens in memory ---------- */
-  // The connection belongs to the GitHub account the page named when the tab first read after it
-  // was made; another account named since, in this tab or by another tab's token, finds no drive,
+  // The connection belongs to the GitHub account the page named when Connect OneDrive was pressed,
+  // or, pressed while it named nobody, the first it names after the return; another account named
+  // since, in this tab or by another tab's token, finds no drive,
   // so one person's refresh token is never sealed into another's repository
   function heldDrive() {
     if (!drive) return null;
@@ -4110,7 +4111,7 @@
       return crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)).then(function (hash) {
         var challenge = base64url(new Uint8Array(hash));
         try {
-          sessionStorage.setItem(KEY_DRIVE, JSON.stringify({ provider: 'microsoft', state: state, verifier: verifier, back: location.search }));
+          sessionStorage.setItem(KEY_DRIVE, JSON.stringify({ provider: 'microsoft', state: state, verifier: verifier, back: location.search, login: shownLogin }));
         } catch (e) { button.disabled = false; say('This browser refuses session storage, which the connection needs to come back.', true); return; }
         location.href = MS_AUTHORIZE + '?client_id=' + encodeURIComponent(c.microsoft.client_id)
           + '&response_type=code&response_mode=query&redirect_uri=' + encodeURIComponent(driveAddress())
@@ -4157,7 +4158,7 @@
     return exchange('/drive/connect', { provider: kept.provider, code: code, code_verifier: kept.verifier, redirect_uri: driveAddress() }).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without the drive\'s access token.');
       if (!answer.refresh_token) throw new Error('Microsoft gave no refresh token, so the sync could not run: the consent did not include keeping access when you are away.');
-      drive = { provider: kept.provider, access: answer.access_token, refresh: answer.refresh_token, expiresAt: Date.now() + (Number(answer.expires_in) || 3600) * 1000, owner: '', login: '' };
+      drive = { provider: kept.provider, access: answer.access_token, refresh: answer.refresh_token, expiresAt: Date.now() + (Number(answer.expires_in) || 3600) * 1000, owner: '', id: '', login: typeof kept.login === 'string' ? kept.login : '' };
       say('OneDrive is connected for this page. Tick what to track in the list.');
       return true;
     }).catch(function (e) { say(e.message + ' Press Connect OneDrive to try again.', true); return true; });
@@ -4211,6 +4212,7 @@
       if (!drive) return;
       var who = d.owner && d.owner.user ? d.owner.user.displayName : '';
       drive.owner = (who || '') + (d.driveType ? ' (' + d.driveType + ')' : '');
+      drive.id = typeof d.id === 'string' ? d.id : '';
       showConnectState();
     }).catch(function () { /* the name is a nicety; the list says the rest */ });
   }
@@ -4517,6 +4519,10 @@
     if (!d || !d.refresh) { showConnectState(); drawBrowser(); say('Connect OneDrive first (step 1): the drive\'s refresh token is what the repository keeps.', true); return; }
     if (!pickedOrder.length) { say('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
     if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { say('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
+    // an item ticked from what the repository tracked under another Microsoft account is out of
+    // this drive's reach, and one item the sync cannot read stops every run
+    var foreign = d.id ? pickedOrder.filter(function (id) { var i = picked[id]; return i.drive && i.drive.toLowerCase() !== d.id.toLowerCase(); }) : [];
+    if (foreign.length) { say(plural(foreign.length, 'ticked item is', 'ticked items are') + ' from another OneDrive than the one connected now (' + foreign.map(function (id) { return picked[id].name; }).join(', ') + '): untick them, or Connect OneDrive again as the account that holds them.', true); return; }
     button.disabled = true;
     // the drive is the account's it was connected under, and every write of the chain goes out for
     // that account, so a token another tab puts in place meanwhile stops the chain
@@ -4533,6 +4539,14 @@
         showPublic(r.data);
         throw plain(repo + ' is public, so the files you tick, their names and the comments in them would be readable by anyone: tick the box under Track to go on, or choose a private repository in the bar.');
       }
+      return readOne('/repos/' + repo + '/contents?ref=' + encodeURIComponent(branch));
+    }).then(function (top) {
+      // the drive's files land in this folder and merge by themselves once the check passes, so a
+      // folder the repository already holds at its top, such as tools or scripts, which its checks
+      // and workflows run, is never one the drive writes into; the folder it tracks already is
+      var already = tracked && typeof tracked.folder === 'string' ? tracked.folder.toLowerCase() : '';
+      var taken = (Array.isArray(top) ? top : []).some(function (e) { var n = String(e && e.name || '').toLowerCase(); return n === folder.toLowerCase() && n !== already; });
+      if (taken) throw plain(repo + ' already has ' + folder + ' at its top, which the drive would write into and its checks may run: choose a folder name of its own, such as papers.');
       return Promise.all([loadSealer(), gh('GET', '/repos/' + repo + '/actions/secrets/public-key')]);
     }).then(function (both) {
       var sealed = toBase64(both[0](new TextEncoder().encode(refresh), fromBase64(both[1].data.key)));
