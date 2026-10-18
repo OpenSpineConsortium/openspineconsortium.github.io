@@ -69,6 +69,17 @@
 .control__board table { font-size: 0.88rem; }
 .control__board:empty::before { content: "Reading the board..."; color: var(--ink-faint); }
 
+/* ---------- the assistant: its answer, the task row it centres, the rows a filter hides ---------- */
+.control__assistant { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 10px 14px; font-size: 0.95rem; line-height: 1.55; overflow-wrap: anywhere; }
+.control .control__assistant h2, .control .control__assistant h3, .control .control__assistant h4 { font-size: 1.05rem; margin: 12px 0 6px; }
+.control__assistant p { margin: 8px 0; }
+.control__assistant ul { margin: 6px 0 10px 22px; }
+.control__assistant li { margin: 2px 0; }
+.control__assistant pre { white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.85rem; background: var(--paper-card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+.control__assistant table { font-size: 0.88rem; }
+.control tr.control__focus td { background: rgba(14, 95, 88, 0.08); box-shadow: inset 3px 0 0 var(--teal); }
+.control tr.control__off { display: none; }
+
 /* ---------- the cost page ---------- */
 .cost__facts { margin: 6px 0 14px; }
 .cost__facts th { width: 13em; color: var(--ink-soft); }

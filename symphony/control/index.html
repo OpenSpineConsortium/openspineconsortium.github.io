@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180019">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180019">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180019">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180105">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180105">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180105">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -119,6 +119,7 @@
 
     <h2 id="h-tasks">Tasks</h2>
     <p class="admin__lead">The open issues by the protocol&rsquo;s labels. An issue labelled <code>todo</code> and held by nobody is free for any session or worker to claim; one a worker&rsquo;s label names waits for that worker; a claim is a branch <code>claude/N</code>. Give an issue to a worker from its row, or ask Claude about it. Open <a id="cp-task-form-link" href="https://github.com" target="_blank" rel="noopener">the Task form on GitHub</a> for the same with GitHub&rsquo;s own page.</p>
+    <p id="cp-as-filter" class="admin__lead"></p>
     <h3>Queue: unclaimed, given to no worker</h3>
     <div class="table-scroll"><table id="cp-queue" class="admin__stack"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
     <h3>Given to workers, not yet claimed</h3>
@@ -157,6 +158,19 @@
         <div><label for="cp-prompt-target">On issue or pull request number (empty opens a new issue)</label><input id="cp-prompt-target" inputmode="numeric" placeholder="e.g. 12" maxlength="9"></div>
         <div><button id="cp-prompt-ask" type="button">Ask Claude</button> <button id="cp-prompt-task" type="button" class="quiet">Queue as a task</button></div>
       </div>
+    </div>
+
+    <h2 id="h-assistant">Assistant</h2>
+    <p class="admin__lead">Ask the repository&rsquo;s own Claude about the board: what is claimed, what is blocked, what to take next, where something stands. It answers from GitHub Actions on the repository&rsquo;s own Claude token and only reads, through an issue of yours labelled <code>assistant</code> that the page opens once per repository (&ldquo;Assistant: your login&rdquo;); each question is one comment on that issue and one run of the Claude workflow, and the answer comes back here, since the page reads the issue&rsquo;s comments every few seconds while it waits. The workflow answers only people with write access to the repository. When the answer names an issue or a board section, the page centres that row in the task tables, filters them, or scrolls to the section, and offers a link that opens the issue on GitHub; it opens nothing by itself and changes nothing in the repository.</p>
+    <div class="admin__box">
+      <p id="cp-as-state" class="admin__lead">Reading...</p>
+      <div id="cp-as-box" class="hidden">
+        <label for="cp-as-q">The question</label>
+        <textarea id="cp-as-q" rows="3"></textarea>
+        <p class="admin__bar"><button id="cp-as-ask" type="button">Ask the assistant</button> <button id="cp-as-stop" type="button" class="quiet hidden">Stop watching</button> <button id="cp-as-again" type="button" class="quiet hidden">Ask again</button></p>
+      </div>
+      <div id="cp-as-answer" class="control__answer control__assistant"></div>
+      <p id="cp-as-actions" class="admin__lead"></p>
     </div>
 
     <h2 id="h-workers">Workers</h2>
@@ -200,7 +214,7 @@
     <div class="table-scroll"><table id="cp-runs" class="admin__stack"><thead><tr><th>Workflow</th><th>Event</th><th>Branch</th><th>Outcome</th><th>Started by</th><th>Started</th></tr></thead><tbody></tbody></table></div>
 
     <h2 id="h-privacy">What this page keeps and sends</h2>
-    <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed and the plan you chose on the cost page. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does, and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+    <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, and the number of the assistant issue the page opened in each repository. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
   </div>
 </section>
 </main>
@@ -254,8 +268,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180019"></script>
+<script src="/assets/js/main.js?v=202610180105"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180019"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180105"></script>
 </body>
 </html>

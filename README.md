@@ -236,7 +236,11 @@ Beethoven has two editions, and both live under `/beethoven/`:
   on the branch `board`, rendered by a small Markdown renderer of its own), the open issues by the
   protocol's labels, the worker registry, the open pull requests with their checks and the Actions
   runs; it queues a task, gives an issue to a worker, opens the "Add a worker" issue, asks Claude
-  (an issue or a comment mentioning @claude), starts the workers, the board, the checks and the
+  (an issue or a comment mentioning @claude), asks the assistant (a question as a comment on an
+  issue "Assistant: <login>" labelled `assistant`, opened once per repository and person with
+  write access, whose read-only answer from the Claude workflow the page polls for with an ETag
+  and renders, acting only on the few lines of its `symphony` block: focus, open, filter, show),
+  starts the workers, the board, the checks and the
   metrics by hand, merges a green pull request (the token needs Contents: Read and write for that), and gives the two presses that set Symphony up on
   a repository named without the topic `symphony`. Every state is written in words and every action
   is a named button, so a browsing Claude can drive it; `?repo=OWNER/NAME` lands on one
