@@ -120,8 +120,8 @@ tr.cost__us th, tr.cost__us td { background: rgba(14, 95, 88, 0.07); }
 
 /* ============================================================
    The console (/symphony/control/): one screen under the header and
-   the Symphony strip, a dark deck in the page. A command bar, a rail
-   of tabs, and one tab at a time that scrolls inside itself, so the
+   the Symphony strip, a dark deck in the page. A side column with the
+   rail of tabs, and one tab at a time that scrolls inside itself, so the
    page does not. symphony-panel.js (initConsole) sets --console-h to
    the height left in the window. The admin styles above ride on the
    colour tokens, so the deck redefines them for its own scope.
@@ -137,8 +137,8 @@ body[data-shell] main > .console.section, .console.section {
   padding: 10px 14px 12px;
   background: var(--paper-deep);
   color: var(--ink);
-  height: var(--console-h, calc(100dvh - 140px));
-  min-height: 460px;
+  height: var(--console-h, calc(100dvh - 64px));
+  min-height: 440px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -169,7 +169,7 @@ body[data-shell] main > .console.section, .console.section {
 .console .control__signin:disabled:hover { background: var(--teal); border-color: var(--teal); }
 
 /* the message line: one line of what just happened, above everything */
-.console #msg { padding: 7px 14px; font-size: 0.92rem; border-radius: 8px; flex: 0 0 auto; max-height: 30vh; overflow: auto; border-left: 3px solid var(--teal); }
+.console #msg { border-radius: 8px; border-left: 3px solid var(--teal); }
 .console #msg.admin__warn { border-left-color: var(--ochre); }
 
 /* signed out: the sign-in card in the middle of the deck */
@@ -178,36 +178,64 @@ body[data-shell] main > .console.section, .console.section {
 .console__eyebrow { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
 .console .control__signin { font-size: 1.1rem; padding: 12px 30px; }
 
-/* signed in: the bar, then the rail and the stage */
-.console__app { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* signed in: a side column (the repository, the rail, who is signed in) and the stage, with
+   nothing above them but the site's own header, so the deck reads as one instrument and not as
+   one more bar under the site's two */
+.console__app { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .console__app.hidden { display: none; }
-.console__bar {
-  flex: 0 0 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px 16px;
-  padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card);
-}
-.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.25rem; margin: 0; white-space: nowrap; }
-.console__repo { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 300px; }
-.console__repo label { margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
-.console__repo select { font-family: var(--font-mono); font-size: 0.9rem; padding: 6px 10px; min-width: 0; }
-.console__links { margin: 0; display: flex; flex-wrap: nowrap; gap: 4px 12px; font-size: 0.86rem; min-width: 0; overflow: hidden; white-space: nowrap; flex: 0 1 auto; }
-.console__links a { border: 0; }
-.console__me { margin: 0 0 0 auto; display: flex; align-items: center; gap: 4px 8px; flex-wrap: nowrap; min-width: 0; }
-.console__me small { margin: 0; color: var(--ink-soft); max-width: 22em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console__me button { flex: 0 0 auto; white-space: nowrap; margin: 0; padding: 5px 14px; font-size: 0.85rem; }
-
-.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 10px; }
-.console__rail { display: flex; flex-direction: column; gap: 2px; overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); }
+.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 10px; }
+.console__side { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); overflow: hidden; }
+.console__id { flex: 0 0 auto; padding: 8px 10px 8px; border-bottom: 1px solid var(--line-soft); }
+.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0 0 6px; white-space: nowrap; }
+/* the select says the repository by itself; its label stays for a screen reader */
+.console__id label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.console__rail { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-x: hidden; overflow-y: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
 .console .console__rail button {
-  display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 6px 10px;
+  display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; margin: 0; padding: 3px 10px;
   border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--ink-soft);
-  font-size: 0.93rem; text-align: left;
+  font-size: 0.92rem; text-align: left;
 }
 .console .console__rail button:hover { background: rgba(60, 194, 177, 0.1); color: var(--ink); border-color: transparent; }
 .console .console__rail button[aria-selected="true"] { background: rgba(60, 194, 177, 0.16); color: var(--ink); border-color: rgba(60, 194, 177, 0.45); box-shadow: inset 3px 0 0 var(--teal); }
-.rail__icon { width: 1.3em; text-align: center; color: var(--teal); font-size: 1.05rem; line-height: 1; }
-.rail__name { flex: 1 1 auto; white-space: nowrap; }
-.rail__count { min-width: 1.7em; padding: 0 6px; border-radius: 100px; background: rgba(233, 230, 218, 0.1); color: var(--ink); font-size: 0.78rem; text-align: center; font-variant-numeric: tabular-nums; }
+.rail__icon { flex: 0 0 auto; width: 1.3em; text-align: center; color: var(--teal); font-size: 1.05rem; line-height: 1; }
+.rail__name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail__count { flex: 0 0 auto; min-width: 1.7em; padding: 0 6px; border-radius: 100px; background: rgba(233, 230, 218, 0.1); color: var(--ink); font-size: 0.78rem; text-align: center; font-variant-numeric: tabular-nums; }
 .rail__count:empty { display: none; }
+.console__links { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 0 8px; line-height: 1.4; font-size: 0.74rem; }
+.console__links span { color: var(--ink-faint); }
+.console__links a { border: 0; }
+/* who is signed in sits at the status line's right end; signed out, the gate says it */
+.console__me { flex: 0 1 auto; min-width: 0; max-width: 40%; display: flex; align-items: center; gap: 8px; }
+.console:has(#cp-app.hidden) .console__me { display: none; }
+.console__me small { margin: 0; color: var(--ink-faint); font-size: 0.74rem; line-height: 1.3; text-align: right; }
+.console__mebuttons { margin: 0; display: flex; gap: 6px; flex: 0 0 auto; }
+.console__mebuttons button { white-space: nowrap; margin: 0; padding: 4px 10px; font-size: 0.78rem; }
+
+/* the line the page speaks on is the deck's foot, always there, so a message is never off screen
+   and never covers a control; a long one (the sign-in step of Add a Claude account) scrolls inside
+   it, and Clear empties it */
+.console__status { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 0; }
+.console .console__status #msg { flex: 1 1 auto; min-width: 0; min-height: 2.1em; max-height: 26vh; overflow: auto; padding: 5px 12px; font-size: 0.88rem; }
+.console .console__status #msg:empty { display: block; }
+/* the placeholder sits outside the live region, so emptying the line announces nothing */
+.console__status { position: relative; }
+.console__status:has(#msg:empty)::before { content: "Messages from the panel show here."; position: absolute; left: 15px; top: 6px; font-size: 0.88rem; color: var(--ink-faint); pointer-events: none; }
+/* a step with controls (the sign-in of Add a Claude account) keeps them on one line where they fit */
+.console .console__status #msg > p { display: inline-block; vertical-align: middle; margin: 2px 12px 2px 0; }
+.console .console__status #msg .admin__bar { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.console .console__status #msg input { width: 22em; max-width: 100%; padding: 5px 10px; }
+.console .console__status #msg button { margin: 0; padding: 4px 14px; font-size: 0.85rem; }
+.console .console__statusx { flex: 0 0 auto; margin: 0; padding: 4px 12px; font-size: 0.8rem; }
+.console__status:has(#msg:empty) .console__statusx, .console__status:has(#msg input:not(:disabled)) .console__statusx { visibility: hidden; }
+
+/* the repository's whole name, wrapped, with the select laid over it, so a press opens the
+   browser's own list */
+.console__pick { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 5px 26px 5px 9px; }
+.console__pick::after { content: "\25BE"; position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); pointer-events: none; }
+.console__pick:hover, .console__pick:focus-within { border-color: var(--teal); }
+.console__shown { margin: 0; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.35; color: var(--ink); overflow-wrap: anywhere; }
+.console__shown span { display: block; color: var(--ink-soft); }
+.console .console__pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; margin: 0; }
 
 .console__stage { min-width: 0; min-height: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); padding: 12px 16px; display: flex; flex-direction: column; }
 .console__panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -281,26 +309,61 @@ body[data-shell] main > .console.section, .console.section {
 .console button.launch--go:hover { border-color: var(--go); background: rgba(47, 179, 106, 0.2); }
 .console button.launch--plan .launch__icon { background: rgba(233, 230, 218, 0.08); color: var(--ink); }
 
-/* a narrow laptop: the links take a second row rather than be cut */
+/* a narrow laptop: the side column and the side forms narrow */
 @media (max-width: 1279px) {
-  .console__bar { flex-wrap: wrap; }
-  .console__links { overflow: visible; }
-  .console__body { grid-template-columns: 168px minmax(0, 1fr); }
+  .console__body { grid-template-columns: 184px minmax(0, 1fr); }
   .console__panel--split { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
 }
 
 /* a phone or a short window cannot hold a deck: the page scrolls as before, each tab whole */
 @media (max-width: 900px), (max-height: 520px) {
-  .console.section { height: auto; min-height: 0; overflow: visible; }
+  body[data-shell] main > .console.section, .console.section { height: auto; min-height: 0; overflow: visible; }
   .console__body { grid-template-columns: minmax(0, 1fr); }
-  .console__rail { flex-direction: row; overflow-x: auto; padding: 4px; }
+  .console__rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 4px; }
   .console .console__rail button { width: auto; flex: 0 0 auto; padding: 7px 10px; }
   .console__panel--split, .console__panel--even { grid-template-columns: minmax(0, 1fr); }
   .console__scroll { overflow: visible; }
-  .console__me { margin-left: 0; }
-  .console__bar { flex-wrap: wrap; }
-  .console__links { flex-wrap: wrap; white-space: normal; }
+  .console__side { overflow: visible; }
+  .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
+  .console__me { max-width: none; }
 }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
 .console__help--inline > summary { display: inline-block; }
+
+/* the Tokens tab's tiles: square buttons like the Command tab's, filling a row from the left, the
+   dashed + Add Token tile last; the X sits in the tile's top right corner */
+.toks { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 140px)); gap: 10px; margin: 0 0 14px; }
+.toks__note { grid-column: 1 / -1; }
+.tok { position: relative; aspect-ratio: 1 / 1; min-width: 0; }
+.console button.tok__open {
+  margin: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 3px;
+  padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-align: left; overflow: hidden;
+  transition: transform 0.12s var(--ease), border-color 0.12s, background 0.12s;
+}
+.console button.tok__open:hover { transform: translateY(-1px); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); color: var(--ink); }
+.console button.tok__open:active { transform: translateY(1px); }
+.tok__icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: auto; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-weight: 600; }
+.tok__name { font-weight: 600; font-size: 0.95rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tok__meta, .tok__state { font-size: 0.74rem; line-height: 1.3; color: var(--ink-faint); max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tok__state--go { color: var(--go); }
+.tok__state--warn { color: var(--ochre); }
+.console button.tok__x {
+  position: absolute; top: 6px; right: 6px; margin: 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint); font-size: 1.05rem; line-height: 1;
+}
+.console button.tok__x:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
+.console button.tok--add { align-items: center; justify-content: center; border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); }
+.console button.tok--add:hover { border-color: var(--teal); color: var(--teal); background: rgba(60, 194, 177, 0.06); }
+.tok__plus { font-size: 2rem; line-height: 1; }
+.tkdlg { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-card); color: var(--ink); }
+.tkdlg::backdrop { background: rgba(5, 9, 8, 0.65); }
+.tkdlg__form { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.tkdlg__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tkdlg__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tkdlg__field select, .tkdlg__field input { width: 100%; }
+.tkdlg .tkdlg__tick { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.92rem; font-weight: 400; }
+.tkdlg .tkdlg__tick input { width: auto; flex: none; margin: 0; }
+.tkdlg__note { font-size: 0.8rem !important; }
+.tkdlg__bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+@media (max-width: 520px) { .tkdlg__row { grid-template-columns: 1fr; } }

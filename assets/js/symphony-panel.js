@@ -764,6 +764,16 @@
       select.appendChild(o);
     });
     select.disabled = !list.length;
+    if (select.id === 'cp-repo') showRepoName(list.indexOf(current) >= 0 ? current : list[0] || '');
+  }
+  // the side column's whole name, the owner on its own line, under the select laid over it
+  function showRepoName(name) {
+    var shown = $('cp-repo-shown');
+    if (!shown) return;
+    clear(shown);
+    if (!name) { shown.textContent = 'No repository listed yet'; return; }
+    var cut = name.indexOf('/') + 1;
+    add(shown, el('span', '', name.slice(0, cut)), name.slice(cut));
   }
 
   /* ---------- the sign-in box, shared by both pages ---------- */
@@ -1078,7 +1088,13 @@
   function askOnly(act, it) { add(act, askButton(it)); }
 
   function loadMeta(s) {
-    return gh('GET', '/repos/' + s.repo).then(function (r) { if (!stale(s)) s.meta = r.data; return r.data; });
+    return gh('GET', '/repos/' + s.repo).then(function (r) {
+      if (stale(s)) return r.data;
+      s.meta = r.data;
+      // the Share tab's role picker hangs on whether an organization owns the repository
+      if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
+      return r.data;
+    });
   }
   function loadIssues(s) {
     return ghList('/repos/' + s.repo + '/issues?state=open&per_page=100', 5).then(function (list) {
@@ -1320,6 +1336,7 @@
   function loadRepo(name) {
     var s = state = emptyState(name);
     $('cp-repo-name').textContent = name;
+    showRepoName(name);
     $('cp-on-github').href = 'https://github.com/' + name;
     $('cp-board-link').href = 'https://github.com/' + name + '/blob/board/STATE.md';
     $('cp-actions-link').href = 'https://github.com/' + name + '/actions';
@@ -1333,6 +1350,7 @@
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
+    if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
       return Promise.all([loadBoard(s), loadWorkers(s), loadRuns(s), loadPulls(s)]);
@@ -1517,7 +1535,7 @@
     var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
     if (panel && panel.hidden) showTab(panel.getAttribute('data-tab-panel'));
   }
-  // scrollIntoView moves every box around the node, the window too, which would carry the bar and
+  // scrollIntoView moves every box around the node, the window too, which would carry the header and
   // the strip out of sight; while the deck holds the window, the window is put back where it was
   function scrollInDeck(node, how) {
     var x = window.pageXOffset || 0, y = window.pageYOffset || 0;
@@ -1564,6 +1582,13 @@
   function initConsole() {
     var c = $('console');
     if (!c) return;
+    // the deck's foot holds the page's message; Clear empties it
+    // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
+    if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
+      if ($('msg').querySelector('input:not(:disabled)')) return;
+      clear($('msg'));
+      $('msg').className = 'admin__box';
+    });
     fitConsole();
     window.addEventListener('resize', fitConsole);
     window.addEventListener('load', fitConsole);
@@ -2718,7 +2743,7 @@
     var repo = $('cost-repo').value;
     var box = $('cost-measured');
     clear(box);
-    if (!repo) { none(box, 'Choose a repository in the bar above first.'); return; }
+    if (!repo) { none(box, 'Choose a repository in the side column first.'); return; }
     writeKey(KEY_REPO, repo, true);
     none(box, 'Reading the branch metrics of ' + repo + '...');
     var metaRead = gh('GET', '/repos/' + repo).then(function (r) { return r.data; }).catch(function () { return null; });
@@ -3039,13 +3064,13 @@
     clear($('tk-assign'));
     $('tk-auto').textContent = '';
     tokensFor = repo;
-    if (!repo) { say('Choose a repository in the bar above first.', true); return; }
+    if (!repo) { say('Choose a repository in the side column first.', true); return; }
     writeKey(KEY_REPO, repo, true);
     var tr = el('tr');
     add(tr, el('td', 'admin__none', 'Reading the branch pool of ' + repo + '...')).firstChild.colSpan = 6;
     slots.appendChild(tr);
     readPool(repo).catch(function (e) { if (e.status === 404) return {}; throw e; }).then(function (by) {
-      if (asked === reading) showSlots(repo, by);
+      if (asked === reading) { showSlots(repo, by); tk.pool = by; drawTiles(); }
     }).catch(function (e) { if (asked === reading) { clear(slots); say(e.message, true); } });
     showAddSlot(repo, asked);
     Promise.all([readAssignments(repo), readActionWorkers(repo)]).then(function (both) {
@@ -3145,34 +3170,38 @@
     var box = $('tk-add');
     clear(box);
     none(box, 'Reading which slots ' + repo + ' has...');
-    var place = null;
+    var place = null, secrets = null;
+    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
-    }).then(function (secrets) {
+    }).then(function (found) {
+      secrets = found;
+      return readTileVariables(place);
+    }).then(function (vars) {
       if (asked !== reading) return;
+      tk.place = place;
+      tk.secrets = secrets;
+      tk.settings = vars[0];
+      tk.labels = vars[1];
+      drawTiles();
       clear(box);
       drawAddSlot(box, repo, place, secrets);
     }).catch(function (e) { if (asked === reading) { clear(box); none(box, 'The slots could not be read: ' + e.message); } });
   }
   function drawAddSlot(box, repo, place, secrets) {
     var unread = secrets.unread;
-    var setList = add(el('ul', 'admin__lead'));
-    ['main', '1', '2', '3', '4', '5', '6', '7', '8'].forEach(function (slot) {
-      var s = !unread && secrets[slotSecret(slot)];
-      if (s) add(setList, add(el('li'), (slot === 'main' ? 'main' : 'slot ' + slot) + ' (' + slotSecret(slot) + '): set, updated ', timeEl(s.updated_at)));
-    });
-    // claude setup-token on a GitHub Actions runner, its token sealed there for GitHub (addByActions)
-    var one = btn('Add a Claude account', false, function (ev) { addByActions(repo, place, ev.currentTarget); });
+    // claude setup-token on a GitHub Actions runner, its token sealed there for GitHub (addByActions),
+    // after the dialog that sets the new token's slot, name and settings
+    var one = btn('Add a Claude account', false, function () { openTokenDialog('', true); });
     one.id = 'tk-one';
     add(box, add(el('p', 'admin__bar'), one));
-    add(box, el('p', 'admin__lead', 'A GitHub Actions run makes the token: in about a minute this page shows a claude.ai sign-in button and a box for the code claude.ai gives. The next free slot is saved, and ' + MAIN_SECRET + ' too while it is not set.'));
+    add(box, el('p', 'admin__lead', 'A GitHub Actions run makes the token: in about a minute this page shows a claude.ai sign-in button and a box for the code claude.ai gives. The slot you pick is saved, and ' + MAIN_SECRET + ' too while it is not set.'));
     var app = add(el('p', 'admin__lead'), 'The Claude GitHub App, which @claude and the workers need: ', link(claudeAppLink(place), 'install it on ' + repo), ' (GitHub says so if it is installed already).');
     add(box, app);
     claudeAppSeen(place).then(function (seen) { if (seen && app.parentNode) app.parentNode.removeChild(app); });
     if (unread) none(box, 'GitHub would not list the secrets (' + unread.message + '), so which slots are set is not known here.');
-    else if (!setList.firstChild) none(box, 'No slot is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
-    else add(box, setList);
+    else if (!TILE_SLOTS.some(function (slot) { return secrets[slotSecret(slot)]; })) none(box, 'No token is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
 
     // choosing the slot, a label or renewing one stays a pasted token, folded away under the button
     var more = el('details', 'control__token');
@@ -3313,7 +3342,7 @@
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
   var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
 
-  function addByActions(repo, place, button) {
+  function addByActions(repo, place, button, wanted) {
     if (button.disabled) return;
     var issue = 0, slot = '', ids = [], key = null, mainMissing = false, step = 'secrets';
     button.disabled = true;
@@ -3324,14 +3353,14 @@
     }).then(function () {
       return readSecrets(place);
     }).then(function (by) {
-      slot = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
-      if (!slot) throw new Error('All eight slots are set; renew one under "Paste a token instead".');
-      mainMissing = !by[MAIN_SECRET];
+      slot = wanted || ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
+      if (!slot) throw new Error('All eight slots are set; remove one with its X, or renew one from its tile.');
+      mainMissing = slot !== 'main' && !by[MAIN_SECRET];
       return gh('GET', place.base + '/secrets/public-key');
     }).then(function (r) {
       key = r.data;
       step = 'issue';
-      return gh('POST', '/repos/' + repo + '/issues', { title: 'Add a Claude account as slot ' + slot,
+      return gh('POST', '/repos/' + repo + '/issues', { title: 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
         body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml). The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
     }).then(function (r) {
       issue = r.data.number;
@@ -3506,6 +3535,301 @@
     });
   }
 
+  /* ---------- the tokens as tiles: settings on a click, an X to remove, + Add Token last ---------- */
+  // Each token set on the repository's place is a square tile, main first and then the slots, and the
+  // dashed + Add Token tile comes last, so tokens fill a row from the left and go on at the next.
+  // A tile's settings live in the variable SYMPHONY_CLAUDE_SETTINGS, JSON by slot, which tools/pool.py
+  // checks and the workers in Actions follow (docs/setup/claude-tokens.md, "Each token's settings"):
+  // the model, the effort, a lesser model for when the model's own weekly limit is spent, and whether
+  // the token comes back by itself once its limit resets. The X deletes the token's secret, its label
+  // and its settings, and takes it off SYMPHONY_CLAUDE_ACCOUNTS.
+  var SETTINGS_VARIABLE = SLOT_PREFIX + 'SETTINGS';
+  var TILE_SLOTS = ['main', '1', '2', '3', '4', '5', '6', '7', '8'];
+  // not MODELS, which the cost page's prices hold in the same scope
+  var TILE_MODELS = [['', 'The worker\'s own model'], ['claude-fable-5-1', 'Fable 5.1'], ['claude-opus-5-5', 'Opus 5.5'],
+                ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5']];
+  var EFFORTS = [['', 'The model\'s default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
+  // as tools/pool.py's MODEL_SHAPE, so the page never writes a value the workers would leave out
+  var MODEL_NAME = /^[a-z][a-z0-9.-]{0,63}(\[1m\])?$/;
+  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null };
+
+  function tileName(slot) { return tk.labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot); }
+  function modelWord(model) {
+    for (var i = 0; i < TILE_MODELS.length; i++) if (TILE_MODELS[i][0] === (model || '')) return i ? TILE_MODELS[i][1] : 'Worker\'s model';
+    return model;
+  }
+  function familyOf(model) {
+    var m = /(fable|opus|sonnet|haiku)/.exec(model || '');
+    return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1) : null;
+  }
+  // whether a reading after resumedAt saw the token at its limit, for one that does not resume by itself
+  function tripped(records, since) {
+    var from = since ? moment(since) : null;
+    return (records || []).some(function (r) {
+      if (from != null && moment(r.at) < from) return false;
+      var seen = Object.keys(r.windows || {}).map(function (k) { return r.windows[k]; }).concat(Array.isArray(r.scoped) ? r.scoped : []);
+      return seen.some(function (each) { return each && (used(each.utilization) || 0) >= POOL_THRESHOLD; });
+    });
+  }
+  // the tile's state as tools/pool.py's slot_state reads it: paused, waiting for Resume, held, on its
+  // fallback, free, or not read yet
+  function tileState(slot) {
+    var s = tk.settings[slot] || {};
+    if (s.paused) return { text: 'Paused', cls: 'tok__state--warn' };
+    var records = tk.pool && tk.pool[slot];
+    if (s.resume === false && tripped(records, s.resumedAt)) return { text: 'Waiting for Resume', cls: 'tok__state--warn' };
+    if (!records) return { text: tk.pool ? 'Not read yet' : '', cls: '' };
+    var now = Date.now(), found = slotWindows(records, now);
+    var general = heldUntil({ windows: found.windows, scoped: [] }, now);
+    if (general) return { text: 'Held until ' + stamp(new Date(general).toISOString()), cls: 'tok__state--warn' };
+    var fam = familyOf(s.model);
+    var own = heldUntil({ windows: {}, scoped: found.scoped.filter(function (x) { return !fam || x.name === fam; }) }, now);
+    if (!own) return { text: 'Free', cls: 'tok__state--go' };
+    if (s.fallback && s.fallback !== s.model) return { text: 'On ' + modelWord(s.fallback), cls: 'tok__state--go' };
+    return { text: 'Model held until ' + stamp(new Date(own).toISOString()), cls: 'tok__state--warn' };
+  }
+
+  function readTileVariables(place) {
+    var settings = readOne(place.base + '/variables/' + SETTINGS_VARIABLE).then(function (v) {
+      try {
+        var data = v ? JSON.parse(v.value) : {};
+        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+      } catch (e) { return {}; }
+    });
+    var labels = listed(place.base + '/variables', 'variables').then(function (list) {
+      var out = {};
+      list.forEach(function (v) {
+        var m = /^SYMPHONY_CLAUDE_([1-8])_LABEL$/.exec(v.name || '');
+        if (m && SLOT_LABEL.test(v.value || '')) out[m[1]] = v.value;
+      });
+      return out;
+    });
+    return Promise.all([settings.catch(function () { return {}; }), labels.catch(function () { return {}; })]);
+  }
+
+  function drawTiles() {
+    var box = $('tk-tiles');
+    if (!box) return;
+    clear(box);
+    if (!tk.place) { none(box, 'Reading the tokens...'); return; }
+    var unread = !tk.secrets || tk.secrets.unread;
+    if (!unread) TILE_SLOTS.filter(function (slot) { return tk.secrets[slotSecret(slot)]; }).forEach(function (slot) { add(box, tileOf(slot)); });
+    var plus = el('button', 'tok__open tok--add');
+    plus.type = 'button';
+    plus.id = 'tk-tile-add';
+    add(plus, el('span', 'tok__plus', '+'), el('span', 'tok__name', 'Add Token'));
+    plus.addEventListener('click', function () { openTokenDialog('', true); });
+    add(box, add(el('div', 'tok'), plus));
+    if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
+  }
+  function tileOf(slot) {
+    var s = tk.settings[slot] || {}, state = tileState(slot);
+    var wrap = el('div', 'tok');
+    var open = el('button', 'tok__open');
+    open.type = 'button';
+    open.id = 'tk-tile-' + slot;
+    open.title = 'Settings of ' + tileName(slot) + ' (' + slotSecret(slot) + ')';
+    add(open, el('span', 'tok__icon', slot === 'main' ? 'M' : slot), el('span', 'tok__name', tileName(slot)),
+        el('span', 'tok__meta', modelWord(s.model) + (s.effort ? ', ' + s.effort : '')),
+        state.text ? el('span', 'tok__state ' + state.cls, state.text) : null);
+    open.addEventListener('click', function () { openTokenDialog(slot, false); });
+    var x = el('button', 'tok__x', '\u00d7');
+    x.type = 'button';
+    x.id = 'tk-remove-' + slot;
+    x.title = 'Remove ' + tileName(slot);
+    x.setAttribute('aria-label', 'Remove ' + tileName(slot));
+    x.addEventListener('click', function (ev) { ev.stopPropagation(); removeToken(slot, x); });
+    return add(wrap, open, x);
+  }
+
+  function selectOf(id, options, value) {
+    var s = el('select');
+    s.id = id;
+    options.forEach(function (o) {
+      var opt = el('option', '', o[1]);
+      opt.value = o[0];
+      if (o[0] === (value || '')) opt.selected = true;
+      s.appendChild(opt);
+    });
+    return s;
+  }
+  function labelled(input, text) {
+    var l = el('label', '', text);
+    l.htmlFor = input.id;
+    return add(el('div', 'tkdlg__field'), l, input);
+  }
+  function tickOf(id, checked, text) {
+    var c = el('input');
+    c.type = 'checkbox';
+    c.id = id;
+    c.checked = !!checked;
+    var l = add(el('label', 'tkdlg__tick'), c, ' ' + text);
+    return l;
+  }
+  // one dialog for a tile's settings and for adding a token, which saves the settings first and then
+  // starts the sign-in for that slot
+  function openTokenDialog(slot, adding) {
+    var d = $('tk-dialog');
+    if (!d || !tk.place) { say('The tokens are still being read; press again in a moment.'); return; }
+    clear(d);
+    var s = tk.settings[slot] || {};
+    var form = el('form', 'tkdlg__form');
+    form.method = 'dialog';
+    add(form, el('h3', 'console__boxh', adding ? 'Add a token' : tileName(slot)));
+    var free = TILE_SLOTS.filter(function (n) { return !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(n)]; });
+    var pick = null;
+    if (adding) {
+      var choices = free.filter(function (n) { return n !== 'main'; });
+      if (!free.length) add(form, el('p', 'admin__lead', 'All eight slots and main are set: remove one with its X, or renew one from its tile.'));
+      pick = selectOf('tk-d-slot', free.map(function (n) { return [n, n === 'main' ? 'main (' + MAIN_SECRET + ', which @claude and the workers read)' : 'slot ' + n + ' (' + slotSecret(n) + ')']; }), choices[0] || free[0]);
+      add(form, labelled(pick, 'Where it is kept'));
+      slot = pick.value;
+    } else add(form, el('p', 'admin__lead', slotSecret(slot) + (tk.secrets && tk.secrets[slotSecret(slot)] ? ', set ' + stamp(tk.secrets[slotSecret(slot)].updated_at) : '')));
+    var label = el('input');
+    label.id = 'tk-d-label';
+    label.type = 'text';
+    label.maxLength = 40;
+    label.autocomplete = 'off';
+    label.placeholder = 'a word of your own, never an e-mail address';
+    label.value = tk.labels[slot] || '';
+    var labelField = labelled(label, 'Name');
+    add(form, labelField);
+    var model = selectOf('tk-d-model', TILE_MODELS, s.model);
+    var effort = selectOf('tk-d-effort', EFFORTS, s.effort);
+    var fallback = selectOf('tk-d-fallback', [['', 'Don\'t switch']].concat(TILE_MODELS.slice(1)), s.fallback);
+    add(form, add(el('div', 'tkdlg__row'), labelled(model, 'Model'), labelled(effort, 'Thinking strength')));
+    add(form, labelled(fallback, 'When its model\'s weekly limit runs out, switch to'));
+    add(form, tickOf('tk-d-resume', s.resume !== false, 'Resume by itself when its limit resets'));
+    add(form, tickOf('tk-d-paused', s.paused, 'Pause: auto passes this token over'));
+    function labelShown() { labelField.hidden = slot === 'main'; }
+    labelShown();
+    if (pick) pick.addEventListener('change', function () { slot = pick.value; labelShown(); });
+    add(form, el('p', 'admin__lead tkdlg__note', 'Workers in Actions follow these on their next run: on auto, and when .github/symphony/accounts.json gives them this token. @claude and the coordinator run on main with the model they name.'));
+    var problem = el('p', 'admin__warn tkdlg__problem');
+    problem.hidden = true;
+    add(form, problem);
+    function chosen() {
+      var out = {};
+      if (model.value) out.model = model.value;
+      if (effort.value) out.effort = effort.value;
+      if (fallback.value && fallback.value !== model.value) out.fallback = fallback.value;
+      var resume = $('tk-d-resume').checked;
+      if (!resume) {
+        out.resume = false;
+        // turning resume off starts the count afresh, so a reading taken before it holds nothing
+        out.resumedAt = s.resume === false && s.resumedAt ? s.resumedAt : new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+      }
+      if ($('tk-d-paused').checked) out.paused = true;
+      return out;
+    }
+    function check() {
+      var text = label.value.trim();
+      if (text && !SLOT_LABEL.test(text)) return 'A name is a word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address.';
+      return '';
+    }
+    function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''); }
+    var bar = el('p', 'admin__bar tkdlg__bar');
+    var cancel = btn('Cancel', true, function () { d.close(); });
+    var save = el('button', 'console__primary', adding ? 'Save and sign in' : 'Save');
+    save.type = 'button';
+    save.id = adding ? 'tk-start' : 'tk-save';
+    if (adding && !slot) save.disabled = true;
+    save.addEventListener('click', function () {
+      var why = check();
+      if (why) { problem.hidden = false; problem.textContent = why; return; }
+      save.disabled = true;
+      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
+      saveTokenSettings(wanted, chosen(), labelText).then(function () {
+        d.close();
+        drawTiles();
+        if (adding) addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted);
+        else say('Saved the settings of ' + tileName(wanted) + '; the workers follow them from their next run.');
+      }, function (e) { save.disabled = false; fail(e); });
+    });
+    add(bar, cancel, ' ', save);
+    if (!adding) {
+      if (s.resume === false) {
+        var resume = btn('Resume now', true, function () {
+          resume.disabled = true;
+          var next = chosen();
+          next.resumedAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+          delete next.paused;
+          saveTokenSettings(slot, next, tk.labels[slot] || '').then(function () { d.close(); drawTiles(); say(tileName(slot) + ' is back in the pool from the workers\' next run.'); },
+            function (e) { resume.disabled = false; fail(e); });
+        });
+        resume.id = 'tk-resume';
+        add(bar, ' ', resume);
+      }
+      var renew = btn('Sign in again to renew', true, function () {
+        d.close();
+        addByActions(tk.repo, tk.place, renew, slot);
+      });
+      renew.id = 'tk-renew';
+      add(bar, ' ', renew);
+    }
+    add(form, bar);
+    add(d, form);
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+    (adding ? pick || model : model).focus();
+  }
+
+  // the settings are read again just before the write, so a change another page made meanwhile stays
+  function saveTokenSettings(slot, setting, labelText) {
+    var place = tk.place, ids = [place.id], path = place.base + '/variables/' + SETTINGS_VARIABLE;
+    if ([setting.model, setting.fallback].some(function (m) { return m && !MODEL_NAME.test(m); })) return Promise.reject(new Error('That is not a model\'s name.'));
+    return readOne(path).then(function (have) {
+      var all = {};
+      try { all = have ? JSON.parse(have.value) : {}; } catch (e) { all = {}; }
+      if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+      if (Object.keys(setting).length) all[slot] = setting; else delete all[slot];
+      tk.settings = all;
+      return writeVariable(place, SETTINGS_VARIABLE, JSON.stringify(all), ids);
+    }).then(function () {
+      if (slot === 'main') return;
+      var name = SLOT_PREFIX + slot + '_LABEL';
+      if (labelText) return writeVariable(place, name, labelText, ids).then(function () { tk.labels[slot] = labelText; });
+      if (!tk.labels[slot]) return;
+      return gh('DELETE', place.base + '/variables/' + name).catch(function (e) { if (e.status !== 404) throw e; }).then(function () { delete tk.labels[slot]; });
+    });
+  }
+
+  // the X: the secret first, since that is what stops the token being used, then its label, its place
+  // in SYMPHONY_CLAUDE_ACCOUNTS and its settings
+  function removeToken(slot, button) {
+    var place = tk.place, name = slotSecret(slot);
+    var where = place.org ? 'the organization ' + place.owner + ', for every repository that sees it' : tk.repo;
+    var warn = slot === 'main' ? ' @claude, the workers in Actions and the coordinator workflow stop until ' + MAIN_SECRET + ' is set again.' : '';
+    if (!window.confirm('Remove ' + tileName(slot) + '? This deletes the secret ' + name + ' from ' + where + '.' + warn + ' The token itself stays good until it expires; revoke it on claude.ai if it should stop everywhere.')) return;
+    button.disabled = true;
+    say('Removing ' + name + '...');
+    gh('DELETE', place.base + '/secrets/' + name).catch(function (e) { if (e.status !== 404) throw e; }).then(function () {
+      if (slot === 'main') return;
+      return gh('DELETE', place.base + '/variables/' + SLOT_PREFIX + slot + '_LABEL').catch(function (e) { if (e.status !== 404) throw e; }).then(function () {
+        return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE);
+      }).then(function (have) {
+        if (!have) return;
+        var words = slotWords(have.value).filter(function (w) { return w !== slot; });
+        if (!words.length) return gh('DELETE', place.base + '/variables/' + ACCOUNTS_VARIABLE);
+        return writeVariable(place, ACCOUNTS_VARIABLE, words.join(','), [place.id]);
+      });
+    }).then(function () {
+      return readOne(place.base + '/variables/' + SETTINGS_VARIABLE);
+    }).then(function (have) {
+      var all = {};
+      try { all = have ? JSON.parse(have.value) : {}; } catch (e) { all = {}; }
+      if (!all || typeof all !== 'object' || !(slot in all)) return;
+      delete all[slot];
+      tk.settings = all;
+      return writeVariable(place, SETTINGS_VARIABLE, JSON.stringify(all), [place.id]);
+    }).then(function () {
+      say(name + ' is removed' + (slot === 'main' ? '.' : ' and off ' + ACCOUNTS_VARIABLE + '.'));
+      showAddSlot(tk.repo, reading);
+    }).catch(function (e) {
+      button.disabled = false;
+      say('Removing ' + name + ' stopped: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+    });
+  }
+
   // The Tokens tab of the console: the repository is the one the console shows, and the slots are
   // read when the tab opens, or when the console moves to another repository while it is open, so a
   // person who never opens the tab sends none of its reads.
@@ -3514,18 +3838,138 @@
   function initTokensTab() {
     $('tk-reload').addEventListener('click', loadTokens);
     $('tk-probe').addEventListener('click', probeSlots);
-    // the button at the top presses the Add box's own, within the same click, so its new tab may open
-    $('tk-add-top').addEventListener('click', function () {
-      var one = $('tk-one');
-      if (one) one.click();
-      else say('The slots are still being read; press again in a moment.');
-    });
+    $('tk-add-top').addEventListener('click', function () { openTokenDialog('', true); });
     consoleOnOpen.tokens = function () { if (tokensFor !== tokensRepo()) loadTokens(); };
+  }
+
+  // The Share tab: the person is invited as a collaborator through GitHub's API, as the signed-in
+  // person, with SymphonyBoard's Administration permission, which GitHub's endpoint takes only a
+  // username for; an email address is looked up in GitHub's user search, which finds only an address
+  // its owner made public, and otherwise GitHub's own Add people page takes over. The mail buttons
+  // compose the note in the person's own mail; nothing there is sent by the page.
+  var SHARE_ROLES = { read: 'pull', triage: 'triage', write: 'push', maintain: 'maintain' };
+  var SHARE_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+  var shareInvited = '';
+  function shareRepo() { return state && state.repo ? state.repo : ''; }
+  function shareWho() { return $('sh-who').value.trim(); }
+  function shareIsEmail(who) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who); }
+  function shareInOrg() { return !!(state && state.meta && state.meta.owner && state.meta.owner.type === 'Organization'); }
+  function shareRole() { return shareInOrg() ? $('sh-role').value : 'write'; }
+  function shareSay(text) { $('sh-answer').textContent = text; }
+  function shareSubject() { return 'Join ' + shareRepo() + ' on GitHub'; }
+  function shareNote() {
+    var repo = shareRepo();
+    return 'I would like you to work with me on ' + repo + ', a Symphony project on GitHub, with ' + shareRole() + ' access.\n\n' +
+      (shareInvited ? 'I have invited your GitHub account (' + shareInvited + '). Accept it here, signed in to GitHub:\n'
+        : 'I am inviting you on GitHub; once I have, the invitation is here, signed in to GitHub:\n') +
+      'https://github.com/' + repo + '/invitations\n\n' +
+      'The repository: https://github.com/' + repo + '\n' +
+      'Its control panel: https://openspineconsortium.com/symphony/control/?repo=' + encodeURIComponent(repo) + '\n\n' +
+      'No GitHub account yet? Make one at https://github.com/signup (Continue with Google works) and send me your username.\n';
+  }
+  function shareReady() {
+    if (shareRepo()) return true;
+    shareSay('Pick a repository on the Repositories tab first.');
+    return false;
+  }
+  // window.open with noopener answers null even when the tab opens, so the opener is cut by hand
+  function shareOpen(url) {
+    var w = window.open(url, '_blank');
+    if (!w) { shareSay('The browser blocked the new tab; allow pop-ups for this site, or use Copy the note.'); return false; }
+    try { w.opener = null; } catch (e) { /* the new tab is another origin's already */ }
+    return true;
+  }
+  function shareCopy(text, done) {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) { shareSay('This browser gives the page no clipboard; select and copy by hand.'); return; }
+    navigator.clipboard.writeText(text).then(function () { shareSay(done); },
+      function () { shareSay('The browser refused the clipboard; select and copy by hand.'); });
+  }
+  // the address the mail goes to: what was typed, when it is one; else the person picks it in the mail
+  function shareTo() {
+    var who = shareWho();
+    if (shareIsEmail(who)) return who;
+    shareSay(who ? who + ' is not an email address, so pick who the note goes to in your mail.' : 'Pick who the note goes to in your mail.');
+    return '';
+  }
+  function shareLogin(who) {
+    if (!shareIsEmail(who)) return Promise.resolve(SHARE_LOGIN.test(who) ? who : '');
+    return gh('GET', '/search/users?q=' + encodeURIComponent(who + ' in:email') + '&per_page=2').then(function (r) {
+      var items = (r.data && r.data.items) || [];
+      return items.length === 1 ? items[0].login : '';
+    });
+  }
+  function shareInviteFailed(e) {
+    var words = e.status === 403 || e.status === 404
+      ? 'GitHub refused the invitation: you must administer ' + shareRepo() + ', and SymphonyBoard needs its Administration permission accepted on this installation (or a pasted token with Administration).'
+      : 'GitHub refused the invitation: ' + e.message;
+    shareSay(words + ' Open GitHub\'s Add people instead.');
+  }
+  function shareInvite() {
+    if (!shareReady()) return;
+    var who = shareWho();
+    if (!who) { shareSay('Type their GitHub username or email first.'); return; }
+    if (!shareIsEmail(who) && !SHARE_LOGIN.test(who)) { shareSay(who + ' is neither a GitHub username nor an email address.'); return; }
+    var repo = shareRepo(), button = $('sh-invite');
+    button.disabled = true;
+    shareSay('Asking GitHub...');
+    shareLogin(who).then(function (login) {
+      if (!login) { shareSay('No GitHub account shows ' + who + ' publicly, so GitHub cannot be asked by address. Ask them for their username, or open GitHub\'s Add people and type the address there.'); return; }
+      var body = shareInOrg() ? { permission: SHARE_ROLES[$('sh-role').value] || 'push' } : undefined;
+      return gh('PUT', '/repos/' + repo + '/collaborators/' + encodeURIComponent(login), body).then(function (r) {
+        shareInvited = login;
+        shareSay(r.status === 201
+          ? 'Invited ' + login + ' with ' + shareRole() + ' access. They accept at https://github.com/' + repo + '/invitations; now tell them below.'
+          : login + ' already has access to ' + repo + '; GitHub sent no new invitation.');
+      });
+    }).catch(shareInviteFailed).then(function () { button.disabled = false; });
+  }
+  function shareRefresh() {
+    var org = shareInOrg();
+    $('sh-repo').textContent = shareRepo();
+    $('sh-role').disabled = !org;
+    if (!org) $('sh-role').value = 'write';
+    $('sh-role-note').textContent = org ? '' : 'A personal repository gives every collaborator write.';
+    shareInvited = '';
+    shareSay('');
+  }
+  function initShareTab() {
+    var q = function (v) { return encodeURIComponent(v); };
+    $('sh-invite').addEventListener('click', shareInvite);
+    $('sh-grant').addEventListener('click', function () {
+      if (!shareReady()) return;
+      var who = shareWho();
+      // the tab opens first, so a blocked one is said and nothing tells the person to go to it
+      if (!shareOpen('https://github.com/' + shareRepo() + '/settings/access')) return;
+      if (who) shareCopy(who, who + ' is copied: on GitHub press Add people, paste it, pick the role and press Add.');
+      else shareSay('On GitHub, press Add people and type their username or email.');
+    });
+    $('sh-gmail').addEventListener('click', function () {
+      if (shareReady()) shareOpen('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(shareTo()) + '&su=' + q(shareSubject()) + '&body=' + q(shareNote()));
+    });
+    $('sh-outlook').addEventListener('click', function () {
+      if (shareReady()) shareOpen('https://outlook.office.com/mail/deeplink/compose?to=' + q(shareTo()) + '&subject=' + q(shareSubject()) + '&body=' + q(shareNote()));
+    });
+    $('sh-outlook-com').addEventListener('click', function () {
+      if (shareReady()) shareOpen('https://outlook.live.com/mail/0/deeplink/compose?to=' + q(shareTo()) + '&subject=' + q(shareSubject()) + '&body=' + q(shareNote()));
+    });
+    $('sh-mail').addEventListener('click', function () {
+      if (!shareReady()) return;
+      var to = shareTo();
+      location.href = 'mailto:' + q(to) + '?subject=' + q(shareSubject()) + '&body=' + q(shareNote());
+      shareSay((to ? '' : 'Pick who the note goes to in your mail. ') + 'If no email app opened, use Copy the note.');
+    });
+    $('sh-native').addEventListener('click', function () {
+      if (!shareReady()) return;
+      if (!navigator.share) { shareCopy(shareNote(), 'This browser has no share sheet; the note is copied instead.'); return; }
+      navigator.share({ title: shareSubject(), text: shareNote() }).catch(function () { /* the person closed the sheet */ });
+    });
+    $('sh-copy').addEventListener('click', function () { if (shareReady()) shareCopy(shareNote(), 'The note is copied.'); });
+    consoleOnOpen.share = shareRefresh;
   }
 
   // the cost page carries a signed-in box of its own, so its marker is read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-slots')) initTokensTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-slots')) initTokensTab(); if ($('sh-who')) initShareTab(); }
 })();
