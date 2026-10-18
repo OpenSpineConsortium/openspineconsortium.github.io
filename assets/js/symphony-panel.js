@@ -23,7 +23,7 @@
    the refresh token that came with it) and the names of the repositories
    you listed, and never sends anything anywhere but GitHub and, for the
    sign-in, that service. The one Claude token it touches is one pasted
-   into the Tokens tab's "Add or renew a slot", which it seals in this
+   into the Tokens tab's + Add Token, which it seals in this
    browser for GitHub's public key and sends to GitHub as that sealed box
    alone, never stored, logged or shown (the owner, 2026-10-18).
 
