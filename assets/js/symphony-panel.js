@@ -23,7 +23,7 @@
    the refresh token that came with it) and the names of the repositories
    you listed, and never sends anything anywhere but GitHub and, for the
    sign-in, that service. The one Claude token it touches is one pasted
-   into the Tokens page's "Add or renew a slot", which it seals in this
+   into the Tokens tab's "Add or renew a slot", which it seals in this
    browser for GitHub's public key and sends to GitHub as that sealed box
    alone, never stored, logged or shown (the owner, 2026-10-18).
 
@@ -1043,8 +1043,8 @@
     return btn('Ask Claude on it', true, function () {
       $('cp-prompt-target').value = String(it.number);
       revealTab($('cp-prompt'));
-      $('cp-prompt').focus();
-      $('cp-prompt').scrollIntoView();
+      $('cp-prompt').focus({ preventScroll: true });
+      scrollInDeck($('cp-prompt'));
     });
   }
   // "Give to" is offered where the protocol lets a label give the issue: the queue, the issues given
@@ -1492,12 +1492,22 @@
     var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
     if (panel && panel.hidden) showTab(panel.getAttribute('data-tab-panel'));
   }
+  // scrollIntoView moves every box around the node, the window too, which would carry the bar and
+  // the strip out of sight; while the deck holds the window, the window is put back where it was
+  function scrollInDeck(node, how) {
+    var x = window.pageXOffset || 0, y = window.pageYOffset || 0;
+    node.scrollIntoView(how);
+    var c = $('console');
+    if (c && getComputedStyle(c).overflow === 'hidden') window.scrollTo(x, y);
+  }
   // the deck takes the height the window has left below the header and the strip
   function fitConsole() {
     var c = $('console');
     if (!c) return;
     var top = c.getBoundingClientRect().top + (window.pageYOffset || 0);
     c.style.setProperty('--console-h', Math.max(Math.floor(window.innerHeight - top), 0) + 'px');
+    var rail = c.querySelector('.console__rail');
+    if (rail) rail.setAttribute('aria-orientation', getComputedStyle(rail).flexDirection === 'row' ? 'horizontal' : 'vertical');
   }
   // the rows of a list, a line that says the list is empty or still reading counting for none
   function consoleRows(id) {
@@ -1534,14 +1544,17 @@
     window.addEventListener('load', fitConsole);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitConsole);
     showTab(location.hash.slice(1));
-    window.addEventListener('hashchange', function () { showTab(location.hash.slice(1)); });
+    window.addEventListener('hashchange', function () {
+      var name = location.hash.slice(1);
+      if (consoleTabs().some(function (t) { return t.getAttribute('data-tab') === name; })) showTab(name);
+    });
     consoleTabs().forEach(function (t, i, all) {
       t.addEventListener('click', function () { showTab(t.getAttribute('data-tab')); });
       t.addEventListener('keydown', function (e) {
         var step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
-        if (!step) return;
+        var next = e.key === 'Home' ? all[0] : e.key === 'End' ? all[all.length - 1] : step ? all[(i + step + all.length) % all.length] : null;
+        if (!next) return;
         e.preventDefault();
-        var next = all[(i + step + all.length) % all.length];
         showTab(next.getAttribute('data-tab'));
         next.focus();
       });
@@ -1582,7 +1595,7 @@
       dropKey(KEY_REPO);
       say(state.repo + ' is off the list.');
       var next = repos()[0];
-      if (next) loadRepo(next); else { state = emptyState(''); fillRepoSelect($('cp-repo'), ''); $('cp-summary').textContent = 'No repository listed. Add one below.'; }
+      if (next) loadRepo(next); else { state = emptyState(''); fillRepoSelect($('cp-repo'), ''); $('cp-summary').textContent = 'No repository listed. Add one on the Repositories tab.'; }
     });
     $('cp-task-queue').addEventListener('click', queueTask);
     $('cp-w-add').addEventListener('click', addWorker);
@@ -1595,9 +1608,11 @@
     initAssistant();
 
     function start() {
+      // a sign-in, perhaps as someone else, reads the Tokens tab again rather than show the last one's
+      tokensFor = null;
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
-      if (name) loadRepo(name); else $('cp-summary').textContent = 'No repository listed yet. Find them, or add one by name, below.';
+      if (name) loadRepo(name); else $('cp-summary').textContent = 'No repository listed yet. Find them, or add one by name, on the Repositories tab.';
     }
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
@@ -2064,7 +2079,7 @@
     if (!row) return '#' + n + ' is the focus, but it is not in the task tables (closed, a pull request, or without the protocol\'s labels).';
     if (row.classList.contains('control__off')) return '#' + n + ' is the focus, but the filter (' + assistantFilterWords() + ') hides its row; Show all tasks, above the tables, shows it.';
     revealTab(row);
-    row.scrollIntoView({ block: 'center' });
+    scrollInDeck(row, { block: 'center' });
     var table = row.closest ? row.closest('table') : null;
     return 'Focused #' + n + (table && ASSISTANT_TABLES[table.id] ? ' (under ' + ASSISTANT_TABLES[table.id] + ')' : '') + '.';
   }
@@ -2110,7 +2125,7 @@
       if (hs[i].textContent.trim().toLowerCase().indexOf(name.toLowerCase()) === 0) {
         assistant.section = name;
         revealTab(hs[i]);
-        hs[i].scrollIntoView({ block: 'start' });
+        scrollInDeck(hs[i], { block: 'start' });
         return 'Showing the board\'s ' + name + ' section.';
       }
     }
@@ -2225,7 +2240,7 @@
     var repo = $('cost-repo').value;
     var box = $('cost-measured');
     clear(box);
-    if (!repo) { none(box, 'Choose a repository from the control panel\'s list first.'); return; }
+    if (!repo) { none(box, 'Choose a repository in the bar above first.'); return; }
     writeKey(KEY_REPO, repo, true);
     none(box, 'Reading the branch metrics of ' + repo + '...');
     var metaRead = gh('GET', '/repos/' + repo).then(function (r) { return r.data; }).catch(function () { return null; });
@@ -2530,7 +2545,7 @@
       return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, body);
     }).then(function () {
       return gh('POST', '/repos/' + repo + '/pulls', { title: 'Which Claude account each worker in Actions runs on', head: branch, base: base,
-        body: 'Sets ' + ASSIGNMENTS_PATH + ' from the control panel\'s Tokens page: main is CLAUDE_CODE_OAUTH_TOKEN, a number is that slot\'s SYMPHONY_CLAUDE_<slot>, and auto takes the slot of SYMPHONY_CLAUDE_ACCOUNTS with the most room at the start of each run (docs/setup/claude-tokens.md).' });
+        body: 'Sets ' + ASSIGNMENTS_PATH + ' from the control panel\'s Tokens tab: main is CLAUDE_CODE_OAUTH_TOKEN, a number is that slot\'s SYMPHONY_CLAUDE_<slot>, and auto takes the slot of SYMPHONY_CLAUDE_ACCOUNTS with the most room at the start of each run (docs/setup/claude-tokens.md).' });
     }).then(function (r) {
       clear($('msg'));
       add($('msg'), 'Opened ', link(r.data.html_url, 'pull request #' + r.data.number), '; the assignments take effect once it merges.');
@@ -2546,7 +2561,7 @@
     clear($('tk-assign'));
     $('tk-auto').textContent = '';
     tokensFor = repo;
-    if (!repo) { say('Choose a repository from the control panel\'s list first.', true); return; }
+    if (!repo) { say('Choose a repository in the bar above first.', true); return; }
     writeKey(KEY_REPO, repo, true);
     var tr = el('tr');
     add(tr, el('td', 'admin__none', 'Reading the branch pool of ' + repo + '...')).firstChild.colSpan = 6;

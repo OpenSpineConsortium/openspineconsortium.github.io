@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180610">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180610">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180610">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180633">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180633">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180633">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -117,22 +117,22 @@
 
     <div class="console__body">
       <div class="console__rail" role="tablist" aria-label="Control panel sections" aria-orientation="vertical">
-        <button type="button" role="tab" data-tab="command" id="command" aria-controls="tab-command"><span class="rail__icon" aria-hidden="true">&#9673;</span><span class="rail__name">Command</span></button>
-        <button type="button" role="tab" data-tab="board" id="board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
-        <button type="button" role="tab" data-tab="tasks" id="tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
-        <button type="button" role="tab" data-tab="pulls" id="pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
-        <button type="button" role="tab" data-tab="runs" id="runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
-        <button type="button" role="tab" data-tab="workers" id="workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
-        <button type="button" role="tab" data-tab="ask" id="ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
-        <button type="button" role="tab" data-tab="tokens" id="tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
-        <button type="button" role="tab" data-tab="repos" id="repos" aria-controls="tab-repos"><span class="rail__icon" aria-hidden="true">&#43;</span><span class="rail__name">Repositories</span></button>
-        <button type="button" role="tab" data-tab="about" id="about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
+        <button type="button" role="tab" data-tab="command" id="rail-command" aria-controls="tab-command"><span class="rail__icon" aria-hidden="true">&#9673;</span><span class="rail__name">Command</span></button>
+        <button type="button" role="tab" data-tab="board" id="rail-board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
+        <button type="button" role="tab" data-tab="tasks" id="rail-tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
+        <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
+        <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
+        <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
+        <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
+        <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
+        <button type="button" role="tab" data-tab="repos" id="rail-repos" aria-controls="tab-repos"><span class="rail__icon" aria-hidden="true">&#43;</span><span class="rail__name">Repositories</span></button>
+        <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
       </div>
 
       <div class="console__stage">
 
         <!-- Command: the readouts and the launch buttons -->
-        <section class="console__panel" id="tab-command" data-tab-panel="command" role="tabpanel" aria-labelledby="command" hidden>
+        <section class="console__panel" id="tab-command" data-tab-panel="command" role="tabpanel" aria-labelledby="rail-command" hidden>
           <div class="console__scroll">
             <div class="deck__readouts" id="cx-readouts">
               <button type="button" class="readout" data-goto="tasks" data-jump="cp-queue"><span class="readout__n" data-count="cp-queue">&ndash;</span><span class="readout__l">Queue</span></button>
@@ -160,7 +160,7 @@
         </section>
 
         <!-- Board -->
-        <section class="console__panel" id="tab-board" data-tab-panel="board" role="tabpanel" aria-labelledby="board" hidden>
+        <section class="console__panel" id="tab-board" data-tab-panel="board" role="tabpanel" aria-labelledby="rail-board" hidden>
           <div class="console__head">
             <h2 id="h-board" class="console__h">Board</h2>
             <p class="console__lead"><span id="cp-board-when"></span></p>
@@ -172,7 +172,7 @@
         </section>
 
         <!-- Tasks -->
-        <section class="console__panel console__panel--split" id="tab-tasks" data-tab-panel="tasks" role="tabpanel" aria-labelledby="tasks" hidden>
+        <section class="console__panel console__panel--split" id="tab-tasks" data-tab-panel="tasks" role="tabpanel" aria-labelledby="rail-tasks" hidden>
           <div class="console__col">
             <div class="console__head">
               <h2 id="h-tasks" class="console__h">Tasks</h2>
@@ -222,7 +222,7 @@
         </section>
 
         <!-- Pull requests -->
-        <section class="console__panel" id="tab-pulls" data-tab-panel="pulls" role="tabpanel" aria-labelledby="pulls" hidden>
+        <section class="console__panel" id="tab-pulls" data-tab-panel="pulls" role="tabpanel" aria-labelledby="rail-pulls" hidden>
           <div class="console__head">
             <h2 id="h-pulls" class="console__h">Pull requests</h2>
             <details class="console__help"><summary>When Merge can be pressed</summary><div>
@@ -233,7 +233,7 @@
         </section>
 
         <!-- Runs -->
-        <section class="console__panel" id="tab-runs" data-tab-panel="runs" role="tabpanel" aria-labelledby="runs" hidden>
+        <section class="console__panel" id="tab-runs" data-tab-panel="runs" role="tabpanel" aria-labelledby="rail-runs" hidden>
           <div class="console__head">
             <h2 id="h-ci" class="console__h">Checks and runs</h2>
             <p class="console__jumps">
@@ -251,7 +251,7 @@
         </section>
 
         <!-- Workers -->
-        <section class="console__panel console__panel--split" id="tab-workers" data-tab-panel="workers" role="tabpanel" aria-labelledby="workers" hidden>
+        <section class="console__panel console__panel--split" id="tab-workers" data-tab-panel="workers" role="tabpanel" aria-labelledby="rail-workers" hidden>
           <div class="console__col">
             <div class="console__head">
               <h2 id="h-workers" class="console__h">Workers</h2>
@@ -292,7 +292,7 @@
         </section>
 
         <!-- Ask Claude: @claude and the assistant -->
-        <section class="console__panel console__panel--split console__panel--even" id="tab-ask" data-tab-panel="ask" role="tabpanel" aria-labelledby="ask" hidden>
+        <section class="console__panel console__panel--split console__panel--even" id="tab-ask" data-tab-panel="ask" role="tabpanel" aria-labelledby="rail-ask" hidden>
           <div class="console__col">
             <div class="admin__box console__scroll">
               <h2 id="h-prompt" class="console__boxh">Ask Claude to do it</h2>
@@ -322,7 +322,7 @@
         </section>
 
         <!-- Tokens: the Claude accounts the workers run on -->
-        <section class="console__panel console__panel--split" id="tab-tokens" data-tab-panel="tokens" role="tabpanel" aria-labelledby="tokens" hidden>
+        <section class="console__panel console__panel--split" id="tab-tokens" data-tab-panel="tokens" role="tabpanel" aria-labelledby="rail-tokens" hidden>
           <div class="console__col">
             <div class="console__head">
               <h2 id="h-slots" class="console__h">Claude accounts</h2>
@@ -358,7 +358,7 @@
         </section>
 
         <!-- Repositories -->
-        <section class="console__panel" id="tab-repos" data-tab-panel="repos" role="tabpanel" aria-labelledby="repos" hidden>
+        <section class="console__panel" id="tab-repos" data-tab-panel="repos" role="tabpanel" aria-labelledby="rail-repos" hidden>
           <div class="console__head">
             <h2 id="h-add" class="console__h">Repositories</h2>
           </div>
@@ -379,7 +379,7 @@
         </section>
 
         <!-- About: what the page is, keeps and sends -->
-        <section class="console__panel" id="tab-about" data-tab-panel="about" role="tabpanel" aria-labelledby="about" hidden>
+        <section class="console__panel" id="tab-about" data-tab-panel="about" role="tabpanel" aria-labelledby="rail-about" hidden>
           <div class="console__scroll">
             <h2 class="console__h">About the control panel</h2>
             <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
@@ -444,8 +444,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180610"></script>
+<script src="/assets/js/main.js?v=202610180633"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180610"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180633"></script>
 </body>
 </html>

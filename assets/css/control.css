@@ -151,7 +151,7 @@ body[data-shell] main > .console.section, .console.section {
 .console .control__signin:disabled:hover { background: var(--teal); border-color: var(--teal); }
 
 /* the message line: one line of what just happened, above everything */
-.console #msg { padding: 7px 14px; font-size: 0.92rem; border-radius: 8px; flex: 0 0 auto; max-height: 6.5em; overflow: auto; border-left: 3px solid var(--teal); }
+.console #msg { padding: 7px 14px; font-size: 0.92rem; border-radius: 8px; flex: 0 0 auto; max-height: 30vh; overflow: auto; border-left: 3px solid var(--teal); }
 .console #msg.admin__warn { border-left-color: var(--ochre); }
 
 /* signed out: the sign-in card in the middle of the deck */
@@ -263,6 +263,14 @@ body[data-shell] main > .console.section, .console.section {
 .console button.launch--go:hover { border-color: var(--go); background: rgba(47, 179, 106, 0.2); }
 .console button.launch--plan .launch__icon { background: rgba(233, 230, 218, 0.08); color: var(--ink); }
 
+/* a narrow laptop: the links take a second row rather than be cut */
+@media (max-width: 1279px) {
+  .console__bar { flex-wrap: wrap; }
+  .console__links { overflow: visible; }
+  .console__body { grid-template-columns: 168px minmax(0, 1fr); }
+  .console__panel--split { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
+}
+
 /* a phone or a short window cannot hold a deck: the page scrolls as before, each tab whole */
 @media (max-width: 900px), (max-height: 520px) {
   .console.section { height: auto; min-height: 0; overflow: visible; }
@@ -275,8 +283,6 @@ body[data-shell] main > .console.section, .console.section {
   .console__bar { flex-wrap: wrap; }
   .console__links { flex-wrap: wrap; white-space: normal; }
 }
-/* a tab's address names its rail button; the margin keeps the browser from scrolling the window to it */
-.console__rail [role="tab"] { scroll-margin-top: 100vh; }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
 .console__help--inline > summary { display: inline-block; }
