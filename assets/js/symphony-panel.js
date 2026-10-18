@@ -1006,6 +1006,20 @@
     return g;
   }
 
+  // each cell of a card's row names its part, so the console draws rows as cards (control.css)
+  function cardCells(tr, parts) {
+    Array.prototype.forEach.call(tr.children, function (td, i) { if (parts[i]) td.classList.add('cell--' + parts[i]); });
+    return tr;
+  }
+  // labels as chips; the separators stay in the text, so the cell reads as it did
+  function labelChips(labels) {
+    var td = el('td');
+    labels.forEach(function (name, i) {
+      if (i) add(td, el('span', 'chip__sep', ', '));
+      add(td, el('span', 'lchip' + (/^worker:|^account:|^agent:/.test(name) ? ' lchip--worker' : '') + (/^(blocker|blocked)$/.test(name) ? ' lchip--warn' : ''), name));
+    });
+    return td;
+  }
   function issueRow(it, acts) {
     var tr = el('tr');
     var l = labelsOf(it);
@@ -1014,13 +1028,13 @@
     tr.setAttribute('data-labels', l.join('\n'));
     add(tr, add(el('td'), link(it.html_url, '#' + it.number)));
     add(tr, el('td', '', it.title));
-    add(tr, el('td', '', l.join(', ') || ''));
+    add(tr, labelChips(l));
     add(tr, el('td', '', workerOf(l) || ''));
     add(tr, add(el('td'), timeEl(it.updated_at)));
     var act = el('td', 'admin__act');
     if (acts) acts(act, it);
     add(tr, act);
-    return tr;
+    return cardCells(tr, ['num', 'title', 'labels', 'worker', 'when', 'act']);
   }
   function issueTable(id, list, acts) {
     var body = $(id).querySelector('tbody');
@@ -1149,7 +1163,8 @@
         add(tr, el('td', '', w.model || 'default'));
         add(tr, el('td', '', w.max_turns != null ? String(w.max_turns) : ''));
         add(tr, el('td', '', w.rounds != null ? String(w.rounds) : ''));
-        body.appendChild(tr);
+        tr.setAttribute('data-runs', w.runs || '');
+        body.appendChild(cardCells(tr, ['name', 'runs', 'about', 'area', 'lands', 'model', 'turns', 'rounds']));
       });
       return loadIssues(s);
     });
@@ -1157,6 +1172,12 @@
   function conclusionWord(run) {
     if (run.status !== 'completed') return run.status.replace(/_/g, ' ');
     return run.conclusion ? run.conclusion.replace(/_/g, ' ') : 'completed';
+  }
+  // a run's outcome as one of three the cards colour: passed, failed, or anything else
+  function outcomeOf(word) {
+    if (word === 'success') return 'ok';
+    if (/^(failure|timed out|startup failure|action required)$/.test(word)) return 'bad';
+    return /^(in progress|queued|waiting|pending|requested)$/.test(word) ? 'running' : 'other';
   }
   function loadRuns(s) {
     var body = $('cp-runs').querySelector('tbody');
@@ -1177,7 +1198,8 @@
         add(tr, el('td', '', w)).lastChild.className = w === 'success' ? 'admin__tag admin__tag--ok' : (w === 'failure' ? 'admin__tag admin__tag--wait' : 'admin__tag admin__tag--mid');
         add(tr, el('td', '', run.actor && run.actor.login ? run.actor.login : ''));
         add(tr, add(el('td'), timeEl(run.run_started_at || run.created_at)));
-        body.appendChild(tr);
+        tr.setAttribute('data-outcome', outcomeOf(w));
+        body.appendChild(cardCells(tr, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
       });
     }).catch(function (e) {
       if (stale(s)) return;
@@ -1205,7 +1227,8 @@
         add(tr2, el('td', '', run.status === 'completed' ? (run.conclusion || 'completed') : run.status));
         add(tr2, el('td', '', run.app && run.app.slug ? run.app.slug : ''));
         add(tr2, add(el('td'), timeEl(run.completed_at || run.started_at)));
-        body.appendChild(tr2);
+        tr2.setAttribute('data-outcome', outcomeOf(run.status === 'completed' ? (run.conclusion || 'completed') : run.status));
+        body.appendChild(cardCells(tr2, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
       });
     }).catch(function (e) { if (stale(s)) return; var tr = el('tr'); add(tr, el('td', 'admin__none', e.message)).firstChild.colSpan = 6; body.appendChild(tr); });
   }
@@ -1223,7 +1246,7 @@
       });
       var unread = total > runs.length ? total - runs.length : 0;
       cell.textContent = (bad ? bad + ' failed, ' : '') + (wait ? wait + ' running, ' : '') + ok + ' of ' + runs.length + ' passed' + (unread ? ' (' + unread + ' more not read; see GitHub)' : '');
-      cell.className = bad ? 'admin__tag admin__tag--wait' : (wait || unread ? 'admin__tag admin__tag--mid' : 'admin__tag admin__tag--ok');
+      cell.className = 'cell--checks ' + (bad ? 'admin__tag admin__tag--wait' : (wait || unread ? 'admin__tag admin__tag--mid' : 'admin__tag admin__tag--ok'));
       pr._green = !bad && !wait && !unread;
       mergeBtn.disabled = !(pr._green && !pr.draft);
     }).catch(function (e) { if (!stale(s)) cell.textContent = e.status === 403 ? 'checks not readable' : e.message; });
@@ -1272,7 +1295,12 @@
         m.title = 'Enabled once the pull request is ready and every check has passed';
         add(act, m);
         add(tr, act);
-        body.appendChild(tr);
+        tr.setAttribute('data-draft', pr.draft ? 'true' : 'false');
+        // the Ask Claude bar finds a pull request's Merge button by its number; data-pull keeps
+        // these cards out of the task filters, which read tr[data-number] as tasks
+        tr.setAttribute('data-number', String(pr.number));
+        tr.setAttribute('data-pull', String(pr.number));
+        body.appendChild(cardCells(tr, ['num', 'title', 'branch', 'state', 'checks', 'when', 'act']));
         checksOf(s, pr, checks, m);
       });
       if (pulls.more) { var more = el('tr'); add(more, el('td', 'admin__none', 'Only the first ' + pulls.length + ' open pull requests were read; the rest are on GitHub.')).firstChild.colSpan = 7; body.appendChild(more); }
@@ -1552,7 +1580,14 @@
     var wrap = table.closest('.table-scroll') || table;
     var head = wrap.previousElementSibling && /^H[1-6]$/.test(wrap.previousElementSibling.tagName) ? wrap.previousElementSibling : wrap;
     var box = wrap.closest('.console__scroll');
-    if (box) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    if (!box) return;
+    // the task board lays its lists side by side, so the jump is sideways there
+    if (box.classList.contains('console__kanban') && getComputedStyle(box).display === 'grid') {
+      box.scrollLeft = head.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft;
+      head.classList.remove('console__flash');
+      void head.offsetWidth;
+      head.classList.add('console__flash');
+    } else box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
   }
   // a message that arrives, or changes, flashes the line at the deck's foot; emptying it does not.
   // say() replaces className, so the flash class is put back after it rather than kept
@@ -1606,11 +1641,28 @@
     window.addEventListener('resize', syncFullScreen);
     syncFullScreen();
   }
+  // the worker's tiles set the select each group names; a select set any other way lights its tile
+  function initTiles() {
+    Array.prototype.forEach.call(document.querySelectorAll('.wtiles[data-for]'), function (group) {
+      var select = $(group.getAttribute('data-for'));
+      if (!select) return;
+      var tiles = group.querySelectorAll('.wtile');
+      function light() {
+        Array.prototype.forEach.call(tiles, function (t) { t.setAttribute('aria-pressed', Number(t.getAttribute('data-index')) === select.selectedIndex ? 'true' : 'false'); });
+      }
+      Array.prototype.forEach.call(tiles, function (t) {
+        t.addEventListener('click', function () { select.selectedIndex = Number(t.getAttribute('data-index')); light(); });
+      });
+      select.addEventListener('change', light);
+      light();
+    });
+  }
   function initConsole() {
     var c = $('console');
     if (!c) return;
     initFlash();
     initFullScreen();
+    initTiles();
     // the deck's foot holds the page's message; Clear empties it
     // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
@@ -2176,7 +2228,7 @@
   // marks the focused row and hides the rows the filter leaves out, in every task table, and says
   // so above the tables; called again whenever the tables are rendered afresh
   function assistantRedraw() {
-    var rows = document.querySelectorAll('#cp-app table.admin__stack tbody tr[data-number]');
+    var rows = document.querySelectorAll('#cp-app table.admin__stack tbody tr[data-number]:not([data-pull])');
     var out = { row: null, shown: 0, total: rows.length };
     for (var i = 0; i < rows.length; i++) {
       var tr = rows[i];
