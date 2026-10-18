@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180551">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180551">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180551">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180622">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180622">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180622">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -115,7 +115,7 @@
     <h2 id="h-add">Add a Claude account</h2>
     <details class="control__token">
       <summary>What the button does, and what it needs</summary>
-      <p class="admin__lead">It makes a Codespace on the repository, hands it this page&rsquo;s GitHub sign-in as a Codespaces secret only you can see, and opens it in a new tab. There <code>claude setup-token</code> opens claude.ai&rsquo;s sign-in; once you press Authorize, the token goes from Claude Code straight to GitHub as the next free slot, never shown and never passing through this page, and the slot is listed in <code>SYMPHONY_CLAUDE_ACCOUNTS</code> so auto and the bench can take it. The page then deletes the Codespace and the secret. A token lives a year. It needs you to be an owner of the organization and the SymphonyBoard App&rsquo;s permissions Secrets and Variables (organization), Codespaces (repository) and Codespaces user secrets (account), each Read and write.</p>
+      <p class="admin__lead">It opens an issue on the repository and starts the workflow Token there, which runs <code>claude setup-token</code> on a GitHub Actions runner and posts its sign-in link on the issue. This page shows it as a button: sign in as the account to add, press Authorize, and paste the code claude.ai shows into the box. The run takes the token out of what Claude Code prints and posts it only sealed for GitHub, which alone can open it; the page saves it as the next free slot, as <code>CLAUDE_CODE_OAUTH_TOKEN</code> too while that is not set, lists it in <code>SYMPHONY_CLAUDE_ACCOUNTS</code> so auto and the bench can take it, and closes the issue. The token is never on this page, in the issue or in the log, and lives a year. It needs you to be an owner of the organization, a repository with the workflow Token (symphony-template has it), and the SymphonyBoard App&rsquo;s permissions Secrets and Variables (organization) and Actions and Issues (repository), each Read and write.</p>
     </details>
     <div id="tk-add" class="admin__box"></div>
 
@@ -180,8 +180,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180551"></script>
+<script src="/assets/js/main.js?v=202610180622"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180551"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180622"></script>
 </body>
 </html>
