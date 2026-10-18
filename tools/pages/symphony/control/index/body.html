@@ -35,7 +35,8 @@ robots: noindex
     <div class="console__body">
       <div class="console__side">
         <div class="console__id">
-          <h1 id="cp-title" class="console__title">Control panel</h1>
+          <div class="console__titlerow"><h1 id="cp-title" class="console__title">Control panel</h1>
+            <button type="button" class="console__full quiet" id="cp-full" aria-pressed="false" title="Full screen: the console alone, the site's bar hidden (Esc to leave)"><span aria-hidden="true">&#x26F6;</span><span class="console__fullword">Full screen</span></button></div>
           <label for="cp-repo">Repository</label>
           <div class="console__pick">
             <p class="console__shown" id="cp-repo-shown" aria-hidden="true">No repository listed yet</p>
@@ -326,6 +327,9 @@ robots: noindex
       </div>
     </div>
   </div>
+  <!-- the Ask Claude bar's place, frozen above the status line like it; the assistant fills it
+       (its own code), and while it is empty it takes no room -->
+  <div class="console__askbar" id="cp-askbar"></div>
   <div class="console__status">
     <div class="admin__box console__msg" id="msg" role="status" aria-live="polite"></div>
     <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
