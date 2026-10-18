@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610182033">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610182033">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610182033">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610182110">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610182110">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610182110">
 </head>
 <body data-shell="page" class="page-console">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -154,6 +154,7 @@
           <button type="button" role="tab" data-tab="board" id="rail-board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
           <button type="button" role="tab" data-tab="tasks" id="rail-tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
           <button type="button" role="tab" data-tab="dependencies" id="rail-dependencies" aria-controls="tab-dependencies"><span class="rail__icon" aria-hidden="true">&#8658;</span><span class="rail__name">Dependencies</span></button>
+          <button type="button" role="tab" data-tab="explore" id="rail-explore" aria-controls="tab-explore"><span class="rail__icon" aria-hidden="true">&#9673;</span><span class="rail__name">Explore</span></button>
           <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
           <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
@@ -262,6 +263,27 @@
           <p id="cp-graph-state" class="admin__lead">Nothing to draw yet: no repository is chosen.</p>
           <p id="cp-graph-said" class="admin__lead"></p>
           <div class="console__scroll"><div id="cp-graph" class="control__graph"></div></div>
+        </section>
+
+        <!-- Explore: the project as a map, from the repository down to a step's log -->
+        <section class="console__panel explore" id="tab-explore" data-tab-panel="explore" role="tabpanel" aria-labelledby="rail-explore" hidden>
+          <div class="console__head">
+            <h2 id="h-explore" class="console__h">Explore</h2>
+            <details class="console__help"><summary>How to move through it and what it reads</summary><div>
+              <p>The whole project as a map, one level at a time: the repository, its goals and epics, each epic&rsquo;s tasks, the pull requests of a task (or its claim branch where it has none), the GitHub Actions runs on that branch, each run&rsquo;s jobs, each job&rsquo;s steps and, at the bottom, the lines of a step&rsquo;s log, where the steps that run Claude are marked. Click a tile, or point at it and scroll up, to go into it; scroll down, press Backspace or pick a level in the trail at the top to come back out. The scroll wheel scrolls a long level as usual; a new turn of the wheel that starts at its top, over a tile, goes in, and one that starts at its bottom comes out, so reaching the end of a list never moves you by itself. The arrow keys move between tiles and Enter goes in. The outline on the left shows the levels on your way down and what sits beside each; click a name to go there.</p>
+              <p>The repository, its goals, epics and tasks come from what the console has already read (the Dependencies tab&rsquo;s reads). Everything below a task is read from GitHub as you, only when you go into it: the runs on a branch, a run&rsquo;s jobs and steps, and a job&rsquo;s log, one read each, none once GitHub says the token has fewer than a hundred calls left this hour. What is read stays in this tab&rsquo;s memory until you choose another repository, the logs of the last three jobs only, and is written nowhere; Read again reads a level or a log afresh, for a run still going. GitHub hands a job&rsquo;s log over from its own storage; where your browser may not read it from there, the step says so and links the log on GitHub.</p>
+            </div></details>
+          </div>
+          <div class="ex__bar">
+            <button type="button" id="ex-out" class="ex__tool" title="Come out one level (Backspace)" aria-label="Come out one level">&#8592;</button>
+            <nav id="ex-path" class="ex__path" aria-label="Where you are"></nav>
+            <a id="ex-github" class="ex__tool ex__link" href="#" target="_blank" rel="noopener" hidden>Open on GitHub</a>
+          </div>
+          <div class="ex__body">
+            <nav id="ex-tree" class="ex__tree" aria-label="Outline"></nav>
+            <div id="ex-stage" class="ex__stage" tabindex="0"></div>
+          </div>
+          <p id="ex-status" class="ex__status" aria-live="polite">Nothing to explore yet: no repository is chosen.</p>
         </section>
 
         <!-- Pull requests -->
@@ -590,8 +612,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610182033"></script>
+<script src="/assets/js/main.js?v=202610182110"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610182108"></script>
+<script src="/assets/js/symphony-panel.js?v=202610182113"></script>
 </body>
 </html>

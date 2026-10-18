@@ -627,7 +627,8 @@
       h['Authorization'] = 'Bearer ' + token;
       if (body !== undefined) h['Content-Type'] = 'application/json';
       var k;
-      for (k in (headers || {})) if (Object.prototype.hasOwnProperty.call(headers, k)) h[k] = headers[k];
+      // a header given as null is left off, for a read that must go out with no header of GitHub's own
+      for (k in (headers || {})) if (Object.prototype.hasOwnProperty.call(headers, k)) { if (headers[k] === null) delete h[k]; else h[k] = headers[k]; }
       var ask = { method: method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) };
       // the calls that wait to know whose the token is all wait on this one question, so GitHub not
       // answering it must not hold them for good
@@ -1798,6 +1799,8 @@
     foldersFor = null;
     if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
     if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
+    exploreForget();
+    if (consoleTab === 'explore' && consoleOnOpen.explore) consoleOnOpen.explore();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
       return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
@@ -3571,6 +3574,8 @@
       .map(function (it) { return draw.listed[Number(it.number)]; }).sort(function (a, b) { return a.number - b.number; });
     if (!planned.length) {
       graphReset('Nothing to draw yet: no open issue labelled epic or goal has sub-issues. ' + GRAPH_START + graphCut(draw));
+      s.graphLast = draw;
+      exploreAfterDraw();
       return Promise.resolve();
     }
     graphReset('Reading the sub-issues of ' + plural(planned.length, 'epic or goal', 'epics and goals') + '...');
@@ -3582,6 +3587,10 @@
       if (!graphLive(draw)) return;
       draw.claimed = graphClaimed(s.pulls, repo);
       graphRender(draw);
+      // Explore builds its tree from the latest draw, and redraws while it is open
+      s.graphLast = draw;
+      s.graphFailed = '';
+      exploreAfterDraw();
     }).catch(function (e) {
       if (!graphLive(draw)) return;
       clear($('cp-graph'));
@@ -3591,6 +3600,8 @@
       // the reads ended, so what failed is the page's own laying out of them
       else graphWords('Not drawn: ' + e.message, true);
       failed(s, 'the dependencies', e);
+      s.graphFailed = e.message || 'the reads stopped';
+      exploreAfterDraw();
       if (s.ready) summary();
     });
   }
@@ -6567,6 +6578,452 @@
     consoleOnOpen.share = shareRefresh;
   }
 
+  /* ---------- Explore: the project as a map to go into ---------- */
+  // The repository at the top, then its goals and epics, each epic's tasks, a task's pull requests
+  // (or its claim branch where it has none), the runs on that branch, a run's jobs, a job's steps and,
+  // at the bottom, the lines of a step's log. One level is drawn at a time, its children as tiles:
+  // a click, or scrolling up while pointing at a tile, goes into it; scrolling down, Backspace or a
+  // crumb comes back out. The wheel scrolls a long level to its edge first and only then moves a
+  // level, so a long list still scrolls. Goals, epics and tasks are what the console read already;
+  // the levels below a task are read as the person, one read each, only when the person goes into
+  // them, kept in the tab's memory for the repository chosen and written nowhere.
+  var EXPLORE_KINDS = { repo: 'Repository', goal: 'Goal', epic: 'Epic', group: 'Group', issue: 'Task', pull: 'Pull request', branch: 'Branch', run: 'Run', job: 'Job', step: 'Step', log: 'Log' };
+  var EXPLORE_LOG_LINES = 5000;
+  // a wheel event this long after the one before starts a new gesture; only a gesture's first event
+  // moves a level, so a trackpad's glide never carries on into the next level
+  var EXPLORE_GESTURE_GAP = 250;
+  var EXPLORE_LOGS_KEPT = 3;
+  var explore = { s: null, issues: null, pulls: null, draw: null, failed: '', root: null, path: [], wheelLast: 0, era: 0, logs: [] };
+
+  // the repository changed: nothing of the last one is kept, its logs included
+  function exploreForget() {
+    explore.era++;
+    explore.s = null; explore.root = null; explore.path = []; explore.logs = [];
+  }
+  // a draw of the Dependencies tab ended, drawn or not; a fault here is Explore's, never the draw's
+  function exploreAfterDraw() {
+    if (consoleTab !== 'explore') return;
+    try { openExplore(); } catch (e) { exStatus('Explore could not be drawn: ' + e.message); }
+  }
+
+  function exNode(kind, key, title, more) {
+    var n = { kind: kind, key: kind + ':' + key, title: title, sub: '', state: '', url: '', claude: false, children: null, load: null, reading: null, failed: '', step: null, job: null };
+    var k;
+    for (k in (more || {})) if (Object.prototype.hasOwnProperty.call(more, k)) n[k] = more[k];
+    return n;
+  }
+  function exHttps(url) { return typeof url === 'string' && /^https:\/\//.test(url) ? url : ''; }
+  function exRepo(s) { return s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo; }
+  function exAssistant(it) { return labelsOf(it).indexOf(ASSISTANT_LABEL) >= 0 && /^Assistant: /.test(String(it.title || '')); }
+
+  // the tree down to the tasks, from the open issues and the Dependencies tab's latest draw; an
+  // issue already on the path is not drawn under itself again, whatever GitHub's lists say
+  function exBuild(s) {
+    var repo = exRepo(s), draw = s.graphLast || null;
+    // without a finished draw the epics' sub-issues are unknown, which the tab says rather than
+    // calling an epic empty
+    var unread = draw ? '' : (s.graphFailed ? 'Its sub-issues could not be read: ' + s.graphFailed : 'Its sub-issues are not read yet; they come with the Dependencies tab\'s next read.');
+    var listed = {}, subs = draw ? draw.subIssues : {};
+    var open = s.issues.filter(function (it) { return !it.pull_request && !exAssistant(it); });
+    open.forEach(function (it) { listed[Number(it.number)] = graphIssue(it); });
+    var claimed = graphClaimed(s.pulls || [], repo);
+    function rec(n) { return listed[n] || (draw && (draw.listed[n] || draw.others[n])) || null; }
+    var under = {};
+    Object.keys(subs).forEach(function (k) { subs[k].forEach(function (n) { under[n] = true; }); });
+    function issueNode(r, seen) {
+      var goal = r.labels.indexOf('goal') >= 0, planned = graphPlanned(r);
+      var n = exNode(planned ? (goal ? 'goal' : 'epic') : 'issue', r.number, '#' + r.number + ' ' + r.title, { state: graphClass(r, claimed) || 'open', url: exHttps(r.html_url), number: r.number });
+      if (r.progress) n.sub = r.progress[0] + ' of ' + r.progress[1] + ' closed';
+      var mine = seen.concat([r.number]);
+      if (planned && unread) { n.children = []; n.unread = unread; }
+      else if (planned) n.children = (subs[r.number] || []).filter(function (c) { return mine.indexOf(c) < 0; }).map(rec).filter(Boolean).map(function (c) { return issueNode(c, mine); });
+      else n.load = function () { return exBranches(s, repo, r); };
+      return n;
+    }
+    var root = exNode('repo', repo, repo, { url: exHttps(s.meta && s.meta.html_url), state: 'open' });
+    root.sub = s.meta && typeof s.meta.description === 'string' ? s.meta.description : '';
+    var planned = open.map(function (it) { return listed[Number(it.number)]; }).filter(graphPlanned).sort(function (a, b) { return a.number - b.number; });
+    var goals = planned.filter(function (r) { return r.labels.indexOf('goal') >= 0; });
+    var epics = planned.filter(function (r) { return r.labels.indexOf('goal') < 0 && !under[r.number]; });
+    var loose = open.map(function (it) { return listed[Number(it.number)]; }).filter(function (r) { return !graphPlanned(r) && !under[r.number]; }).sort(function (a, b) { return a.number - b.number; });
+    root.children = goals.concat(epics).map(function (r) { return issueNode(r, []); });
+    if (loose.length) {
+      var group = exNode('group', 'loose', unread ? 'Open tasks' : 'Not in an epic', { state: 'open', sub: plural(loose.length, 'open task') });
+      group.children = loose.map(function (r) { return issueNode(r, []); });
+      root.children.push(group);
+    }
+    root.sub = root.sub || plural(open.length, 'open issue');
+    return root;
+  }
+
+  // a task's open pull requests, by its claim branch or by a body that closes it; where it has none,
+  // its claim branch, whose runs may still be there
+  function exBranches(s, repo, r) {
+    var closes = new RegExp('\\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?\\s+(' + repo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')?#' + r.number + '\\b', 'i');
+    var pulls = (s.pulls || []).filter(function (p) {
+      var head = p && p.head ? p.head : {};
+      var ours = head.repo && head.repo.full_name === repo;
+      return (ours && head.ref === 'claude/' + r.number) || closes.test(String(p.body || ''));
+    });
+    var out = pulls.map(function (p) {
+      var head = p.head || {}, ref = String(head.ref || '');
+      var n = exNode('pull', p.number, '#' + p.number + ' ' + String(p.title || ''), { state: p.draft ? 'draft' : 'review', url: exHttps(p.html_url), sub: ref });
+      // a fork's pull request runs here under its branch's name, so the runs are told apart by the
+      // repository their head came from
+      var from = head.repo && typeof head.repo.full_name === 'string' ? head.repo.full_name : '';
+      n.load = function () { return exRuns(repo, ref, from); };
+      return n;
+    });
+    if (!out.length) {
+      var b = exNode('branch', r.number, 'claude/' + r.number, { state: 'open', sub: 'No open pull request; the runs on its claim branch' });
+      b.load = function () { return exRuns(repo, 'claude/' + r.number, repo); };
+      out.push(b);
+    }
+    return Promise.resolve(out);
+  }
+
+  // one read of GitHub, refused while the token is under the reserve the Dependencies tab keeps
+  function exRead(path, raw, headers) {
+    if (rateLatest !== null && rateLatest < GRAPH_RESERVE) return Promise.reject(new Error('GitHub says this token has ' + rateLatest + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console. Try again once the hour has reset.'));
+    return gh('GET', path, undefined, headers, raw);
+  }
+  function exOutcome(status, conclusion) {
+    if (status && status !== 'completed') return 'running';
+    if (conclusion === 'success') return 'done';
+    if (conclusion === 'skipped' || conclusion === 'neutral') return 'skipped';
+    if (conclusion === 'cancelled') return 'cancelled';
+    return conclusion ? 'failed' : 'open';
+  }
+  function exRuns(repo, branch, from) {
+    return exRead('/repos/' + repo + '/actions/runs?branch=' + encodeURIComponent(branch) + '&per_page=20').then(function (r) {
+      var runs = r.data && Array.isArray(r.data.workflow_runs) ? r.data.workflow_runs : [];
+      return runs.filter(isPlain).filter(function (run) {
+        var h = isPlain(run.head_repository) ? run.head_repository.full_name : '';
+        return !h || !from || h === from;
+      }).map(function (run) {
+        var n = exNode('run', run.id, String(run.name || 'Run') + ' #' + String(run.run_number || ''), { state: exOutcome(run.status, run.conclusion), url: exHttps(run.html_url) });
+        n.sub = String(run.event || '') + (run.created_at ? ', ' + ago(run.created_at) : '');
+        n.load = function () { return exJobs(repo, run.id); };
+        return n;
+      });
+    });
+  }
+  function exJobs(repo, id) {
+    return exRead('/repos/' + repo + '/actions/runs/' + encodeURIComponent(id) + '/jobs?per_page=50').then(function (r) {
+      var jobs = r.data && Array.isArray(r.data.jobs) ? r.data.jobs : [];
+      var total = r.data && typeof r.data.total_count === 'number' ? r.data.total_count : jobs.length;
+      var out = jobs.filter(isPlain).map(function (job) {
+        var steps = Array.isArray(job.steps) ? job.steps.filter(isPlain) : [];
+        var n = exNode('job', job.id, String(job.name || 'Job'), { state: exOutcome(job.status, job.conclusion), url: exHttps(job.html_url), sub: plural(steps.length, 'step') });
+        n.repo = repo;
+        n.children = steps.map(function (st) {
+          var c = exNode('step', job.id + '.' + st.number, String(st.number) + '. ' + String(st.name || ''), { state: exOutcome(st.status, st.conclusion), url: n.url, step: st, job: n });
+          c.claude = /claude/i.test(String(st.name || ''));
+          if (c.claude) n.claude = true;
+          return c;
+        });
+        n.children.push(exNode('log', job.id, 'The whole log', { state: 'open', url: n.url, job: n, sub: 'Every line of the job' }));
+        return n;
+      });
+      if (total > out.length) out.more = 'The first ' + out.length + ' of ' + total + ' jobs; the rest are on GitHub.';
+      return out;
+    });
+  }
+  // a job's log, read once and kept with the job; GitHub answers with a redirect to its own storage,
+  // which the browser follows and may refuse to read across origins
+  // The read carries the token alone: the browser drops it on the redirect to another origin, and a
+  // request with no header of GitHub's own needs no permission asked of the storage first. The
+  // lines are kept for the last few jobs read, not every one.
+  var EXPLORE_LOG_HEADERS = { 'Accept': null, 'X-GitHub-Api-Version': null };
+  function exLog(job) {
+    if (!job.logRead) {
+      explore.logs = explore.logs.filter(function (j) { return j !== job; }).concat([job]);
+      while (explore.logs.length > EXPLORE_LOGS_KEPT) explore.logs.shift().logRead = null;
+    }
+    if (!job.logRead) job.logRead = exRead('/repos/' + job.repo + '/actions/jobs/' + encodeURIComponent(job.key.slice(4)) + '/logs', true, EXPLORE_LOG_HEADERS).then(function (r) {
+      return exLines(typeof r.data === 'string' ? r.data : '');
+    }).catch(function (e) {
+      job.logRead = null;
+      if (e && e.name === 'TypeError') throw new Error('GitHub keeps this log where your browser may not read it from this page.');
+      throw e;
+    });
+    return job.logRead;
+  }
+  // the lines of a log, each with its time, the colour codes taken out
+  function exLines(text) {
+    return String(text).split(/\r?\n/).map(function (line) {
+      var m = /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?Z ?(.*)$/.exec(line);
+      var body = (m ? m[3] : line).replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
+      return { at: m ? Date.parse(m[1] + (m[2] ? m[2].slice(0, 4) : '') + 'Z') : NaN, text: body };
+    });
+  }
+  // a step's lines, by the times GitHub gives the steps, to the second: a skipped step printed
+  // nothing, so it takes none; a line in the second a step starts stays with the step before unless
+  // it opens the new step's group, since a step's last lines and the next one's first share a second;
+  // a line with no time goes with the line before it, and lines before the first start with the first
+  function exStepLines(lines, job, step) {
+    var starts = job.children.filter(function (c) { return c.step && c.step.started_at && c.step.conclusion !== 'skipped'; })
+      .map(function (c) { return { n: c.step.number, at: Math.floor(Date.parse(c.step.started_at) / 1000) }; })
+      .filter(function (b) { return !isNaN(b.at); }).sort(function (a, b) { return a.at - b.at; });
+    if (!starts.length) return [];
+    var cur = 0, out = [];
+    lines.forEach(function (l) {
+      if (!isNaN(l.at)) {
+        var sec = Math.floor(l.at / 1000);
+        while (cur + 1 < starts.length && (sec > starts[cur + 1].at || (sec === starts[cur + 1].at && /^##\[group\]Run /.test(l.text)))) cur++;
+      }
+      if (starts[cur].n === step.number) out.push(l);
+    });
+    return out;
+  }
+
+  /* drawing */
+  function exCurrent() { return explore.path[explore.path.length - 1] || null; }
+  function exStatus(text) { $('ex-status').textContent = text; }
+  function exKids(n) { return Array.isArray(n.children) ? n.children : []; }
+  function exTile(n, i) {
+    var t = el('button', 'ex__tile ex__tile--' + n.kind + ' ex__s--' + (n.state || 'open'));
+    t.type = 'button';
+    t.setAttribute('data-ex', String(i));
+    if (exKids(n).length > 8) t.className += ' ex__tile--wide';
+    var top = add(t, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind)).lastChild;
+    if (n.claude) add(top, ' ', el('span', 'ex__claude', 'Claude'));
+    add(t, el('span', 'ex__title', n.title));
+    if (n.sub) add(t, el('span', 'ex__sub', n.sub));
+    var kids = exKids(n);
+    if (kids.length) {
+      var dots = add(t, el('span', 'ex__dots')).lastChild;
+      kids.slice(0, 40).forEach(function (k) { var d = add(dots, el('span', 'ex__dot ex__s--' + (k.state || 'open'))).lastChild; d.title = k.title; });
+      if (kids.length > 40) add(dots, el('span', 'ex__more', '+' + (kids.length - 40)));
+    } else if (n.load && !n.children) add(t, el('span', 'ex__hint', 'Go in to read'));
+    var pill = add(t, el('span', 'ex__pill', n.state || 'open')).lastChild;
+    pill.setAttribute('aria-hidden', 'true');
+    t.setAttribute('aria-label', (EXPLORE_KINDS[n.kind] || n.kind) + ': ' + n.title + (n.sub ? ', ' + n.sub : '') + ', ' + (n.state || 'open'));
+    return t;
+  }
+  function exDraw() {
+    var stage = $('ex-stage'), n = exCurrent();
+    clear(stage);
+    exPath();
+    exTree();
+    var gh2 = $('ex-github');
+    if (n && n.url) { gh2.href = n.url; gh2.hidden = false; } else { gh2.hidden = true; gh2.removeAttribute('href'); }
+    $('ex-out').disabled = explore.path.length <= 1;
+    if (!n) { none(stage, 'Nothing to explore yet: no repository is chosen.'); exStatus('Choose a repository in the side column.'); return; }
+    var head = add(stage, el('div', 'ex__head ex__s--' + (n.state || 'open'))).lastChild;
+    add(head, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind), el('h3', 'ex__name', n.title));
+    if (n.sub) add(head, el('p', 'ex__sub', n.sub));
+    if (n.kind === 'step' || n.kind === 'log') return exDrawLog(stage, n);
+    if (n.failed) {
+      none(stage, n.failed);
+      var again = add(stage, el('button', 'ex__tool', 'Try again')).lastChild;
+      again.type = 'button';
+      again.addEventListener('click', function () { n.failed = ''; exGo(explore.path.slice()); });
+      exStatus('This level could not be read.');
+      return;
+    }
+    if (!n.children) { none(stage, 'Reading from GitHub...'); exStatus('Reading...'); return; }
+    var kids = exKids(n);
+    if (!kids.length) {
+      none(stage, n.unread || exEmpty(n));
+      if (n.load) add(stage, exAgain('Read this level again', function () { n.children = null; }));
+      exStatus('Nothing below this level.');
+      return;
+    }
+    var grid = add(stage, el('div', 'ex__grid')).lastChild;
+    kids.forEach(function (k, i) { grid.appendChild(exTile(k, i)); });
+    if (kids.more) add(stage, el('p', 'admin__none', kids.more));
+    if (n.load) add(stage, exAgain('Read this level again', function () { n.children = null; }));
+    exStatus(plural(kids.length, 'item') + '. Click a tile, or scroll up on it, to go in; scroll down or press Backspace to come out.');
+  }
+  // what a run still going shows changes, so a level read below a task can be read again by hand
+  function exAgain(words, forget) {
+    var b = el('button', 'ex__tool ex__again', words);
+    b.type = 'button';
+    b.addEventListener('click', function () { forget(); exGo(explore.path.slice()); });
+    return b;
+  }
+  function exEmpty(n) {
+    if (n.kind === 'repo') return explore.s && !explore.s.ready ? 'The issues are still being read.' : 'No open issue yet. Tasks, epics and goals appear here as they are opened.';
+    if (n.kind === 'pull' || n.kind === 'branch') return 'No GitHub Actions run on this branch.';
+    if (n.kind === 'run') return 'This run has no job.';
+    if (n.kind === 'epic' || n.kind === 'goal') return 'No sub-issue: add tasks on the issue\'s page under Sub-issues.';
+    return 'Nothing here.';
+  }
+  function exDrawLog(stage, n) {
+    var job = n.job, box = add(stage, el('div', 'ex__log')).lastChild;
+    var link = n.url ? el('a', 'ex__link', 'Open the log on GitHub') : null;
+    if (link) { link.href = n.url; link.target = '_blank'; link.rel = 'noopener'; }
+    none(box, 'Reading the log...');
+    exStatus('Reading the log...');
+    var era = explore.era;
+    exLog(job).then(function (all) {
+      if (era !== explore.era || exCurrent() !== n) return;
+      var lines = n.kind === 'step' ? exStepLines(all, job, n.step) : all;
+      clear(box);
+      if (!lines.length || (lines.length === 1 && !lines[0].text)) { none(box, 'No line of the log falls in this step.'); if (link) add(box, link); exStatus('An empty step.'); return; }
+      var pre = add(box, el('pre', 'ex__lines')).lastChild;
+      lines.slice(0, EXPLORE_LOG_LINES).forEach(function (l) {
+        var cls = /^##\[group\]/.test(l.text) ? 'ex__group' : /^##\[error\]/.test(l.text) ? 'ex__error' : /^##\[warning\]/.test(l.text) ? 'ex__warning' : '';
+        add(pre, el('span', cls ? 'ex__line ' + cls : 'ex__line', l.text.replace(/^##\[(group|endgroup|error|warning)\]/, '')));
+      });
+      if (lines.length > EXPLORE_LOG_LINES) add(box, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
+      if (link) add(box, link);
+      add(box, exAgain('Read the log again', function () { job.logRead = null; }));
+      exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' Backspace comes back out.');
+    }).catch(function (e) {
+      if (era !== explore.era || exCurrent() !== n) return;
+      clear(box);
+      none(box, 'The log could not be read: ' + e.message);
+      if (link) add(box, link);
+      exStatus('The log could not be read here; GitHub shows it.');
+    });
+  }
+  function exPath() {
+    var nav = $('ex-path');
+    clear(nav);
+    explore.path.forEach(function (n, i) {
+      if (i) add(nav, el('span', 'ex__sep', '\u203a'));
+      var last = i === explore.path.length - 1;
+      var b = add(nav, el(last ? 'span' : 'button', last ? 'ex__here' : 'ex__crumb', n.title)).lastChild;
+      if (!last) { b.type = 'button'; b.addEventListener('click', function () { exGo(explore.path.slice(0, i + 1)); }); }
+      else b.setAttribute('aria-current', 'location');
+    });
+  }
+  // the outline: every level read so far, open along the path
+  function exTree() {
+    var box = $('ex-tree');
+    clear(box);
+    if (!explore.root) return;
+    (function walk(n, chain, depth, parent) {
+      var on = explore.path.indexOf(n) >= 0;
+      var row = add(parent, el('div', 'ex__node' + (n === exCurrent() ? ' ex__current' : ''))).lastChild;
+      row.style.paddingLeft = (depth * 12 + 4) + 'px';
+      var b = add(row, el('button', 'ex__nodename ex__s--' + (n.state || 'open'), n.title)).lastChild;
+      b.type = 'button';
+      b.title = n.title;
+      if (n === exCurrent()) b.setAttribute('aria-current', 'location');
+      b.addEventListener('click', function () { exGo(chain); });
+      if (on) exKids(n).forEach(function (k) { walk(k, chain.concat([k]), depth + 1, parent); });
+    })(explore.root, [explore.root], 0, box);
+  }
+
+  // going to a level: its children read where they are not yet, then drawn
+  // the keys stay with the tab: a person who went in from inside it is left on the new level's
+  // first tile, or on the level itself where it has none
+  function exGo(path, from) {
+    var n = path[path.length - 1];
+    var held = $('tab-explore').contains(document.activeElement);
+    explore.path = path;
+    exZoom(from);
+    exDraw();
+    if (n && !n.children && n.load && !n.failed) {
+      var era = explore.era;
+      if (!n.reading) n.reading = n.load().then(function (kids) { n.children = kids; }).catch(function (e) { n.failed = 'Not read: ' + e.message; }).then(function () { n.reading = null; });
+      n.reading.then(function () { if (era === explore.era && exCurrent() === n) { held = held || document.activeElement === document.body; exDraw(); exFocus(held); } });
+    } else exFocus(held);
+  }
+  function exIn(i, tile) {
+    var n = exCurrent(), k = n && exKids(n)[i];
+    if (k) exGo(explore.path.concat([k]), tile);
+  }
+  function exOut() { if (explore.path.length > 1) exGo(explore.path.slice(0, -1)); }
+  function exFocus(held) {
+    if (!held) return;
+    var tile = $('ex-stage').querySelector('.ex__tile');
+    (tile || $('ex-stage')).focus({ preventScroll: true });
+  }
+  // a short growth of the tile into the stage, so the move reads as going in; none for a reader who
+  // asked for less motion
+  function exZoom(tile) {
+    var stage = $('ex-stage');
+    if (!tile || !stage.getBoundingClientRect || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    // the box is placed in the stage's parent, so both ends are measured from it
+    var a = tile.getBoundingClientRect(), b = stage.getBoundingClientRect(), p = stage.parentNode.getBoundingClientRect();
+    var z = el('div', 'ex__zoom');
+    z.style.left = (a.left - p.left) + 'px';
+    z.style.top = (a.top - p.top) + 'px';
+    z.style.width = a.width + 'px';
+    z.style.height = a.height + 'px';
+    stage.parentNode.appendChild(z);
+    z.getBoundingClientRect();
+    z.style.left = (b.left - p.left) + 'px'; z.style.top = (b.top - p.top) + 'px'; z.style.width = b.width + 'px'; z.style.height = b.height + 'px'; z.style.opacity = '0';
+    setTimeout(function () { if (z.parentNode) z.parentNode.removeChild(z); }, 320);
+  }
+  // Only the first event of a gesture that starts at an edge moves a level: scrolling up from the
+  // top over a tile goes into it, scrolling down from the bottom comes out. A gesture that reaches
+  // the edge partway, or glides on after a move, only scrolls. A pinch (ctrl and the wheel) is the
+  // browser's own zoom.
+  function exWheel(e) {
+    var now = Date.now(), first = now - explore.wheelLast > EXPLORE_GESTURE_GAP;
+    explore.wheelLast = now;
+    if (e.ctrlKey || Math.abs(e.deltaY) < 4) return;
+    var stage = $('ex-stage'), n = exCurrent();
+    if (!n || n.kind === 'step' || n.kind === 'log') return;
+    if (e.deltaY < 0) {
+      var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
+      if (!tile || stage.scrollTop > 0) return;
+      e.preventDefault();
+      if (first) exIn(Number(tile.getAttribute('data-ex')), tile);
+    } else {
+      if (stage.scrollTop + stage.clientHeight < stage.scrollHeight - 2 || explore.path.length <= 1) return;
+      e.preventDefault();
+      if (first) exOut();
+    }
+  }
+  function exKey(e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
+    var at = tiles.indexOf(document.activeElement);
+    if (e.key === 'Backspace' || e.key === 'Escape') { if (explore.path.length > 1) { e.preventDefault(); exOut(); } return; }
+    // the arrows move between tiles only from a tile or the stage, never from the outline or the trail
+    if (!tiles.length || (at < 0 && e.target !== $('ex-stage'))) return;
+    if (e.key === 'Enter' && at >= 0) { e.preventDefault(); exIn(at, tiles[at]); return; }
+    var across = 1;
+    if (tiles.length > 1) { var top0 = tiles[0].offsetTop; while (across < tiles.length && tiles[across].offsetTop === top0) across++; }
+    var to = { ArrowRight: at + 1, ArrowLeft: at - 1, ArrowDown: at + across, ArrowUp: at - across, Home: 0, End: tiles.length - 1 }[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    tiles[Math.max(0, Math.min(tiles.length - 1, at < 0 ? 0 : to))].focus();
+  }
+
+  // the tab opened, or the issues were read again while it is open: the tree built afresh from what
+  // the console holds, the path kept as far as its levels are still there
+  function openExplore() {
+    var s = state;
+    if (!s.repo) { explore.root = null; explore.path = []; explore.s = s; exDraw(); return; }
+    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) { exDraw(); return; }
+    var keys = explore.s && explore.s.repo === s.repo ? explore.path.map(function (n) { return n.key; }) : [];
+    var old = explore.s && explore.s.repo === s.repo ? explore.path.slice() : [];
+    explore.era++;
+    explore.s = s;
+    explore.issues = s.issues;
+    explore.pulls = s.pulls;
+    explore.failed = s.graphFailed || '';
+    explore.draw = s.graphLast || null;
+    explore.root = exBuild(s);
+    var path = [explore.root];
+    for (var i = 1; i < keys.length; i++) {
+      var here = path[path.length - 1], kids = exKids(here), next = null;
+      kids.forEach(function (k) { if (k.key === keys[i]) next = k; });
+      // a level read below a task is carried over as it was, since the issues' read did not touch it
+      if (!next && here.load && !here.children && old[i - 1] && old[i - 1].key === here.key && old[i - 1].children) { here.children = old[i - 1].children; kids = here.children; kids.forEach(function (k) { if (k.key === keys[i]) next = k; }); }
+      if (!next) break;
+      path.push(next);
+    }
+    exGo(path);
+  }
+  function initExploreTab() {
+    $('ex-out').addEventListener('click', exOut);
+    $('ex-stage').addEventListener('click', function (e) {
+      var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
+      if (tile) exIn(Number(tile.getAttribute('data-ex')), tile);
+    });
+    $('ex-stage').addEventListener('wheel', exWheel, { passive: false });
+    $('tab-explore').addEventListener('keydown', exKey);
+    consoleOnOpen.explore = openExplore;
+  }
+
   // the Agents tab puts one in each agent's row
   window.tokenAssignBox = tokenAssignBox;
 
@@ -6574,5 +7031,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('ex-stage')) initExploreTab(); }
 })();
