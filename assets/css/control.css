@@ -82,6 +82,22 @@
 /* the filter's words above the tables and the actions under the answer: nothing, and no gap, until there is something to say */
 .control #cp-as-filter:empty, .control #cp-as-actions:empty { display: none; }
 
+/* ---------- the Folders page: the drive's list, its crumbs, the ticked items, the form link ---------- */
+.folders__crumbs { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.folders .folders__crumbs button { padding: 3px 10px; font-size: 0.88rem; margin: 0; }
+.folders #fd-items th { white-space: nowrap; }
+.folders #fd-items td:first-child { width: 2.5em; text-align: center; }
+.folders #fd-items td:last-child { white-space: nowrap; }
+.folders #fd-items td button { padding: 2px 10px; font-size: 0.85rem; margin: 0; }
+.folders__picked { margin: 0 0 8px 22px; font-size: 0.95rem; }
+.folders__picked li { margin: 3px 0; }
+.folders__picked:empty { display: none; }
+.folders .folders__picked button { padding: 1px 8px; font-size: 0.8rem; margin: 0 0 0 8px; }
+/* a link that opens GitHub's form, drawn as the page's buttons are, since the press is the action */
+.folders .folders__button { display: inline-block; font-size: 0.9rem; color: var(--paper-card); background: var(--ink); border: 1px solid var(--ink); border-radius: 100px; padding: 8px 18px; text-decoration: none; }
+.folders .folders__button:hover { background: var(--teal); border-color: var(--teal); color: var(--paper-card); }
+.folders #fd-connect-note:empty { display: none; }
+
 /* ---------- the cost page ---------- */
 .cost__facts { margin: 6px 0 14px; }
 .cost__facts th { width: 13em; color: var(--ink-soft); }

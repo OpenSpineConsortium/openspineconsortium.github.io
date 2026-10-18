@@ -1,0 +1,83 @@
+---
+title: Folders · Symphony
+description: Make a Symphony repository track files and folders of your OneDrive: connect the drive, tick what to track, make the repository from the template and press Track; the repository's own workflow keeps the two in step and turns the documents' comments into tasks.
+css: /assets/css/control.css
+js: /assets/js/symphony-panel.js
+canonical: https://openspineconsortium.com/symphony/control/folders.html
+robots: noindex
+strip: no
+---
+<section class="section admin control folders" aria-labelledby="fd-title">
+  <header class="page-head">
+    <span class="eyebrow">Symphony</span>
+    <h1 id="fd-title">Folders</h1>
+    <p>A repository that tracks files and folders of your OneDrive, one press per step: connect the drive, tick what to track, make the repository from the template, press Track. From then on the repository&rsquo;s own workflow, <code>drive-sync.yml</code>, brings what changed in the drive down as a pull request every half hour and sends what changed in the repository back up, and a new comment in a document becomes a task on the board. Google Drive comes later, once there is a way that needs no key. Back to <a href="/symphony/control/">the control panel</a>.</p>
+  </header>
+
+  <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
+
+  <div class="admin__box control__gate" id="cp-gate">
+    <h2>Sign in</h2>
+    <p class="admin__lead">One press, as on the control panel: GitHub sends you straight back here signed in, and the page writes the repository as you.</p>
+    <div><button id="cp-signin" type="button" class="control__signin">Sign in with GitHub</button></div>
+    <p id="cp-signin-off" class="admin__lead admin__warn hidden">Sign in with GitHub switches on once its sign-in service is running; until then, use a token below.</p>
+    <div class="admin__checks"><label><input id="cp-keep" type="checkbox"> Keep me signed in on this browser</label></div>
+    <details id="cp-token-way" class="control__token">
+      <summary>Use a fine-grained token instead</summary>
+      <label for="cp-token">A fine-grained personal access token</label>
+      <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
+      <small>The same token as the control panel&rsquo;s, with Contents read and write (to write the file that says what is tracked), Secrets read and write (to save the drive&rsquo;s refresh token as the repository&rsquo;s secret) and Actions read and write (to start the first sync). It stays in this browser and goes to GitHub&rsquo;s API only. Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>. This is a GitHub token: the page takes no Claude token, and the drive&rsquo;s own tokens come from Microsoft when you press Connect.</small>
+      <div><button id="cp-open" type="button">Read my repository</button></div>
+    </details>
+  </div>
+
+  <div id="cp-app" class="hidden">
+    <p class="admin__bar"><button id="cp-signout" type="button" class="quiet">Forget the token</button> <small id="cp-who"></small></p>
+    <div class="admin__box">
+      <div class="admin__row">
+        <div><label for="fd-repo">Repository (the control panel&rsquo;s list)</label><select id="fd-repo"></select></div>
+        <div><label for="fd-name">Or name one, <code>owner/name</code></label><input id="fd-name" type="text" autocomplete="off" spellcheck="false" placeholder="owner/name"></div>
+        <div><button id="fd-add" type="button" class="quiet">Add</button> <button id="fd-reload" type="button">Refresh</button></div>
+      </div>
+      <p class="admin__lead">Refresh asks GitHub for your newest repositories and lists each that was made from the template or carries the topic <code>symphony</code>, so a repository you have just made in step 3 appears here; it also reads the chosen repository again.</p>
+    </div>
+
+    <h2 id="h-tracked">What the repository tracks</h2>
+    <div id="fd-tracked" class="admin__box"></div>
+
+    <h2 id="h-connect">Step 1: connect the drive</h2>
+    <div class="admin__box">
+      <p class="admin__lead">One press: Microsoft asks, on its own page, whether Symphony may read and write your files and keep that access when you are away, and sends you straight back here. The page then holds the drive&rsquo;s two tokens in its memory alone, never in the browser&rsquo;s storage, so finish the steps in one sitting: a reload forgets them, and Connect is one press again.</p>
+      <p class="admin__bar"><button id="fd-connect" type="button">Connect OneDrive</button> <small id="fd-connect-note"></small></p>
+      <p class="admin__lead">Google Drive comes later, once there is a way that needs no key: Google&rsquo;s own picker takes a browser API key, which the owner has declined.</p>
+    </div>
+
+    <h2 id="h-pick">Step 2: tick what to track</h2>
+    <div class="admin__box">
+      <p class="admin__lead">Your OneDrive, drawn here from Microsoft Graph as you, in this browser: open a folder with Open, tick a file or a folder to track it, and untick to let it go. A ticked folder is tracked with everything in it, six levels down. Nothing of the list leaves this browser but the names and ids of what you tick, which go into the repository&rsquo;s file.</p>
+      <div id="fd-browser"></div>
+      <p class="admin__lead" id="fd-picked-head">Ticked:</p>
+      <ul id="fd-picked" class="folders__picked"></ul>
+    </div>
+
+    <h2 id="h-create">Step 3: make the repository</h2>
+    <div class="admin__box">
+      <p class="admin__lead" id="fd-create-note">Skip this step where you already have a repository: pick it above. For a new one, GitHub&rsquo;s own form makes it from the template, named by you, so its first commit stays yours and no App needs to administer it.</p>
+      <p class="admin__bar"><a id="fd-create" class="folders__button" href="https://github.com/new?template_owner=OpenSpineConsortium&amp;template_name=symphony-template" target="_blank" rel="noopener">Make a repository from the template</a></p>
+      <p class="admin__lead">The form opens in a new tab. Name the repository, press &ldquo;Create repository&rdquo;, then come back here, press Refresh and pick the new repository in the repository field. Signed in with GitHub, the page reaches it once SymphonyBoard is installed on it (an installation on all your repositories covers it); a fine-grained token reaches what it was made for.</p>
+    </div>
+
+    <h2 id="h-track">Step 4: track</h2>
+    <div class="admin__box">
+      <p class="admin__lead">One press writes three things, as you: the drive&rsquo;s refresh token, sealed in this browser with the repository&rsquo;s public key the way GitHub&rsquo;s own secrets page seals one, as the secret <code>SYMPHONY_DRIVE_REFRESH</code>; the file <code>.github/symphony/drive.json</code> naming the drive, the folder and what you ticked; and the first run of the sync. The page then drops the drive&rsquo;s tokens from its memory. A Microsoft refresh token lasts 90 days, and the run cannot keep the newer one Microsoft issues on each sync, so the page says when to press Connect again; Connect again replaces the secret and keeps what you ticked.</p>
+      <div class="admin__row">
+        <div><label for="fd-folder">Folder in the repository (one name)</label><input id="fd-folder" type="text" autocomplete="off" spellcheck="false" value="papers" maxlength="80"></div>
+        <div><button id="fd-track" type="button">Track</button></div>
+      </div>
+    </div>
+
+    <h2 id="h-kept">What this page keeps and sends</h2>
+    <p class="admin__lead">In this browser: the GitHub token, as on the control panel, and the names of the repositories you listed. In the open page&rsquo;s memory alone, until Track or a reload: the drive&rsquo;s access token and refresh token. Sent: Microsoft&rsquo;s one-time code to the sign-in service, which adds the client secret it holds, answers with the two tokens and keeps nothing; the refresh token to the same service when the access token runs out during a sitting; requests to Microsoft Graph, as you, for the list you browse; and to GitHub&rsquo;s API, as you, the sealed secret, the file and the request to run the sync. The repository&rsquo;s own run then trades the secret for an access token at the same service on every sync. The developer receives nothing from this page. The Apps&rsquo; privacy statement covers it: <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+  </div>
+  <div id="folders-app" class="hidden"></div>
+</section>

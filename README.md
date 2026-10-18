@@ -246,8 +246,16 @@ Beethoven has two editions, and both live under `/beethoven/`:
   is a named button, so a browsing Claude can drive it; `?repo=OWNER/NAME` lands on one
   repository. **`/symphony/cost.html`** beside it reads `METRICS.json` on the branch `metrics` of
   the chosen repository and prices the same tokens under the other ways of running coding agents
-  on GitHub, with a calculator; every price names its source. Both pages share the script and
-  `assets/css/control.css`, which ride on the admin page's `.admin` styles.
+  on GitHub, with a calculator; every price names its source. **`/symphony/control/folders.html`**,
+  the Folders page, makes a repository track files and folders of the person's OneDrive: one
+  press connects the drive through Microsoft's consent and the sign-in service's `/drive`
+  routes, the page draws the drive's folders from Microsoft Graph to tick from (its own list, in
+  place of OneDrive's File Picker, which needs a SharePoint-resource token, an iframe protocol
+  and a tenant-specific address), GitHub's own template form makes the repository, and Track
+  seals the drive's refresh token as the secret `SYMPHONY_DRIVE_REFRESH`, writes
+  `.github/symphony/drive.json` and starts the first sync; Google Drive waits for a way that
+  needs no key. All pages share the script and `assets/css/control.css`, which ride on the admin
+  page's `.admin` styles.
 - **`/beethoven/admin.html`**, the maintainer's approval page, is generated like any page
   but `hidden`: no navigation leads to it, it carries `noindex` and it is not in the
   sitemap. It reads the access service's address from `beethoven/services.json`

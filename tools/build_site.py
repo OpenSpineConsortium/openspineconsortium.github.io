@@ -342,6 +342,9 @@ SITE = [
         # the Claude slots the workers run on, read from the repository's branch pool; hidden as the
         # panel is, and linked from it
         node("Claude tokens", "/symphony/control/tokens.html", hidden=True),
+        # a repository that tracks files and folders of the person's OneDrive: connect, tick, make the
+        # repository from the template, track; hidden as the panel is, and linked from it
+        node("Folders", "/symphony/control/folders.html", hidden=True),
         node("What it costs", "/symphony/cost.html", crumb="What Symphony costs, against the alternatives"),
         node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
         node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
