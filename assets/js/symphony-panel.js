@@ -1803,6 +1803,9 @@
     if (consoleTab === 'explore' && consoleOnOpen.explore) consoleOnOpen.explore();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
+      // the saved catalog read needs the repository's meta (private, and no drive connected), which
+      // the folders tab's earlier open could not see; now that meta is in, draw it if the tab is open
+      if (consoleTab === 'folders' && !drive) maybeCatalog();
       return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
     }).then(function () {
       if (stale(s)) return;
@@ -5618,6 +5621,7 @@
   // an item ticked in the drive's list is the person's own; one a repository's file ticked carries
   // that repository's name, so choosing another repository lets it go
   function tick(it, on, from) {
+    if (catalogMode) return;
     var item = itemOf(it);
     if (!item.id) return;
     if (on && !picked[item.id]) { item.from = from || ''; picked[item.id] = item; pickedOrder.push(item.id); }
@@ -5806,7 +5810,17 @@
     pathId[CATALOG_ROOT] = '';
     var folders = Array.isArray(data.folders) ? data.folders : [];
     var files = Array.isArray(data.files) ? data.files : [];
-    folders.forEach(function (f) { if (f && typeof f.path === 'string') pathId[f.path] = String(f.id || f.path); });
+    // each folder path takes a unique node id: its own id where that is free, else a suffixed form,
+    // so two folders sharing an id in a malformed catalog never merge children or make the tree a
+    // cycle (the explorer keys open state and children by this id, and ids drive recursion)
+    var usedId = Object.create(null);
+    folders.forEach(function (f) {
+      if (!f || typeof f.path !== 'string' || f.path === CATALOG_ROOT) return;
+      var base = String(f.id || f.path), fid = base, n = 0;
+      while (Object.prototype.hasOwnProperty.call(usedId, fid) && usedId[fid] !== f.path) fid = base + '#' + (++n);
+      usedId[fid] = f.path;
+      pathId[f.path] = fid;
+    });
     function kidsOf(id) { return catalogKids[id] || (catalogKids[id] = []); }
     function parentId(path, name) {
       var pp = catParent(path, name);
@@ -5835,7 +5849,9 @@
     crumbs = []; explorer.filter = ''; explorer.selected = '';
     drawBrowser();
     file(repo, CATALOG_FILE, CATALOG_BRANCH).then(function (text) {
-      if (asked !== catalogLoading) return;
+      // a read is stale if a newer one began, or the chosen repository changed, or a drive connected
+      // while it was in flight: it must not overwrite the view or mislabel another repository's
+      if (asked !== catalogLoading || repo !== foldersRepo() || drive) return;
       catalogBusy = false;
       var data = null; try { data = JSON.parse(text); } catch (e) { data = null; }
       if (!data || typeof data !== 'object' || Array.isArray(data)) { catalog = null; catalogMode = false; drawBrowser(); return; }
@@ -5843,7 +5859,7 @@
       crumbs = []; explorer.filter = ''; explorer.selected = '';
       listFolder();
     }, function (e) {
-      if (asked !== catalogLoading) return;
+      if (asked !== catalogLoading || repo !== foldersRepo() || drive) return;
       catalogBusy = false; catalog = null; catalogMode = false;
       drawBrowser();
     });
