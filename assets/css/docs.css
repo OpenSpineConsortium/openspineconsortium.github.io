@@ -1,0 +1,74 @@
+/* The Docs tab (/docs/): written by tools/build_site.py on every build (THE DOCS SECTION) and,
+   for What's new, filled in the browser by /assets/js/docs.js. */
+.docs .docs__h {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.8rem;
+  letter-spacing: -0.01em;
+  margin: 48px 0 18px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.docs .docs__lede { color: var(--ink-soft); max-width: 70ch; margin-bottom: 22px; }
+
+.docs__products { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.docs__product {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.docs__product h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.3rem; line-height: 1.2; }
+.docs__product p { font-size: 0.95rem; color: var(--ink-soft); }
+.docs .docs__version { font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.04em; color: var(--teal); }
+.docs .docs__links { margin-top: auto; padding-top: 6px; font-size: 0.9rem; }
+
+.docs__directory { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 44px; }
+.docs__group h3 { font-family: var(--font-display); font-weight: 500; font-size: 1.35rem; margin-bottom: 10px; }
+.docs__group h3 a { color: var(--ink); }
+.docs__pages, .docs__buttons, .docs__notes, .docs__feed { list-style: none; padding: 0; margin: 0; }
+.docs__page { padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
+.docs__page > a { font-weight: 500; }
+.docs__page p { font-size: 0.9rem; color: var(--ink-soft); margin-top: 3px; }
+.docs__page--d2 { padding-left: 18px; }
+.docs__page--d3 { padding-left: 36px; }
+.docs__tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  vertical-align: 1px;
+}
+.docs__buttons li { padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 0.95rem; }
+.docs__made { color: var(--ink-soft); }
+
+.docs__notes { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+.docs__notes li { font-size: 0.93rem; color: var(--ink-soft); padding-left: 14px; border-left: 2px solid var(--line); }
+#by-product ~ .docs__group { margin-bottom: 30px; }
+
+.docs .docs__status { color: var(--ink-soft); font-size: 0.93rem; margin-bottom: 14px; }
+.docs__feed li {
+  display: grid;
+  grid-template-columns: 7.5em 15em minmax(0, 1fr);
+  gap: 4px 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.93rem;
+}
+.docs__feed time, .docs__feed .docs__repo { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-faint); padding-top: 2px; }
+
+@media (max-width: 960px) { .docs__products { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) {
+  .docs__products, .docs__directory { grid-template-columns: minmax(0, 1fr); }
+  .docs__feed li { grid-template-columns: minmax(0, 1fr); }
+}
+.docs__more { margin: 0 0 10px; }
+.docs__more summary { cursor: pointer; color: var(--teal); font-size: 0.9rem; margin-bottom: 10px; }
+.docs__showall { margin-top: 14px; }

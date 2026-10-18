@@ -22,8 +22,11 @@ WHAT IT DOES, IN ORDER
         <!-- build:request-form services=<url> [fine=short] -->   the access form and its script
         <!-- build:browsers -->                      the one install card: Chrome, the store listing
         <!-- build:vscode-install -->                the Beethoven for VS Code install card
+        <!-- build:symphony-store-badge -->          Symphony's store badge, once SYMPHONY_STORE_URL is set
+        <!-- build:symphony-store-note -->           Symphony's store button, or "listing pending"
         <!-- build:section-index -->                 on a tab's landing page, the pages one level
                                                      below its children (tutorials, Spine MRI parts)
+        <!-- build:docs-... -->                      the Docs tab's generated parts (THE DOCS SECTION)
         {{version}} {{vscode_version}} and {{<text>_version}} for each versioned text
         ({{license_version}}, {{privacy_version}}, {{vscode_license_version}}, ...)
     The agreements, the privacy statements and the VS Code edition's third-party notices are
@@ -45,7 +48,8 @@ WHAT IT DOES, IN ORDER
     also writes TEXT_COPIES, the plain-text agreements, byte for byte from their sources.
  7. Checks: every page parses and its tags balance; the header is byte-identical on every page
     except the mark on the current tab; the footer is identical everywhere; every internal link and
-    asset resolves to a file; every page is reachable; the banned word and the old product name are
+    asset resolves to a file; every page, hidden or not, is two clicks from the header and footer
+    and every page on disk is in SITE; the banned word and the old product name are
     absent (outside a person's name and the KEPT identifiers); every file under /ashley/ is either
     a redirect in REDIRECTS or a file in KEPT_FILES with the same bytes as before (installed
     builds read those by address); /beethoven/services.json names every route both editions read;
@@ -135,6 +139,10 @@ START_REPO = sibling_repo("SYMPHONY_START_REPO", ("symphony-start", "sdlc-start"
 # The Marketplace listing's address once it is published under OpenSpineConsortium.beethoven; None
 # shows "Listing pending" (the maintainer uploads the new id by hand)
 VSCODE_STORE_URL = None
+# Symphony for Chrome's listing, https://chromewebstore.google.com/detail/<item id>, once the store
+# item exists; None leaves the overview page's badge out and its Chrome card says the listing is
+# pending. The one line to change when the item's id is known.
+SYMPHONY_STORE_URL = "https://chromewebstore.google.com/detail/symphony/hfljomhibljegapnfiglenfolnmpopoi"
 
 # The texts rendered onto pages, checked word for word against their sources. kind: agreement
 # (hard-wrapped plain text), markdown (pandoc). page: where it is rendered (the body file places it).
@@ -197,6 +205,7 @@ ICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0
         "C 10 16, 18 19, 14 24.5'/%3E%3Cline x1='8.5' y1='6.2' x2='19.5' y2='6.2'/%3E%3Cline x1='8.5' y1='12.5' "
         "x2='19.5' y2='12.5'/%3E%3Cline x1='8.5' y1='18.8' x2='19.5' y2='18.8'/%3E%3C/g%3E%3C/svg%3E")
 STAMP = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d%H%M")
+BUILT = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 NOTICE = "NOTICE ADDRESS TO BE PUBLISHED BY THE LICENSOR BEFORE ANY MARKETPLACE LISTING OR PAID KEY"
 
 # ES-module import edges, leaves first: (importer, imported). The importer carries the imported
@@ -301,7 +310,9 @@ def old_name_left(text):
 # kind: page (generated from tools/pages), sub (a page of its own; gets the shell injected),
 #       app (full-screen; gets the header only)
 # hidden=True: generated and checked like any page, but left out of the strip, the footer, the
-#       section index, the reachability check and the sitemap (a maintainer's page)
+#       section index and the sitemap (a maintainer's page); the Docs tab still lists it, so every
+#       page on the site is two clicks from the header, hidden or not
+# A page whose front matter says robots: noindex stays out of the sitemap whether hidden or not.
 # ============================================================
 def node(label, path, kind="page", children=(), **kw):
     n = {"label": label, "path": path, "kind": kind, "children": list(children)}
@@ -335,14 +346,17 @@ SITE = [
     # the two GitHub Apps' statement from the front door's (TEXTS: symphony-apps-privacy)
     node("Symphony", "/symphony/", overview="Overview", children=[
         # the control panel: a page that drives a Symphony repository through GitHub's API as the
-        # signed-in person (assets/js/symphony-panel.js); hidden, since it is a signed-in page, and
-        # linked from the Symphony page; the cost page beside it prices the work against the
-        # other ways of running coding agents on GitHub
-        node("Control panel", "/symphony/control/", hidden=True),
-        # the Claude slots the workers run on, read from the repository's branch pool; hidden as the
-        # panel is, and linked from it
-        node("Claude tokens", "/symphony/control/tokens.html", hidden=True),
+        # signed-in person (assets/js/symphony-panel.js); in the strip and the footer so it can be
+        # found, and kept out of search by its noindex; the cost page beside it prices the work
+        # against the other ways of running coding agents on GitHub
+        node("Control panel", "/symphony/control/"),
+        # the Claude slots the workers run on, read from the repository's branch pool, beside the panel
+        node("Tokens", "/symphony/control/tokens.html", crumb="Claude tokens"),
         node("What it costs", "/symphony/cost.html", crumb="What Symphony costs, against the alternatives"),
+        # what Symphony is for, told for a newcomer, and its general powers set beside the tools people
+        # already use in each kind of work it competes in
+        node("Use cases", "/symphony/use-cases.html", crumb="What Symphony is for"),
+        node("Compared", "/symphony/compare.html", crumb="Symphony compared with the tools you know"),
         node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
         node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
     ]),
@@ -391,6 +405,14 @@ SITE = [
         node("Organization", "/people/organization/"),
         node("Education", "/people/education/"),
         node("Celebrate Life", "/celebrate-life/", kind="sub"),
+    ]),
+    # the docs: written by this script on every build from the site map, each page's own front
+    # matter, buttons and scripts, and the products' own statements (THE DOCS SECTION below); the
+    # landing page lists every page on the site, hidden ones too, and What's new adds the merged
+    # pull requests of the public repositories, read from GitHub in the visitor's browser
+    node("Docs", "/docs/", overview="Overview", children=[
+        node("Every button", "/docs/buttons.html", crumb="Every button on the site"),
+        node("What's new", "/docs/changes.html", crumb="What's new in each product"),
     ]),
 ]
 CTA = {"label": "Get Involved", "path": "/beethoven/request.html"}
@@ -500,9 +522,11 @@ def section_of(path):
     return parents[0] if parents else n
 
 
-def strip(current):
-    """The section strip: the section's name, then its landing page and its children."""
-    tab = section_of(current)
+def strip(current, tab=None, here=True):
+    """A section strip: the section's name, then its landing page and its children, the page
+    `current` marked. `tab` is the section (the current page's own by default); `here` says it is
+    the current page's section, the one shown in the flow where no pointer can hover (a phone)."""
+    tab = tab or section_of(current)
     if not tab:
         return ""
     kids = [c for c in tab["children"] if listed(c)]
@@ -527,7 +551,8 @@ def strip(current):
         pills.append(f'<a class="subnav__pill" href="{path}"{mark}>{esc(label)}</a>')
     title = tab.get("strip", tab["label"])
     title_path = tab.get("strip_path", tab["path"])
-    return (f'<nav class="subnav" aria-label="{esc(title)}">\n  <div class="subnav__in">\n'
+    cls = "subnav subnav--fly" + (" is-here" if here else "")
+    return (f'<nav class="{cls}" data-tab="{tab["path"]}" aria-label="{esc(title)}">\n  <div class="subnav__in">\n'
             f'    <a class="subnav__title" href="{title_path}">{esc(title)}</a>\n'
             f'    <div class="subnav__pills">{"".join(pills)}</div>\n  </div>\n</nav>')
 
@@ -575,11 +600,26 @@ def footer():
     return fill(template("footer.html"), {"directory": "\n".join(cols)}, "footer.html")
 
 
+# Before anything of the header is drawn: where a pointer can hover and the bar holds every tab in
+# one row, the strips wait under the bar and one drops down while the pointer is on its tab or on
+# it (main.js), so the page keeps the whole screen below the bar; the class is set here, not by
+# main.js at the end of the page, so the section's strip never shows and then vanishes.
+HOVER_MEDIA = "(hover: hover) and (min-width: 901px)"
+HOVER_SCRIPT = (f'<script>if (window.matchMedia && matchMedia("{HOVER_MEDIA}").matches) '
+                'document.documentElement.classList.add("nav-hover");</script>')
+
+
 def header_block(current, with_strip=True):
-    parts = ["<!-- site:header -->", header(current)]
-    s = strip(current) if with_strip else ""
-    if s:
-        parts.append(s)
+    """The header, then every section's strip: the current section's in the page flow where no
+    pointer hovers (unless the page says strip: no), each one a drop-down under the bar where one does."""
+    here = section_of(current)
+    strips = []
+    for tab in SITE:
+        s = strip(current, tab, here=with_strip and tab is here)
+        if s:
+            strips.append(s)
+    parts = ["<!-- site:header -->", HOVER_SCRIPT, header(current)]
+    parts.append('<div class="flyouts" id="flyouts">\n' + "\n".join(strips) + "\n</div>")
     parts.append("<!-- /site:header -->")
     return "\n".join(parts)
 
@@ -652,7 +692,8 @@ def license_parts(text):
 def markdown_parts(md_path):
     """A Markdown text (a privacy statement, the third-party notices) through pandoc.
     Returns (title html, text html)."""
-    r = subprocess.run([PANDOC, str(md_path), "-f", "markdown+pipe_tables", "-t", "html5", "--wrap=none"],
+    # raw_html off: a statement's "<your login>" is words to show, never a tag to pass through
+    r = subprocess.run([PANDOC, str(md_path), "-f", "markdown+pipe_tables-raw_html", "-t", "html5", "--wrap=none"],
                        check=True, capture_output=True)
     frag = r.stdout.decode("utf-8").replace("\r\n", "\n").strip()
     # a wide table scrolls inside its own box, never the page
@@ -800,6 +841,33 @@ def browsers_html():
     return f'<div class="browsers{one}">\n' + "\n".join(cards) + "\n</div>"
 
 
+def symphony_store_url():
+    if SYMPHONY_STORE_URL and not SYMPHONY_STORE_URL.startswith("https://chromewebstore.google.com/detail/"):
+        raise SystemExit(f"SYMPHONY_STORE_URL: {SYMPHONY_STORE_URL} is not a Chrome Web Store listing")
+    return SYMPHONY_STORE_URL
+
+
+def symphony_store_badge_html():
+    """The store's own badge under the Symphony overview's lede, as Beethoven's hero has it;
+    nothing while the listing does not exist, since a badge that opens a 404 is worse than none."""
+    url = symphony_store_url()
+    if not url:
+        return ""
+    return (f'<p class="bh__store"><a class="cws" href="{esc(url)}" target="_blank" rel="noopener" '
+            'aria-label="Symphony for Chrome: available in the Chrome Web Store">'
+            '<img class="cws__icon" src="/assets/img/chrome-logo.svg" alt="" width="30" height="30">'
+            '<span class="cws__text"><span class="cws__k">Available in the</span> Chrome Web Store</span></a></p>')
+
+
+def symphony_store_note_html():
+    """The Chrome card's first line: the listing's button once it exists, else that it is pending."""
+    url = symphony_store_url()
+    if not url:
+        return '<p class="browser__note sy-pending">Symphony for Chrome: Chrome Web Store listing pending review.</p>'
+    return (f'<a class="btn btn--solid btn--cws" href="{esc(url)}" target="_blank" rel="noopener">'
+            "Open it on the Chrome Web Store</a>")
+
+
 def vscode_install_html(version):
     """The one install card for Beethoven for VS Code: the Marketplace button once VSCODE_STORE_URL
     is set, else a note that the listing is pending (there is no direct download of this edition)."""
@@ -868,6 +936,292 @@ def section_index(path):
             + "\n".join(groups) + "\n</nav>")
 
 
+# ============================================================
+# THE DOCS SECTION
+# Written on every build from what the build already reads: the site map (every page, hidden ones
+# too), each page's own front matter, buttons and scripts, the products' versions and the change
+# notes their statements carry. A new page, a new button or a new version is in the docs the next
+# time anyone builds, with nothing to edit by hand. What's new adds, in the visitor's browser, the
+# merged pull requests of the public repositories (assets/js/docs.js), which no build can know.
+# ============================================================
+DOCS = {}  # filled in main(): the rendered texts and the versions read from the sources
+
+# The products the docs describe, in order: what each is, where to start, its version's source and
+# the statement whose change notes are its history. Pages are not listed here; the site map and
+# the Docs landing page say where every page is.
+PRODUCTS = [
+    {"name": "Symphony GitHub Apps", "start": "/symphony/",
+     "what": "SymphonyBoard and Symphony Setup: install them on a repository, press Create on the "
+             "form they open, and the repository becomes one where many Claude Code sessions, "
+             "routines and GitHub Actions workers share the work without stepping on each other.",
+     "version": ("text", "symphony-apps-privacy"), "history": "symphony-apps-privacy",
+     "source": "https://github.com/OpenSpineConsortium/symphony-start"},
+    {"name": "Symphony control panel", "start": "/symphony/control/",
+     "what": "Drive a Symphony repository from the browser as yourself: the board, the queue, the "
+             "workers, the checks, the pull requests, the assistant, the Claude tokens the workers "
+             "run on, and what the work costs.",
+     "version": ("site", None), "history": None, "source": None},
+    {"name": "Symphony for Chrome", "start": "/symphony/",
+     "what": "The extension that puts Symphony's install one click away on a repository's page on "
+             "github.com and says when a repository is ready.",
+     "version": ("package", "symphony-extension"), "history": "symphony-privacy", "source": None},
+    {"name": "Symphony plugin for Claude Code", "start": "https://github.com/OpenSpineConsortium/symphony-marketplace",
+     "what": "The skills, /board and the push guard for a repository that was not made from the "
+             "template, installed from the symphony-marketplace plugin marketplace.",
+     "version": ("live", "plugin"), "history": None,
+     "source": "https://github.com/OpenSpineConsortium/symphony-marketplace"},
+    {"name": "Symphony protocol", "start": "https://github.com/OpenSpineConsortium/symphony-protocol/blob/main/spec/PROTOCOL.md",
+     "what": "The claim protocol as a Python library with no dependencies: how work is claimed, done "
+             "in the open and finished, the board, the protocol check and the push guard's rules.",
+     "version": ("live", "protocol"), "history": None,
+     "source": "https://github.com/OpenSpineConsortium/symphony-protocol"},
+    {"name": "Beethoven", "start": "/beethoven/",
+     "what": "The Chrome extension that starts a Claude Code worker on the university's compute grid "
+             "from one panel, on the Chrome Web Store.",
+     "version": ("text-key", "version"), "history": "privacy", "source": None},
+    {"name": "Beethoven for VS Code", "start": "/beethoven/vscode/",
+     "what": "Beethoven's edition for Visual Studio Code.",
+     "version": ("text-key", "vscode_version"), "history": "vscode-privacy", "source": None},
+]
+# The public repositories whose merged pull requests What's new lists live, with the product each
+# one is; the private and internal ones are left out on purpose, since the site is public
+LIVE_REPOS = [
+    ("openspineconsortium.github.io", "This site"),
+    ("symphony-start", "Symphony GitHub Apps"),
+    ("symphony-protocol", "Symphony protocol"),
+    ("symphony-marketplace", "Symphony plugin for Claude Code"),
+]
+DOCS_PATHS = ("/docs/",)
+
+
+def page_info(n):
+    """(title, description, front matter) of a page, from its body file or, for a page that keeps
+    its own HTML, from the file on disk."""
+    if n["kind"] == "page":
+        src = body_file(n["path"])
+        if not src.exists() and n.get("same_as"):
+            src = body_file(n["same_as"])
+        if src.exists():
+            meta, _ = parse_body(src)
+            return meta["title"], meta["description"], meta
+    f = OUT / out_file(n["path"])
+    if not f.exists():
+        return n["label"], "", {}
+    text = read(f)
+    t = re.search(r"<title>(.*?)</title>", text, re.S)
+    d = re.search(r'<meta name="description" content="([^"]*)"', text)
+    return (html.unescape(t.group(1).strip()) if t else n["label"],
+            html.unescape(d.group(1)) if d else "", {})
+
+
+def page_tags(n, meta):
+    tags = []
+    if "symphony-panel.js" in meta.get("js", ""):
+        tags.append("signs in with GitHub")
+    if n.get("hidden"):
+        tags.append("reached by a link you are sent")
+    if "noindex" in meta.get("robots", ""):
+        tags.append("kept out of search engines")
+    if n["kind"] == "app":
+        tags.append("fills the screen")
+    return tags
+
+
+def docs_pages():
+    """Every page in the site map, hidden ones included, by tab, with what it is."""
+    groups = []
+    for tab in SITE:
+        rows = []
+        for n, parents in walk([tab]):
+            if not exists(n):
+                continue
+            title, desc, meta = page_info(n)
+            depth = len(parents)
+            tags = "".join(f'<span class="docs__tag">{esc(t)}</span>' for t in page_tags(n, meta))
+            label = n.get("crumb", n["label"]) if depth else tab.get("overview", tab["label"])
+            rows.append(f'<li class="docs__page docs__page--d{min(depth, 3)}"><a href="{n["path"]}">{esc(label)}</a>'
+                        f'{tags}<p>{esc(desc)}</p></li>')
+        groups.append(f'<section class="docs__group" aria-labelledby="dp-{slug(tab["label"])}">'
+                      f'<h3 id="dp-{slug(tab["label"])}"><a href="{tab["path"]}">{esc(tab["label"])}</a></h3>'
+                      f'<ul class="docs__pages">{"".join(rows)}</ul></section>')
+    return '<div class="docs__directory">\n' + "\n".join(groups) + "\n</div>"
+
+
+def slug(s):
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
+def buttons_in(fragment):
+    """The names of the buttons and button-styled links in an HTML fragment, in order."""
+    found = []
+    for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", fragment, re.S):
+        # an icon button's name is its aria-label, not the glyph it shows
+        aria = re.search(r'aria-label="([^"]*)"', m.group(1))
+        label = aria.group(1) if aria else text_of(m.group(2)).strip()
+        found.append(" ".join(html.unescape(label).split()))
+    for m in re.finditer(r'<a\b([^>]*\bclass="[^"]*\bbtn\b[^"]*"[^>]*)>(.*?)</a>', fragment, re.S):
+        found.append(" ".join(text_of(m.group(2)).split()))
+    return found
+
+
+def page_scripts(meta):
+    """The page's own scripts, root-absolute, that exist (main.js, which every page loads, aside)."""
+    out = []
+    for j in meta.get("js", "").split(","):
+        path = j.strip().split(" ")[0]
+        if path and path != "/assets/js/main.js" and (ROOT / path.lstrip("/")).exists():
+            out.append(path)
+    return out
+
+
+def buttons_made_by(script):
+    """The buttons a script makes when there is something to act on: the labels passed to a
+    btn('...') helper, as symphony-panel.js makes its Merge and Cancel buttons. A script shared by
+    several pages makes each only on the page whose part needs it, so they are listed once per
+    script, not per page."""
+    return unique(m.group(2) for m in re.finditer(r"""\bbtn\(\s*(['"])(.+?)\1""", read(ROOT / script.lstrip("/"))))
+
+
+def unique(xs):
+    seen, out = set(), []
+    for x in xs:
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def docs_buttons(texts):
+    """Every page's buttons as its HTML has them, then the buttons each page script makes."""
+    groups, scripts = [], {}
+    for n, _ in walk(SITE):
+        if not exists(n) or n["path"].startswith(DOCS_PATHS):
+            continue
+        title, _, meta = page_info(n)
+        if n["kind"] == "page" and meta:
+            src = body_file(n["path"]) if body_file(n["path"]).exists() else body_file(n["same_as"])
+            _, body = parse_body(src)
+            fixed = buttons_in(expand(body, texts, str(src), n["path"]))
+        else:
+            f = OUT / out_file(n["path"])
+            text = read(f) if f.exists() else ""
+            for name in ("head", "header", "footer"):
+                text = re.sub(rf"<!-- site:{name} -->.*?<!-- /site:{name} -->", "", text, flags=re.S)
+            fixed = buttons_in(text)
+        for script in page_scripts(meta):
+            scripts.setdefault(script, []).append(n)
+        fixed = unique(fixed)
+        if not fixed:
+            continue
+        lis = "".join(f'<li>{esc(b)}</li>' for b in fixed)
+        groups.append(f'<section class="docs__group"><h3><a href="{n["path"]}">{esc(n.get("crumb", n["label"]))}</a></h3>'
+                      f'<ul class="docs__buttons">{lis}</ul></section>')
+    for script, pages in scripts.items():
+        made = buttons_made_by(script)
+        if not made:
+            continue
+        where = ", ".join(f'<a href="{p["path"]}">{esc(p.get("crumb", p["label"]))}</a>' for p in pages)
+        lis = "".join(f'<li class="docs__made">{esc(b)}</li>' for b in made)
+        groups.append(f'<section class="docs__group"><h3>Made beside what they act on</h3>'
+                      f'<p class="docs__lede">By the script these pages share ({where}), next to the pull request, '
+                      f'task or slot each acts on, only when there is one.</p>'
+                      f'<ul class="docs__buttons">{lis}</ul></section>')
+    return '<div class="docs__directory">\n' + "\n".join(groups) + "\n</div>"
+
+
+def product_version(p, texts):
+    kind, key = p["version"]
+    if kind == "text":
+        t = TEXTS[key]
+        return f'privacy statement version {esc(str(t["version"]))} ({esc(t["date"])})'
+    if kind == "text-key":
+        return f'version {esc(texts[key])}'
+    if kind == "package":
+        v = DOCS.get("symphony_extension_version")
+        return f'version {esc(v)}' if v else "version not read at this build"
+    if kind == "live":
+        return f'version <span data-live="{key}">read from GitHub when the page opens</span>'
+    return "changes with every build of this site"
+
+
+def docs_products(texts):
+    cards = []
+    for p in PRODUCTS:
+        links = [f'<a href="{p["start"]}">Start here</a>']
+        if p["history"]:
+            links.append(f'<a href="/docs/changes.html#{slug(p["name"])}">What changed</a>')
+        if p["source"]:
+            links.append(f'<a href="{p["source"]}">Source on GitHub</a>')
+        cards.append(f'<article class="docs__product" id="{slug(p["name"])}"><h3>{esc(p["name"])}</h3>'
+                     f'<p class="docs__version">{product_version(p, texts)}</p><p>{esc(p["what"])}</p>'
+                     f'<p class="docs__links">{" &middot; ".join(links)}</p></article>')
+    return '<div class="docs__products">\n' + "\n".join(cards) + "\n</div>"
+
+
+def change_notes(key):
+    """The change notes a rendered statement carries, newest first: its paragraphs that open
+    "Version N adds ...", "Version N (date, release): ...", leaving out the statement's own heading
+    line ("Version N, date.") and a closing "Version N's other terms are unchanged"."""
+    _, _, body = DOCS["rendered"][key]
+    notes = []
+    for m in re.finditer(r"<p>(Version (\d+)\b(?![,']|’s)(.*?))</p>", body, re.S):
+        notes.append((int(m.group(2)), m.group(1)))
+    if not notes:
+        # a statement that lists its changes in one sentence inside a paragraph, as Symphony for
+        # Chrome's does: "Version 6 (extension 1.4.1) says ...; version 5 (extension 1.4.0) ..."
+        for para in re.findall(r"<p>(.*?)</p>", body, re.S):
+            m = re.search(r"\bVersion \d+ \(", para)
+            if not m:
+                continue
+            for piece in re.split(r";\s+(?=version \d+ \()", para[m.start():].rstrip(". ")):
+                n = re.match(r"[Vv]ersion (\d+)", piece)
+                if n:
+                    notes.append((int(n.group(1)), "V" + piece[1:] + "."))
+    notes.sort(key=lambda x: -x[0])
+    return notes
+
+
+def docs_history():
+    parts = []
+    for p in PRODUCTS:
+        if not p["history"]:
+            continue
+        t = TEXTS[p["history"]]
+        page = "/" + t["page"]
+        notes = change_notes(p["history"])
+        if notes:
+            # the newest three in view, the rest one press away, so the list stays short to read
+            items = "".join(f'<li>{note}</li>' for _, note in notes[:3])
+            body = f'<ol class="docs__notes">{items}</ol>'
+            if notes[3:]:
+                rest = "".join(f'<li>{note}</li>' for _, note in notes[3:])
+                body += (f'<details class="docs__more"><summary>Earlier changes ({len(notes) - 3})</summary>'
+                         f'<ol class="docs__notes">{rest}</ol></details>')
+        else:
+            body = (f'<p>Its statement is at version {esc(str(t["version"]))} ({esc(t["date"])}) and keeps no '
+                    f'list of changes.</p>')
+        parts.append(f'<section class="docs__group" id="{slug(p["name"])}"><h3>{esc(p["name"])}</h3>'
+                     f'{body}<p class="docs__links">From <a href="{page}">its privacy statement</a>, '
+                     f'version {esc(str(t["version"]))}.</p></section>')
+    return "\n".join(parts)
+
+
+def docs_live_repos():
+    return esc(json.dumps([{"repo": r, "product": p} for r, p in LIVE_REPOS]))
+
+
+def expand_docs(body, texts):
+    if "<!-- build:docs-" not in body:
+        return body
+    fills = {"docs-products": lambda: docs_products(texts), "docs-pages": docs_pages,
+             "docs-buttons": lambda: docs_buttons(texts), "docs-history": docs_history,
+             "docs-live-repos": docs_live_repos, "docs-built": lambda: esc(BUILT)}
+    for name, make in fills.items():
+        if f"<!-- build:{name} -->" in body:
+            body = body.replace(f"<!-- build:{name} -->", make())
+    return body
+
+
 def expand(body, texts, where, path=None):
     def form(m):
         args = dict(a.split("=", 1) for a in m.group(1).split())
@@ -879,6 +1233,13 @@ def expand(body, texts, where, path=None):
     body = body.replace("<!-- build:browsers -->", browsers_html())
     if "<!-- build:vscode-install -->" in body:
         body = body.replace("<!-- build:vscode-install -->", vscode_install_html(texts["vscode_version"]))
+    if "<!-- build:symphony-store-badge -->" in body:
+        # the marker's own line goes with it while there is no badge, so the page keeps its shape
+        badge = symphony_store_badge_html()
+        body = re.sub(r"\n[ \t]*<!-- build:symphony-store-badge -->",
+                      lambda m: (m.group(0).split("<")[0] + badge) if badge else "", body)
+    if "<!-- build:symphony-store-note -->" in body:
+        body = body.replace("<!-- build:symphony-store-note -->", symphony_store_note_html())
     if "<!-- build:section-index -->" in body:
         body = body.replace("<!-- build:section-index -->", section_index(path) if path else "")
     # placeholders first, then the texts, so a "{{" inside a text is never read as a placeholder
@@ -891,6 +1252,10 @@ def expand(body, texts, where, path=None):
             raise SystemExit(f"{where}: unknown directive <!-- build:{m.group(1)} -->")
         return texts[m.group(1)]
     body = re.sub(r"<!-- build:([\w-]+-(?:title|toc|text)) -->", text, body)
+    # last, so a "{{" or a directive's name inside a page's text is never read as one; only on the
+    # Docs pages, so the buttons index, which expands every other body, never calls itself
+    if path and path.startswith(DOCS_PATHS):
+        body = expand_docs(body, texts)
     left = re.findall(r"<!--\s*build:[^>]*-->", body)
     if left:
         raise SystemExit(f"{where}: unknown directive(s) {left}")
@@ -1419,7 +1784,8 @@ def check_site(pages_written, problems, notes, external=False):
         two_f |= links_from(t)
     site_pages = [out_file(n["path"]) for n, _ in walk(SITE) if listed(n)]
     far = [p for p in site_pages if p not in two]
-    far_f = [p for p in site_pages if p not in two_f]
+    # every page, hidden ones too, since the Docs tab lists them all
+    far_f = [out_file(n["path"]) for n, _ in walk(SITE) if exists(n) and out_file(n["path"]) not in two_f]
     if far_f:
         problems.append(f"more than two clicks from the header and footer: {far_f}")
     if far:
@@ -1427,7 +1793,8 @@ def check_site(pages_written, problems, notes, external=False):
     in_map = {out_file(n["path"]) for n, _ in walk(SITE) if exists(n)}
     for rel in parsed:
         if rel not in in_map:
-            notes.append(f"{rel}: on disk but not in the site map (no navigation leads to it)")
+            problems.append(f"{rel}: on disk but not in the site map, so no navigation leads to it "
+                            f"(add it to SITE, hidden=True if it should stay out of the menus)")
     if external:
         check_external(ext_urls, problems, notes)
     return parsed
@@ -1514,6 +1881,9 @@ def main():
     if not pj.exists():
         raise SystemExit(f"{pj}: not there (set BEETHOVEN_REPO)")
     texts["version"] = json.loads(read(pj))["version"]
+    DOCS["rendered"] = rendered
+    pj = SYMPHONY_REPO / "package.json"
+    DOCS["symphony_extension_version"] = json.loads(read(pj))["version"] if pj.exists() else None
 
     # body files that no page claims
     claimed = {body_file(n["path"]) for n, _ in walk(SITE)}
@@ -1537,12 +1907,15 @@ def main():
                         sitemap.append(n["path"])
                     continue
                 page, used = render_page(n, texts)
+                if listed(n) and parse_body(used)[0].get("strip", "").lower() == "no":
+                    # a page in the strip that hides the strip leaves its reader no way to the others
+                    problems.append(f"{rel}: 'strip: no' on a page the strip lists; take the line out")
                 page = stamp_html(page)
                 changed = write(OUT / rel, page)
                 written[rel] = used
-                if n.get("hidden"):
+                if n.get("hidden") or "noindex" in parse_body(used)[0].get("robots", ""):
                     if not a.quiet:
-                        print(f"{'wrote' if changed else 'same '}  {rel}  (hidden; not in sitemap.xml)")
+                        print(f"{'wrote' if changed else 'same '}  {rel}  (hidden or noindex; not in sitemap.xml)")
                     continue
                 if f'<link rel="canonical" href="{esc(ORIGIN + n["path"])}">' not in page:
                     # a sitemap lists canonical addresses only

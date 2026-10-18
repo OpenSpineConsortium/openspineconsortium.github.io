@@ -16,25 +16,26 @@
   })();
 </script>
 <title>Claude tokens · Symphony</title>
-<meta name="description" content="The Claude accounts a Symphony repository&#x27;s workers run on: each slot&#x27;s five-hour and seven-day use with their resets, the per-model weekly limits such as Fable&#x27;s, which slot auto takes, and which worker runs on which.">
+<meta name="description" content="The Claude accounts a Symphony repository&#x27;s workers run on are now the Tokens tab of the control panel: each slot&#x27;s use with its resets, which slot auto takes, adding an account, and which worker runs on which.">
 <meta name="robots" content="noindex">
-<link rel="canonical" href="https://openspineconsortium.com/symphony/control/tokens.html">
+<link rel="canonical" href="https://openspineconsortium.com/symphony/control/">
 <meta property="og:title" content="Claude tokens · Symphony">
-<meta property="og:description" content="The Claude accounts a Symphony repository&#x27;s workers run on: each slot&#x27;s five-hour and seven-day use with their resets, the per-model weekly limits such as Fable&#x27;s, which slot auto takes, and which worker runs on which.">
-<meta property="og:url" content="https://openspineconsortium.com/symphony/control/tokens.html">
+<meta property="og:description" content="The Claude accounts a Symphony repository&#x27;s workers run on are now the Tokens tab of the control panel: each slot&#x27;s use with its resets, which slot auto takes, adding an account, and which worker runs on which.">
+<meta property="og:url" content="https://openspineconsortium.com/symphony/control/">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#F1EEE3">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%230E5F58' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M14 3.5 C 10 6, 18 9, 14 12.5 C 10 16, 18 19, 14 24.5'/%3E%3Cline x1='8.5' y1='6.2' x2='19.5' y2='6.2'/%3E%3Cline x1='8.5' y1='12.5' x2='19.5' y2='12.5'/%3E%3Cline x1='8.5' y1='18.8' x2='19.5' y2='18.8'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180645">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180645">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180645">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180702">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180702">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180702">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
 <!-- site:header -->
+<script>if (window.matchMedia && matchMedia("(hover: hover) and (min-width: 901px)").matches) document.documentElement.classList.add("nav-hover");</script>
 <header class="nav" id="nav">
   <a href="/" class="nav__brand" aria-label="OpenSpineConsortium home">
     <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
@@ -55,62 +56,61 @@
     <a href="/research/">Research</a>
     <a href="/data/">Data &amp; Tools</a>
     <a href="/people/">People</a>
+    <a href="/docs/">Docs</a>
     <a href="/beethoven/request.html" class="nav__cta">Get Involved</a>
   </nav>
   <button class="nav__toggle" id="navToggle" type="button" aria-label="Menu" aria-controls="navLinks" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
 </header>
+<div class="flyouts" id="flyouts">
+<nav class="subnav subnav--fly is-here" data-tab="/symphony/" aria-label="Symphony">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/symphony/">Symphony</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/symphony/">Overview</a><a class="subnav__pill" href="/symphony/control/">Control panel</a><a class="subnav__pill" href="/symphony/control/tokens.html" aria-current="page">Tokens</a><a class="subnav__pill" href="/symphony/cost.html">What it costs</a><a class="subnav__pill" href="/symphony/use-cases.html">Use cases</a><a class="subnav__pill" href="/symphony/compare.html">Compared</a><a class="subnav__pill" href="/symphony/privacy.html">Privacy</a><a class="subnav__pill" href="/symphony/apps-privacy.html">Apps privacy</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/beethoven/" aria-label="Beethoven">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/beethoven/">Beethoven</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/beethoven/">Product</a><a class="subnav__pill" href="/beethoven/terms.html">Agreement</a><a class="subnav__pill" href="/beethoven/privacy.html">Privacy</a><a class="subnav__pill" href="/beethoven/support.html">Support</a><a class="subnav__pill" href="/beethoven/request.html">Ask for access</a><a class="subnav__pill" href="/beethoven/reviewers.html">Reviewers</a><a class="subnav__pill" href="/beethoven/vscode/">For VS Code</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/research/" aria-label="Research">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/research/">Research</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/research/">Overview</a><a class="subnav__pill" href="/research/conferences/">Conferences</a><a class="subnav__pill" href="/research/workshop/">Workshop</a><a class="subnav__pill" href="/research/goals/">Goals</a><a class="subnav__pill" href="/research/outside/">Outside work</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/data/" aria-label="Data &amp; Tools">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/data/">Data &amp; Tools</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/data/">Overview</a><a class="subnav__pill" href="/data/datasets/">Datasets</a><a class="subnav__pill" href="/atlas/">Atlas</a><a class="subnav__pill" href="/data/gallery/">Gallery</a><a class="subnav__pill" href="/data/hardware/">Hardware</a><a class="subnav__pill" href="/spine-mri/">Spine MRI</a><a class="subnav__pill" href="/pacs/ct.html">CT</a><a class="subnav__pill" href="/pacs/">X-ray</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/people/" aria-label="People">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/people/">People</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/people/">Team</a><a class="subnav__pill" href="/people/organization/">Organization</a><a class="subnav__pill" href="/people/education/">Education</a><a class="subnav__pill" href="/celebrate-life/">Celebrate Life</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/docs/" aria-label="Docs">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/docs/">Docs</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/docs/">Overview</a><a class="subnav__pill" href="/docs/buttons.html">Every button</a><a class="subnav__pill" href="/docs/changes.html">What&#x27;s new</a></div>
+  </div>
+</nav>
+</div>
 <!-- /site:header -->
 <main id="main">
-<section class="section admin control tokens" aria-labelledby="tk-title">
+<!-- The Tokens page is the console's Tokens tab now; this address is kept for the links and
+     bookmarks that name it, and symphony-panel.js sends the visitor on with the query. -->
+<section class="section admin control" aria-labelledby="tk-title">
   <header class="page-head">
     <span class="eyebrow">Symphony</span>
     <h1 id="tk-title">Claude tokens</h1>
-    <p>The Claude accounts your workers run on, as claude-swap shows them: each slot&rsquo;s use of its five-hour and seven-day windows with when they reset, the per-model weekly limits such as Fable&rsquo;s, and which slot the auto mode would take now. A slot is an organization secret, <code>SYMPHONY_CLAUDE_1</code> to <code>SYMPHONY_CLAUDE_8</code>, set below or by <code>python3 scripts/tokens.py</code>; <code>main</code> is <code>CLAUDE_CODE_OAUTH_TOKEN</code>. GitHub never gives a secret back, so the page reads only the readings on the repository&rsquo;s branch <code>pool</code>: what each worker&rsquo;s run saw in Claude&rsquo;s answers, what the workflow Pool&rsquo;s one-word probes saw, and what cswap on your machine sent with <code>python3 scripts/tokens.py usage</code>, the only source of the per-model limits. No reading holds a token. Back to <a href="/symphony/control/">the control panel</a>.</p>
+    <p id="tokens-moved">The Claude accounts your workers run on are now the Tokens tab of the control panel. <a href="/symphony/control/">Open the control panel</a> and press Tokens.</p>
   </header>
-
-  <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
-
-  <div class="admin__box control__gate" id="cp-gate">
-    <h2>Sign in</h2>
-    <p class="admin__lead">One press, as on the control panel: GitHub sends you straight back here signed in, and the page reads the branch as you.</p>
-    <div><button id="cp-signin" type="button" class="control__signin">Sign in with GitHub</button></div>
-    <p id="cp-signin-off" class="admin__lead admin__warn hidden">Sign in with GitHub switches on once its sign-in service is running; until then, use a token below.</p>
-    <div class="admin__checks"><label><input id="cp-keep" type="checkbox"> Keep me signed in on this browser</label></div>
-    <details id="cp-token-way" class="control__token">
-      <summary>Use a fine-grained token instead</summary>
-      <label for="cp-token">A fine-grained personal access token</label>
-      <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-      <small>The same token as the control panel&rsquo;s: Contents read reads the readings, Contents and Pull requests write propose the assignments, Actions write starts the workflow Pool, and the organization permissions Secrets and Variables write add a slot. It stays in this browser and goes to GitHub&rsquo;s API only. Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>. This is a GitHub token; the one Claude token the page takes is the one you paste under &ldquo;Add or renew a slot&rdquo;.</small>
-      <div><button id="cp-open" type="button">Read my repository</button></div>
-    </details>
-  </div>
-
-  <div id="cp-app" class="hidden">
-    <p class="admin__bar"><button id="cp-signout" type="button" class="quiet">Forget the token</button> <small id="cp-who"></small></p>
-    <div class="admin__box">
-      <div class="admin__row">
-        <div><label for="tk-repo">Repository (the control panel&rsquo;s list)</label><select id="tk-repo"></select></div>
-      </div>
-      <p class="admin__bar"><button id="tk-reload" type="button" class="quiet">Read the pool again</button> <button id="tk-probe" type="button">Read every slot now</button></p>
-      <p class="admin__lead">&ldquo;Read every slot now&rdquo; starts the workflow Pool, which asks each slot of <code>SYMPHONY_CLAUDE_ACCOUNTS</code> for one word on Haiku: that spends one word of each slot&rsquo;s window, so nothing reads them on a schedule.</p>
-    </div>
-
-    <h2 id="h-slots">The slots</h2>
-    <div class="table-scroll"><table id="tk-slots" class="admin__stack"><thead><tr><th>Slot</th><th>5 hours</th><th>7 days</th><th>Per-model weekly limits</th><th>State</th><th>Last read</th></tr></thead><tbody></tbody></table></div>
-    <p id="tk-auto" class="admin__lead"></p>
-    <p class="admin__lead">A slot is held once a window or a model limit reaches 90 percent, until it resets, or for five hours from its reading when its reset is not known. A worker on auto takes, at the start of each run, the free slot with the most room in five hours and then seven days, and the workers of one run take different free slots; a run already going finishes on its account. The Fable limit and the other per-model ones come only from cswap: run <code>python3 scripts/tokens.py usage</code> on your machine to send them.</p>
-
-    <h2 id="h-add">Add or renew a slot</h2>
-    <p class="admin__lead">Run <code>claude setup-token</code> in any terminal signed in to the Claude account the slot is for, and paste the token it prints here. The page seals it in this browser with GitHub&rsquo;s public key for the organization, the way GitHub&rsquo;s own secrets page does, and sends GitHub only the sealed box, which GitHub alone can open; it never stores, logs or shows the token, and empties the box once it is sealed. It then lists the slot in <code>SYMPHONY_CLAUDE_ACCOUNTS</code>, so auto and the bench can take it. A token lives a year. Saving needs you to be an owner of the organization and the SymphonyBoard App&rsquo;s organization permissions Secrets and Variables: read and write.</p>
-    <div id="tk-add" class="admin__box"></div>
-
-    <h2 id="h-assign">Which account each worker runs on</h2>
-    <p class="admin__lead">Each worker in Actions runs on <code>main</code>, a slot, or <code>auto</code>, from the file <code>.github/symphony/accounts.json</code>; with no file every worker runs on <code>main</code>. The default branch takes only pull requests, so saving here opens one, which takes effect once it merges. @claude and the coordinator stay on <code>main</code>.</p>
-    <div id="tk-assign" class="admin__box"></div>
-  </div>
-  <div id="tokens-app" class="hidden"></div>
 </section>
 </main>
 <!-- site:footer -->
@@ -131,12 +131,13 @@
     <p class="footer__tag">Open research, openly licensed.</p>
   </div>
   <nav class="footer__dir" aria-label="Every page">
-    <div class="footer__col"><h2><a href="/symphony/">Symphony</a></h2><ul><li><a href="/symphony/">Overview</a></li><li><a href="/symphony/cost.html">What it costs</a></li><li><a href="/symphony/privacy.html">Privacy</a></li><li><a href="/symphony/apps-privacy.html">Apps privacy</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/symphony/">Symphony</a></h2><ul><li><a href="/symphony/">Overview</a></li><li><a href="/symphony/control/">Control panel</a></li><li><a href="/symphony/control/tokens.html">Tokens</a></li><li><a href="/symphony/cost.html">What it costs</a></li><li><a href="/symphony/use-cases.html">Use cases</a></li><li><a href="/symphony/compare.html">Compared</a></li><li><a href="/symphony/privacy.html">Privacy</a></li><li><a href="/symphony/apps-privacy.html">Apps privacy</a></li></ul></div>
     <div class="footer__col"><h2><a href="/beethoven/">Beethoven</a></h2><ul><li><a href="/beethoven/">Product</a></li><li><a href="/beethoven/terms.html">Agreement</a></li><li><a href="/beethoven/privacy.html">Privacy</a></li><li><a href="/beethoven/support.html">Support</a></li><li><a href="/beethoven/request.html">Ask for access</a></li><li><a href="/beethoven/reviewers.html">Reviewers</a></li><li><a href="/beethoven/vscode/">For VS Code</a></li></ul></div>
     <div class="footer__col"><h2><a href="/onboarding/">Onboarding</a></h2><ul><li><a href="/onboarding/">Start here</a></li></ul></div>
     <div class="footer__col"><h2><a href="/research/">Research</a></h2><ul><li><a href="/research/">Overview</a></li><li><a href="/research/conferences/">Conferences</a></li><li><a href="/research/workshop/">Workshop</a></li><li><a href="/tutorials/">Tutorials</a></li><li><a href="/research/goals/">Goals</a></li><li><a href="/research/outside/">Outside work</a></li></ul></div>
     <div class="footer__col"><h2><a href="/data/">Data &amp; Tools</a></h2><ul><li><a href="/data/">Overview</a></li><li><a href="/data/datasets/">Datasets</a></li><li><a href="/atlas/">Atlas</a></li><li><a href="/data/gallery/">Gallery</a></li><li><a href="/data/hardware/">Hardware</a></li><li><a href="/spine-mri/">Spine MRI</a></li><li><a href="/pacs/ct.html">CT</a></li><li><a href="/pacs/">X-ray</a></li></ul></div>
     <div class="footer__col"><h2><a href="/people/">People</a></h2><ul><li><a href="/people/">Team</a></li><li><a href="/people/organization/">Organization</a></li><li><a href="/people/education/">Education</a></li><li><a href="/celebrate-life/">Celebrate Life</a></li></ul></div>
+    <div class="footer__col"><h2><a href="/docs/">Docs</a></h2><ul><li><a href="/docs/">Overview</a></li><li><a href="/docs/buttons.html">Every button</a></li><li><a href="/docs/changes.html">What&#x27;s new</a></li></ul></div>
   </nav>
   <div class="footer__connect">
     <span class="footer__connect-label">Connect with us</span>
@@ -163,8 +164,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180645"></script>
+<script src="/assets/js/main.js?v=202610180702"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180645"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180702"></script>
 </body>
 </html>

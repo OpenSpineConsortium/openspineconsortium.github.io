@@ -111,3 +111,190 @@ tr.cost__us th, tr.cost__us td { background: rgba(14, 95, 88, 0.07); }
   .cost__out td:nth-child(5) { min-width: 0; }
   .cost__facts th { width: 8em; }
 }
+
+/* ============================================================
+   The console (/symphony/control/): one screen under the header and
+   the Symphony strip, a dark deck in the page. A command bar, a rail
+   of tabs, and one tab at a time that scrolls inside itself, so the
+   page does not. symphony-panel.js (initConsole) sets --console-h to
+   the height left in the window. The admin styles above ride on the
+   colour tokens, so the deck redefines them for its own scope.
+   ============================================================ */
+body[data-shell] main > .console.section, .console.section {
+  --paper: #0F1514; --paper-card: #161E1C; --paper-deep: #0B100F;
+  --ink: #E9E6DA; --ink-soft: #A9ADA0; --ink-faint: #7C8278;
+  --teal: #3CC2B1; --teal-deep: #2A9C8E; --teal-bright: #5FD6C6; --ochre: #F0A45C;
+  --line: rgba(233, 230, 218, 0.14); --line-soft: rgba(233, 230, 218, 0.07);
+  --go: #2FB36A; --go-deep: #23914F;
+  max-width: none;
+  margin: 0;
+  padding: 10px 14px 12px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  height: var(--console-h, calc(100dvh - 140px));
+  min-height: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.console a { color: var(--teal); }
+.console code { color: var(--teal-bright); }
+.console .admin__box { margin: 0; }
+.console h2, .console h3 { color: var(--ink); }
+.console .admin__lead { color: var(--ink-soft); }
+.console .admin__warn, .console #msg.admin__warn { color: var(--ochre); border-color: rgba(240, 164, 92, 0.45); }
+.console input, .console textarea, .console select { background: var(--paper); color: var(--ink); }
+.console input::placeholder, .console textarea::placeholder { color: var(--ink-faint); }
+.console .admin__tag { background: transparent; }
+.console .admin__tag--ok { color: var(--teal); border-color: rgba(60, 194, 177, 0.4); background: rgba(60, 194, 177, 0.1); }
+.console .admin__tag--mid { color: var(--ink); border-color: rgba(233, 230, 218, 0.35); }
+.console .admin__tag--wait { color: var(--ochre); border-color: rgba(240, 164, 92, 0.45); background: rgba(240, 164, 92, 0.1); }
+.console tr.control__focus td { background: rgba(60, 194, 177, 0.12); }
+.console .control__board pre, .console .control__assistant pre { background: var(--paper); }
+
+/* buttons: the admin default is a dark pill; on the deck a light outline, the main action filled */
+.console button { color: var(--ink); background: var(--paper-card); border-color: var(--line); }
+.console button:hover { color: var(--paper-deep); background: var(--teal); border-color: var(--teal); }
+.console button.quiet { color: var(--ink-soft); background: transparent; }
+.console button.quiet:hover { color: var(--teal); background: transparent; border-color: var(--teal); }
+.console button.console__primary, .console .control__signin { color: #08110F; background: var(--teal); border-color: var(--teal); font-weight: 600; }
+.console button.console__primary:hover, .console .control__signin:hover { background: var(--teal-bright); border-color: var(--teal-bright); }
+.console .control__signin:disabled:hover { background: var(--teal); border-color: var(--teal); }
+
+/* the message line: one line of what just happened, above everything */
+.console #msg { padding: 7px 14px; font-size: 0.92rem; border-radius: 8px; flex: 0 0 auto; max-height: 30vh; overflow: auto; border-left: 3px solid var(--teal); }
+.console #msg.admin__warn { border-left-color: var(--ochre); }
+
+/* signed out: the sign-in card in the middle of the deck */
+.console__gate { max-width: 680px; margin: auto !important; overflow: auto; padding: 22px 26px; }
+.console__gate h2 { font-family: var(--font-display); font-size: 1.7rem; margin: 4px 0 10px; }
+.console__eyebrow { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
+.console .control__signin { font-size: 1.1rem; padding: 12px 30px; }
+
+/* signed in: the bar, then the rail and the stage */
+.console__app { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.console__app.hidden { display: none; }
+.console__bar {
+  flex: 0 0 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px 16px;
+  padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card);
+}
+.console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.25rem; margin: 0; white-space: nowrap; }
+.console__repo { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 300px; }
+.console__repo label { margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.console__repo select { font-family: var(--font-mono); font-size: 0.9rem; padding: 6px 10px; min-width: 0; }
+.console__links { margin: 0; display: flex; flex-wrap: nowrap; gap: 4px 12px; font-size: 0.86rem; min-width: 0; overflow: hidden; white-space: nowrap; flex: 0 1 auto; }
+.console__links a { border: 0; }
+.console__me { margin: 0 0 0 auto; display: flex; align-items: center; gap: 4px 8px; flex-wrap: nowrap; min-width: 0; }
+.console__me small { margin: 0; color: var(--ink-soft); max-width: 22em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console__me button { flex: 0 0 auto; white-space: nowrap; margin: 0; padding: 5px 14px; font-size: 0.85rem; }
+
+.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 10px; }
+.console__rail { display: flex; flex-direction: column; gap: 2px; overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); }
+.console .console__rail button {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 6px 10px;
+  border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--ink-soft);
+  font-size: 0.93rem; text-align: left;
+}
+.console .console__rail button:hover { background: rgba(60, 194, 177, 0.1); color: var(--ink); border-color: transparent; }
+.console .console__rail button[aria-selected="true"] { background: rgba(60, 194, 177, 0.16); color: var(--ink); border-color: rgba(60, 194, 177, 0.45); box-shadow: inset 3px 0 0 var(--teal); }
+.rail__icon { width: 1.3em; text-align: center; color: var(--teal); font-size: 1.05rem; line-height: 1; }
+.rail__name { flex: 1 1 auto; white-space: nowrap; }
+.rail__count { min-width: 1.7em; padding: 0 6px; border-radius: 100px; background: rgba(233, 230, 218, 0.1); color: var(--ink); font-size: 0.78rem; text-align: center; font-variant-numeric: tabular-nums; }
+.rail__count:empty { display: none; }
+
+.console__stage { min-width: 0; min-height: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); padding: 12px 16px; display: flex; flex-direction: column; }
+.console__panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.console__panel[hidden] { display: none; }
+.console__panel--split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 14px; }
+.console__panel--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.console__col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.console__scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
+.console__col > .admin__box.console__scroll { padding: 12px 16px; }
+.console__head { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; position: relative; }
+.console .console__h { font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); margin: 0; }
+.console .console__boxh { font-size: 1.02rem; font-weight: 600; margin: 0 0 8px; letter-spacing: 0; text-transform: none; color: var(--ink); font-family: var(--font-body); }
+.console .console__scroll > .console__h { margin: 4px 0 10px; }
+.console__lead { margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+.console__jumps { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.console h3 { font-size: 0.95rem; margin: 14px 0 6px; }
+.console .console__scroll > h3:first-child { margin-top: 2px; }
+.console #cp-as-filter:empty, .console #cp-runs-note:empty { display: none; }
+.console #cp-runs-note, .console #cp-as-filter { margin: 0; }
+.console .table-scroll { overflow-x: auto; }
+.console th { position: sticky; top: 0; background: var(--paper-card); z-index: 1; }
+
+/* chips: the small buttons of a tab's head */
+.console button.chip { margin: 0; padding: 4px 12px; font-size: 0.84rem; }
+.console button.chip span:empty { display: none; }
+.console button.chip span { margin-left: 4px; color: var(--teal); font-variant-numeric: tabular-nums; }
+.console button.chip:hover span { color: inherit; }
+.console button.chip--go { color: #08110F; background: var(--teal); border-color: var(--teal); font-weight: 600; }
+
+/* "how this works": a fold that opens over the tab, so it moves nothing */
+.console__help { margin-left: auto; font-size: 0.84rem; }
+.console__help > summary { cursor: pointer; color: var(--ink-faint); list-style: none; padding: 2px 10px; border: 1px solid var(--line); border-radius: 100px; }
+.console__help > summary::-webkit-details-marker { display: none; }
+.console__help > summary::before { content: "?"; display: inline-block; margin-right: 6px; color: var(--teal); font-weight: 600; }
+.console__help > summary:hover { color: var(--teal); border-color: var(--teal); }
+.console__help[open] > div {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; width: min(560px, 92vw);
+  max-height: 50vh; overflow: auto; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--paper); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); color: var(--ink-soft); font-size: 0.9rem; line-height: 1.55;
+}
+.console__help[open] > div p { margin: 0 0 8px; }
+.console__help[open] > div p:last-child { margin: 0; }
+.console__help--inline { margin: 0 0 8px; }
+.console__help--inline[open] > div { position: static; width: auto; max-height: none; box-shadow: none; margin-top: 6px; }
+
+/* Command: the readouts and the launch buttons */
+.deck__readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.console button.readout {
+  margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 7px 12px;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-align: left;
+}
+.console button.readout:hover { border-color: var(--teal); background: rgba(60, 194, 177, 0.08); color: var(--ink); }
+.readout__n { font-family: var(--font-mono); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.readout__l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+.readout--warn.readout--on .readout__n { color: var(--ochre); }
+.deck__summary { margin: 8px 0 10px !important; font-size: 0.9rem !important; color: var(--ink-soft); }
+.deck__launch { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.console button.launch {
+  margin: 0; min-height: 72px; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; align-content: center;
+  padding: 10px 14px; border-radius: 12px; text-align: left; border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  transition: transform 0.12s var(--ease), border-color 0.12s, background 0.12s;
+}
+.console button.launch:hover { transform: translateY(-1px); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); color: var(--ink); }
+.console button.launch:active { transform: translateY(1px); }
+.console button.launch:disabled { transform: none; }
+.launch__icon { grid-row: 1 / span 2; align-self: center; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-size: 1.2rem; }
+.launch__name { font-weight: 600; font-size: 1rem; }
+.launch__note { font-size: 0.8rem; color: var(--ink-faint); line-height: 1.35; }
+.console button.launch--go { border-color: rgba(47, 179, 106, 0.6); background: rgba(47, 179, 106, 0.1); }
+.console button.launch--go .launch__icon { background: var(--go); color: #06130B; }
+.console button.launch--go:hover { border-color: var(--go); background: rgba(47, 179, 106, 0.2); }
+.console button.launch--plan .launch__icon { background: rgba(233, 230, 218, 0.08); color: var(--ink); }
+
+/* a narrow laptop: the links take a second row rather than be cut */
+@media (max-width: 1279px) {
+  .console__bar { flex-wrap: wrap; }
+  .console__links { overflow: visible; }
+  .console__body { grid-template-columns: 168px minmax(0, 1fr); }
+  .console__panel--split { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
+}
+
+/* a phone or a short window cannot hold a deck: the page scrolls as before, each tab whole */
+@media (max-width: 900px), (max-height: 520px) {
+  .console.section { height: auto; min-height: 0; overflow: visible; }
+  .console__body { grid-template-columns: minmax(0, 1fr); }
+  .console__rail { flex-direction: row; overflow-x: auto; padding: 4px; }
+  .console .console__rail button { width: auto; flex: 0 0 auto; padding: 7px 10px; }
+  .console__panel--split, .console__panel--even { grid-template-columns: minmax(0, 1fr); }
+  .console__scroll { overflow: visible; }
+  .console__me { margin-left: 0; }
+  .console__bar { flex-wrap: wrap; }
+  .console__links { flex-wrap: wrap; white-space: normal; }
+}
+.console th { white-space: nowrap; }
+.console .admin__box + .admin__box { margin-top: 10px; }
+.console__help--inline > summary { display: inline-block; }

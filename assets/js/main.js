@@ -39,6 +39,50 @@
     });
   });
 
+  /* ---- the section strips: where a pointer hovers, one drops down under the bar while the pointer
+     is on its tab or on the strip itself, and goes back up a moment after it leaves both ---- */
+  var root = document.documentElement;
+  var flyouts = document.getElementById("flyouts");
+  var hoverMedia = window.matchMedia && window.matchMedia("(hover: hover) and (min-width: 901px)");
+  var openStrip = null, closeTimer = null;
+  function showStrip(strip) {
+    clearTimeout(closeTimer);
+    if (openStrip === strip) return;
+    if (openStrip) openStrip.classList.remove("is-open");
+    openStrip = strip;
+    if (strip) strip.classList.add("is-open");
+  }
+  function closeStrip() {
+    clearTimeout(closeTimer);
+    if (openStrip) openStrip.classList.remove("is-open");
+    openStrip = null;
+  }
+  function closeSoon() {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(closeStrip, 200);
+  }
+  if (flyouts && hoverMedia) {
+    var strips = {};
+    flyouts.querySelectorAll("[data-tab]").forEach(function (s) { strips[s.getAttribute("data-tab")] = s; });
+    var syncHover = function () {
+      root.classList.toggle("nav-hover", hoverMedia.matches);
+      if (!hoverMedia.matches) closeStrip();
+    };
+    if (hoverMedia.addEventListener) hoverMedia.addEventListener("change", syncHover);
+    else if (hoverMedia.addListener) hoverMedia.addListener(syncHover);
+    syncHover();
+    links.querySelectorAll("a").forEach(function (a) {
+      var strip = strips[a.getAttribute("href")] || null;
+      var enter = function () { if (root.classList.contains("nav-hover")) showStrip(strip); };
+      a.addEventListener("mouseenter", enter);
+      a.addEventListener("focus", enter);
+      a.addEventListener("mouseleave", closeSoon);
+    });
+    flyouts.addEventListener("mouseenter", function () { clearTimeout(closeTimer); });
+    flyouts.addEventListener("mouseleave", closeSoon);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeStrip(); });
+  }
+
   /* ---- scroll reveal (observer is reused for dynamically added nodes) ---- */
   var io = null;
   if ("IntersectionObserver" in window) {
