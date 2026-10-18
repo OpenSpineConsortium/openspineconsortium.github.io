@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180702">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180702">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180702">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180724">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180724">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180724">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -124,7 +124,7 @@
       <summary>Use a fine-grained token instead</summary>
       <label for="cp-token">A fine-grained personal access token</label>
       <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board and the Claude accounts&rsquo; readings, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Adding a Claude account also needs the organization permissions Secrets and Variables set to Read and write. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token; the one Claude token the page takes is the one you paste under the Tokens tab&rsquo;s &ldquo;Add or renew a slot&rdquo;.</small>
+      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board and the Claude accounts&rsquo; readings, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Adding a Claude account also needs the organization permissions Secrets and Variables set to Read and write. Tracking a drive on the Folders tab also needs the repository permission Secrets set to Read and write. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token; the one Claude token the page takes is the one you paste under the Tokens tab&rsquo;s &ldquo;Add or renew a slot&rdquo;.</small>
       <div><button id="cp-open" type="button">Open the panel</button></div>
     </details>
   </div>
@@ -158,6 +158,7 @@
         <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
         <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
         <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
+        <button type="button" role="tab" data-tab="folders" id="rail-folders" aria-controls="tab-folders"><span class="rail__icon" aria-hidden="true">&#8645;</span><span class="rail__name">Folders</span></button>
         <button type="button" role="tab" data-tab="repos" id="rail-repos" aria-controls="tab-repos"><span class="rail__icon" aria-hidden="true">&#43;</span><span class="rail__name">Repositories</span></button>
         <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
       </div>
@@ -390,6 +391,55 @@
           </div>
         </section>
 
+        <!-- Folders: a repository that tracks files and folders of your OneDrive -->
+        <section class="console__panel console__panel--split folders" id="tab-folders" data-tab-panel="folders" role="tabpanel" aria-labelledby="rail-folders" hidden>
+          <div class="console__col">
+            <div class="console__head">
+              <h2 id="h-folders" class="console__h">Folders</h2>
+              <details class="console__help"><summary>How the drive is kept in step</summary><div>
+                <p>A repository that tracks files and folders of your OneDrive, one press per step, in the column beside the list. From Track on, the repository&rsquo;s own workflow, <code>drive-sync.yml</code>, brings what changed in the drive down as a pull request every half hour and sends what changed in the repository back up, and a new comment in a document becomes a task on the board. Google Drive comes later, once there is a way that needs no key: Google&rsquo;s own picker takes a browser API key, which the owner has declined.</p>
+                <p>Connect: Microsoft asks, on its own page, whether Symphony may read and write your files and keep that access when you are away, and sends you straight back to this tab. The page then holds the drive&rsquo;s two tokens in its memory alone, never in the browser&rsquo;s storage, so finish the steps in one sitting: a reload or Forget the token forgets them, and Connect is one press again. Leaving the page for Microsoft also ends the renewals of a sign-in with GitHub made for this tab alone, whose token still serves for the rest of its eight hours.</p>
+                <p>The list: your OneDrive, drawn here from Microsoft Graph as you, in this browser. The page draws it itself rather than opening OneDrive&rsquo;s own picker, since the access you gave reaches every file already and the picker would need a token for your tenant&rsquo;s SharePoint, a page of Microsoft&rsquo;s inside this one and an address that differs between a personal and a work account. A ticked folder is tracked with everything in it, six levels down. Nothing of the list leaves this browser but the names and ids of what you tick, which go into the repository&rsquo;s file.</p>
+                <p>The repository: GitHub&rsquo;s own form makes it from the template, named by you, so its first commit stays yours and no App needs to administer it. The form opens in a new tab; name the repository, press &ldquo;Create repository&rdquo;, come back here and press &ldquo;Find the repository I just made&rdquo;, which lists it in the bar&rsquo;s Repository and chooses it. Signed in with GitHub, the page reaches it once SymphonyBoard is installed on it (an installation on all your repositories covers it); a fine-grained token reaches what it was made for, and Track needs it to hold Contents, Secrets and Actions, each Read and write.</p>
+                <p>Track writes three things, as you: the drive&rsquo;s refresh token, sealed in this browser with the repository&rsquo;s public key the way GitHub&rsquo;s own secrets page seals one, as the secret <code>SYMPHONY_DRIVE_REFRESH</code>; the file <code>.github/symphony/drive.json</code> naming the drive, the folder and what you ticked; and the first run of the sync. The page then drops the drive&rsquo;s tokens from its memory. A Microsoft refresh token lasts 90 days, and the run cannot keep the newer one Microsoft issues on each sync, so the tab says when to press Connect again; Connect again replaces the secret and keeps what you ticked.</p>
+              </div></details>
+            </div>
+            <div class="console__scroll">
+              <div id="fd-tracked" class="admin__box"></div>
+              <h3 id="h-drive">Your OneDrive</h3>
+              <div id="fd-browser"></div>
+              <p class="admin__lead" id="fd-picked-head">Nothing ticked yet.</p>
+              <ul id="fd-picked" class="folders__picked"></ul>
+            </div>
+          </div>
+          <div class="console__col console__col--side">
+            <div class="admin__box console__scroll">
+              <div class="folders__step">
+                <h3 class="console__boxh">1. Connect the drive</h3>
+                <p class="admin__bar"><button id="fd-connect" type="button" class="console__primary">Connect OneDrive</button></p>
+                <p class="admin__lead" id="fd-connect-note"></p>
+              </div>
+              <div class="folders__step">
+                <h3 class="console__boxh">2. Tick what to track</h3>
+                <p class="admin__lead">In the list beside this; a folder brings all it holds.</p>
+              </div>
+              <div class="folders__step">
+                <h3 class="console__boxh">3. Make the repository</h3>
+                <p class="admin__lead" id="fd-create-note">Only for a new one; yours are in the bar.</p>
+                <p class="admin__bar"><a id="fd-create" class="folders__button" href="https://github.com/new?template_owner=OpenSpineConsortium&amp;template_name=symphony-template" target="_blank" rel="noopener">Create a repository from the template</a></p>
+                <p class="admin__bar"><button id="fd-reload" type="button">Find the repository I just made</button></p>
+              </div>
+              <div class="folders__step">
+                <h3 class="console__boxh">4. Track</h3>
+                <div class="admin__row">
+                  <div><label for="fd-folder">Folder in the repository</label><input id="fd-folder" type="text" autocomplete="off" spellcheck="false" value="papers" maxlength="80"></div>
+                  <div><button id="fd-track" type="button" class="console__primary">Track</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Repositories -->
         <section class="console__panel" id="tab-repos" data-tab-panel="repos" role="tabpanel" aria-labelledby="rail-repos" hidden>
           <div class="console__head">
@@ -415,9 +465,10 @@
         <section class="console__panel" id="tab-about" data-tab-panel="about" role="tabpanel" aria-labelledby="rail-about" hidden>
           <div class="console__scroll">
             <h2 class="console__h">About the control panel</h2>
-            <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
+            <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else but, for a drive you connect on the Folders tab, Microsoft and the sign-in service; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#folders</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
             <h3 id="h-privacy">What this page keeps and sends</h3>
-            <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+            <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else but what the Folders tab sends for a drive, below, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+            <p class="admin__lead" id="fd-kept">On the Folders tab, in the open page&rsquo;s memory alone, until Track, Forget the token or a reload: the drive&rsquo;s access token and refresh token. Sent: Microsoft&rsquo;s one-time code to the sign-in service, which adds the client secret it holds, answers with the two tokens and keeps nothing; the refresh token to the same service when the access token runs out during a sitting; requests to Microsoft Graph, as you, for the list you browse; and to GitHub&rsquo;s API, as you, the sealed secret, the file and the request to run the sync. The repository&rsquo;s own run then trades the secret for an access token at the same service on every sync. The developer receives nothing from this tab either.</p>
           </div>
         </section>
 
@@ -477,8 +528,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180702"></script>
+<script src="/assets/js/main.js?v=202610180724"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180702"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180724"></script>
 </body>
 </html>
