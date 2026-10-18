@@ -55,7 +55,7 @@ robots: noindex
           <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
           <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
-          <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
+          <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#10022;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
           <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
           <button type="button" role="tab" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
@@ -274,7 +274,7 @@ robots: noindex
                 </select></div>
               </div>
               <div><button id="cp-a-import" type="button" class="console__primary">Import it by pull request</button></div>
-              <p class="console__note">An imported agent must list its tools and may carry no hooks, MCP servers or bypassed permissions; read its instructions in the pull request before you merge it.</p>
+              <p class="console__note">An imported agent carries only its name, description, tools, model and colour, nothing that runs on its own; read its instructions and tools in the pull request before you merge it.</p>
             </div>
           </div>
         </section>

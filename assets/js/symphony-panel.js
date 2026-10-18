@@ -1672,7 +1672,7 @@
   function consoleRows(id) {
     var t = $(id);
     if (!t) return 0;
-    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector('.admin__none'); }).length;
+    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector(':scope > td.admin__none'); }).length;
   }
   function countConsole() {
     Array.prototype.forEach.call(document.querySelectorAll('#console [data-count]'), function (span) {
