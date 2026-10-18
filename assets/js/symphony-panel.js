@@ -2562,6 +2562,10 @@
     else if (!setList.firstChild) none(box, 'No slot is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
     else add(box, setList);
 
+    // the same wizard in a Codespace on the repository: claude setup-token's sign-in opens in a tab
+    // and the token goes from claude to GitHub with nothing to paste (docs/setup/codespace.md)
+    add(box, add(el('p', 'admin__lead'), 'No token to hand? ', link('https://codespaces.new/' + repo, 'Open a Codespace on ' + repo),
+      ': it signs you in to GitHub, applies the repository\'s settings, then runs claude setup-token for each account and stores each token itself, with nothing to copy or paste. Or paste a token printed anywhere below.'));
     var free = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return unread || !secrets[slotSecret(n)]; });
     var pick = el('select');
     pick.id = 'tk-add-slot';
