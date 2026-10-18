@@ -5302,6 +5302,11 @@
   var DRIVE_SECRET = 'SYMPHONY_DRIVE_REFRESH';
   var DRIVE_WORKFLOW = 'drive-sync.yml';
   var DRIVE_BRANCH = 'symphony/drive';
+  // the drive organizer's catalog: catalog.json on the branch drive-catalog, a flat list of the
+  // drive's folders and files whose paths start with this root; read when no drive is connected
+  var CATALOG_FILE = 'catalog.json';
+  var CATALOG_BRANCH = 'drive-catalog';
+  var CATALOG_ROOT = 'OneDrive';
   var TEMPLATE_NAME = 'OpenSpineConsortium/symphony-template';
   // the console's own address, with its trailing slash: the one redirect the sign-in service's
   // /drive/connect and the Microsoft app registration accept, the same page GitHub returns to
@@ -5337,6 +5342,14 @@
   // was last drawn for
   var foldersFor = null;
   var listedFor = null;
+  // the saved catalog a repository's drive-catalog branch holds, read when no drive is connected and
+  // the repository is private; it feeds the same explorer, read-only, with no Track or ticking
+  var catalog = null;
+  var catalogFor = '';
+  var catalogKids = null;
+  var catalogMode = false;
+  var catalogBusy = false;
+  var catalogLoading = 0;
   // The drive's refresh token is sealed in this browser for the repository's public key, as GitHub's
   // own secrets page seals a secret, with the vendored sealed box (tweetnacl and blake2b); the Tokens
   // tab no longer seals anything, so the tab keeps the loader and its two base64 helpers itself
@@ -5427,6 +5440,7 @@
     listedFor = null;
     foldersFor = null;
     pendingPull = Object.create(null);
+    catalogMode = false; catalog = null; catalogFor = ''; catalogBusy = false;
     if (!$('fd-browser')) return;
     clear($('fd-tracked'));
     drawPicked();
@@ -5719,7 +5733,7 @@
   function appName(app) { return { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint', 'ms-visio': 'Visio' }[app] || 'its app'; }
   function openItem(it) {
     if (it.folder) { go(crumbs.concat([{ id: String(it.id), name: String(it.name || ''), url: httpsOnly(it.webUrl) }])); return; }
-    if (officeApp(it)) openInApp(it); else openInBrowser(it);
+    if (!catalogMode && officeApp(it)) openInApp(it); else openInBrowser(it);
   }
 
   // a mark for an item's kind, drawn here, so no picture comes from anywhere; its letters are the
@@ -5757,6 +5771,7 @@
     return explorer.cache[id || 'root'];
   }
   function readChildren(id) {
+    if (catalogMode) return Promise.resolve(catalogChildren(id));
     var key = id || 'root', have = cachedRead(id);
     if (have) return have;
     var url = id ? '/me/drive/items/' + encodeURIComponent(id) + '/children' + GRAPH_SELECT : '/me/drive/root/children' + GRAPH_SELECT;
@@ -5769,6 +5784,78 @@
     explorer.cache[key] = read;
     read.catch(function () { if (d === drive && explorer.cache[key] === read) delete explorer.cache[key]; });
     return read;
+  }
+  /* ---------- the saved catalog, drawn in the same explorer when no drive is connected ---------- */
+  // The drive organizer writes catalog.json to the branch drive-catalog of a private repository: a
+  // flat list of the drive's folders and files, their paths starting with CATALOG_ROOT. Read with
+  // the person's GitHub token, it feeds the same explorer, read-only (no Track, no ticking), so a
+  // person sees the whole drive without connecting one. Connecting a drive puts the live drive back.
+  // The catalog may lack a modified date or a web link for some files (treated as unknown, never an
+  // error), and mime is empty, so the kind comes from the name as it does for a live drive.
+  function catLast(path) { var s = String(path || '').split('/').filter(Boolean); return s.length ? s[s.length - 1] : ''; }
+  function catParent(path, name) {
+    var p = String(path || '');
+    if (name) { var tail = '/' + name; if (p.length >= tail.length && p.slice(-tail.length) === tail) return p.slice(0, -tail.length); }
+    var i = p.lastIndexOf('/');
+    return i >= 0 ? p.slice(0, i) : '';
+  }
+  // the flat lists turned into children by folder id, the explorer root (id '') under the key ''
+  function buildCatalogTree(data) {
+    catalogKids = Object.create(null);
+    var pathId = Object.create(null);
+    pathId[CATALOG_ROOT] = '';
+    var folders = Array.isArray(data.folders) ? data.folders : [];
+    var files = Array.isArray(data.files) ? data.files : [];
+    folders.forEach(function (f) { if (f && typeof f.path === 'string') pathId[f.path] = String(f.id || f.path); });
+    function kidsOf(id) { return catalogKids[id] || (catalogKids[id] = []); }
+    function parentId(path, name) {
+      var pp = catParent(path, name);
+      if (pp === '' || pp === CATALOG_ROOT) return '';
+      return Object.prototype.hasOwnProperty.call(pathId, pp) ? pathId[pp] : '';
+    }
+    folders.forEach(function (f) {
+      if (!f || typeof f.path !== 'string' || f.path === CATALOG_ROOT) return;
+      kidsOf(parentId(f.path)).push({ id: pathId[f.path], name: catLast(f.path), folder: { childCount: 0 }, lastModifiedDateTime: f.latest ? String(f.latest) : '', webUrl: typeof f.web === 'string' ? f.web : '', parentReference: { driveId: f.drive ? String(f.drive) : '' } });
+    });
+    files.forEach(function (fl) {
+      if (!fl || typeof fl.path !== 'string') return;
+      var nm = typeof fl.name === 'string' && fl.name ? fl.name : catLast(fl.path);
+      kidsOf(parentId(fl.path, nm)).push({ id: String(fl.id || fl.path), name: nm, file: { mimeType: typeof fl.mime === 'string' ? fl.mime : '' }, size: typeof fl.size === 'number' ? fl.size : undefined, lastModifiedDateTime: fl.modified ? String(fl.modified) : '', webUrl: typeof fl.web === 'string' ? fl.web : '', parentReference: { driveId: fl.drive ? String(fl.drive) : '' } });
+    });
+    Object.keys(catalogKids).forEach(function (pid) {
+      catalogKids[pid].forEach(function (it) { if (it.folder) it.folder.childCount = (catalogKids[it.id] || []).length; });
+    });
+  }
+  function catalogChildren(id) { return ((catalogKids && catalogKids[id || '']) || []).slice(); }
+  // read the catalog for the chosen repository, once per repository, and draw it
+  function startCatalog(repo) {
+    var asked = ++catalogLoading;
+    catalogFor = repo;
+    catalog = null; catalogKids = null; catalogMode = false; catalogBusy = true;
+    crumbs = []; explorer.filter = ''; explorer.selected = '';
+    drawBrowser();
+    file(repo, CATALOG_FILE, CATALOG_BRANCH).then(function (text) {
+      if (asked !== catalogLoading) return;
+      catalogBusy = false;
+      var data = null; try { data = JSON.parse(text); } catch (e) { data = null; }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) { catalog = null; catalogMode = false; drawBrowser(); return; }
+      catalog = data; buildCatalogTree(data); catalogMode = true;
+      crumbs = []; explorer.filter = ''; explorer.selected = '';
+      listFolder();
+    }, function (e) {
+      if (asked !== catalogLoading) return;
+      catalogBusy = false; catalog = null; catalogMode = false;
+      drawBrowser();
+    });
+  }
+  // when no drive is connected: show the chosen private repository's catalog if it has one, reading
+  // it once per repository; a drive, a public repository or no repository shows the connect prompt
+  function maybeCatalog() {
+    var repo = foldersRepo();
+    if (drive) { catalogMode = false; return; }
+    if (!repo || !token || !state.meta || isPublic(state.meta)) { catalogMode = false; catalog = null; catalogFor = ''; drawBrowser(); return; }
+    if (catalogFor === repo) { if (catalog) listFolder(); else drawBrowser(); return; }
+    startCatalog(repo);
   }
   function resetExplorer() {
     explorer.back = []; explorer.forward = []; explorer.items = []; explorer.selected = ''; explorer.filter = '';
@@ -5799,7 +5886,21 @@
     var box = $('fd-browser');
     clear(box);
     hideMenu();
-    if (!drive) { none(box, 'Connect OneDrive first: the list of your files and folders is read as you, in this browser, once the drive is connected.'); return; }
+    if (!drive && !catalogMode) {
+      if (catalogBusy && catalogFor === foldersRepo()) { none(box, 'Reading ' + catalogFor + '’s saved catalog…'); return; }
+      var hint = (state.meta && !isPublic(state.meta) && foldersRepo()) ? ' If ' + foldersRepo() + ' has a saved catalog on its ' + CATALOG_BRANCH + ' branch (the drive organizer writes one), it shows here without a drive.' : '';
+      none(box, 'Connect OneDrive first: the list of your files and folders is read as you, in this browser, once the drive is connected.' + hint);
+      return;
+    }
+    if (catalogMode) {
+      var made = catalog && catalog.made ? String(catalog.made).slice(0, 10) : '';
+      var prov = driveName(catalog && catalog.provider);
+      add(box, el('p', 'admin__lead', 'Showing ' + (catalogFor || foldersRepo()) + '’s saved ' + prov + ' catalog' + (made ? ', read ' + made : '') + ': a read-only list from the ' + CATALOG_BRANCH + ' branch, so nothing is asked of ' + prov + '. Connect OneDrive to browse the live drive and track folders.'));
+      if (catalog && catalog.complete === false) {
+        var why = Array.isArray(catalog.problems) && catalog.problems.length ? ' (' + catalog.problems.slice(0, 3).map(String).join('; ').slice(0, 200) + ')' : '';
+        add(box, el('p', 'admin__none', 'The catalog says it is not complete' + why + ', so some items may be missing.'));
+      }
+    }
     var win = el('div', 'fx');
     // the toolbar: Back, Forward, Up, Refresh, the address, the search box and the view
     var bar = el('div', 'fx__bar');
@@ -5857,7 +5958,7 @@
   function listFolder() {
     var asked = ++listing;
     drawBrowser();
-    if (!heldDrive()) return;
+    if (!catalogMode && !heldDrive()) return;
     var here = crumbs.length ? crumbs[crumbs.length - 1] : null;
     readChildren(here ? here.id : '').then(function (items) {
       if (asked !== listing) return;
@@ -5901,6 +6002,7 @@
   function drawStatus(list) {
     var status = $('fd-status');
     if (!status) return;
+    if (catalogMode) { status.textContent = plural(list.length, 'item') + '   From the saved catalog; double-click to open.'; return; }
     var ticked = list.filter(function (it) { return picked[String(it.id || '')]; }).length;
     status.textContent = plural(list.length, 'item') + (ticked ? '   ' + ticked + ' ticked' : '') + '   Double-click to open; right-click for more.';
   }
@@ -5908,6 +6010,7 @@
     var box = el('input');
     box.type = 'checkbox';
     box.setAttribute('data-id', String(it.id || ''));
+    if (catalogMode) { box.disabled = true; box.title = 'Connect OneDrive to track'; box.setAttribute('aria-label', 'Connect OneDrive to track'); return box; }
     box.checked = !!picked[String(it.id || '')];
     box.setAttribute('aria-label', 'Track ' + String(it.name || ''));
     box.addEventListener('change', function () { tick(it, box.checked); drawStatus(sortedItems()); });
@@ -6011,11 +6114,13 @@
     }
     if (it.folder) entry('Open', function () { openItem(it); });
     var app = officeApp(it);
-    if (app) entry('Open in ' + appName(app), function () { openInApp(it); });
+    if (app && !catalogMode) entry('Open in ' + appName(app), function () { openInApp(it); });
     if (!it.folder) entry('Open in the browser', function () { openInBrowser(it); });
     if (it.folder && httpsOnly(it.webUrl)) entry('Open in OneDrive', function () { openInBrowser(it); });
-    var on = !!picked[String(it.id || '')];
-    entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
+    if (!catalogMode) {
+      var on = !!picked[String(it.id || '')];
+      entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
+    }
     document.body.appendChild(menu);
     var w = menu.offsetWidth, h = menu.offsetHeight;
     menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
@@ -6358,8 +6463,8 @@
     showConnectState();
     if (!driveConfig && !driveAsked) wireConnect();
     drawPicked();
-    if (d && listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); listFolder(); }
-    else if (!d) drawBrowser();
+    if (d) { catalogMode = false; if (listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); listFolder(); } }
+    else maybeCatalog();
     if (foldersFor !== foldersRepo()) loadFolders();
   }
   // a part of the console: the sign-in, the bar and the repository are the console's, so the tab
