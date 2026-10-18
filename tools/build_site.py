@@ -343,6 +343,10 @@ SITE = [
         # panel is, and linked from it
         node("Claude tokens", "/symphony/control/tokens.html", hidden=True),
         node("What it costs", "/symphony/cost.html", crumb="What Symphony costs, against the alternatives"),
+        # what Symphony is for, told for a newcomer, and its general powers set beside the tools people
+        # already use in each kind of work it competes in
+        node("Use cases", "/symphony/use-cases.html", crumb="What Symphony is for"),
+        node("Compared", "/symphony/compare.html", crumb="Symphony compared with the tools you know"),
         node("Privacy", "/symphony/privacy.html", crumb="Privacy statement, Symphony for Chrome"),
         node("Apps privacy", "/symphony/apps-privacy.html", crumb="Privacy statement, Symphony GitHub Apps"),
     ]),
