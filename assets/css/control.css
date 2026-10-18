@@ -286,3 +286,40 @@ body[data-shell] main > .console.section, .console.section {
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
 .console__help--inline > summary { display: inline-block; }
+
+/* the Tokens tab's tiles: square buttons like the Command tab's, filling a row from the left, the
+   dashed + Add Token tile last; the X sits in the tile's top right corner */
+.toks { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 140px)); gap: 10px; margin: 0 0 14px; }
+.toks__note { grid-column: 1 / -1; }
+.tok { position: relative; aspect-ratio: 1 / 1; min-width: 0; }
+.console button.tok__open {
+  margin: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 3px;
+  padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-align: left; overflow: hidden;
+  transition: transform 0.12s var(--ease), border-color 0.12s, background 0.12s;
+}
+.console button.tok__open:hover { transform: translateY(-1px); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); color: var(--ink); }
+.console button.tok__open:active { transform: translateY(1px); }
+.tok__icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: auto; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-weight: 600; }
+.tok__name { font-weight: 600; font-size: 0.95rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tok__meta, .tok__state { font-size: 0.74rem; line-height: 1.3; color: var(--ink-faint); max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tok__state--go { color: var(--go); }
+.tok__state--warn { color: var(--ochre); }
+.console button.tok__x {
+  position: absolute; top: 6px; right: 6px; margin: 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint); font-size: 1.05rem; line-height: 1;
+}
+.console button.tok__x:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
+.console button.tok--add { align-items: center; justify-content: center; border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); }
+.console button.tok--add:hover { border-color: var(--teal); color: var(--teal); background: rgba(60, 194, 177, 0.06); }
+.tok__plus { font-size: 2rem; line-height: 1; }
+.tkdlg { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-card); color: var(--ink); }
+.tkdlg::backdrop { background: rgba(5, 9, 8, 0.65); }
+.tkdlg__form { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.tkdlg__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tkdlg__field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tkdlg__field select, .tkdlg__field input { width: 100%; }
+.tkdlg .tkdlg__tick { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 0.92rem; font-weight: 400; }
+.tkdlg .tkdlg__tick input { width: auto; flex: none; margin: 0; }
+.tkdlg__note { font-size: 0.8rem !important; }
+.tkdlg__bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+@media (max-width: 520px) { .tkdlg__row { grid-template-columns: 1fr; } }
