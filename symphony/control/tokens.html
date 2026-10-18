@@ -68,7 +68,7 @@
   <header class="page-head">
     <span class="eyebrow">Symphony</span>
     <h1 id="tk-title">Claude tokens</h1>
-    <p>The Claude accounts your workers run on, as claude-swap shows them: each slot&rsquo;s use of its five-hour and seven-day windows with when they reset, the per-model weekly limits such as Fable&rsquo;s, and which slot the auto mode would take now. A slot is an organization secret, <code>SYMPHONY_CLAUDE_1</code> to <code>SYMPHONY_CLAUDE_8</code>, set below or by <code>python3 scripts/tokens.py</code>; <code>main</code> is <code>CLAUDE_CODE_OAUTH_TOKEN</code>. GitHub never gives a secret back, so the page reads only the readings on the repository&rsquo;s branch <code>pool</code>: what each worker&rsquo;s run saw in Claude&rsquo;s answers, what the workflow Pool&rsquo;s one-word probes saw, and what cswap on your machine sent with <code>python3 scripts/tokens.py usage</code>, the only source of the per-model limits. No reading holds a token. Back to <a href="/symphony/control/">the control panel</a>.</p>
+    <p>The Claude accounts your workers run on: add one with a press, see how much of each is used and when it resets, and choose which worker runs on which. <a href="/symphony/control/">Back to the control panel</a>.</p>
   </header>
 
   <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
@@ -94,21 +94,30 @@
       <div class="admin__row">
         <div><label for="tk-repo">Repository (the control panel&rsquo;s list)</label><select id="tk-repo"></select></div>
       </div>
-      <p class="admin__bar"><button id="tk-reload" type="button" class="quiet">Read the pool again</button> <button id="tk-probe" type="button">Read every slot now</button></p>
-      <p class="admin__lead">&ldquo;Read every slot now&rdquo; starts the workflow Pool, which asks each slot of <code>SYMPHONY_CLAUDE_ACCOUNTS</code> for one word on Haiku: that spends one word of each slot&rsquo;s window, so nothing reads them on a schedule.</p>
+      <p class="admin__bar"><button id="tk-add-top" type="button">Add a Claude account</button> <button id="tk-probe" type="button" class="quiet" title="Starts the workflow Pool, which asks each slot for one word on Haiku">Read every slot now</button> <button id="tk-reload" type="button" class="quiet">Read the pool again</button></p>
     </div>
 
     <h2 id="h-slots">The slots</h2>
     <div class="table-scroll"><table id="tk-slots" class="admin__stack"><thead><tr><th>Slot</th><th>5 hours</th><th>7 days</th><th>Per-model weekly limits</th><th>State</th><th>Last read</th></tr></thead><tbody></tbody></table></div>
     <p id="tk-auto" class="admin__lead"></p>
-    <p class="admin__lead">A slot is held once a window or a model limit reaches 90 percent, until it resets, or for five hours from its reading when its reset is not known. A worker on auto takes, at the start of each run, the free slot with the most room in five hours and then seven days, and the workers of one run take different free slots; a run already going finishes on its account. The Fable limit and the other per-model ones come only from cswap: run <code>python3 scripts/tokens.py usage</code> on your machine to send them.</p>
+    <details class="control__token">
+      <summary>How the readings are taken and how auto picks a slot</summary>
+      <p class="admin__lead">A slot is an organization secret, <code>SYMPHONY_CLAUDE_1</code> to <code>SYMPHONY_CLAUDE_8</code>; <code>main</code> is <code>CLAUDE_CODE_OAUTH_TOKEN</code>. GitHub never gives a secret back, so the page reads only the readings on the repository&rsquo;s branch <code>pool</code>: what each worker&rsquo;s run saw in Claude&rsquo;s answers, what the workflow Pool&rsquo;s one-word probes saw, and what cswap on your machine sent with <code>python3 scripts/tokens.py usage</code>, the only source of the per-model limits such as Fable&rsquo;s. No reading holds a token. &ldquo;Read every slot now&rdquo; starts the workflow Pool, which asks each slot of <code>SYMPHONY_CLAUDE_ACCOUNTS</code> for one word on Haiku: that spends one word of each slot&rsquo;s window, so nothing reads them on a schedule.</p>
+      <p class="admin__lead">A slot is held once a window or a model limit reaches 90 percent, until it resets, or for five hours from its reading when its reset is not known. A worker on auto takes, at the start of each run, the free slot with the most room in five hours and then seven days, and the workers of one run take different free slots; a run already going finishes on its account. The Fable limit and the other per-model ones come only from cswap: run <code>python3 scripts/tokens.py usage</code> on your machine to send them.</p>
+    </details>
 
-    <h2 id="h-add">Add or renew a slot</h2>
-    <p class="admin__lead">Run <code>claude setup-token</code> in any terminal signed in to the Claude account the slot is for, and paste the token it prints here. The page seals it in this browser with GitHub&rsquo;s public key for the organization, the way GitHub&rsquo;s own secrets page does, and sends GitHub only the sealed box, which GitHub alone can open; it never stores, logs or shows the token, and empties the box once it is sealed. It then lists the slot in <code>SYMPHONY_CLAUDE_ACCOUNTS</code>, so auto and the bench can take it. A token lives a year. Saving needs you to be an owner of the organization and the SymphonyBoard App&rsquo;s organization permissions Secrets and Variables: read and write.</p>
+    <h2 id="h-add">Add a Claude account</h2>
+    <details class="control__token">
+      <summary>What the button does, and what it needs</summary>
+      <p class="admin__lead">It makes a Codespace on the repository, hands it this page&rsquo;s GitHub sign-in as a Codespaces secret only you can see, and opens it in a new tab. There <code>claude setup-token</code> opens claude.ai&rsquo;s sign-in; once you press Authorize, the token goes from Claude Code straight to GitHub as the next free slot, never shown and never passing through this page, and the slot is listed in <code>SYMPHONY_CLAUDE_ACCOUNTS</code> so auto and the bench can take it. The page then deletes the Codespace and the secret. A token lives a year. It needs you to be an owner of the organization and the SymphonyBoard App&rsquo;s permissions Secrets and Variables (organization), Codespaces (repository) and Codespaces user secrets (account), each Read and write.</p>
+    </details>
     <div id="tk-add" class="admin__box"></div>
 
     <h2 id="h-assign">Which account each worker runs on</h2>
-    <p class="admin__lead">Each worker in Actions runs on <code>main</code>, a slot, or <code>auto</code>, from the file <code>.github/symphony/accounts.json</code>; with no file every worker runs on <code>main</code>. The default branch takes only pull requests, so saving here opens one, which takes effect once it merges. @claude and the coordinator stay on <code>main</code>.</p>
+    <details class="control__token">
+      <summary>Where this is kept</summary>
+      <p class="admin__lead">Each worker in Actions runs on <code>main</code>, a slot, or <code>auto</code>, from the file <code>.github/symphony/accounts.json</code>; with no file every worker runs on <code>main</code>. The default branch takes only pull requests, so saving here opens one, which takes effect once it merges. @claude and the coordinator stay on <code>main</code>.</p>
+    </details>
     <div id="tk-assign" class="admin__box"></div>
   </div>
   <div id="tokens-app" class="hidden"></div>
