@@ -4298,41 +4298,111 @@
   // what claude.ai shows after the sign-in, as tools/token_run.py's CODE_SHAPE takes it
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
   var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
+  var ADOPT_BRANCH = 'symphony/adopt';
+  var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
+  // the sign-in under way, one at a time since each opens an issue and starts a run: its dialog,
+  // shown again when Add Token is pressed after the dialog was closed, and how to stop it
+  var tokenRun = null;
 
   // the sign-in in the token's dialog: a line that says where the run is, and the step it needs from
   // the person, the claude.ai button and the code's box, under it
   function signInView(title) {
     var d = $('tk-dialog');
-    clear(d);
     var box = el('div', 'tkdlg__form');
     var line = el('p', 'admin__lead tkdlg__line');
     line.id = 'tk-line';
     var step = el('div', 'tkdlg__step');
+    var note = el('p', 'admin__warn tkdlg__line');
+    note.hidden = true;
+    // Close only hides the dialog: the run goes on, and Add Token shows it again
     var close = btn('Close', true, function () { d.close(); });
-    add(box, el('h3', 'console__boxh', title), line, step, add(el('p', 'admin__bar tkdlg__bar'), close));
-    add(d, box);
-    if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+    var stop = btn('Stop this sign-in', true, function () { if (tokenRun && tokenRun.view.stop === stop) tokenRun.stop(); });
+    stop.id = 'tk-stop';
+    add(box, el('h3', 'console__boxh', title), note, line, step, add(el('p', 'admin__bar tkdlg__bar'), close, ' ', stop));
+    // shown again with a note when Add Token or Renew asked for something else meanwhile
+    function show(why) {
+      note.hidden = !why;
+      note.textContent = why || '';
+      if (box.parentNode !== d) { clear(d); add(d, box); }
+      if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+    }
+    show();
     return {
       tell: function (text, warn) { line.textContent = text; line.className = 'tkdlg__line ' + (warn ? 'admin__warn' : 'admin__lead'); },
       step: step,
-      close: close
+      close: close,
+      stop: stop,
+      show: show
     };
+  }
+  // the hint for a repository without the workflow Token: one not adopted yet, or whose adoption pull
+  // request is still open, as a repository named before its merge is
+  function noTokenWorkflow(repo, view) {
+    var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption.';
+    var reach = gh('GET', '/repos/' + repo).then(function () { return true; }, function (e) { return e.status !== 404; });
+    return reach.then(function (reached) {
+      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it.';
+      return adoptionHint(repo, view, hint);
+    });
+  }
+  function adoptionHint(repo, view, hint) {
+    return gh('GET', '/repos/' + repo + '/pulls?state=open&per_page=1&head=' + encodeURIComponent(repo.split('/')[0] + ':' + ADOPT_BRANCH)).then(function (r) {
+      var pr = (r.data || [])[0];
+      if (!pr || !/^https:\/\/github\.com\//.test(pr.html_url || '')) throw new Error('none open');
+      add(view.step, add(el('p', 'admin__bar'), link(pr.html_url, 'Open the adoption pull request #' + pr.number)));
+      return hint + ' Merge its adoption pull request first, then press Add Token again.';
+    }).catch(function () {
+      return hint + ' Merge its adoption pull request first, or adopt it if it never was, then press Add Token again.';
+    });
   }
 
   function addByActions(repo, place, button, wanted) {
-    if (button.disabled) return;
-    var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets';
-    var view = signInView(wanted && tk.secrets && tk.secrets[slotSecret(wanted)] ? 'Renew ' + tileName(wanted) : 'Add a token');
-    button.disabled = true;
+    // a sign-in begun before the page signed out waits on calls that never answer, so it is let go
+    if (tokenRun && tokenRun.era !== ends) tokenRun = null;
+    if (tokenRun) {
+      tokenRun.view.show(tokenRun.repo !== repo || (wanted && wanted !== tokenRun.wanted) ? 'Another sign-in is under way; finish it or stop it first.' : '');
+      return;
+    }
+    var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets', stopped = false;
+    var renewing = wanted && tk.secrets && tk.secrets[slotSecret(wanted)];
+    var view = signInView((renewing ? 'Renew ' + tileName(wanted) : 'Add a token') + ' on ' + repo);
+    // a stop frees Add Token at once, whatever call is on its way; the chain ends quietly when it answers
+    var run = tokenRun = { view: view, repo: repo, wanted: wanted || '', era: ends, stop: function () {
+      stopped = true;
+      if (issue) closeRunIssue(repo, issue, true);
+      over();
+      clear(view.step);
+      view.tell(STOPPED);
+    } };
+    function unlessStopped(value) {
+      if (stopped) { var e = new Error(STOPPED); e.stopped = true; throw e; }
+      return value;
+    }
+    function over() {
+      if (tokenRun === run) { tokenRun = null; drawTiles(); }
+      view.stop.hidden = true;
+    }
+    drawTiles();
     view.tell('Starting the sign-in on GitHub Actions...');
     refuseCrowd([repo], place).then(function () {
       return readSecrets(place);
-    }).then(function (by) {
+    }).then(unlessStopped).then(function (by) {
       slot = wanted || POOL_SLOTS.filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
       if (!slot) throw new Error('All 32 slots are set; remove one with its X, or renew one from its tile.');
       mainMissing = slot !== 'main' && !by[MAIN_SECRET];
+      step = 'workflow';
+      // read before the issue is opened, so a repository without the workflow gets no issue
+      return gh('GET', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW);
+    }).then(unlessStopped).then(function (r) {
+      var state = r.data && r.data.state;
+      if (state && state !== 'active') {
+        var off = new Error(repo + '\'s workflow Token is turned off (' + state + '): open it, press Enable workflow, then press Add Token again.');
+        off.page = 'https://github.com/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW;
+        throw off;
+      }
+      step = 'secrets';
       return gh('GET', place.base + '/secrets/public-key');
-    }).then(function (r) {
+    }).then(unlessStopped).then(function (r) {
       key = r.data;
       step = 'issue';
       return gh('POST', '/repos/' + repo + '/issues', { title: 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
@@ -4341,14 +4411,16 @@
       issue = r.data.number;
       step = 'dispatch';
       return gh('GET', '/repos/' + repo);
-    }).then(function (r) {
+    }).then(unlessStopped).then(function (r) {
       return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
         { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), key: key.key, key_id: key.key_id } });
     }).then(function () {
       step = 'run';
       view.tell('The sign-in is starting; its button appears here in about a minute.');
-      return followRun(repo, issue, key.key_id, view);
-    }).then(function (sealed) {
+      return followRun(repo, issue, key.key_id, view, function () { return stopped; });
+    }).then(unlessStopped).then(function (sealed) {
+      // the token is sealed and on its way into the secret, which a stop now would only cut short
+      view.stop.hidden = true;
       step = 'secrets';
       clear(view.step);
       view.tell('Saving the token...');
@@ -4358,28 +4430,35 @@
       });
     }).then(function (alsoMain) {
       closeRunIssue(repo, issue);
-      button.disabled = false;
+      over();
       view.tell(tileName(slot) + ' is saved' + (alsoMain ? ', and as main too, which @claude and the workers read and which was not set yet' : '') + '. Its use shows on its tile after its first run, or press its tile and Read use now.');
       view.close.textContent = 'Done';
       readTokenPlace(repo, reading);
     }).catch(function (e) {
+      // a stop has closed the issue and said so already
+      if (e.stopped || stopped) return;
       if (issue) closeRunIssue(repo, issue, true);
-      button.disabled = false;
+      over();
       clear(view.step);
-      var hint = '';
-      if (step === 'dispatch' && e.status === 404) hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml): pick symphony-template in the Repository box.';
-      else if ((step === 'dispatch' || step === 'issue') && e.status === 403) hint = ACTIONS_NEEDED;
-      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = SECRETS_NEEDED;
-      view.tell(e.message + hint, true);
+      if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
+      var hint = Promise.resolve('');
+      if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
+      else if ((step === 'workflow' || step === 'dispatch' || step === 'issue') && e.status === 403) hint = Promise.resolve(ACTIONS_NEEDED);
+      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(SECRETS_NEEDED);
+      hint.then(function (text) { view.tell(e.message + text, true); });
     });
   }
   // the issue's comments from the run, read every three seconds: the link shows the sign-in box, the
   // sealed box ends the wait, and a failure says what the run said
-  function followRun(repo, issue, keyId, view) {
+  // GitHub lets a browser keep an issue's comments for 60 seconds (Cache-Control: private,
+  // max-age=60), so each read asks at an address of its own, or the sign-in link waits that long
+  function followRun(repo, issue, keyId, view, stopped) {
     var until = Date.now() + RUN_FOR_MS, shown = false;
     return new Promise(function (resolve, reject) {
       function look() {
-        gh('GET', '/repos/' + repo + '/issues/' + issue + '/comments?per_page=100').then(function (r) {
+        if (stopped()) { var e = new Error(STOPPED); e.stopped = true; reject(e); return; }
+        gh('GET', '/repos/' + repo + '/issues/' + issue + '/comments?per_page=100&at=' + Date.now()).then(function (r) {
+          if (stopped()) { var gone = new Error(STOPPED); gone.stopped = true; reject(gone); return; }
           var said = (r.data || []).filter(function (c) { return c && c.user && c.user.login === RUN_BOT; });
           for (var i = 0; i < said.length; i++) {
             var lines = String(said[i].body || '').trim().split('\n');
@@ -4549,8 +4628,9 @@
     var plus = el('button', 'tok__open tok--add');
     plus.type = 'button';
     plus.id = 'tk-tile-add';
-    add(plus, el('span', 'tok__plus', '+'), el('span', 'tok__name', 'Add Token'));
-    plus.addEventListener('click', function () { openTokenDialog('', true); });
+    var waiting = tokenRun && tokenRun.era === ends;
+    add(plus, el('span', 'tok__plus', waiting ? '\u2026' : '+'), el('span', 'tok__name', waiting ? 'Sign-in waiting' : 'Add Token'));
+    plus.addEventListener('click', function () { if (tokenRun && tokenRun.era === ends) tokenRun.view.show(''); else openTokenDialog('', true); });
     add(box, add(el('div', 'tok'), plus));
     if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
     drawSide();
