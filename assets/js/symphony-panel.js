@@ -19,10 +19,13 @@
    PKCE: the page keeps a secret for each sign-in and sends GitHub its
    hash, so only this page can turn the code GitHub returns into a token.
 
-   What it never does: it never takes a Claude token, never stores
-   anything but the GitHub token (and the refresh token that came with
-   it) and the names of the repositories you listed, and never sends
-   anything anywhere but GitHub and, for the sign-in, that service.
+   What it never does: it never stores anything but the GitHub token (and
+   the refresh token that came with it) and the names of the repositories
+   you listed, and never sends anything anywhere but GitHub and, for the
+   sign-in, that service. The one Claude token it touches is one pasted
+   into the Tokens page's "Add or renew a slot", which it seals in this
+   browser for GitHub's public key and sends to GitHub as that sealed box
+   alone, never stored, logged or shown (the owner, 2026-10-18).
 
    Every state on the page is written in words and every action is a
    button or a link with a name, so a person and a browsing agent read
@@ -1916,6 +1919,7 @@
     readPool(repo).catch(function (e) { if (e.status === 404) return {}; throw e; }).then(function (by) {
       if (asked === reading) showSlots(repo, by);
     }).catch(function (e) { if (asked === reading) { clear(slots); say(e.message, true); } });
+    showAddSlot(repo, asked);
     Promise.all([readAssignments(repo), readActionWorkers(repo)]).then(function (both) {
       if (asked === reading) showAssignments(both[0], both[1]);
     }).catch(function (e) { if (asked === reading) none($('tk-assign'), 'The assignments could not be read: ' + e.message); });
@@ -1932,6 +1936,280 @@
       say('Pool is queued: it asks each slot for one word, which spends that word of the slot\'s window, and writes the readings to the branch pool in a minute or two. Press "Read the pool again" then.');
     }).catch(function (e) { say(e.message + (e.status === 404 ? ' The repository has no workflow Pool yet (.github/workflows/pool.yml).' : e.status === 403 ? ' Starting a workflow needs Actions: read and write.' : ''), true); });
   }
+  /* ---------- adding a slot: a Claude token sealed in this browser for GitHub ---------- */
+  // GitHub takes a secret only as a sealed box for the owner's public key, so the token is sealed
+  // here (assets/js/vendor/sealedbox.js, tweetnacl and blake2b) and only the box leaves the page:
+  // GitHub, which alone holds the private key, is the one place that can open it, and the page
+  // never stores, logs or shows the token. Writing an organization secret needs an owner of the
+  // organization and, signed in with GitHub, the SymphonyBoard App's organization permissions
+  // Secrets and Variables: read and write. The same steps as scripts/tokens.py add.
+  var SLOT_PREFIX = 'SYMPHONY_CLAUDE_';
+  var ACCOUNTS_VARIABLE = SLOT_PREFIX + 'ACCOUNTS';
+  var MAIN_SECRET = 'CLAUDE_CODE_OAUTH_TOKEN';
+  var CROWD_VARIABLE = 'CLAUDE_CROWD';
+  var SEALEDBOX_JS = '/assets/js/vendor/sealedbox.js';
+  // built from pieces, as tools/check_docs.py's shapes are, so this file never looks like a secret
+  var SECRET_HEAD = 'sk-' + 'ant-';
+  var CLAUDE_TOKEN = new RegExp('^' + SECRET_HEAD + 'oat[0-9]{2}-[A-Za-z0-9_-]{20,}$');
+  var API_KEY = new RegExp(SECRET_HEAD + 'api');
+  // the wizard's label shape (scripts/tokens.py LABEL_SHAPE): a word, never an e-mail address
+  var SLOT_LABEL = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$/;
+  var SECRETS_NEEDED = ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions (for a personal account\'s repository, the repository permissions Secrets and Variables).';
+  var sealer = null;
+
+  function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
+  function loadSealer() {
+    if (sealer) return sealer;
+    sealer = new Promise(function (resolve, reject) {
+      if (window.sealedBox) { resolve(window.sealedBox); return; }
+      var s = document.createElement('script');
+      s.src = SEALEDBOX_JS;
+      s.onload = function () { window.sealedBox ? resolve(window.sealedBox) : reject(new Error('The sealing script loaded without its function.')); };
+      s.onerror = function () { sealer = null; reject(new Error('The sealing script could not be loaded; try again.')); };
+      document.head.appendChild(s);
+    });
+    return sealer;
+  }
+  function fromBase64(text) {
+    var bin = atob(text), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function toBase64(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return /^[1-8]$/.test(w); }); }
+
+  // where a repository's slots live: its organization's secrets, or for a personal account's
+  // repository, the repository's own
+  function slotPlace(repo) {
+    return gh('GET', '/repos/' + repo).then(function (r) {
+      var org = r.data.owner && r.data.owner.type === 'Organization';
+      var owner = r.data.owner.login;
+      return { org: org, owner: owner, id: r.data.id, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
+    });
+  }
+  // GitHub lists secrets, variables and a secret's repositories as an object holding the array
+  function listed(path, key) {
+    var out = [];
+    function step(page) {
+      return gh('GET', path + (path.indexOf('?') < 0 ? '?' : '&') + 'per_page=100&page=' + page).then(function (r) {
+        var got = (r.data && Array.isArray(r.data[key])) ? r.data[key] : [];
+        out = out.concat(got);
+        if (got.length < 100) return out;
+        if (page >= 50) throw new Error('GitHub listed more than 5,000 entries at ' + path + ', more than the page reads; nothing was changed.');
+        return step(page + 1);
+      });
+    }
+    return step(1);
+  }
+  function readSecrets(place) {
+    return listed(place.base + '/secrets', 'secrets').then(function (list) {
+      var by = {};
+      list.forEach(function (s) { if (s && s.name) by[s.name] = s; });
+      return by;
+    });
+  }
+
+  function showAddSlot(repo, asked) {
+    var box = $('tk-add');
+    clear(box);
+    none(box, 'Reading which slots ' + repo + ' has...');
+    var place = null;
+    slotPlace(repo).then(function (p) {
+      place = p;
+      return readSecrets(p).catch(function (e) { return { unread: e }; });
+    }).then(function (secrets) {
+      if (asked !== reading) return;
+      clear(box);
+      drawAddSlot(box, repo, place, secrets);
+    }).catch(function (e) { if (asked === reading) { clear(box); none(box, 'The slots could not be read: ' + e.message); } });
+  }
+  function drawAddSlot(box, repo, place, secrets) {
+    var unread = secrets.unread;
+    var setList = add(el('ul', 'admin__lead'));
+    ['main', '1', '2', '3', '4', '5', '6', '7', '8'].forEach(function (slot) {
+      var s = !unread && secrets[slotSecret(slot)];
+      if (s) add(setList, add(el('li'), (slot === 'main' ? 'main' : 'slot ' + slot) + ' (' + slotSecret(slot) + '): set, updated ', timeEl(s.updated_at)));
+    });
+    if (unread) none(box, 'GitHub would not list the secrets (' + unread.message + '), so which slots are set is not known here.');
+    else if (!setList.firstChild) none(box, 'No slot is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
+    else add(box, setList);
+
+    var free = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return unread || !secrets[slotSecret(n)]; });
+    var pick = el('select');
+    pick.id = 'tk-add-slot';
+    ['main', '1', '2', '3', '4', '5', '6', '7', '8'].forEach(function (slot) {
+      var o = el('option', '', (slot === 'main' ? 'main (' + MAIN_SECRET + ')' : 'slot ' + slot + ' (' + slotSecret(slot) + ')') + (!unread && secrets[slotSecret(slot)] ? ', renew' : ''));
+      o.value = slot;
+      if (slot === (free[0] || '1')) o.selected = true;
+      pick.appendChild(o);
+    });
+    var label = el('input');
+    label.id = 'tk-add-label';
+    label.type = 'text';
+    label.maxLength = 40;
+    label.autocomplete = 'off';
+    label.placeholder = 'runners';
+    var token = el('input');
+    token.id = 'tk-add-token';
+    token.type = 'password';
+    token.autocomplete = 'off';
+    token.spellcheck = false;
+    token.placeholder = SECRET_HEAD + 'oat01-...';
+    function field(input, text) {
+      var l = el('label', '', text);
+      l.htmlFor = input.id;
+      return add(el('div'), l, input);
+    }
+    add(box, add(el('div', 'admin__row'), field(pick, 'Slot'), field(label, 'Label (a word, optional)')));
+    add(box, add(el('div', 'admin__row'), field(token, 'The token claude setup-token printed')));
+    var reach = el('div', 'admin__checks');
+    reach.id = 'tk-add-reach';
+    if (place.org) {
+      add(reach, el('p', 'admin__lead', 'Repositories that see the secret (the ones it already reaches keep it):'));
+      var mine = repos().filter(function (r) { return r.split('/')[0].toLowerCase() === place.owner.toLowerCase(); });
+      if (mine.indexOf(repo) < 0) mine.unshift(repo);
+      mine.forEach(function (name) {
+        var c = el('input');
+        c.type = 'checkbox';
+        c.value = name;
+        // the repository chosen and the bench, which reads the slots, are ticked; the rest are offered
+        c.checked = name === repo || /\/coordbench$/i.test(name);
+        add(reach, add(el('label'), c, ' ' + name));
+      });
+    } else add(reach, el('p', 'admin__lead', repo + ' belongs to a personal account, so the slot is a secret of that repository alone.'));
+    add(box, reach);
+    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', false, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
+  }
+
+  function reachIds(place, repo) {
+    if (!place.org) return Promise.resolve([]);
+    var names = Array.prototype.filter.call(document.querySelectorAll('#tk-add-reach input[type=checkbox]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+    if (!names.length) return Promise.reject(new Error('Tick at least one repository to see the secret.'));
+    return Promise.all(names.map(function (name) {
+      return gh('GET', '/repos/' + name).then(function (r) { return { name: name, id: r.data.id }; });
+    }));
+  }
+  // a repository in crowd mode holds no Claude token (docs/setup/crowdsourcing.md), as the wizard refuses
+  function refuseCrowd(names, place) {
+    var orgWide = place.org ? gh('GET', place.base + '/variables/' + CROWD_VARIABLE).then(function (r) {
+      if (String((r.data && r.data.value) || '').trim().toLowerCase() === 'true') throw new Error('The organization ' + place.owner + ' is in crowd mode (its variable ' + CROWD_VARIABLE + ' is true): its repositories hold no Claude token, so nothing was saved.');
+    }, function (e) { if (e.status !== 404) throw e; }) : Promise.resolve();
+    return orgWide.then(function () { return Promise.all(names.map(function (name) {
+      return gh('GET', '/repos/' + name + '/actions/variables/' + CROWD_VARIABLE).then(function (r) {
+        if (String((r.data && r.data.value) || '').trim().toLowerCase() === 'true') throw new Error(name + ' is in crowd mode (its variable ' + CROWD_VARIABLE + ' is true): it holds no Claude token, so nothing was saved.');
+      }, function (e) { if (e.status !== 404 && e.status !== 403) throw e; });
+    })); });
+  }
+  // the repositories a selected organization secret or variable reaches already, so a save adds to them
+  // one that cannot be read stops the save, since a PUT with part of the list would take the rest away
+  function reachOf(path) {
+    return listed(path + '/repositories', 'repositories').then(function (list) {
+      return list.map(function (r) { return r.id; });
+    });
+  }
+  function readOne(path) {
+    return gh('GET', path).then(function (r) { return r.data; }, function (e) { if (e.status === 404) return null; throw e; });
+  }
+  function union(a, b) {
+    var out = a.slice();
+    b.forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); });
+    return out;
+  }
+  // a variable is written only when its value changed, and an organization's keeps every repository it reached
+  function writeVariable(place, name, value, ids) {
+    var path = place.base + '/variables/' + name;
+    return readOne(path).then(function (have) {
+      if (!have) {
+        var body = { name: name, value: value };
+        if (place.org) { body.visibility = 'selected'; body.selected_repository_ids = ids; }
+        return gh('POST', place.base + '/variables', body);
+      }
+      var change = have.value === value ? Promise.resolve() : gh('PATCH', path, { name: name, value: value });
+      if (!place.org || have.visibility !== 'selected') return change;
+      return change.then(function () { return reachOf(path); }).then(function (now) {
+        return Promise.all(ids.filter(function (id) { return now.indexOf(id) < 0; }).map(function (id) { return gh('PUT', path + '/repositories/' + id); }));
+      });
+    });
+  }
+
+  // a repository's own secret or variable of the same name outranks the organization's, as
+  // scripts/tokens.py warns, so the save says when the chosen repository holds one
+  function shadowed(place, repo, name, slot) {
+    if (!place.org) return Promise.resolve('');
+    function own(kind, n) { return readOne('/repos/' + repo + '/actions/' + kind + '/' + n).catch(function () { return null; }); }
+    return Promise.all([own('secrets', name), slot === 'main' ? null : own('variables', ACCOUNTS_VARIABLE)]).then(function (have) {
+      var out = '';
+      if (have[0]) out += ' But ' + repo + ' holds its own secret ' + name + ', which its workflows take in place of the organization\'s: delete it under the repository\'s Settings, Secrets and variables, Actions, or the new token goes unused there.';
+      if (have[1]) out += ' ' + repo + ' also holds its own ' + ACCOUNTS_VARIABLE + ' (' + have[1].value + '), which outranks the organization\'s list.';
+      return out;
+    });
+  }
+  function saveSlot(repo, place, button) {
+    if (button.disabled) return;
+    var slot = $('tk-add-slot').value;
+    var labelText = $('tk-add-label').value.trim();
+    var input = $('tk-add-token');
+    // the token leaves the box at once, so a second press finds nothing to seal
+    var text = input.value.trim();
+    input.value = '';
+    if (API_KEY.test(text)) { say('That is an Anthropic API key, which Symphony never uses: paste the token claude setup-token prints, which starts ' + SECRET_HEAD + 'oat.', true); return; }
+    if (!CLAUDE_TOKEN.test(text)) { say('That is not the shape of the token claude setup-token prints (' + SECRET_HEAD + 'oat and two digits, then a long run of letters); nothing was saved. Paste it again.', true); return; }
+    if (labelText && !SLOT_LABEL.test(labelText)) { text = ''; say('A label is one word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address. Paste the token again with it.', true); return; }
+    button.disabled = true;
+    var name = slotSecret(slot), secretPath = place.base + '/secrets/' + name, ids = [], sealed = '', keyId = '', stored = false;
+    say('Sealing the token in this browser and saving ' + name + '...');
+    reachIds(place, repo).then(function (found) {
+      ids = found.map(function (f) { return f.id; });
+      return refuseCrowd(place.org ? found.map(function (f) { return f.name; }) : [repo], place);
+    }).then(function () {
+      return Promise.all([loadSealer(), gh('GET', place.base + '/secrets/public-key')]);
+    }).then(function (both) {
+      keyId = both[1].data.key_id;
+      sealed = toBase64(both[0](new TextEncoder().encode(text), fromBase64(both[1].data.key)));
+      // from here only the sealed box is held; the box empties so a second press seals nothing
+      text = '';
+      return place.org ? readOne(secretPath) : null;
+    }).then(function (have) {
+      var body = { encrypted_value: sealed, key_id: keyId };
+      if (!place.org) return gh('PUT', secretPath, body);
+      if (have && have.visibility && have.visibility !== 'selected') { body.visibility = have.visibility; return gh('PUT', secretPath, body); }
+      return (have ? reachOf(secretPath) : Promise.resolve([])).then(function (now) {
+        body.visibility = 'selected';
+        body.selected_repository_ids = union(now, ids);
+        return gh('PUT', secretPath, body);
+      });
+    }).then(function () {
+      sealed = '';
+      stored = true;
+      if (labelText && slot !== 'main') return writeVariable(place, SLOT_PREFIX + slot + '_LABEL', labelText, ids);
+    }).then(function () {
+      if (slot === 'main') return;
+      return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE).then(function (have) {
+        var words = slotWords(have && have.value);
+        if (words.indexOf(slot) < 0) words.push(slot);
+        return writeVariable(place, ACCOUNTS_VARIABLE, words.join(','), ids);
+      });
+    }).then(function () {
+      return Promise.all([readOne(secretPath), shadowed(place, repo, name, slot)]);
+    }).then(function (both) {
+      var now = both[0];
+      button.disabled = false;
+      say(name + ' is saved' + (now && now.updated_at ? ', updated ' + stamp(now.updated_at) : '') + (slot === 'main' ? '.' : ', and ' + ACCOUNTS_VARIABLE + ' lists slot ' + slot + '. Press "Read every slot now" to take its first reading.') + both[1], !!both[1]);
+      showAddSlot(repo, reading);
+    }).catch(function (e) {
+      button.disabled = false;
+      text = '';
+      sealed = '';
+      // once the secret is in, a failed label or list leaves the token saved, so it is not asked for again
+      if (stored) say(name + ' is saved, but its label or ' + ACCOUNTS_VARIABLE + ' could not be written: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : '') + ' Add the slot to ' + ACCOUNTS_VARIABLE + ' on GitHub\'s variables page, or save the slot again.', true);
+      else say(e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : '') + ' Paste the token again to retry.', true);
+    });
+  }
+
   function initTokens() {
     wireGate(function () { enter(startTokens); });
     watchOtherTabs();
