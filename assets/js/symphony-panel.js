@@ -3477,6 +3477,140 @@
     return label;
   }
 
+  /* ---------- which tokens an agent takes in one repository ---------- */
+  // The Agents tab gives each agent (a worker by name in accounts.json) a share of the repository's
+  // tokens: its line becomes a list of slots, which tools/pool.py picks over as auto picks over the
+  // pool, main only where the list names it. The list belongs to the repository, so anyone who may
+  // write to it may change it, through a pull request as every change under .github/ is made; who
+  // may switch a token on for the repository at all stays its owner's (reachBox).
+  var ASSIGN_BRANCH = 'symphony/tokens-';
+  var AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+  function assignedSlots(choice, pooled) {
+    if (Array.isArray(choice)) return choice.filter(function (s) { return TILE_SLOTS.indexOf(s) >= 0; });
+    if (choice === 'auto') return pooled.slice();
+    return TILE_SLOTS.indexOf(choice) >= 0 ? [choice] : ['main'];
+  }
+  // the tokens the repository can use, by name: the Tokens tab's own reading where it is of this
+  // repository, else the organization's lists, else the ones GitHub shows the repository
+  function usableTokens(repo) {
+    if (tk.repo === repo && tk.secrets && !tk.secrets.unread) {
+      return readAccounts(tk.place, repo).then(function (pooled) {
+        return { pooled: pooled, slots: TILE_SLOTS.filter(function (s) { return tk.secrets[slotSecret(s)]; }), labels: tk.labels };
+      });
+    }
+    var place;
+    return slotPlace(repo).then(function (p) {
+      place = p;
+      return readSecrets(place).catch(function () {
+        return Promise.all([
+          place.org ? listed('/repos/' + repo + '/actions/organization-secrets', 'secrets') : Promise.resolve([]),
+          listed('/repos/' + repo + '/actions/secrets', 'secrets').catch(function () { return []; })
+        ]).then(function (both) {
+          var by = {};
+          both[0].concat(both[1]).forEach(function (s) { if (s && s.name) by[s.name] = s; });
+          return by;
+        });
+      });
+    }).then(function (secrets) {
+      return Promise.all([readTileVariables(place), readAccounts(place, repo)]).then(function (both) {
+        return { pooled: both[1], slots: TILE_SLOTS.filter(function (s) { return secrets[slotSecret(s)]; }), labels: both[0][1] };
+      });
+    });
+  }
+  function readAccounts(place, repo) {
+    return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE).catch(function () {
+      return listed('/repos/' + repo + '/actions/organization-variables', 'variables').then(function (list) {
+        return list.filter(function (v) { return v.name === ACCOUNTS_VARIABLE; })[0] || null;
+      }, function () { return null; });
+    }).then(function (v) { return slotWords(v ? v.value : ''); });
+  }
+  function assignLabel(slot, labels) {
+    return labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot);
+  }
+  function tokenAssignBox(repo, agentName) {
+    var box = el('div', 'tkassign');
+    if (!repo || !AGENT_NAME.test(agentName || '') || agentName.indexOf('..') >= 0 || /\.lock$/i.test(agentName)) { none(box, 'No such agent.'); return box; }
+    none(box, 'Reading the tokens...');
+    Promise.all([usableTokens(repo), readAssignments(repo)]).then(function (both) {
+      var found = both[0], plan = both[1];
+      clear(box);
+      if (plan.broken) { none(box, ASSIGNMENTS_PATH + ' is not JSON, so it is left as it is.'); return; }
+      var choice = Object.prototype.hasOwnProperty.call(plan.workers, agentName) ? plan.workers[agentName] : plan['default'];
+      var have = assignedSlots(choice, found.pooled);
+      if (!found.slots.length) { none(box, 'Runs on the main token: this repository sees no token yet.'); return; }
+      var ticks = found.slots.map(function (slot) {
+        var label = tickOf('tka-' + agentName + '-' + slot, have.indexOf(slot) >= 0, assignLabel(slot, found.labels));
+        if (slot !== 'main' && found.pooled.indexOf(slot) < 0) label.title = 'Not in ' + ACCOUNTS_VARIABLE + ', so no run takes it until it is';
+        return { slot: slot, input: label.querySelector('input'), label: label };
+      });
+      var save = btn('Save', false, function () {
+        var list = ticks.filter(function (t) { return t.input.checked; }).map(function (t) { return t.slot; });
+        save.disabled = true;
+        say('Proposing the tokens of ' + agentName + '...');
+        proposeAssignment(repo, agentName, list).then(function (url) {
+          clear(note);
+          add(note, 'Proposed in ', link(url, 'a pull request'), '; ' + agentName + ' takes them once it merges.');
+          say('The tokens of ' + agentName + ' are proposed in a pull request; its runs take them once it merges.');
+        }, function (e) {
+          save.disabled = false;
+          say('Could not propose the tokens of ' + agentName + ': ' + e.message + (e.status === 403 || e.status === 404 ? ' It needs Contents and Pull requests: read and write on ' + repo + '.' : ''), true);
+        });
+      });
+      save.id = 'tka-save-' + agentName;
+      save.disabled = true;
+      ticks.forEach(function (t) {
+        t.input.addEventListener('change', function () { save.disabled = !ticks.some(function (x) { return x.input.checked; }); });
+        add(box, t.label);
+      });
+      var note = el('p', 'tkdlg__fact tkdlg__faint', Array.isArray(choice) ? '' : choice === 'auto' ? 'Now: any token of the pool.' : 'Now: ' + assignLabel(have[0], found.labels) + '.');
+      add(box, add(el('p', 'admin__bar'), save), note);
+    }).catch(function (e) { clear(box); none(box, 'Could not read the tokens: ' + e.message); });
+    return box;
+  }
+  function utf8Base64(text) { return btoa(unescape(encodeURIComponent(text))); }
+  // accounts.json read again on the default branch just before the change, so the change carries
+  // whatever merged meanwhile; one branch per agent, moved to the default branch's head each time
+  function proposeAssignment(repo, agent, list) {
+    var base, head, branch = ASSIGN_BRANCH + agent.toLowerCase();
+    return gh('GET', '/repos/' + repo).then(function (r) {
+      base = r.data.default_branch || 'main';
+      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(base));
+    }).then(function (r) {
+      head = r.data.object.sha;
+      // a pool.py older than the lists would refuse the whole file and stop every worker's run
+      return file(repo, 'tools/pool.py', base).catch(function (e) { if (e.status === 404) return ''; throw e; });
+    }).then(function (code) {
+      if (code.indexOf('def is_choice(') < 0) throw new Error('this repository\'s tools/pool.py does not take a list of tokens yet; bring the template\'s newer tools/pool.py in first');
+      return file(repo, ASSIGNMENTS_PATH, base).catch(function (e) { if (e.status === 404) return '{}'; throw e; });
+    }).then(function (text) {
+      var data = JSON.parse(text || '{}');
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error(ASSIGNMENTS_PATH + ' is not an object');
+      data.workers = data.workers && typeof data.workers === 'object' ? data.workers : {};
+      data.workers[agent] = list;
+      var body = JSON.stringify(data, null, 2) + '\n';
+      return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + branch, sha: head }).catch(function (e) {
+        if (e.status !== 422) throw e;
+        return gh('PATCH', '/repos/' + repo + '/git/refs/heads/' + branch, { sha: head, force: true });
+      }).then(function () {
+        return gh('GET', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH + '?ref=' + encodeURIComponent(branch)).then(function (r) { return r.data.sha; }, function (e) { if (e.status === 404) return null; throw e; });
+      }).then(function (sha) {
+        var put = { message: 'Give ' + agent + ' the tokens ' + list.join(', '), content: utf8Base64(body), branch: branch };
+        if (sha) put.sha = sha;
+        return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, put);
+      });
+    }).then(function () {
+      return gh('GET', '/repos/' + repo + '/pulls?state=open&head=' + encodeURIComponent(repo.split('/')[0] + ':' + branch));
+    }).then(function (r) {
+      if (Array.isArray(r.data) && r.data.length) return r.data[0];
+      return gh('POST', '/repos/' + repo + '/pulls', { title: 'Give ' + agent + ' its tokens', head: branch, base: base,
+        body: 'The control panel\'s Agents tab: ' + agent + ' takes the tokens ' + list.join(', ') + ' in this repository (' + ASSIGNMENTS_PATH + ', a list tools/pool.py picks over as auto picks over the pool).' }).then(function (x) { return x.data; });
+    }).then(function (pr) {
+      // GitHub merges it once its checks pass where the repository allows auto-merge; else it waits for a press
+      return gh('POST', '/graphql', { query: 'mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}', variables: { id: pr.node_id } })
+        .then(function () { return pr.html_url; }, function () { return pr.html_url; });
+    });
+  }
+
   // the settings are read again just before the write, so a change another page made meanwhile stays
   function saveTokenSettings(slot, setting, labelText) {
     var place = tk.place, ids = [place.id], path = place.base + '/variables/' + SETTINGS_VARIABLE;
@@ -3748,6 +3882,9 @@
     $('sh-copy').addEventListener('click', function () { if (shareReady()) shareCopy(shareNote(), 'The note is copied.'); });
     consoleOnOpen.share = shareRefresh;
   }
+
+  // the Agents tab puts one in each agent's row
+  window.tokenAssignBox = tokenAssignBox;
 
   // the cost page carries a signed-in box of its own, so its marker is read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
