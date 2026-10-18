@@ -823,3 +823,6 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   .console table.share__people tr:not(.card--add) { flex-wrap: wrap; }
   .console table.share__people td.share__status { flex-basis: 100%; padding-left: 44px; white-space: normal; }
 }
+.console button.repos__name { display: block; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; text-align: left; color: var(--ink); cursor: pointer; }
+.console button.repos__name:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+.repos__list { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }

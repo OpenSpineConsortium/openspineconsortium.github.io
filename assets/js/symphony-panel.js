@@ -1837,7 +1837,7 @@
       add(box, ol);
       add(box, btn('Add it to the list anyway', true, function () { clear(box); closeDialog('dlg-repos'); loadRepo(meta.full_name); }));
     }).catch(function (e) {
-      if (e.status !== 404 || !signedInByApp()) { say(e.message, true); return; }
+      if (e.status !== 404 || !signedInByApp()) { say(e.message, true); add(box, el('p', 'admin__warn', e.message)); return; }
       // the sign-in reaches only the repositories SymphonyBoard is installed on, so a private one
       // without the App reads as missing; the way on is the App's install page, with the name carried
       say('');
@@ -1882,10 +1882,12 @@
       }));
     });
   }
+  // every open reads the list again, since the person may have installed the App on more since;
+  // the list kept from the last read is drawn meanwhile
   function pickerRead() {
-    if (picker.token === token && (picker.groups || picker.reading)) return picker.reading || Promise.resolve(picker.groups);
+    if (picker.token === token && picker.reading) return picker.reading;
     var mine = token;
-    picker = { token: mine, groups: null, reading: null };
+    if (picker.token !== mine) picker = { token: mine, groups: null, reading: null };
     picker.reading = pickerGroups().then(function (groups) {
       if (picker.token !== mine) return null;
       groups.forEach(function (g) { g.repos.sort(function (a, b) { return String(b.pushed_at || '').localeCompare(String(a.pushed_at || '')); }); });
@@ -1901,7 +1903,7 @@
     $('rp-state').textContent = 'Reading the repositories ' + (signedInByApp() ? 'SymphonyBoard is installed on' : 'this token reaches') + '...';
     pickerDraw();
     pickerRead().then(function (groups) {
-      if (!groups) return;
+      if (!groups) { $('rp-state').textContent = 'The sign-in changed while GitHub answered; close this and press + Add repository again.'; return; }
       var count = groups.reduce(function (n, g) { return n + g.repos.length; }, 0);
       $('rp-state').textContent = count
         ? plural(count, 'repository', 'repositories') + (signedInByApp() ? ' SymphonyBoard is installed on, ' + plural(groups.length, 'account') : ' this token reaches') + '. Press one to open it.'
@@ -1942,18 +1944,18 @@
       rest.forEach(function (r) { add(list, pickerCard(r, false)); });
       if (!rest.length) add(list, el('p', 'admin__none', 'Every repository here is on your list already.'));
       add(box, list);
-      if (g.more) add(box, el('p', 'admin__none', 'Only the 300 most recent are listed; type OWNER/NAME for an older one.'));
+      if (g.more) add(box, el('p', 'admin__none', (signedInByApp() ? 'Only the first 300 GitHub lists are here' : 'Only the 300 most recently pushed are here') + '; type OWNER/NAME for another.'));
     });
     if (!shownAny && q) add(box, el('p', 'admin__none', REPOSITORY.test(q) ? 'Not in the list: press Open to read ' + q + ' by name.' : 'Nothing matches "' + q + '".'));
   }
   function pickerCard(r, listed) {
     var adopted = !!(r.topics && r.topics.indexOf(TOPIC) >= 0);
     var card = el('div', 'repos__card' + (r.full_name === state.repo ? ' repos__card--on' : ''));
-    card.tabIndex = 0;
-    card.setAttribute('role', 'button');
-    card.setAttribute('aria-label', 'Open ' + r.full_name);
+    card.setAttribute('data-repo', r.full_name);
     var cut = r.full_name.indexOf('/') + 1;
-    var name = add(el('p', 'repos__name'), el('span', 'repos__owner', r.full_name.slice(0, cut)), el('b', '', r.full_name.slice(cut)));
+    var name = add(el('button', 'repos__name'), el('span', 'repos__owner', r.full_name.slice(0, cut)), el('b', '', r.full_name.slice(cut)));
+    name.type = 'button';
+    name.setAttribute('aria-label', 'Open ' + r.full_name);
     var tags = el('p', 'repos__tags');
     if (r.topics) add(tags, el('span', 'repos__tag' + (adopted ? ' repos__tag--on' : ''), adopted ? 'Symphony set up' : 'Not set up yet'));
     if (r.private != null) add(tags, el('span', 'repos__tag', r.private ? 'Private' : 'Public'));
@@ -1973,15 +1975,14 @@
       if (adopted || listed || !r.topics) { closeDialog('dlg-repos'); if (r.full_name !== state.repo) loadRepo(r.full_name); return; }
       addRepository(r.full_name);
     }
-    card.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('a, button')) return; choose(); });
-    card.addEventListener('keydown', function (ev) { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === card) { ev.preventDefault(); choose(); } });
+    card.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('a, button') && !ev.target.closest('.repos__name')) return; choose(); });
     return card;
   }
   // Open, or Enter in the search: a whole name is read by name; otherwise the first card shown opens
   function pickerOpenTyped() {
     var typed = ($('cp-add-name').value || '').trim();
     var cards = Array.prototype.slice.call($('rp-list').querySelectorAll('.repos__card'));
-    var exact = cards.filter(function (c) { return typed && c.getAttribute('aria-label').toLowerCase() === ('Open ' + typed).toLowerCase(); })[0];
+    var exact = cards.filter(function (c) { return typed && c.getAttribute('data-repo').toLowerCase() === typed.toLowerCase(); })[0];
     if (exact) { exact.click(); return; }
     if (REPOSITORY.test(typed)) { addRepository(typed); return; }
     if (cards.length) { cards[0].click(); return; }
@@ -2488,6 +2489,8 @@
     showTab(location.hash.slice(1));
     window.addEventListener('hashchange', function () {
       var name = location.hash.slice(1);
+      // #repos was the Repositories tab before the picker took its place
+      if (name === 'repos') { if (!$('cp-app').classList.contains('hidden')) openDialog('dlg-repos'); return; }
       if (consoleTabs().some(function (t) { return t.getAttribute('data-tab') === name; })) showTab(name);
     });
     consoleTabs().forEach(function (t, i, all) {
@@ -2565,6 +2568,7 @@
       tokensFor = null;
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
+      if (location.hash === '#repos' || !name) setTimeout(function () { openDialog('dlg-repos'); }, 0);
       if (name) loadRepo(name); else { $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.'; graphReset(GRAPH_NO_REPOSITORY); }
     }
     finishOauth().then(function () {
@@ -3112,6 +3116,9 @@
   }
   // A tab the answer names opens, as a rail button would; only the rail's own tabs
   function assistantTab(name) {
+    // a repository's assistant prompt from before the + style still names the two tabs it replaced
+    if (name === 'repos') { openDialog('dlg-repos'); return 'Opened the repositories.'; }
+    if (name === 'ask') { openTaskDialog(); return 'Opened Add a task, where Ask @claude now asks Claude.'; }
     var tab = consoleTabs().filter(function (t) { return t.getAttribute('data-tab') === name; })[0];
     if (!tab) return 'Not acted on: the panel has no tab "' + name + '".';
     showTab(name);
@@ -5094,7 +5101,7 @@
   // username for; an email address is looked up in GitHub's user search, which finds only an address
   // its owner made public, and otherwise GitHub's own Add people page takes over. The mail buttons
   // compose the note in the person's own mail; nothing there is sent by the page.
-  var SHARE_ROLES = { read: 'pull', triage: 'triage', write: 'push', maintain: 'maintain' };
+  var SHARE_ROLES = { read: 'pull', triage: 'triage', write: 'push', maintain: 'maintain', admin: 'admin' };
   var SHARE_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
   var shareInvited = '';
   function shareRepo() { return state && state.repo ? state.repo : ''; }
@@ -5193,18 +5200,22 @@
   // role and teams, which GitHub's own page shows
   var shareFor = null;
   var SHARE_ROLE_WORDS = { admin: 'Admin', maintain: 'Maintain', write: 'Write', push: 'Write', triage: 'Triage', read: 'Read', pull: 'Read' };
+  var shareSeq = 0;
   function sharePeople() {
     var repo = shareRepo();
     var body = $('sh-people').querySelector('tbody');
+    var mine = ++shareSeq;
     shareFor = repo;
     clear(body);
     if (!repo) { $('sh-state').textContent = 'Pick a repository first: + Add repository in the side column.'; return; }
+    // who owns it decides what is read, so the read waits for the repository's details (loadMeta calls again)
+    if (!state.meta) { $('sh-state').textContent = 'Reading ' + repo + '...'; return; }
     var org = shareInOrg();
     $('sh-state').textContent = 'Reading who has access to ' + repo + '...';
     var people = ghList('/repos/' + repo + '/collaborators?affiliation=' + (org ? 'direct' : 'all') + '&per_page=100', 2);
     var waiting = ghList('/repos/' + repo + '/invitations?per_page=100', 1).catch(function () { return null; });
     Promise.all([people, waiting, whoAmI().catch(function () { return ''; })]).then(function (r) {
-      if (shareFor !== repo || state.repo !== repo) return;
+      if (mine !== shareSeq || state.repo !== repo) return;
       var list = r[0], invites = r[1], me = r[2];
       clear(body);
       var owner = state.meta && state.meta.owner;
@@ -5216,7 +5227,7 @@
         (invites ? (invites.length ? ', ' + plural(invites.length, 'invitation') + ' waiting' : ', no invitation waiting') : '; the invitations could not be read') +
         (org ? '. Members of ' + owner.login + ' may reach it through the organization too: see GitHub\'s Collaborators and teams.' : '.');
     }).catch(function (e) {
-      if (shareFor !== repo) return;
+      if (mine !== shareSeq) return;
       clear(body);
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
       $('sh-state').textContent = (e.status === 403 || e.status === 404
@@ -5238,7 +5249,7 @@
     add(tr, add(el('td', 'share__facecell'), shareInitial(p.login)), who, add(el('td'), el('span', 'share__role', role)), el('td', 'share__status', 'Has access'));
     var acts = { open: function () { shareStatus(p, role, false); } };
     if (!isOwner) acts.gear = function () { shareRoleDialog(p, role, false); };
-    if (!isOwner && p.login !== me) acts.x = function (b) { shareRemove(p, b); };
+    if (!isOwner && me && p.login !== me) acts.x = function (b) { shareRemove(p, b); };
     add(tr, cardControls(tr, p.login, acts));
     return tr;
   }
@@ -5272,15 +5283,22 @@
     }
     var sel = el('select');
     sel.id = 'sh-role-change';
-    ['read', 'triage', 'write', 'maintain'].forEach(function (v) { var o = el('option', '', SHARE_ROLE_WORDS[v]); o.value = v; if (SHARE_ROLE_WORDS[v] === role) o.selected = true; sel.appendChild(o); });
-    var go = btn('Change the role', false, function () { shareChangeRole(p, sel.value, pending, go); });
+    var known = false;
+    ['read', 'triage', 'write', 'maintain', 'admin'].forEach(function (v) { var o = el('option', '', SHARE_ROLE_WORDS[v]); o.value = v; if (SHARE_ROLE_WORDS[v] === role) { o.selected = true; known = true; } sel.appendChild(o); });
+    if (!known) { var now = el('option', '', role + ' (now)'); now.value = ''; now.selected = true; now.disabled = true; sel.insertBefore(now, sel.firstChild); }
+    var said = el('p', 'admin__warn');
+    said.id = 'sh-role-said';
+    var go = btn('Change the role', false, function () {
+      if (!sel.value || SHARE_ROLE_WORDS[sel.value] === role) { said.textContent = 'Pick a role other than the one they have.'; return; }
+      shareChangeRole(p, sel.value, pending, go, said);
+    });
     go.id = 'sh-role-go';
     go.className = 'console__primary';
     add(form, add(el('div', 'tkdlg__field'), add(el('label', '', 'Role')), add(el('div', 'cpdlg__inline'), sel, go)));
     form.lastChild.querySelector('label').htmlFor = 'sh-role-change';
-    add(form, el('p', 'tkdlg__note admin__lead', 'Read sees and clones; Triage also labels and closes issues; Write also pushes and merges; Maintain also manages the repository without its dangerous settings.'));
+    add(form, said, el('p', 'tkdlg__note admin__lead', 'Read sees and clones; Triage also labels and closes issues; Write also pushes and merges; Maintain also manages the repository without its dangerous settings; Admin has every setting, deleting it included.'));
   }
-  function shareChangeRole(p, role, pending, button) {
+  function shareChangeRole(p, role, pending, button, said) {
     var repo = shareRepo();
     button.disabled = true;
     say('Changing the role of ' + p.login + '...');
@@ -5293,6 +5311,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
+      said.textContent = e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
       say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
     });
   }
