@@ -4242,7 +4242,7 @@
   // what a 403 or 404 on a slot's secret or variable means, for where the slots live: an organization's
   // pool, or a personal account's repository, which takes the App's repository permissions instead
   function secretsNeeded(place) {
-    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); a fine-grained token needs the same two repository permissions.';
+    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
     return ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions.';
   }
 
@@ -4842,7 +4842,10 @@
     add(form, el('h3', 'console__boxh', adding ? 'Add a token' : tileName(slot)));
     var free = TILE_SLOTS.filter(function (n) { return !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(n)]; });
     if (adding) {
-      slot = free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '';
+      // a personal repository's first token is its main one, which @claude and the workers read and
+      // which needs no variable; elsewhere main stays for last
+      var mainFree = free.indexOf('main') >= 0;
+      slot = (!tk.place.org && mainFree) ? 'main' : (free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '');
       if (!slot) add(form, el('p', 'admin__lead', 'All 32 slots and main are set: remove one with its \u00d7, or renew one from its tile.'));
     } else if (!canChange(slot)) { drawSomeoneElses(d, form, slot); return; }
     var label = el('input');
@@ -5146,8 +5149,13 @@
       if (Object.keys(setting).length) all[slot] = setting; else delete all[slot];
       tk.settings = all;
       return writeVariable(place, SETTINGS_VARIABLE, JSON.stringify(all), ids);
-    }).then(function () {
-      if (slot === 'main') return;
+    }).catch(function (e) {
+      // a personal repository whose App installation lacks the repository permission Variables
+      // still takes its main token, which needs no variable; its settings wait for the permission
+      if (!place.org && slot === 'main' && e.status === 403) { tk.noVariables = true; return 'skip'; }
+      throw e;
+    }).then(function (skipped) {
+      if (slot === 'main' || skipped === 'skip') return;
       var name = SLOT_PREFIX + slot + '_LABEL';
       if (labelText) return writeVariable(place, name, labelText, ids).then(function () { tk.labels[slot] = labelText; });
       if (!tk.labels[slot]) return;
