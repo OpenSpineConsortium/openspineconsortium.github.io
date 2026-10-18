@@ -1062,7 +1062,13 @@
   function askOnly(act, it) { add(act, askButton(it)); }
 
   function loadMeta(s) {
-    return gh('GET', '/repos/' + s.repo).then(function (r) { if (!stale(s)) s.meta = r.data; return r.data; });
+    return gh('GET', '/repos/' + s.repo).then(function (r) {
+      if (stale(s)) return r.data;
+      s.meta = r.data;
+      // the Share tab's role picker hangs on whether an organization owns the repository
+      if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
+      return r.data;
+    });
   }
   function loadIssues(s) {
     return ghList('/repos/' + s.repo + '/issues?state=open&per_page=100', 5).then(function (list) {
@@ -3339,51 +3345,106 @@
     consoleOnOpen.tokens = function () { if (tokensFor !== tokensRepo()) loadTokens(); };
   }
 
-  // The Share tab: GitHub's API invites a collaborator only by username, and only with the App's
-  // Administration permission, which SymphonyBoard never holds, so the page opens GitHub's own access
-  // page, where Add people takes a username or an address, and composes the note in the person's own
-  // mail. Nothing here is sent by the page; each button opens a page the person sends from.
-  var SHARE_ROLES = { read: 'read', triage: 'triage', write: 'write', maintain: 'maintain' };
+  // The Share tab: the person is invited as a collaborator through GitHub's API, as the signed-in
+  // person, with SymphonyBoard's Administration permission, which GitHub's endpoint takes only a
+  // username for; an email address is looked up in GitHub's user search, which finds only an address
+  // its owner made public, and otherwise GitHub's own Add people page takes over. The mail buttons
+  // compose the note in the person's own mail; nothing there is sent by the page.
+  var SHARE_ROLES = { read: 'pull', triage: 'triage', write: 'push', maintain: 'maintain' };
+  var SHARE_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+  var shareInvited = '';
   function shareRepo() { return state && state.repo ? state.repo : ''; }
   function shareWho() { return $('sh-who').value.trim(); }
   function shareIsEmail(who) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(who); }
+  function shareInOrg() { return !!(state && state.meta && state.meta.owner && state.meta.owner.type === 'Organization'); }
+  function shareRole() { return shareInOrg() ? $('sh-role').value : 'write'; }
+  function shareSay(text) { $('sh-answer').textContent = text; }
   function shareSubject() { return 'Join ' + shareRepo() + ' on GitHub'; }
   function shareNote() {
     var repo = shareRepo();
-    var role = SHARE_ROLES[$('sh-role').value] || 'write';
-    return 'I would like you to work with me on ' + repo + ', a Symphony project on GitHub, with ' + role + ' access.\n\n' +
-      'I have invited you on GitHub. Accept it here, signed in to your GitHub account (if this note came to you by email, the account that holds this address):\n' +
+    return 'I would like you to work with me on ' + repo + ', a Symphony project on GitHub, with ' + shareRole() + ' access.\n\n' +
+      (shareInvited ? 'I have invited your GitHub account (' + shareInvited + '). Accept it here, signed in to GitHub:\n'
+        : 'I am inviting you on GitHub; once I have, the invitation is here, signed in to GitHub:\n') +
       'https://github.com/' + repo + '/invitations\n\n' +
       'The repository: https://github.com/' + repo + '\n' +
       'Its control panel: https://openspineconsortium.com/symphony/control/?repo=' + encodeURIComponent(repo) + '\n\n' +
-      'No GitHub account yet? Make one at https://github.com/signup, with Continue with Google if you like, using this address, and the invitation will be there.\n';
+      'No GitHub account yet? Make one at https://github.com/signup (Continue with Google works) and send me your username.\n';
   }
   function shareReady() {
     if (shareRepo()) return true;
-    $('sh-answer').textContent = 'Pick a repository on the Repositories tab first.';
+    shareSay('Pick a repository on the Repositories tab first.');
     return false;
   }
   // window.open with noopener answers null even when the tab opens, so the opener is cut by hand
   function shareOpen(url) {
     var w = window.open(url, '_blank');
-    if (w) { try { w.opener = null; } catch (e) { /* the new tab is another origin's already */ } }
-    else $('sh-answer').textContent = 'The browser blocked the new tab; allow pop-ups for this site, or use Copy the note.';
+    if (!w) { shareSay('The browser blocked the new tab; allow pop-ups for this site, or use Copy the note.'); return false; }
+    try { w.opener = null; } catch (e) { /* the new tab is another origin's already */ }
+    return true;
   }
-  function shareTo() { var who = shareWho(); return shareIsEmail(who) ? who : ''; }
   function shareCopy(text, done) {
-    if (!navigator.clipboard || !navigator.clipboard.writeText) { $('sh-answer').textContent = 'This browser gives the page no clipboard; select and copy by hand.'; return; }
-    navigator.clipboard.writeText(text).then(function () { $('sh-answer').textContent = done; },
-      function () { $('sh-answer').textContent = 'The browser refused the clipboard; select and copy by hand.'; });
+    if (!navigator.clipboard || !navigator.clipboard.writeText) { shareSay('This browser gives the page no clipboard; select and copy by hand.'); return; }
+    navigator.clipboard.writeText(text).then(function () { shareSay(done); },
+      function () { shareSay('The browser refused the clipboard; select and copy by hand.'); });
+  }
+  // the address the mail goes to: what was typed, when it is one; else the person picks it in the mail
+  function shareTo() {
+    var who = shareWho();
+    if (shareIsEmail(who)) return who;
+    shareSay(who ? who + ' is not an email address, so pick who the note goes to in your mail.' : 'Pick who the note goes to in your mail.');
+    return '';
+  }
+  function shareLogin(who) {
+    if (!shareIsEmail(who)) return Promise.resolve(SHARE_LOGIN.test(who) ? who : '');
+    return gh('GET', '/search/users?q=' + encodeURIComponent(who + ' in:email') + '&per_page=2').then(function (r) {
+      var items = (r.data && r.data.items) || [];
+      return items.length === 1 ? items[0].login : '';
+    });
+  }
+  function shareInviteFailed(e) {
+    var words = e.status === 403 || e.status === 404
+      ? 'GitHub refused the invitation: you must administer ' + shareRepo() + ', and SymphonyBoard needs its Administration permission accepted on this installation (or a pasted token with Administration).'
+      : 'GitHub refused the invitation: ' + e.message;
+    shareSay(words + ' Open GitHub\'s Add people instead.');
+  }
+  function shareInvite() {
+    if (!shareReady()) return;
+    var who = shareWho();
+    if (!who) { shareSay('Type their GitHub username or email first.'); return; }
+    if (!shareIsEmail(who) && !SHARE_LOGIN.test(who)) { shareSay(who + ' is neither a GitHub username nor an email address.'); return; }
+    var repo = shareRepo(), button = $('sh-invite');
+    button.disabled = true;
+    shareSay('Asking GitHub...');
+    shareLogin(who).then(function (login) {
+      if (!login) { shareSay('No GitHub account shows ' + who + ' publicly, so GitHub cannot be asked by address. Ask them for their username, or open GitHub\'s Add people and type the address there.'); return; }
+      var body = shareInOrg() ? { permission: SHARE_ROLES[$('sh-role').value] || 'push' } : undefined;
+      return gh('PUT', '/repos/' + repo + '/collaborators/' + encodeURIComponent(login), body).then(function (r) {
+        shareInvited = login;
+        shareSay(r.status === 201
+          ? 'Invited ' + login + ' with ' + shareRole() + ' access. They accept at https://github.com/' + repo + '/invitations; now tell them below.'
+          : login + ' already has access to ' + repo + '; GitHub sent no new invitation.');
+      });
+    }).catch(shareInviteFailed).then(function () { button.disabled = false; });
+  }
+  function shareRefresh() {
+    var org = shareInOrg();
+    $('sh-repo').textContent = shareRepo();
+    $('sh-role').disabled = !org;
+    if (!org) $('sh-role').value = 'write';
+    $('sh-role-note').textContent = org ? '' : 'A personal repository gives every collaborator write.';
+    shareInvited = '';
+    shareSay('');
   }
   function initShareTab() {
     var q = function (v) { return encodeURIComponent(v); };
+    $('sh-invite').addEventListener('click', shareInvite);
     $('sh-grant').addEventListener('click', function () {
       if (!shareReady()) return;
-      // the clipboard is written before the new tab takes the focus, which a browser may require
       var who = shareWho();
-      if (who) shareCopy(who, who + ' is copied: press Add people on GitHub, paste it, pick the role ' + $('sh-role').value + ' and press Add.');
-      else $('sh-answer').textContent = 'On GitHub, press Add people and type their username or email.';
-      shareOpen('https://github.com/' + shareRepo() + '/settings/access');
+      // the tab opens first, so a blocked one is said and nothing tells the person to go to it
+      if (!shareOpen('https://github.com/' + shareRepo() + '/settings/access')) return;
+      if (who) shareCopy(who, who + ' is copied: on GitHub press Add people, paste it, pick the role and press Add.');
+      else shareSay('On GitHub, press Add people and type their username or email.');
     });
     $('sh-gmail').addEventListener('click', function () {
       if (shareReady()) shareOpen('https://mail.google.com/mail/?view=cm&fs=1&to=' + q(shareTo()) + '&su=' + q(shareSubject()) + '&body=' + q(shareNote()));
@@ -3391,8 +3452,14 @@
     $('sh-outlook').addEventListener('click', function () {
       if (shareReady()) shareOpen('https://outlook.office.com/mail/deeplink/compose?to=' + q(shareTo()) + '&subject=' + q(shareSubject()) + '&body=' + q(shareNote()));
     });
+    $('sh-outlook-com').addEventListener('click', function () {
+      if (shareReady()) shareOpen('https://outlook.live.com/mail/0/deeplink/compose?to=' + q(shareTo()) + '&subject=' + q(shareSubject()) + '&body=' + q(shareNote()));
+    });
     $('sh-mail').addEventListener('click', function () {
-      if (shareReady()) location.href = 'mailto:' + q(shareTo()) + '?subject=' + q(shareSubject()) + '&body=' + q(shareNote());
+      if (!shareReady()) return;
+      var to = shareTo();
+      location.href = 'mailto:' + q(to) + '?subject=' + q(shareSubject()) + '&body=' + q(shareNote());
+      shareSay((to ? '' : 'Pick who the note goes to in your mail. ') + 'If no email app opened, use Copy the note.');
     });
     $('sh-native').addEventListener('click', function () {
       if (!shareReady()) return;
@@ -3400,7 +3467,7 @@
       navigator.share({ title: shareSubject(), text: shareNote() }).catch(function () { /* the person closed the sheet */ });
     });
     $('sh-copy').addEventListener('click', function () { if (shareReady()) shareCopy(shareNote(), 'The note is copied.'); });
-    consoleOnOpen.share = function () { $('sh-repo').textContent = shareRepo(); $('sh-answer').textContent = ''; };
+    consoleOnOpen.share = shareRefresh;
   }
 
   // the cost page carries a signed-in box of its own, so its marker is read first
