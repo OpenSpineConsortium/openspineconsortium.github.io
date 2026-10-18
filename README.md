@@ -272,6 +272,14 @@ Beethoven has two editions, and both live under `/beethoven/`:
   issue "Assistant: <login>" labelled `assistant`, opened once per repository and person with
   write access, whose read-only answer from the Claude workflow the page polls for with an ETag
   and renders, acting only on the few lines of its `symphony` block: focus, open, filter, show),
+  draws each open epic's tasks and what blocks them (its Dependencies tab: GitHub's sub-issues
+  and blocked-by relations, read as the person, built to the same Mermaid text the protocol's board
+  writes, byte for byte, `%` and `$` written as `#37;` and `#36;` by both so that no title can open
+  a Mermaid directive or its math, and drawn by the vendored Mermaid 12.2.0,
+  `assets/js/vendor/mermaid.min.js`, MIT, loaded only when there is a chart to draw, with a table
+  under each chart; the Board tab draws the charts the board's own text holds the same way, only
+  where every line of a block is one the board writes, and shows any other block as text; it
+  writes nothing),
   starts the workers, the board, the checks and the
   metrics by hand, merges a green pull request (the token needs Contents: Read and write for that), and gives the two presses that set Symphony up on
   a repository named without the topic `symphony`. Every state is written in words and every action
