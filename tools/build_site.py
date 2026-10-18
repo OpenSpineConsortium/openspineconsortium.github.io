@@ -142,7 +142,7 @@ VSCODE_STORE_URL = None
 # Symphony for Chrome's listing, https://chromewebstore.google.com/detail/<item id>, once the store
 # item exists; None leaves the overview page's badge out and its Chrome card says the listing is
 # pending. The one line to change when the item's id is known.
-SYMPHONY_STORE_URL = None
+SYMPHONY_STORE_URL = "https://chromewebstore.google.com/detail/symphony/hfljomhibljegapnfiglenfolnmpopoi"
 
 # The texts rendered onto pages, checked word for word against their sources. kind: agreement
 # (hard-wrapped plain text), markdown (pandoc). page: where it is rendered (the body file places it).
