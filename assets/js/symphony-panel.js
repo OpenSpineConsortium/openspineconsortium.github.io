@@ -1123,7 +1123,7 @@
         if (ev.target.closest && ev.target.closest('a, button, select, input, textarea, label')) return;
         acts.open();
       });
-      tr.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target === tr) acts.open(); });
+      tr.addEventListener('keydown', function (ev) { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === tr) { ev.preventDefault(); acts.open(); } });
     }
     return td;
   }
@@ -1168,6 +1168,12 @@
     if (!d.open) { try { d.showModal(); } catch (e) { d.setAttribute('open', ''); } }
     return form;
   }
+  // a button that sends something stays pressed until GitHub answers, so a second press sends nothing twice
+  function hold(id) {
+    var b = $(id);
+    if (b) b.disabled = true;
+    return function () { if (b) b.disabled = false; };
+  }
   function fact(label, value) {
     var p = el('p', 'tkdlg__fact');
     add(p, el('span', 'tkdlg__faint', label + ' '), typeof value === 'string' ? document.createTextNode(value) : value);
@@ -1196,7 +1202,8 @@
     add(form, body);
     var bar = el('p', 'tkdlg__bar');
     add(bar, btn('⚙ Settings', false, function () { issueSettings(it, givable, ''); }), link(it.html_url, 'Open on GitHub'));
-    if (state && state.repo && state.meta) add(bar, link('https://github.com/' + state.repo + '/tree/claude/' + it.number, 'Its claim branch'));
+    var held = sortIssues([it]);
+    if (state && state.repo && (held.claimed.length || held.review.length)) add(bar, link('https://github.com/' + state.repo + '/tree/claude/' + it.number, 'Its claim branch'));
     add(form, bar);
   }
   // a card's settings: give it to a worker where the protocol lets a label give it, and ask Claude
@@ -1234,10 +1241,12 @@
     if (!text) { say('Write what Claude should do first.', true); return; }
     var s = state;
     say('Sending...');
+    var done = hold('dlg-ask-go');
     gh('POST', '/repos/' + s.repo + '/issues/' + n + '/comments', { body: (/@claude/i.test(text) ? '' : '@claude ') + text }).then(function () {
+      done();
       closeDialog('dlg-item');
       say('Commented on #' + n + '; the Claude workflow answers there on the repository\'s own Claude token.');
-    }).catch(function (e) { say(e.message, true); });
+    }).catch(function (e) { done(); say(e.message, true); });
   }
   function closeIssue(it, button) {
     if (!window.confirm('Close #' + it.number + ' "' + it.title + '" as not planned? It leaves the board; reopen it on GitHub to bring it back.')) return;
@@ -1256,14 +1265,15 @@
   // list of { path, text } where text null deletes the file.
   function proposeFiles(repo, branch, title, body, files) {
     var base, head;
+    // a branch that is there already is built on, never moved: a reviewer or another tab may have
+    // pushed to its pull request, and the contents calls below commit on top of whatever it holds
     return gh('GET', '/repos/' + repo).then(function (r) {
       base = r.data.default_branch || 'main';
-      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(base));
+      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + base.split('/').map(encodeURIComponent).join('/'));
     }).then(function (r) {
       head = r.data.object.sha;
       return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + branch, sha: head }).catch(function (e) {
         if (e.status !== 422) throw e;
-        return gh('PATCH', '/repos/' + repo + '/git/refs/heads/' + branch, { sha: head, force: true });
       });
     }).then(function () {
       return files.reduce(function (done, f) {
@@ -1433,7 +1443,7 @@
       s.agents = agents || [];
       clear(body);
       note.textContent = agents === null ? 'This repository lists no agents yet: it was made before agents existed, and the template\'s next update brings the reviewer, developer and tester.' : '';
-      if (agents && !agents.length) { var none = el('tr'); add(none, el('td', 'admin__none', 'No agents listed.')).firstChild.colSpan = 8; body.appendChild(none); }
+      if (agents && !agents.length) { var none = el('tr'); add(none, el('td', 'admin__none', 'No agents listed.')).firstChild.colSpan = 7; body.appendChild(none); }
       s.agents.forEach(function (a) {
         var tr = el('tr');
         add(tr, add(el('td'), link('https://github.com/' + s.repo + '/blob/' + ((s.meta && s.meta.default_branch) || 'main') + '/.claude/agents/' + a.name + '.md', a.name)));
@@ -1684,7 +1694,7 @@
       if (stale(s)) return;
       s.pulls = pulls;
       clear(body);
-      if (!pulls.length) { var tr = el('tr'); add(tr, el('td', 'admin__none', 'No open pull request.')).firstChild.colSpan = 7; body.appendChild(tr); }
+      if (!pulls.length) { var tr = el('tr'); add(tr, el('td', 'admin__none', 'No open pull request.')).firstChild.colSpan = 8; body.appendChild(tr); }
       pulls.forEach(function (pr) {
         var tr = el('tr');
         add(tr, add(el('td'), link(pr.html_url, '#' + pr.number)));
@@ -1712,12 +1722,12 @@
         body.appendChild(cardCells(tr, ['num', 'title', 'branch', 'state', 'checks', 'when', 'act', 'ctl']));
         checksOf(s, pr, checks, m);
       });
-      if (pulls.more) { var more = el('tr'); add(more, el('td', 'admin__none', 'Only the first ' + pulls.length + ' open pull requests were read; the rest are on GitHub.')).firstChild.colSpan = 7; body.appendChild(more); }
+      if (pulls.more) { var more = el('tr'); add(more, el('td', 'admin__none', 'Only the first ' + pulls.length + ' open pull requests were read; the rest are on GitHub.')).firstChild.colSpan = 8; body.appendChild(more); }
     }).catch(function (e) {
       if (stale(s)) return;
       failed(s, 'the pull requests', e);
       clear(body);
-      var tr = el('tr'); add(tr, el('td', 'admin__none', 'The pull requests could not be read: ' + e.message)).firstChild.colSpan = 7; body.appendChild(tr);
+      var tr = el('tr'); add(tr, el('td', 'admin__none', 'The pull requests could not be read: ' + e.message)).firstChild.colSpan = 8; body.appendChild(tr);
     });
     s.pullsRead = read;
     return read;
@@ -1889,15 +1899,17 @@
     if (!t.title || !t.goal) { say('A task needs a title and what is true when it is done.', true); return; }
     var s = state;
     say('Queueing the task...');
+    var done = hold('cp-task-queue');
     gh('POST', '/repos/' + s.repo + '/issues', {
       title: /^Task: /.test(t.title) ? t.title : 'Task: ' + t.title,
       body: formBody([['Goal', t.goal], ['Acceptance', t.acceptance], ['Files likely touched', t.files]]),
       labels: ['todo']
     }).then(function (r) {
+      done();
       say(queuedWords(r.data));
       clearTask();
       if (!stale(s)) return loadIssues(s);
-    }).catch(function (e) { say(e.message, true); });
+    }).catch(function (e) { done(); say(e.message, true); });
   }
   // the same words as an issue that mentions @claude, which the repository's Claude workflow
   // answers at once on the repository's own token, in place of waiting for a worker
@@ -1909,11 +1921,13 @@
     if (t.files) extra += '\n\nFiles likely touched:\n' + t.files;
     var s = state;
     say('Sending...');
+    var done = hold('cp-task-ask');
     gh('POST', '/repos/' + s.repo + '/issues', { title: t.title.replace(/^@claude\s*/i, '') || 'From the control panel', body: (/@claude/i.test(text) ? '' : '@claude ') + text + extra }).then(function (r) {
+      done();
       say('Opened #' + r.data.number + '; the Claude workflow answers there on the repository\'s own Claude token.');
       clearTask();
       if (!stale(s)) return loadIssues(s);
-    }).catch(function (e) { say(e.message, true); });
+    }).catch(function (e) { done(); say(e.message, true); });
   }
 
   /* ---------- workers: add by the "Add a worker" issue, change or remove by pull request ---------- */
@@ -1948,6 +1962,7 @@
     var runs = $('cp-w-runs').value;
     var lands = $('cp-w-lands').value;
     say('Opening the "Add a worker" issue...');
+    var done = hold('cp-w-add');
     gh('POST', '/repos/' + state.repo + '/issues', {
       title: 'Add a worker: ' + name,
       body: formBody([
@@ -1963,9 +1978,10 @@
       ])
     }).then(function (r) {
       say('Issue #' + r.data.number + ' is open; the add-worker workflow checks the answers, opens the pull request that adds the file and answers there with what to do next.');
+      done();
       $('cp-w-name').value = '';
       closeDialog('dlg-worker');
-    }).catch(function (e) { say(e.message, true); });
+    }).catch(function (e) { done(); say(e.message, true); });
   }
   // the worker's file as the registry writes it (sdlc_protocol.workers.Worker.to_json): every
   // field, in its order, two spaces of indent; the pull request's required check reads it again
@@ -1992,9 +2008,10 @@
     try { text = workerFileText(w); } catch (e) { say(e.message, true); return; }
     var s = state;
     say('Opening the pull request that changes ' + w.name + '...');
+    var done = hold('cp-w-add');
     proposeFiles(s.repo, 'symphony/worker-' + w.name, 'Change the worker ' + w.name, 'The control panel\'s Workers tab: new settings for the worker ' + w.name + ' (' + workerPath(w) + '). The required check reads the file again before it can merge.', [{ path: workerPath(w), text: text }])
-      .then(function (pr) { closeDialog('dlg-worker'); say(proposedWords('Changing ' + w.name, pr)); })
-      .catch(function (e) { say('The change to ' + w.name + ' stopped: ' + e.message, true); });
+      .then(function (pr) { done(); closeDialog('dlg-worker'); say(proposedWords('Changing ' + w.name, pr)); })
+      .catch(function (e) { done(); say('The change to ' + w.name + ' stopped: ' + e.message, true); });
   }
   function removeWorker(w, button) {
     if (!window.confirm('Remove the worker ' + w.name + '? This opens a pull request that deletes ' + workerPath(w) + '; it stops taking work once that merges. Issues given to it keep their label until you give them to another.')) return;
@@ -2359,6 +2376,8 @@
       if (b.hasAttribute('data-jump')) jumpTo(b.getAttribute('data-jump'));
       if (b.hasAttribute('data-open')) openDialog(b.getAttribute('data-open'));
       var f = b.getAttribute('data-focus');
+      // the bar is hidden in a repository without the assistant: then a task asks @claude instead
+      if (f === 'cp-as-q' && $('cp-as-box') && $('cp-as-box').classList.contains('hidden')) { openTaskDialog(); $('cp-task-ask').focus(); say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.'); return; }
       if (f && $(f)) $(f).focus();
     });
     var pending = 0;
@@ -2368,7 +2387,22 @@
     if (window.MutationObserver && summaryNode) new MutationObserver(later).observe(summaryNode, { characterData: true, childList: true, subtree: true });
   }
 
+  // Enter in a dialog's one-line box presses the dialog's own primary button: the form's implicit
+  // submission would otherwise press Cancel, its only submit button, and close it with nothing sent
+  function wireDialogEnter() {
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' || ev.defaultPrevented || ev.isComposing) return;
+      var t = ev.target;
+      if (!t || t.tagName !== 'INPUT' || !t.closest) return;
+      var d = t.closest('dialog.cpdlg');
+      if (!d) return;
+      ev.preventDefault();
+      var go = d.querySelector('button.console__primary:not([disabled])');
+      if (go) go.click();
+    });
+  }
   function initPanel() {
+    wireDialogEnter();
     wireGate(function () { enter(start); });
     watchOtherTabs();
     $('cp-signout').addEventListener('click', signOut);
@@ -3027,7 +3061,7 @@
   function assistantAskOffer(target, text) {
     return assistantOffer(target ? 'Draft @claude on #' + target : 'Draft @claude on a new issue', '"' + text + '": fills the words for @claude in the issue\'s settings; Claude works on it with the tools that write only once you press Ask there.', function () {
       assistantDrawer(false);
-      if (!target) { openTaskDialog(text.split('\n')[0].slice(0, 100), text); return; }
+      if (!target) { openTaskDialog(text.split('\n')[0].slice(0, 100), text); $('cp-task-ask').focus(); return; }
       var n = Number(target);
       var it = (state.issues || []).filter(function (x) { return x.number === n; })[0];
       var g = sortIssues(it ? [it] : []);
