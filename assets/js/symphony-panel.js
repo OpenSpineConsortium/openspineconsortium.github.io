@@ -2638,7 +2638,7 @@
     return gh('GET', '/repos/' + repo).then(function (r) {
       var org = r.data.owner && r.data.owner.type === 'Organization';
       var owner = r.data.owner.login;
-      return { org: org, owner: owner, id: r.data.id, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
+      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
     });
   }
   // GitHub lists secrets, variables and a secret's repositories as an object holding the array
@@ -2684,12 +2684,14 @@
       var s = !unread && secrets[slotSecret(slot)];
       if (s) add(setList, add(el('li'), (slot === 'main' ? 'main' : 'slot ' + slot) + ' (' + slotSecret(slot) + '): set, updated ', timeEl(s.updated_at)));
     });
-    // the same wizard in a Codespace on the repository: claude setup-token's sign-in opens in a tab
-    // and the token goes from claude to GitHub with nothing to paste (docs/setup/codespace.md)
-    var one = btn('Add a Claude account', false, function (ev) { addByCodespace(repo, place, ev.currentTarget); });
+    // claude setup-token on a GitHub Actions runner, its token sealed there for GitHub (addByActions)
+    var one = btn('Add a Claude account', false, function (ev) { addByActions(repo, place, ev.currentTarget); });
     one.id = 'tk-one';
     add(box, add(el('p', 'admin__bar'), one));
-    add(box, el('p', 'admin__lead', 'Opens claude.ai\'s sign-in in a new tab: sign in as the account to add and press Authorize. The next free slot is saved and this page says so.'));
+    add(box, el('p', 'admin__lead', 'A GitHub Actions run makes the token: in about a minute this page shows a claude.ai sign-in button and a box for the code claude.ai gives. The next free slot is saved, and ' + MAIN_SECRET + ' too while it is not set.'));
+    var app = add(el('p', 'admin__lead'), 'The Claude GitHub App, which @claude and the workers need: ', link(claudeAppLink(place), 'install it on ' + repo), ' (GitHub says so if it is installed already).');
+    add(box, app);
+    claudeAppSeen(place).then(function (seen) { if (seen && app.parentNode) app.parentNode.removeChild(app); });
     if (unread) none(box, 'GitHub would not list the secrets (' + unread.message + '), so which slots are set is not known here.');
     else if (!setList.firstChild) none(box, 'No slot is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
     else add(box, setList);
@@ -2811,107 +2813,175 @@
       return out;
     });
   }
-  /* ---------- one press: a Codespace mints the next slot's token and stores it ---------- */
-  // The page makes a Codespace on the repository with the template's .devcontainer/token config,
-  // whose setup signs gh in there as the person (with the sign-in this page hands it, handOver below,
-  // else a one-time code) and runs scripts/tokens.py add for the next free slot; the page watches the
-  // slots and deletes the Codespace and the handed sign-in once one appears.
-  var HANDOVER_SECRET = 'SYMPHONY_GITHUB_HANDOVER';
-  var HANDOVER_NEEDED = '; SymphonyBoard needs the account permission Codespaces user secrets, Read and write';
-  var HANDOVER_LEFT = ' The Codespaces secret ' + HANDOVER_SECRET + ' could not be deleted: delete it at https://github.com/settings/codespaces.';
-  var TOKEN_DEVCONTAINER = '.devcontainer/token/devcontainer.json';
-  var WATCH_EVERY_MS = 10000;
-  var WATCH_FOR_MS = 20 * 60 * 1000;
-  var CODESPACE_NEEDED = ' Making the Codespace here needs the SymphonyBoard App\'s repository permission Codespaces: read and write; until then the page opens GitHub\'s own Codespace page, where one more press makes it.';
+  /* ---------- one press: a GitHub Actions run mints the next slot's token ---------- */
+  // The page opens an issue on the repository and starts the workflow Token there
+  // (.github/workflows/token.yml, tools/token_run.py) with the issue's number and the public key
+  // GitHub's secrets API gives for where the slots live. The run posts claude setup-token's sign-in
+  // link on the issue, this page shows it as a button and posts back, as the person, the code
+  // claude.ai shows after the sign-in, and the run posts the token only as a sealed box for that key,
+  // which the page stores as the next free slot: the token is never on the page, in the issue or in
+  // the log. A runner starts in seconds, where the Codespace this replaced took minutes.
+  var TOKEN_WORKFLOW = 'token.yml';
+  var TOKEN_MARK = {
+    link: '<!-- symphony-token: sign-in -->',
+    code: '<!-- symphony-token: code -->',
+    sealed: '<!-- symphony-token: sealed -->',
+    failed: '<!-- symphony-token: failed -->'
+  };
+  var RUN_BOT = 'github-actions[bot]';
+  var RUN_POLL_MS = 3000;
+  var RUN_FOR_MS = 15 * 60 * 1000;
+  // what claude.ai shows after the sign-in, as tools/token_run.py's CODE_SHAPE takes it
+  var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
+  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
 
-  function setSlots(place) {
-    return readSecrets(place).then(function (by) {
-      return Object.keys(by).filter(function (n) { return /^SYMPHONY_CLAUDE_[1-8]$/.test(n); });
-    });
-  }
-  // a Codespace made through the API opens straight in the editor; where the token may not make one,
-  // GitHub's own page makes it with one more press
-  function makeCodespace(repo) {
-    return gh('POST', '/repos/' + repo + '/codespaces', { devcontainer_path: TOKEN_DEVCONTAINER }).then(function (r) {
-      return { url: r.data.web_url, name: r.data.name };
-    }, function (e) {
-      if (e.status === 403 || e.status === 404) return { url: 'https://codespaces.new/' + repo + '?devcontainer_path=' + encodeURIComponent(TOKEN_DEVCONTAINER), name: '', refused: true };
-      throw e;
-    });
-  }
-  function addByCodespace(repo, place, button) {
+  function addByActions(repo, place, button) {
     if (button.disabled) return;
-    // the tab opens on the press itself, since a browser blocks one opened after the calls below
-    var tab = window.open('about:blank', '_blank');
-    var before = [], made = null, handed = false;
+    var issue = 0, slot = '', ids = [], key = null, mainMissing = false, step = 'secrets';
     button.disabled = true;
-    say('Making a Codespace on ' + repo + '...');
-    refuseCrowd([repo], place).then(function () {
-      return setSlots(place);
-    }).then(function (names) {
-      before = names;
-      if (before.length >= 8) throw new Error('All eight slots are set; renew one under "Paste a token instead".');
-      return handOver(repo);
-    }).then(function (given) {
-      handed = given;
-      return makeCodespace(repo);
-    }).then(function (codespace) {
-      made = codespace;
-      if (tab) tab.location.href = codespace.url;
-      clear($('msg'));
-      add($('msg'), 'The Codespace is opening', tab ? ' in a new tab' : '', ' (', link(codespace.url, 'open it'), '). ',
-        handed ? 'It works as you with this page\'s GitHub sign-in, so its terminal goes straight to' : 'Its terminal asks for a one-time GitHub code (this page could not hand it its sign-in' + HANDOVER_NEEDED + '), then opens',
-        ' claude.ai\'s sign-in: sign in as the new account and press Authorize. This page says when the slot is saved.',
-        codespace.refused ? CODESPACE_NEEDED : '');
-      $('msg').className = 'admin__box';
-      return watchNewSlot(place, before);
-    }).then(function (name) {
-      var gone = made && made.name ? gh('DELETE', '/user/codespaces/' + encodeURIComponent(made.name)).then(function () { return true; }, function () { return false; }) : Promise.resolve(false);
-      return Promise.all([gone, takeBack(handed)]).then(function (both) {
-        button.disabled = false;
-        say(name + ' is saved and listed for auto and the bench.' + (both[0] ? ' The Codespace is deleted.' : ' Delete the Codespace at https://github.com/codespaces when you have closed it.') + (both[1] ? '' : HANDOVER_LEFT));
-        showAddSlot(repo, reading);
+    say('Starting the workflow Token on ' + repo + '...');
+    reachIds(place, repo).then(function (found) {
+      ids = found.map(function (f) { return f.id; });
+      return refuseCrowd(place.org ? found.map(function (f) { return f.name; }) : [repo], place);
+    }).then(function () {
+      return readSecrets(place);
+    }).then(function (by) {
+      slot = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
+      if (!slot) throw new Error('All eight slots are set; renew one under "Paste a token instead".');
+      mainMissing = !by[MAIN_SECRET];
+      return gh('GET', place.base + '/secrets/public-key');
+    }).then(function (r) {
+      key = r.data;
+      step = 'issue';
+      return gh('POST', '/repos/' + repo + '/issues', { title: 'Add a Claude account as slot ' + slot,
+        body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml). The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
+    }).then(function (r) {
+      issue = r.data.number;
+      step = 'dispatch';
+      return gh('GET', '/repos/' + repo);
+    }).then(function (r) {
+      return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
+        { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), key: key.key, key_id: key.key_id } });
+    }).then(function () {
+      step = 'run';
+      say('The run is starting on GitHub Actions; the sign-in button appears here in about a minute.');
+      return followRun(repo, issue, key.key_id);
+    }).then(function (sealed) {
+      step = 'secrets';
+      say('Saving ' + slotSecret(slot) + '...');
+      return storeSealed(place, repo, slot, sealed, key.key_id, ids, '').then(function () {
+        if (mainMissing) return putSecret(place, place.base + '/secrets/' + MAIN_SECRET, sealed, key.key_id, ids).then(function () { return true; });
+        return false;
       });
-    }).catch(function (e) {
-      if (tab && !made) tab.close();
+    }).then(function (alsoMain) {
+      closeRunIssue(repo, issue);
       button.disabled = false;
-      takeBack(handed).then(function (gone) { say(e.message + (gone ? '' : HANDOVER_LEFT), true); });
+      say(slotSecret(slot) + ' is saved and listed in ' + ACCOUNTS_VARIABLE + ' for auto and the bench' + (alsoMain ? ', and as ' + MAIN_SECRET + ', which @claude and the workers read and which was not set yet' : '') + '. Press "Read every slot now" to take its first reading.');
+      showAddSlot(repo, reading);
+    }).catch(function (e) {
+      if (issue) closeRunIssue(repo, issue, true);
+      button.disabled = false;
+      var hint = '';
+      if (step === 'dispatch' && e.status === 404) hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml): pick symphony-template in the Repository box.';
+      else if ((step === 'dispatch' || step === 'issue') && e.status === 403) hint = ACTIONS_NEEDED;
+      else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = SECRETS_NEEDED;
+      say(e.message + hint, true);
     });
   }
-  // The page's own GitHub sign-in, sealed in this browser to the Codespaces public key of the signed-in
-  // person and saved as their Codespaces secret for this one repository: only their own Codespaces on it
-  // read it, as the variable HANDOVER_SECRET, and scripts/codespace.sh signs gh in with it, so the
-  // Codespace asks for no GitHub code. The secret is deleted once the slot is saved or the press fails;
-  // a sign-in token lasts eight hours whatever happens. Where GitHub refuses (the App lacks the account
-  // permission Codespaces user secrets), it resolves false and the Codespace signs in by itself.
-  function handOver(repo) {
-    var sealed = '';
-    return Promise.all([loadSealer(), gh('GET', '/user/codespaces/secrets/public-key'), gh('GET', '/repos/' + repo)]).then(function (all) {
-      sealed = toBase64(all[0](new TextEncoder().encode(token), fromBase64(all[1].data.key)));
-      return gh('PUT', '/user/codespaces/secrets/' + HANDOVER_SECRET, { encrypted_value: sealed, key_id: all[1].data.key_id, selected_repository_ids: [all[2].data.id] });
-    }).then(function () { return true; }, function (e) {
-      if (e.status === 403 || e.status === 404) return false;
-      throw e;
-    });
-  }
-  function takeBack(handed) {
-    if (!handed) return Promise.resolve(true);
-    return gh('DELETE', '/user/codespaces/secrets/' + HANDOVER_SECRET).then(function () { return true; }, function (e) { return e.status === 404; });
-  }
-  // the organization's slots, read every ten seconds until one that was not set before appears
-  function watchNewSlot(place, before) {
-    var until = Date.now() + WATCH_FOR_MS;
+  // the issue's comments from the run, read every three seconds: the link shows the sign-in box, the
+  // sealed box ends the wait, and a failure says what the run said
+  function followRun(repo, issue, keyId) {
+    var until = Date.now() + RUN_FOR_MS, shown = false;
     return new Promise(function (resolve, reject) {
       function look() {
-        setSlots(place).then(function (names) {
-          var fresh = names.filter(function (n) { return before.indexOf(n) < 0; });
-          if (fresh.length) { resolve(fresh[0]); return; }
-          if (Date.now() > until) { reject(new Error('No new slot appeared within 20 minutes; the Codespace is still there, and its terminal says where it stopped.')); return; }
-          setTimeout(look, WATCH_EVERY_MS);
+        gh('GET', '/repos/' + repo + '/issues/' + issue + '/comments?per_page=100').then(function (r) {
+          var said = (r.data || []).filter(function (c) { return c && c.user && c.user.login === RUN_BOT; });
+          for (var i = 0; i < said.length; i++) {
+            var lines = String(said[i].body || '').trim().split('\n');
+            if (lines[0] === TOKEN_MARK.failed) { reject(new Error('The run stopped: ' + lines.slice(1).join(' '))); return; }
+            if (lines[0] === TOKEN_MARK.sealed) {
+              if (lines[1] !== keyId || !/^[A-Za-z0-9+\/=]{40,}$/.test(lines[2] || '')) { reject(new Error('The run posted a sealed token for another key; nothing was saved. Press Add a Claude account again.')); return; }
+              resolve(lines[2]);
+              return;
+            }
+            if (lines[0] === TOKEN_MARK.link && !shown && /^https:\/\/claude\.(ai|com)\//.test(lines[1] || '')) {
+              shown = true;
+              drawSignIn(repo, issue, lines[1]);
+            }
+          }
+          if (Date.now() > until) { reject(new Error('The run gave no token within 15 minutes; see its log under the repository\'s Actions, workflow Token.')); return; }
+          setTimeout(look, RUN_POLL_MS);
         }, reject);
       }
-      setTimeout(look, WATCH_EVERY_MS);
+      setTimeout(look, RUN_POLL_MS);
     });
+  }
+  function drawSignIn(repo, issue, url) {
+    var m = $('msg');
+    clear(m);
+    m.className = 'admin__box';
+    var open = btn('Sign in to claude.ai', false, function () { window.open(url, '_blank', 'noopener'); });
+    var code = el('input');
+    code.id = 'tk-code';
+    code.type = 'text';
+    code.autocomplete = 'off';
+    code.spellcheck = false;
+    code.placeholder = 'the code claude.ai shows';
+    var send = btn('Send the code', false, function () {
+      var text = code.value.replace(/\s+/g, '');
+      if (!SIGN_IN_CODE.test(text)) { code.focus(); return; }
+      send.disabled = true;
+      code.disabled = true;
+      gh('POST', '/repos/' + repo + '/issues/' + issue + '/comments', { body: TOKEN_MARK.code + '\n' + text }).then(function () {
+        add(m, el('p', 'admin__lead', 'Code sent; the run is making the token and this page saves it in a few seconds.'));
+      }, function (e) { send.disabled = false; code.disabled = false; add(m, el('p', 'admin__warn', 'The code could not be sent: ' + e.message)); });
+    });
+    add(m, el('p', 'admin__lead', '1. Sign in as the Claude account to add and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it here and send it.'));
+    add(m, add(el('p', 'admin__bar'), open, ' ', code, ' ', send));
+  }
+  function closeRunIssue(repo, issue, failed) {
+    return gh('PATCH', '/repos/' + repo + '/issues/' + issue, { state: 'closed', state_reason: failed ? 'not_planned' : 'completed' }).catch(function () { return null; });
+  }
+  // a secret written with a sealed box: an organization's keeps the repositories it reached and adds ids
+  function putSecret(place, secretPath, sealed, keyId, ids) {
+    var body = { encrypted_value: sealed, key_id: keyId };
+    if (!place.org) return gh('PUT', secretPath, body);
+    return readOne(secretPath).then(function (have) {
+      if (have && have.visibility && have.visibility !== 'selected') { body.visibility = have.visibility; return gh('PUT', secretPath, body); }
+      return (have ? reachOf(secretPath) : Promise.resolve([])).then(function (now) {
+        body.visibility = 'selected';
+        body.selected_repository_ids = union(now, ids);
+        return gh('PUT', secretPath, body);
+      });
+    });
+  }
+  // the slot's secret, then its label, then its place in SYMPHONY_CLAUDE_ACCOUNTS; err.stored says
+  // whether the secret went in before a later step failed
+  function storeSealed(place, repo, slot, sealed, keyId, ids, labelText) {
+    var stored = false;
+    return putSecret(place, place.base + '/secrets/' + slotSecret(slot), sealed, keyId, ids).then(function () {
+      stored = true;
+      if (labelText && slot !== 'main') return writeVariable(place, SLOT_PREFIX + slot + '_LABEL', labelText, ids);
+    }).then(function () {
+      if (slot === 'main') return;
+      return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE).then(function (have) {
+        var words = slotWords(have && have.value);
+        if (words.indexOf(slot) < 0) words.push(slot);
+        return writeVariable(place, ACCOUNTS_VARIABLE, words.join(','), ids);
+      });
+    }).catch(function (e) { e.stored = stored; throw e; });
+  }
+  // The Claude GitHub App, which @claude and the workers need on the repository, installed from
+  // GitHub's own page opened for this one repository; the page offers it unless it can see the App on
+  // the repository's organization already
+  function claudeAppLink(place) {
+    return 'https://github.com/apps/claude/installations/new/permissions?target_id=' + place.ownerId + '&repository_ids[]=' + place.id;
+  }
+  function claudeAppSeen(place) {
+    if (!place.org) return Promise.resolve(false);
+    return gh('GET', '/orgs/' + place.owner + '/installations?per_page=100').then(function (r) {
+      return ((r.data && r.data.installations) || []).some(function (i) { return i.app_slug === 'claude' && i.repository_selection === 'all'; });
+    }, function () { return false; });
   }
 
   function saveSlot(repo, place, button) {
@@ -2938,28 +3008,10 @@
       sealed = toBase64(both[0](new TextEncoder().encode(text), fromBase64(both[1].data.key)));
       // from here only the sealed box is held; the box empties so a second press seals nothing
       text = '';
-      return place.org ? readOne(secretPath) : null;
-    }).then(function (have) {
-      var body = { encrypted_value: sealed, key_id: keyId };
-      if (!place.org) return gh('PUT', secretPath, body);
-      if (have && have.visibility && have.visibility !== 'selected') { body.visibility = have.visibility; return gh('PUT', secretPath, body); }
-      return (have ? reachOf(secretPath) : Promise.resolve([])).then(function (now) {
-        body.visibility = 'selected';
-        body.selected_repository_ids = union(now, ids);
-        return gh('PUT', secretPath, body);
-      });
+    }).then(function () {
+      return storeSealed(place, repo, slot, sealed, keyId, ids, labelText).catch(function (e) { stored = !!e.stored; throw e; });
     }).then(function () {
       sealed = '';
-      stored = true;
-      if (labelText && slot !== 'main') return writeVariable(place, SLOT_PREFIX + slot + '_LABEL', labelText, ids);
-    }).then(function () {
-      if (slot === 'main') return;
-      return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE).then(function (have) {
-        var words = slotWords(have && have.value);
-        if (words.indexOf(slot) < 0) words.push(slot);
-        return writeVariable(place, ACCOUNTS_VARIABLE, words.join(','), ids);
-      });
-    }).then(function () {
       return Promise.all([readOne(secretPath), shadowed(place, repo, name, slot)]);
     }).then(function (both) {
       var now = both[0];
