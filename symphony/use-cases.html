@@ -27,13 +27,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180633">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180633">
-<link rel="stylesheet" href="/assets/css/compare.css?v=202610180633">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180658">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180658">
+<link rel="stylesheet" href="/assets/css/compare.css?v=202610180658">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
 <!-- site:header -->
+<script>if (window.matchMedia && matchMedia("(hover: hover) and (min-width: 901px)").matches) document.documentElement.classList.add("nav-hover");</script>
 <header class="nav" id="nav">
   <a href="/" class="nav__brand" aria-label="OpenSpineConsortium home">
     <svg class="nav__mark" viewBox="0 0 28 28" aria-hidden="true">
@@ -61,12 +62,44 @@
     <span></span><span></span><span></span>
   </button>
 </header>
-<nav class="subnav" aria-label="Symphony">
+<div class="flyouts" id="flyouts">
+<nav class="subnav subnav--fly is-here" data-tab="/symphony/" aria-label="Symphony">
   <div class="subnav__in">
     <a class="subnav__title" href="/symphony/">Symphony</a>
     <div class="subnav__pills"><a class="subnav__pill" href="/symphony/">Overview</a><a class="subnav__pill" href="/symphony/control/">Control panel</a><a class="subnav__pill" href="/symphony/control/tokens.html">Tokens</a><a class="subnav__pill" href="/symphony/cost.html">What it costs</a><a class="subnav__pill" href="/symphony/use-cases.html" aria-current="page">Use cases</a><a class="subnav__pill" href="/symphony/compare.html">Compared</a><a class="subnav__pill" href="/symphony/privacy.html">Privacy</a><a class="subnav__pill" href="/symphony/apps-privacy.html">Apps privacy</a></div>
   </div>
 </nav>
+<nav class="subnav subnav--fly" data-tab="/beethoven/" aria-label="Beethoven">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/beethoven/">Beethoven</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/beethoven/">Product</a><a class="subnav__pill" href="/beethoven/terms.html">Agreement</a><a class="subnav__pill" href="/beethoven/privacy.html">Privacy</a><a class="subnav__pill" href="/beethoven/support.html">Support</a><a class="subnav__pill" href="/beethoven/request.html">Ask for access</a><a class="subnav__pill" href="/beethoven/reviewers.html">Reviewers</a><a class="subnav__pill" href="/beethoven/vscode/">For VS Code</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/research/" aria-label="Research">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/research/">Research</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/research/">Overview</a><a class="subnav__pill" href="/research/conferences/">Conferences</a><a class="subnav__pill" href="/research/workshop/">Workshop</a><a class="subnav__pill" href="/research/goals/">Goals</a><a class="subnav__pill" href="/research/outside/">Outside work</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/data/" aria-label="Data &amp; Tools">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/data/">Data &amp; Tools</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/data/">Overview</a><a class="subnav__pill" href="/data/datasets/">Datasets</a><a class="subnav__pill" href="/atlas/">Atlas</a><a class="subnav__pill" href="/data/gallery/">Gallery</a><a class="subnav__pill" href="/data/hardware/">Hardware</a><a class="subnav__pill" href="/spine-mri/">Spine MRI</a><a class="subnav__pill" href="/pacs/ct.html">CT</a><a class="subnav__pill" href="/pacs/">X-ray</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/people/" aria-label="People">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/people/">People</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/people/">Team</a><a class="subnav__pill" href="/people/organization/">Organization</a><a class="subnav__pill" href="/people/education/">Education</a><a class="subnav__pill" href="/celebrate-life/">Celebrate Life</a></div>
+  </div>
+</nav>
+<nav class="subnav subnav--fly" data-tab="/docs/" aria-label="Docs">
+  <div class="subnav__in">
+    <a class="subnav__title" href="/docs/">Docs</a>
+    <div class="subnav__pills"><a class="subnav__pill" href="/docs/">Overview</a><a class="subnav__pill" href="/docs/buttons.html">Every button</a><a class="subnav__pill" href="/docs/changes.html">What&#x27;s new</a></div>
+  </div>
+</nav>
+</div>
 <!-- /site:header -->
 <main id="main">
 <section class="section uc" aria-labelledby="uc-title">
@@ -322,7 +355,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180633"></script>
+<script src="/assets/js/main.js?v=202610180658"></script>
 <!-- /site:footer -->
 
 </body>
