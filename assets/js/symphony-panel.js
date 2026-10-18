@@ -3285,7 +3285,12 @@
     toggle.type = 'button';
     toggle.setAttribute('aria-controls', 'cp-as-drawer');
     toggle.setAttribute('aria-expanded', 'false');
-    add(row, box, st, toggle);
+    var own = el('button', 'quiet', 'Ask in claude.ai');
+    own.id = 'cp-as-own';
+    own.type = 'button';
+    own.title = 'Opens claude.ai in a new tab, on your own account, with the question and what this page shows';
+    own.setAttribute('aria-label', 'Ask in claude.ai, in a new tab');
+    add(row, box, st, own, toggle);
     bar.appendChild(row);
     var drawer = el('div', 'console__askdrawer');
     drawer.id = 'cp-as-drawer';
@@ -3306,9 +3311,66 @@
     add(drawer, splitGrip('drawer', 'the answer'), head, body);
     stage.appendChild(drawer);
   }
+  // "Ask in claude.ai" opens the question on the person's own claude.ai account, in a new tab, with a
+  // line or two naming what the page shows, so that Claude there, with whatever the person connected
+  // to that account (their OneDrive among them), starts where the person is. It needs no write access
+  // and no assistant file, since the repository's workflow is not asked: the page sends nothing and
+  // writes nothing for it, the words travel in the new tab's address alone, which is why the whole is
+  // cut to what an address carries.
+  var OWN_CLAUDE = 'https://claude.ai/new?q=';
+  var OWN_CLAUDE_MAX = 2000;
+  // the encoded form is what the address carries, and a character outside ASCII encodes to nine
+  var OWN_CLAUDE_ENCODED_MAX = 6000;
+  // the tabs that show the task the assistant centres; on the others the focus is not on screen
+  var OWN_CLAUDE_TASK_TABS = ['command', 'board', 'tasks', 'dependencies'];
+  // a foreign string (a title, a folder's or a file's name) goes in quotes on one line, so that one
+  // holding a line break cannot pose as a line of the page's own
+  function ownQuote(text) { return JSON.stringify(String(text || '').replace(/\s+/g, ' ').trim()); }
+  function askInClaudeContext() {
+    var s = state, a = assistant, lines = [];
+    var tab = consoleTab || 'command';
+    var rail = document.querySelector('.console__rail [data-tab="' + tab + '"] .rail__name');
+    var name = rail ? (rail.textContent || '').trim() : tab;
+    lines.push('I am looking at the Symphony control panel' + (s.repo ? ' for ' + s.repo + ' (https://github.com/' + s.repo + ')' : '') + ', on its ' + name + ' tab.');
+    if (tab === 'explore') {
+      var here = exCurrent();
+      if (here && explore.path.length > 1) lines.push('I am at ' + explore.path.slice(1).map(function (n) { return ownQuote(n.title); }).join(' > ') + (here.url ? ' (' + here.url + ')' : '') + '.');
+    } else if (tab === 'folders') {
+      var last = crumbs[crumbs.length - 1];
+      var it = explorer.items.filter(function (x) { return String(x.id) === explorer.selected; })[0];
+      if (last) lines.push('The OneDrive folder open is ' + ownQuote(crumbs.map(function (c) { return c.name; }).join('/')) + (last.url ? ' (' + last.url + ')' : '') + '.');
+      if (it) lines.push('The item chosen is ' + ownQuote(it.name) + (httpsOnly(it.webUrl) ? ' (' + httpsOnly(it.webUrl) + ')' : '') + '.');
+    } else if (OWN_CLAUDE_TASK_TABS.indexOf(tab) >= 0 && a.s === s && a.focus) {
+      lines.push('The task I am on is #' + a.focus + ' (https://github.com/' + s.repo + '/issues/' + a.focus + ').');
+    }
+    return lines.join('\n');
+  }
+  // cut by code points, so that no surrogate pair is split: a lone surrogate makes encodeURIComponent throw
+  function ownCut(text, max) { return Array.from(text).slice(0, max).join(''); }
+  function askInClaude() {
+    var text = ($('cp-as-q').value || '').trim();
+    var context = askInClaudeContext();
+    var whole, dropped = '';
+    // the question stays whole up to the bound and the page's lines give way, since the person
+    // can see what the page shows and cannot see what the cut took from their words
+    if (Array.from(text).length > OWN_CLAUDE_MAX) {
+      whole = ownCut(text, OWN_CLAUDE_MAX);
+      dropped = 'the question goes in cut to its first ' + OWN_CLAUDE_MAX + ', and what the page shows is left out';
+    } else {
+      var room = OWN_CLAUDE_MAX - Array.from(text).length - (text ? 2 : 0);
+      whole = text + (text && room > 0 ? '\n\n' : '') + (room > 0 ? ownCut(context, room) : '');
+      if (room < Array.from(context).length) dropped = 'what the page shows goes in shortened';
+    }
+    var cps = Array.from(whole);
+    while (encodeURIComponent(cps.join('')).length > OWN_CLAUDE_ENCODED_MAX) { cps.pop(); dropped = dropped || 'the words go in cut to fit'; }
+    whole = cps.join('');
+    if (dropped) say('The claude.ai tab takes at most ' + OWN_CLAUDE_MAX + ' characters: ' + dropped + '.', true);
+    window.open(OWN_CLAUDE + encodeURIComponent(whole), '_blank', 'noopener,noreferrer');
+  }
   function initAssistant() {
     assistantBuildBar();
     $('cp-as-ask').addEventListener('click', assistantAsk);
+    $('cp-as-own').addEventListener('click', askInClaude);
     $('cp-as-stop').addEventListener('click', function () { assistantStop('pressed'); });
     $('cp-as-again').addEventListener('click', function () { if (assistant.last) { $('cp-as-q').value = assistant.last; assistantAsk(); } });
     $('cp-as-q').addEventListener('input', assistantFit);
@@ -5656,7 +5718,7 @@
   }
   function appName(app) { return { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint', 'ms-visio': 'Visio' }[app] || 'its app'; }
   function openItem(it) {
-    if (it.folder) { go(crumbs.concat([{ id: String(it.id), name: String(it.name || '') }])); return; }
+    if (it.folder) { go(crumbs.concat([{ id: String(it.id), name: String(it.name || ''), url: httpsOnly(it.webUrl) }])); return; }
     if (officeApp(it)) openInApp(it); else openInBrowser(it);
   }
 
