@@ -25,7 +25,7 @@ robots: noindex
       <summary>Use a fine-grained token instead</summary>
       <label for="cp-token">A fine-grained personal access token</label>
       <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board and the Claude accounts&rsquo; readings, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Adding a Claude account also needs the organization permissions Secrets and Variables set to Read and write. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token; the one Claude token the page takes is the one you paste under the Tokens tab&rsquo;s &ldquo;Add or renew a slot&rdquo;.</small>
+      <small>Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>: name it, pick the repositories Symphony runs in under Repository access, and under Repository permissions set Actions to Read and write (read lists the runs, write starts a workflow), Checks to Read-only, Contents to Read and write (the read shows the board and the Claude accounts&rsquo; readings, the write merges a pull request), Issues to Read and write and Pull requests to Read and write; Metadata comes with them. Adding a Claude account also needs the organization permissions Secrets and Variables set to Read and write. Press Generate token and paste it here. The token is used for GitHub&rsquo;s API from this browser only; nothing of this site ever receives it. For an organization&rsquo;s repositories the organization must allow fine-grained tokens (its Settings, Third-party access, Personal access tokens). This is a GitHub token; Claude tokens are made under the Tokens tabthe one Claude token the page takes is the one you paste under the Tokens tab&rsquo;s &ldquo;Add or renew a slot&rdquo;.rsquo;s + Add Token, and the page never sees one.</small>
       <div><button id="cp-open" type="button">Open the panel</button></div>
     </details>
   </div>
@@ -86,7 +86,7 @@ robots: noindex
               <button id="cp-run-metrics" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#8721;</span><span class="launch__name">Run the metrics now</span><span class="launch__note">Writes the branch metrics</span></button>
               <button type="button" class="launch launch--plan" data-goto="tasks" data-focus="cp-task-title"><span class="launch__icon" aria-hidden="true">&#43;</span><span class="launch__name">Queue a task</span><span class="launch__note">An issue labelled todo for the workers</span></button>
               <button type="button" class="launch launch--plan" data-goto="ask" data-focus="cp-prompt"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">@claude on a new issue, or the assistant</span></button>
-              <button type="button" class="launch launch--plan" data-goto="tokens"><span class="launch__icon" aria-hidden="true">&#9919;</span><span class="launch__name">Claude accounts</span><span class="launch__note">Use, resets, add one, who runs on which</span></button>
+              <button type="button" class="launch launch--plan" data-goto="tokens"><span class="launch__icon" aria-hidden="true">&#9919;</span><span class="launch__name">Tokens</span><span class="launch__note">Your Claude tokens, their use and settings</span></button>
               <button type="button" class="launch launch--plan" data-goto="repos" data-focus="cp-add-name"><span class="launch__icon" aria-hidden="true">&#8853;</span><span class="launch__name">Add a repository</span><span class="launch__note">Put one on the list, or set Symphony up on it</span></button>
             </div>
           </div>
@@ -254,42 +254,14 @@ robots: noindex
           </div>
         </section>
 
-        <!-- Tokens: the Claude accounts the workers run on -->
-        <section class="console__panel console__panel--split" id="tab-tokens" data-tab-panel="tokens" role="tabpanel" aria-labelledby="rail-tokens" hidden>
-          <div class="console__col">
-            <div class="console__head">
-              <h2 id="h-slots" class="console__h">Claude accounts</h2>
-              <p class="console__jumps">
-                <button id="tk-add-top" type="button" class="chip chip--go">&#43; Add Token</button>
-                <button id="tk-probe" type="button" class="chip" title="Starts the workflow Pool, which asks each slot for one word on Haiku">Read every slot now</button>
-                <button id="tk-reload" type="button" class="chip">Read the pool again</button>
-              </p>
-              <details class="console__help"><summary>How the readings are taken and how auto picks a slot</summary><div>
-                <p>A slot is an organization secret, <code>SYMPHONY_CLAUDE_1</code> to <code>SYMPHONY_CLAUDE_8</code>; <code>main</code> is <code>CLAUDE_CODE_OAUTH_TOKEN</code>. GitHub never gives a secret back, so the page reads only the readings on the repository&rsquo;s branch <code>pool</code>: what each worker&rsquo;s run saw in Claude&rsquo;s answers, what the workflow Pool&rsquo;s one-word probes saw, and what cswap on your machine sent with <code>python3 scripts/tokens.py usage</code>, the only source of the per-model limits such as Fable&rsquo;s. No reading holds a token. &ldquo;Read every slot now&rdquo; starts the workflow Pool, which asks each slot of <code>SYMPHONY_CLAUDE_ACCOUNTS</code> for one word on Haiku: that spends one word of each slot&rsquo;s window, so nothing reads them on a schedule.</p>
-                <p>Each token is a tile. Press one for its settings: its name, the model and thinking strength its runs take, the lesser model to switch to when its model&rsquo;s weekly limit runs out, whether it comes back by itself when its limit resets (off, it waits for Resume), and Pause. They are kept in the variable <code>SYMPHONY_CLAUDE_SETTINGS</code>, which the workers in Actions read at the start of each run. The &times; on a tile deletes that token&rsquo;s secret, name and settings and takes it off <code>SYMPHONY_CLAUDE_ACCOUNTS</code>; the token itself stays good until it expires, so revoke it on claude.ai to stop it everywhere.</p>
-                <p>A slot is held once a window or a model limit reaches 90 percent, until it resets, or for five hours from its reading when its reset is not known. A worker on auto takes, at the start of each run, the free slot with the most room in five hours and then seven days, and the workers of one run take different free slots; a run already going finishes on its account. The Fable limit and the other per-model ones come only from cswap: run <code>python3 scripts/tokens.py usage</code> on your machine to send them.</p>
-              </div></details>
-            </div>
-            <div class="console__scroll">
-              <div id="tk-tiles" class="toks" aria-label="Claude tokens"></div>
-              <dialog id="tk-dialog" class="tkdlg" aria-label="A Claude token's settings"></dialog>
-              <div class="table-scroll"><table id="tk-slots" class="admin__stack"><thead><tr><th>Slot</th><th>5 hours</th><th>7 days</th><th>Per-model weekly limits</th><th>State</th><th>Last read</th></tr></thead><tbody></tbody></table></div>
-              <p id="tk-auto" class="admin__lead"></p>
-              <h3 id="h-assign">Which account each worker runs on</h3>
-              <details class="console__help console__help--inline"><summary>Where this is kept</summary><div>
-                <p>Each worker in Actions runs on <code>main</code>, a slot, or <code>auto</code>, from the file <code>.github/symphony/accounts.json</code>; with no file every worker runs on <code>main</code>. The default branch takes only pull requests, so saving here opens one, which takes effect once it merges. @claude and the coordinator stay on <code>main</code>.</p>
-              </div></details>
-              <div id="tk-assign" class="admin__box"></div>
-            </div>
+        <!-- Tokens: one tile per Claude token, + Add Token last; everything else is in a tile's dialog -->
+        <section class="console__panel" id="tab-tokens" data-tab-panel="tokens" role="tabpanel" aria-labelledby="rail-tokens" hidden>
+          <div class="console__head">
+            <h2 id="h-slots" class="console__h">Tokens</h2>
           </div>
-          <div class="console__col console__col--side">
-            <div class="admin__box console__scroll">
-              <h3 id="h-add-account" class="console__boxh">Add a Claude account</h3>
-              <details class="console__help console__help--inline"><summary>What the button does, and what it needs</summary><div>
-                <p>It opens an issue on the repository and starts the workflow Token there, which runs <code>claude setup-token</code> on a GitHub Actions runner and posts its sign-in link on the issue. The line at the top shows it as a button: sign in as the account to add, press Authorize, and paste the code claude.ai shows into the box. The run takes the token out of what Claude Code prints and posts it only sealed for GitHub, which alone can open it; the page saves it as the next free slot, as <code>CLAUDE_CODE_OAUTH_TOKEN</code> too while that is not set, lists it in <code>SYMPHONY_CLAUDE_ACCOUNTS</code> so auto and the bench can take it, and closes the issue. The token is never on this page, in the issue or in the log, and lives a year. It needs you to be an owner of the organization, a repository with the workflow Token (symphony-template has it), and the SymphonyBoard App&rsquo;s permissions Secrets and Variables (organization) and Actions and Issues (repository), each Read and write.</p>
-              </div></details>
-              <div id="tk-add"></div>
-            </div>
+          <div class="console__scroll">
+            <div id="tk-tiles" class="toks" aria-label="Claude tokens"></div>
+            <dialog id="tk-dialog" class="tkdlg" aria-label="A Claude token"></dialog>
           </div>
         </section>
 
