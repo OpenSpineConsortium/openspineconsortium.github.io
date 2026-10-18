@@ -516,9 +516,11 @@ def section_of(path):
     return parents[0] if parents else n
 
 
-def strip(current):
-    """The section strip: the section's name, then its landing page and its children."""
-    tab = section_of(current)
+def strip(current, tab=None, here=True):
+    """A section strip: the section's name, then its landing page and its children, the page
+    `current` marked. `tab` is the section (the current page's own by default); `here` says it is
+    the current page's section, the one shown in the flow where no pointer can hover (a phone)."""
+    tab = tab or section_of(current)
     if not tab:
         return ""
     kids = [c for c in tab["children"] if listed(c)]
@@ -543,7 +545,8 @@ def strip(current):
         pills.append(f'<a class="subnav__pill" href="{path}"{mark}>{esc(label)}</a>')
     title = tab.get("strip", tab["label"])
     title_path = tab.get("strip_path", tab["path"])
-    return (f'<nav class="subnav" aria-label="{esc(title)}">\n  <div class="subnav__in">\n'
+    cls = "subnav subnav--fly" + (" is-here" if here else "")
+    return (f'<nav class="{cls}" data-tab="{tab["path"]}" aria-label="{esc(title)}">\n  <div class="subnav__in">\n'
             f'    <a class="subnav__title" href="{title_path}">{esc(title)}</a>\n'
             f'    <div class="subnav__pills">{"".join(pills)}</div>\n  </div>\n</nav>')
 
@@ -591,11 +594,26 @@ def footer():
     return fill(template("footer.html"), {"directory": "\n".join(cols)}, "footer.html")
 
 
+# Before anything of the header is drawn: where a pointer can hover and the bar holds every tab in
+# one row, the strips wait under the bar and one drops down while the pointer is on its tab or on
+# it (main.js), so the page keeps the whole screen below the bar; the class is set here, not by
+# main.js at the end of the page, so the section's strip never shows and then vanishes.
+HOVER_MEDIA = "(hover: hover) and (min-width: 901px)"
+HOVER_SCRIPT = (f'<script>if (window.matchMedia && matchMedia("{HOVER_MEDIA}").matches) '
+                'document.documentElement.classList.add("nav-hover");</script>')
+
+
 def header_block(current, with_strip=True):
-    parts = ["<!-- site:header -->", header(current)]
-    s = strip(current) if with_strip else ""
-    if s:
-        parts.append(s)
+    """The header, then every section's strip: the current section's in the page flow where no
+    pointer hovers (unless the page says strip: no), each one a drop-down under the bar where one does."""
+    here = section_of(current)
+    strips = []
+    for tab in SITE:
+        s = strip(current, tab, here=with_strip and tab is here)
+        if s:
+            strips.append(s)
+    parts = ["<!-- site:header -->", HOVER_SCRIPT, header(current)]
+    parts.append('<div class="flyouts" id="flyouts">\n' + "\n".join(strips) + "\n</div>")
     parts.append("<!-- /site:header -->")
     return "\n".join(parts)
 

@@ -201,6 +201,39 @@ body[data-shell="page"] .hero { padding-top: 96px; min-height: 0; }
   border-color: var(--teal);
   color: var(--paper-card);
 }
+/* Every section's strip is in the page, after the header. Where no pointer hovers (a phone, a
+   tablet) only the current section's shows, in the flow. Where one does (html.nav-hover, set in the
+   header block before anything is drawn), none shows until the pointer is on a tab or on its strip:
+   main.js adds is-open, and the strip drops down over the page, so the page below never moves. */
+.subnav--fly { display: none; }
+.subnav--fly.is-here { display: block; }
+.nav-hover .subnav--fly,
+.nav-hover .subnav--fly.is-here {
+  display: block;
+  position: fixed;
+  top: var(--nav-h);
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: rgba(251, 250, 244, 0.97);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 30px -24px rgba(26, 28, 24, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: opacity .18s var(--ease), transform .24s var(--ease), visibility 0s linear .24s;
+}
+.nav-hover .subnav--fly.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity .18s var(--ease), transform .24s var(--ease), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-hover .subnav--fly, .nav-hover .subnav--fly.is-open { transition: none; transform: none; }
+}
+
 /* stacked below 820px: in one row the eight Data & Tools pills leave "X-ray" alone on a second,
    right-aligned line at tablet widths (768) */
 @media (max-width: 819px) {
@@ -580,15 +613,15 @@ body[data-shell="page"] .hero { padding-top: 96px; min-height: 0; }
    Each laid its first element out below a fixed bar; the strip now
    does that, so their own clearance comes off.
    ============================================================ */
-body[data-shell="sub"] .subnav { margin-top: var(--nav-h); }
-body[data-shell="sub"] .subnav ~ .sm-bar { margin-top: 0; }
+body[data-shell="sub"] .flyouts { padding-top: var(--nav-h); }
+body[data-shell="sub"] .flyouts ~ .sm-bar { margin-top: 0; }
 body.sm .sm-bar { top: var(--nav-h); }
-body[data-shell="sub"] .subnav ~ .smh__wrap { padding-top: 48px; }
-body[data-shell="sub"] .subnav ~ .atlas__wrap > p:first-child { margin-top: 2.5rem !important; }
-body[data-shell="sub"] .subnav ~ .cl__wrap { padding-top: 32px; }
+body[data-shell="sub"] .flyouts ~ .smh__wrap { padding-top: 48px; }
+body[data-shell="sub"] .flyouts ~ .atlas__wrap > p:first-child { margin-top: 2.5rem !important; }
+body[data-shell="sub"] .flyouts ~ .cl__wrap { padding-top: 32px; }
 body[data-shell="sub"] .crumbs-band { position: relative; }
 @media (max-width: 720px) {
-  body[data-shell="sub"] .subnav ~ .smh__wrap { padding-top: 28px; }
+  body[data-shell="sub"] .flyouts ~ .smh__wrap { padding-top: 28px; }
 }
 
 /* ============================================================

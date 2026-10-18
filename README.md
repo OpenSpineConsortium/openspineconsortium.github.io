@@ -130,7 +130,11 @@ are drawn by `tools/home_figures.py` (below). From it the build writes
 
 - the **header**: byte-identical on every page except `aria-current` on the tab you
   are in; one row down to 721px, a menu under 720px (`#navToggle`, handled by `main.js`);
-- the **section strip** under the header: the section's name and its pages as pills;
+- the **section strips**, one per tab, the section's name and its pages as pills, after the header
+  on every page: on a computer with a mouse none shows until the pointer is on a tab, when that
+  tab's strip drops down over the page and goes back up once the pointer leaves the tab and the
+  strip (`main.js`, the class `nav-hover` set in the header block); on a phone or a tablet the
+  current section's strip sits in the page under the bar;
 - the **breadcrumb** above the footer (Home › section › page), as apple.com places it;
 - the **footer**: a directory of every page, the same on every page;
 - `sitemap.xml` (canonical addresses only: a page whose canonical is elsewhere is left out) and `robots.txt`.
