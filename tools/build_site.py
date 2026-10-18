@@ -22,6 +22,8 @@ WHAT IT DOES, IN ORDER
         <!-- build:request-form services=<url> [fine=short] -->   the access form and its script
         <!-- build:browsers -->                      the one install card: Chrome, the store listing
         <!-- build:vscode-install -->                the Beethoven for VS Code install card
+        <!-- build:symphony-store-badge -->          Symphony's store badge, once SYMPHONY_STORE_URL is set
+        <!-- build:symphony-store-note -->           Symphony's store button, or "listing pending"
         <!-- build:section-index -->                 on a tab's landing page, the pages one level
                                                      below its children (tutorials, Spine MRI parts)
         <!-- build:docs-... -->                      the Docs tab's generated parts (THE DOCS SECTION)
@@ -137,6 +139,10 @@ START_REPO = sibling_repo("SYMPHONY_START_REPO", ("symphony-start", "sdlc-start"
 # The Marketplace listing's address once it is published under OpenSpineConsortium.beethoven; None
 # shows "Listing pending" (the maintainer uploads the new id by hand)
 VSCODE_STORE_URL = None
+# Symphony for Chrome's listing, https://chromewebstore.google.com/detail/<item id>, once the store
+# item exists; None leaves the overview page's badge out and its Chrome card says the listing is
+# pending. The one line to change when the item's id is known.
+SYMPHONY_STORE_URL = None
 
 # The texts rendered onto pages, checked word for word against their sources. kind: agreement
 # (hard-wrapped plain text), markdown (pandoc). page: where it is rendered (the body file places it).
@@ -817,6 +823,33 @@ def browsers_html():
     return f'<div class="browsers{one}">\n' + "\n".join(cards) + "\n</div>"
 
 
+def symphony_store_url():
+    if SYMPHONY_STORE_URL and not SYMPHONY_STORE_URL.startswith("https://chromewebstore.google.com/detail/"):
+        raise SystemExit(f"SYMPHONY_STORE_URL: {SYMPHONY_STORE_URL} is not a Chrome Web Store listing")
+    return SYMPHONY_STORE_URL
+
+
+def symphony_store_badge_html():
+    """The store's own badge under the Symphony overview's lede, as Beethoven's hero has it;
+    nothing while the listing does not exist, since a badge that opens a 404 is worse than none."""
+    url = symphony_store_url()
+    if not url:
+        return ""
+    return (f'<p class="bh__store"><a class="cws" href="{esc(url)}" target="_blank" rel="noopener" '
+            'aria-label="Symphony for Chrome: available in the Chrome Web Store">'
+            '<img class="cws__icon" src="/assets/img/chrome-logo.svg" alt="" width="30" height="30">'
+            '<span class="cws__text"><span class="cws__k">Available in the</span> Chrome Web Store</span></a></p>')
+
+
+def symphony_store_note_html():
+    """The Chrome card's first line: the listing's button once it exists, else that it is pending."""
+    url = symphony_store_url()
+    if not url:
+        return '<p class="browser__note sy-pending">Symphony for Chrome: Chrome Web Store listing pending review.</p>'
+    return (f'<a class="btn btn--solid btn--cws" href="{esc(url)}" target="_blank" rel="noopener">'
+            "Open it on the Chrome Web Store</a>")
+
+
 def vscode_install_html(version):
     """The one install card for Beethoven for VS Code: the Marketplace button once VSCODE_STORE_URL
     is set, else a note that the listing is pending (there is no direct download of this edition)."""
@@ -1182,6 +1215,13 @@ def expand(body, texts, where, path=None):
     body = body.replace("<!-- build:browsers -->", browsers_html())
     if "<!-- build:vscode-install -->" in body:
         body = body.replace("<!-- build:vscode-install -->", vscode_install_html(texts["vscode_version"]))
+    if "<!-- build:symphony-store-badge -->" in body:
+        # the marker's own line goes with it while there is no badge, so the page keeps its shape
+        badge = symphony_store_badge_html()
+        body = re.sub(r"\n[ \t]*<!-- build:symphony-store-badge -->",
+                      lambda m: (m.group(0).split("<")[0] + badge) if badge else "", body)
+    if "<!-- build:symphony-store-note -->" in body:
+        body = body.replace("<!-- build:symphony-store-note -->", symphony_store_note_html())
     if "<!-- build:section-index -->" in body:
         body = body.replace("<!-- build:section-index -->", section_index(path) if path else "")
     # placeholders first, then the texts, so a "{{" inside a text is never read as a placeholder
