@@ -23,7 +23,7 @@
    the refresh token that came with it) and the names of the repositories
    you listed, and never sends anything anywhere but GitHub and, for the
    sign-in, that service. The one Claude token it touches is one pasted
-   into the Tokens tab's "Add or renew a slot", which it seals in this
+   into the Tokens tab's + Add Token, which it seals in this
    browser for GitHub's public key and sends to GitHub as that sealed box
    alone, never stored, logged or shown (the owner, 2026-10-18).
 
@@ -1022,6 +1022,20 @@
     return g;
   }
 
+  // each cell of a card's row names its part, so the console draws rows as cards (control.css)
+  function cardCells(tr, parts) {
+    Array.prototype.forEach.call(tr.children, function (td, i) { if (parts[i]) td.classList.add('cell--' + parts[i]); });
+    return tr;
+  }
+  // labels as chips; the separators stay in the text, so the cell reads as it did
+  function labelChips(labels) {
+    var td = el('td');
+    labels.forEach(function (name, i) {
+      if (i) add(td, el('span', 'chip__sep', ', '));
+      add(td, el('span', 'lchip' + (/^worker:|^account:|^agent:/.test(name) ? ' lchip--worker' : '') + (/^(blocker|blocked)$/.test(name) ? ' lchip--warn' : ''), name));
+    });
+    return td;
+  }
   function issueRow(it, acts) {
     var tr = el('tr');
     var l = labelsOf(it);
@@ -1030,13 +1044,13 @@
     tr.setAttribute('data-labels', l.join('\n'));
     add(tr, add(el('td'), link(it.html_url, '#' + it.number)));
     add(tr, el('td', '', it.title));
-    add(tr, el('td', '', l.join(', ') || ''));
+    add(tr, labelChips(l));
     add(tr, el('td', '', workerOf(l) || ''));
     add(tr, add(el('td'), timeEl(it.updated_at)));
     var act = el('td', 'admin__act');
     if (acts) acts(act, it);
     add(tr, act);
-    return tr;
+    return cardCells(tr, ['num', 'title', 'labels', 'worker', 'when', 'act']);
   }
   function issueTable(id, list, acts) {
     var body = $(id).querySelector('tbody');
@@ -1168,14 +1182,134 @@
         add(tr, el('td', '', w.model || 'default'));
         add(tr, el('td', '', w.max_turns != null ? String(w.max_turns) : ''));
         add(tr, el('td', '', w.rounds != null ? String(w.rounds) : ''));
-        body.appendChild(tr);
+        tr.setAttribute('data-runs', w.runs || '');
+        body.appendChild(cardCells(tr, ['name', 'runs', 'about', 'area', 'lands', 'model', 'turns', 'rounds']));
       });
       return loadIssues(s);
     });
   }
+  /* ---------- the Agents tab ---------- */
+  // The agents are .github/symphony/agents.json and the files under .claude/agents/ it names
+  // (symphony-template's docs/agents/AGENTS.md). Each row shows what the agent is for, the tools its
+  // file lists and where it came from; the Tokens cell is the Tokens tab's own control,
+  // tokenAssignBox(repo, agentName), which knows where tokens live and who may change them, so this
+  // tab writes no token setting itself. Run and Import start the Agents workflow, agents.yml.
+  var AGENTS_REGISTRY = '.github/symphony/agents.json';
+  function frontMatter(text) {
+    var lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+    var found = {};
+    if (lines[0] !== '---') return found;
+    var key = '';
+    for (var i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+      var line = lines[i];
+      if (/^\s/.test(line)) {
+        var item = line.trim();
+        if (key && item.indexOf('- ') === 0 && Array.isArray(found[key])) found[key].push(item.slice(2).trim());
+        continue;
+      }
+      var at = line.indexOf(':');
+      if (at < 0) continue;
+      key = line.slice(0, at).trim();
+      var value = line.slice(at + 1).trim().replace(/^(['"])(.*)\1$/, '$2');
+      found[key] = value || [];
+    }
+    return found;
+  }
+  function toolsOf(value) {
+    if (Array.isArray(value)) return value;
+    return String(value || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+  }
+  function loadAgents(s) {
+    var body = $('cp-agents').querySelector('tbody');
+    var note = $('cp-agents-note');
+    return file(s.repo, AGENTS_REGISTRY).then(function (text) {
+      var registry = JSON.parse(text);
+      var names = Object.keys(registry && registry.agents || {});
+      return Promise.all(names.map(function (name) {
+        return file(s.repo, '.claude/agents/' + name + '.md').then(frontMatter, function () { return { description: 'its file .claude/agents/' + name + '.md could not be read' }; })
+          .then(function (head) { return { name: name, entry: registry.agents[name] || {}, head: head }; });
+      }));
+    }).catch(function (e) {
+      if (e.status === 404) return null;
+      if (!stale(s)) failed(s, 'the agents', e);
+      return [];
+    }).then(function (agents) {
+      if (stale(s)) return;
+      s.agents = agents || [];
+      clear(body);
+      note.textContent = agents === null ? 'This repository lists no agents yet: it was made before agents existed, and the template\'s next update brings the reviewer, developer and tester.' : '';
+      var choose = $('cp-a-agent');
+      clear(choose);
+      s.agents.forEach(function (a) { var o = el('option', '', a.name); o.value = a.name; choose.appendChild(o); });
+      if (agents && !agents.length) { var none = el('tr'); add(none, el('td', 'admin__none', 'No agents listed.')).firstChild.colSpan = 8; body.appendChild(none); }
+      s.agents.forEach(function (a) {
+        var tr = el('tr');
+        add(tr, add(el('td'), link('https://github.com/' + s.repo + '/blob/' + ((s.meta && s.meta.default_branch) || 'main') + '/.claude/agents/' + a.name + '.md', a.name)));
+        add(tr, el('td', '', a.entry.purpose || ''));
+        add(tr, el('td', '', typeof a.head.description === 'string' ? a.head.description : ''));
+        var tools = toolsOf(a.head.tools);
+        var toolCell = el('td', '', tools.length ? tools.length + (tools.length === 1 ? ' tool' : ' tools') : 'every tool');
+        toolCell.title = tools.join(', ');
+        add(tr, toolCell);
+        var runs = a.entry.runs === 'pull_request' ? 'on every pull request' : 'by hand';
+        if (a.entry.workers && a.entry.workers.length) runs += '; workers ' + a.entry.workers.join(', ');
+        add(tr, el('td', '', runs));
+        add(tr, el('td', '', a.entry.source === 'symphony' ? 'Symphony' : a.entry.source === 'local' ? 'written here' : (a.entry.source || '')));
+        var tokens = el('td');
+        if (typeof window.tokenAssignBox === 'function') {
+          try { var box = window.tokenAssignBox(s.repo, a.name); if (box) tokens.appendChild(box); } catch (e) { tokens.textContent = 'the token box failed: ' + e.message; }
+        } else {
+          tokens.textContent = 'the main token, until the Tokens tab gives it others';
+        }
+        add(tr, tokens);
+        var go = el('button', '', 'Run');
+        go.type = 'button';
+        go.addEventListener('click', function () { choose.value = a.name; $('cp-a-target').focus(); say('Name the pull request or issue for ' + a.name + ', then press Run it.'); });
+        add(tr, add(el('td', 'admin__act'), go));
+        tr.setAttribute('data-purpose', a.entry.purpose || 'other');
+        body.appendChild(cardCells(tr, ['name', 'purpose', 'about', 'tools', 'runs', 'from', 'tokens', 'act']));
+      });
+    });
+  }
+  function dispatchAgents(inputs, label) {
+    var s = state;
+    var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
+    say('Starting ' + label + '...');
+    return gh('POST', '/repos/' + s.repo + '/actions/workflows/agents.yml/dispatches', { ref: branch, inputs: inputs }).then(function () {
+      say(label + ' is queued on ' + branch + '; the Runs tab shows it within a minute.');
+      setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
+    }).catch(function (e) {
+      say(e.status === 404 ? 'This repository has no Agents workflow yet (.github/workflows/agents.yml); the template\'s next update brings it.'
+        : e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write on the sign-in or the token.' : ''), true);
+    });
+  }
+  function runAgent() {
+    var agent = $('cp-a-agent').value;
+    var target = ($('cp-a-target').value || '').trim();
+    if (!agent) { say('Choose an agent first.', true); return; }
+    if (!/^[1-9][0-9]{0,8}$/.test(target)) { say('Give the number of the pull request or issue it works on.', true); return; }
+    dispatchAgents({ agent: agent, target: target }, 'the agent ' + agent + ' on #' + target);
+  }
+  function importAgent() {
+    var source = ($('cp-a-source').value || '').trim();
+    var name = ($('cp-a-name').value || '').trim();
+    if (!/^(https:\/\/\S+|[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}\/\S+\.md(@\S+)?)$/.test(source)) { say('Give OWNER/REPO/PATH.md, perhaps with @branch, or an https address.', true); return; }
+    if (name && !/^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){0,38}$/.test(name)) { say('A name is lower case letters, digits and inner dashes, up to 39.', true); return; }
+    var inputs = { 'import': source };
+    if (name) inputs.name = name;
+    if ($('cp-a-purpose').value) inputs.purpose = $('cp-a-purpose').value;
+    dispatchAgents(inputs, 'the import of ' + source);
+  }
+
   function conclusionWord(run) {
     if (run.status !== 'completed') return run.status.replace(/_/g, ' ');
     return run.conclusion ? run.conclusion.replace(/_/g, ' ') : 'completed';
+  }
+  // a run's outcome as one of three the cards colour: passed, failed, or anything else
+  function outcomeOf(word) {
+    if (word === 'success') return 'ok';
+    if (/^(failure|timed out|startup failure|action required)$/.test(word)) return 'bad';
+    return /^(in progress|queued|waiting|pending|requested)$/.test(word) ? 'running' : 'other';
   }
   function loadRuns(s) {
     var body = $('cp-runs').querySelector('tbody');
@@ -1196,7 +1330,8 @@
         add(tr, el('td', '', w)).lastChild.className = w === 'success' ? 'admin__tag admin__tag--ok' : (w === 'failure' ? 'admin__tag admin__tag--wait' : 'admin__tag admin__tag--mid');
         add(tr, el('td', '', run.actor && run.actor.login ? run.actor.login : ''));
         add(tr, add(el('td'), timeEl(run.run_started_at || run.created_at)));
-        body.appendChild(tr);
+        tr.setAttribute('data-outcome', outcomeOf(w));
+        body.appendChild(cardCells(tr, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
       });
     }).catch(function (e) {
       if (stale(s)) return;
@@ -1224,7 +1359,8 @@
         add(tr2, el('td', '', run.status === 'completed' ? (run.conclusion || 'completed') : run.status));
         add(tr2, el('td', '', run.app && run.app.slug ? run.app.slug : ''));
         add(tr2, add(el('td'), timeEl(run.completed_at || run.started_at)));
-        body.appendChild(tr2);
+        tr2.setAttribute('data-outcome', outcomeOf(run.status === 'completed' ? (run.conclusion || 'completed') : run.status));
+        body.appendChild(cardCells(tr2, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
       });
     }).catch(function (e) { if (stale(s)) return; var tr = el('tr'); add(tr, el('td', 'admin__none', e.message)).firstChild.colSpan = 6; body.appendChild(tr); });
   }
@@ -1242,7 +1378,7 @@
       });
       var unread = total > runs.length ? total - runs.length : 0;
       cell.textContent = (bad ? bad + ' failed, ' : '') + (wait ? wait + ' running, ' : '') + ok + ' of ' + runs.length + ' passed' + (unread ? ' (' + unread + ' more not read; see GitHub)' : '');
-      cell.className = bad ? 'admin__tag admin__tag--wait' : (wait || unread ? 'admin__tag admin__tag--mid' : 'admin__tag admin__tag--ok');
+      cell.className = 'cell--checks ' + (bad ? 'admin__tag admin__tag--wait' : (wait || unread ? 'admin__tag admin__tag--mid' : 'admin__tag admin__tag--ok'));
       pr._green = !bad && !wait && !unread;
       mergeBtn.disabled = !(pr._green && !pr.draft);
     }).catch(function (e) { if (!stale(s)) cell.textContent = e.status === 403 ? 'checks not readable' : e.message; });
@@ -1293,7 +1429,12 @@
         m.title = 'Enabled once the pull request is ready and every check has passed';
         add(act, m);
         add(tr, act);
-        body.appendChild(tr);
+        tr.setAttribute('data-draft', pr.draft ? 'true' : 'false');
+        // the Ask Claude bar finds a pull request's Merge button by its number; data-pull keeps
+        // these cards out of the task filters, which read tr[data-number] as tasks
+        tr.setAttribute('data-number', String(pr.number));
+        tr.setAttribute('data-pull', String(pr.number));
+        body.appendChild(cardCells(tr, ['num', 'title', 'branch', 'state', 'checks', 'when', 'act']));
         checksOf(s, pr, checks, m);
       });
       if (pulls.more) { var more = el('tr'); add(more, el('td', 'admin__none', 'Only the first ' + pulls.length + ' open pull requests were read; the rest are on GitHub.')).firstChild.colSpan = 7; body.appendChild(more); }
@@ -1350,10 +1491,11 @@
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
+    if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
     if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
-      return Promise.all([loadBoard(s), loadWorkers(s), loadRuns(s), loadPulls(s)]);
+      return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
     }).then(function () {
       if (stale(s)) return;
       s.ready = true;
@@ -1556,7 +1698,7 @@
   function consoleRows(id) {
     var t = $(id);
     if (!t) return 0;
-    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector('.admin__none'); }).length;
+    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector(':scope > td.admin__none'); }).length;
   }
   function countConsole() {
     Array.prototype.forEach.call(document.querySelectorAll('#console [data-count]'), function (span) {
@@ -1577,11 +1719,89 @@
     var wrap = table.closest('.table-scroll') || table;
     var head = wrap.previousElementSibling && /^H[1-6]$/.test(wrap.previousElementSibling.tagName) ? wrap.previousElementSibling : wrap;
     var box = wrap.closest('.console__scroll');
-    if (box) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    if (!box) return;
+    // the task board lays its lists side by side, so the jump is sideways there
+    if (box.classList.contains('console__kanban') && getComputedStyle(box).display === 'grid') {
+      box.scrollLeft = head.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft;
+      head.classList.remove('console__flash');
+      void head.offsetWidth;
+      head.classList.add('console__flash');
+    } else box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+  }
+  // a message that arrives, or changes, flashes the line at the deck's foot; emptying it does not.
+  // say() replaces className, so the flash class is put back after it rather than kept
+  function initFlash() {
+    var m = $('msg');
+    if (!m || !window.MutationObserver) return;
+    var last = '';
+    new MutationObserver(function () {
+      var text = m.textContent;
+      if (!text || text === last) { last = text; return; }
+      last = text;
+      m.classList.remove('console__flash');
+      void m.offsetWidth;
+      m.classList.add('console__flash');
+    }).observe(m, { childList: true, characterData: true, subtree: true });
+    m.addEventListener('animationend', function () { m.classList.remove('console__flash'); });
+  }
+  // full screen is the browser's own (F11, or the Fullscreen API from the button): the site's bar
+  // is hidden while it holds, and the deck measured again
+  function inFullScreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) return true;
+    // F11 makes the browser full screen without the API; Chrome and Firefox say so through display-mode
+    return !!(window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches);
+  }
+  function syncFullScreen() {
+    var on = inFullScreen();
+    document.body.classList.toggle('console-full', on);
+    if ($('cp-full')) {
+      $('cp-full').setAttribute('aria-pressed', on ? 'true' : 'false');
+      $('cp-full').querySelector('.console__fullword').textContent = on ? 'Leave' : 'Full screen';
+    }
+    fitConsole();
+  }
+  function initFullScreen() {
+    var b = $('cp-full');
+    if (b) b.addEventListener('click', function () {
+      var root = document.documentElement;
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else if (inFullScreen()) {
+        say('The browser itself is full screen: press F11 (on a Mac, Control-Command-F) to leave it.');
+      } else if (root.requestFullscreen || root.webkitRequestFullscreen) {
+        var asked = (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+        if (asked && asked.catch) asked.catch(function () { say('The browser would not go full screen here; press F11 instead.', true); });
+      } else {
+        say('This browser has no full screen for a page; press F11 instead.', true);
+      }
+    });
+    document.addEventListener('fullscreenchange', syncFullScreen);
+    document.addEventListener('webkitfullscreenchange', syncFullScreen);
+    window.addEventListener('resize', syncFullScreen);
+    syncFullScreen();
+  }
+  // the worker's tiles set the select each group names; a select set any other way lights its tile
+  function initTiles() {
+    Array.prototype.forEach.call(document.querySelectorAll('.wtiles[data-for]'), function (group) {
+      var select = $(group.getAttribute('data-for'));
+      if (!select) return;
+      var tiles = group.querySelectorAll('.wtile');
+      function light() {
+        Array.prototype.forEach.call(tiles, function (t) { t.setAttribute('aria-pressed', Number(t.getAttribute('data-index')) === select.selectedIndex ? 'true' : 'false'); });
+      }
+      Array.prototype.forEach.call(tiles, function (t) {
+        t.addEventListener('click', function () { select.selectedIndex = Number(t.getAttribute('data-index')); select.dispatchEvent(new Event('change', { bubbles: true })); });
+      });
+      select.addEventListener('change', light);
+      light();
+    });
   }
   function initConsole() {
     var c = $('console');
     if (!c) return;
+    initFlash();
+    initFullScreen();
+    initTiles();
     // the deck's foot holds the page's message; Clear empties it
     // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
@@ -1649,6 +1869,8 @@
     });
     $('cp-task-queue').addEventListener('click', queueTask);
     $('cp-w-add').addEventListener('click', addWorker);
+    $('cp-a-run').addEventListener('click', runAgent);
+    $('cp-a-import').addEventListener('click', importAgent);
     $('cp-prompt-ask').addEventListener('click', function () { askClaude(false); });
     $('cp-prompt-task').addEventListener('click', function () { askClaude(true); });
     $('cp-run-workers').addEventListener('click', function () { dispatch('workers.yml', 'the workers'); });
@@ -1680,9 +1902,12 @@
   // vocabulary is .github/symphony/assistant.md there). The action posts a progress comment first,
   // edits it as it works, and when the run ends writes a header in front of whatever the comment
   // holds, so the page compares bodies, never counts comments, and reads a body as the answer only
-  // once that header opens it. The page executes only the few lines of the fenced block the answer
-  // may end with, each of them a read of what the page already shows: nothing here writes to the
-  // repository but the label, the issue and the comments, each on a press.
+  // once that header opens it. The page executes by itself only the lines of the fenced block the
+  // answer may end with that read what the page already shows; a line that would change something
+  // is offered as a button that presses the panel's own button for it, as the person, so nothing
+  // here writes to the repository but the label, the issue and the comments, each on a press, and
+  // what the person presses. The assistant is the Ask Claude bar at the console's foot, on every
+  // tab, and its answer opens in a drawer above the bar.
   var ASSISTANT_LABEL = 'assistant';
   // the file the repository's workflow appends to the assistant's system prompt: a repository
   // without it on its default branch has no assistant, and a question there would run as an
@@ -1799,6 +2024,7 @@
     a.login = shownLogin;
     clear($('cp-as-answer'));
     $('cp-as-actions').textContent = '';
+    assistantDrawer(false);
     assistantRedraw();
     assistantButtons(false, false, false);
     if (!s.repo) { assistantWords(['No repository is chosen.']); return; }
@@ -1977,6 +2203,7 @@
     a.watching = true;
     clear($('cp-as-answer'));
     $('cp-as-actions').textContent = '';
+    assistantDrawer(false);
     assistantButtons(true, true, false);
     assistantWaitingWords();
     assistantSchedule();
@@ -2067,7 +2294,10 @@
   // context, is shown as words beside the page's own Open #N links rather than as a link
   function assistantShow(body) {
     var box = $('cp-as-answer');
-    box.innerHTML = markdown(body.replace(/<img\b[^>]*>/gi, ''));
+    // the symphony block is the page's to act on, shown as the actions above the answer, not as code
+    // the same block assistantBlock reads, so what is hidden is exactly what is acted on
+    box.innerHTML = markdown(body.replace(/\r/g, '').replace(/<img\b[^>]*>/gi, '').replace(ASSISTANT_BLOCK, '$1'));
+    assistantDrawer(true);
     var links = box.querySelectorAll('a');
     for (var i = 0; i < links.length; i++) {
       var host = '';
@@ -2095,8 +2325,9 @@
   // The lines of the answer's fenced block whose info string is symphony, read from the raw comment,
   // since the renderer drops the fence with its info string. Only the five forms are acted on, each
   // of them a read of what the page already shows; any other line is shown as written.
+  var ASSISTANT_BLOCK = /(^|\n)```symphony[ \t]*\n([\s\S]*?)\n[ \t]*```/;
   function assistantBlock(body) {
-    var m = /(^|\n)```symphony[ \t]*\n([\s\S]*?)\n[ \t]*```/.exec(String(body).replace(/\r/g, ''));
+    var m = ASSISTANT_BLOCK.exec(String(body).replace(/\r/g, ''));
     return m ? m[2].split('\n').map(function (l) { return l.trim(); }).filter(Boolean) : [];
   }
   function assistantRun(body) {
@@ -2110,6 +2341,12 @@
       else if ((m = /^open\s+#([0-9]{1,9})$/i.exec(line))) said = assistantOpen(Number(m[1]));
       else if ((m = /^filter\s+(blocked|todo|mine|none)$/i.exec(line))) said = assistantFilter(m[1].toLowerCase());
       else if ((m = /^show\s+(queue|blockers|overlaps|given|dependencies)$/i.exec(line))) said = assistantShowSection(m[1].toLowerCase());
+      else if ((m = /^tab\s+([a-z]{1,20})$/i.exec(line))) said = assistantTab(m[1].toLowerCase());
+      else if ((m = /^run\s+(workers|board|checks|metrics)$/i.exec(line))) said = assistantRunOffer(m[1].toLowerCase());
+      else if ((m = /^give\s+#([0-9]{1,9})\s+to\s+([a-z0-9-]{1,39})$/i.exec(line))) said = assistantGiveOffer(Number(m[1]), m[2].toLowerCase());
+      else if ((m = /^merge\s+#([0-9]{1,9})$/i.exec(line))) said = assistantMergeOffer(Number(m[1]));
+      else if ((m = /^task:?\s+(.{1,200})$/i.exec(line))) said = assistantTaskOffer(m[1].trim());
+      else if ((m = /^ask(?:\s+#([0-9]{1,9}))?\s*:?\s+(.{1,2000})$/i.exec(line))) said = assistantAskOffer(m[1] || '', m[2].trim());
       else said = 'Not acted on, shown as written: ' + line;
       if (i) add(box, ' ');
       add(box, said);
@@ -2148,7 +2385,8 @@
   // marks the focused row and hides the rows the filter leaves out, in every task table, and says
   // so above the tables; called again whenever the tables are rendered afresh
   function assistantRedraw() {
-    var rows = document.querySelectorAll('#cp-app table.admin__stack tbody tr[data-number]');
+    // the task tables alone: the Pull requests tab's rows carry data-number too, for "merge #N"
+    var rows = document.querySelectorAll(CONSOLE_TASK_TABLES.map(function (id) { return '#' + id + ' tbody tr[data-number]'; }).join(','));
     var out = { row: null, shown: 0, total: rows.length };
     for (var i = 0; i < rows.length; i++) {
       var tr = rows[i];
@@ -2192,10 +2430,186 @@
     }
     return 'The board has no ' + name + ' section yet.';
   }
+  // A tab the answer names opens, as a rail button would; only the rail's own tabs
+  function assistantTab(name) {
+    var tab = consoleTabs().filter(function (t) { return t.getAttribute('data-tab') === name; })[0];
+    if (!tab) return 'Not acted on: the panel has no tab "' + name + '".';
+    showTab(name);
+    return 'Opened the ' + tab.textContent.replace(/[0-9]+$/, '').replace(/^\W+/, '').trim() + ' tab.';
+  }
+
+  // The lines that would change the repository or fill a form are offered, never run: each is a
+  // button that says what it does and, on a press, runs the panel's own handler for the same thing,
+  // as the person signed in, once. Claude's answer can be steered by any text it read (an issue
+  // anyone may open on a public repository), so a press is the person's word for each change, and
+  // a press made after the page moved to another repository or another sign-in does nothing. A
+  // Refresh of the same repository keeps the buttons; each reads what it acts on when pressed. A
+  // run that refuses (returns false) gives the button back, so a press made too early is not lost.
+  function assistantOffer(label, words, run) {
+    var a = assistant, repo = a.repo, login = a.login;
+    var row = el('div', 'console__askact');
+    var b = btn(label, false, function () {
+      if (a !== assistant || repo !== state.repo || login !== shownLogin) { say('That button belonged to an answer for ' + repo + ' as ' + login + ', and the page has moved on; ask again.', true); return; }
+      b.disabled = true;
+      if (run() === false) b.disabled = false;
+    });
+    add(row, b, ' ', words);
+    return row;
+  }
+  var ASSISTANT_RUNS = { workers: 'cp-run-workers', board: 'cp-run-board', checks: 'cp-run-ci', metrics: 'cp-run-metrics' };
+  function assistantRunOffer(key) {
+    var target = $(ASSISTANT_RUNS[key]);
+    var name = target ? target.querySelector('.launch__name').textContent : key;
+    return assistantOffer(name, 'Starts that workflow on the default branch, as you, as the Command tab\'s button does.', function () { $(ASSISTANT_RUNS[key]).click(); });
+  }
+  function assistantGiveOffer(n, name) {
+    var g = sortIssues(state.issues);
+    var it = g.queue.concat(g.given, g.blocked, g.blockers).filter(function (x) { return x.number === n; })[0];
+    if (!it) return 'Not offered: #' + n + ' is not an issue the page can give, one in the Queue, Given to workers, Blocked or Blockers.';
+    if (workerNames().indexOf(name) < 0) return 'Not offered: no worker named ' + name + ' is registered.';
+    return assistantOffer('Give #' + n + ' to ' + name, '"' + it.title + '": puts the label worker:' + name + ' on it, as the Tasks tab\'s Give to does.', function () {
+      var g2 = sortIssues(state.issues);
+      var now = g2.queue.concat(g2.given, g2.blocked, g2.blockers).filter(function (x) { return x.number === n; })[0];
+      if (!now) { say('#' + n + ' can no longer be given: it is claimed, in review or closed since the answer came.', true); return false; }
+      giveTo(now, name);
+    });
+  }
+  function assistantMergeOffer(n) {
+    var pr = state.pulls.filter(function (x) { return x.number === n; })[0];
+    if (!pr) return 'Not offered: #' + n + ' is not an open pull request the page lists.';
+    return assistantOffer('Merge #' + n + '...', '"' + pr.title + '" into ' + pr.base.ref + ': opens the Pull requests tab and presses its Merge, and you confirm there.', function () {
+      var row = assistantPullRow(n);
+      var m = row ? Array.prototype.filter.call(row.querySelectorAll('button'), function (x) { return /^(Merge|Confirm: merge)\b/.test(x.textContent); })[0] : null;
+      if (!m) { say('#' + n + ' is no longer on the Pull requests tab; press Refresh.', true); return false; }
+      assistantDrawer(false);
+      revealTab(row);
+      scrollInDeck(row, { block: 'center' });
+      var cur = state.pulls.filter(function (x) { return x.number === n; })[0] || pr;
+      if (m.disabled) { say('#' + n + ' cannot be merged from here yet: ' + (cur.draft ? 'it is a draft.' : 'its checks have not all passed, or are still being read.'), true); return false; }
+      if (!m.getAttribute('data-armed')) m.click();
+      say('Press "' + m.textContent + '" beside #' + n + ' to merge it, or Cancel.');
+    });
+  }
+  // the pull request's element on the Pull requests tab, by its data-number, or else the row whose
+  // first link is its number, as the table drew it before the tab's pictures
+  function assistantPullRow(n) {
+    var tab = $('tab-pulls');
+    if (!tab) return null;
+    var el1 = tab.querySelector('[data-number="' + n + '"]');
+    if (el1) return el1;
+    return Array.prototype.filter.call(tab.querySelectorAll('tr'), function (tr) {
+      var a = tr.querySelector('a');
+      return !!a && a.textContent === '#' + n;
+    })[0] || null;
+  }
+  function assistantTaskOffer(title) {
+    return assistantOffer('Draft the task', '"' + title + '": fills Queue a task with this title; you write the goal and the acceptance and press Queue.', function () {
+      assistantDrawer(false);
+      $('cp-task-title').value = title;
+      revealTab($('cp-task-title'));
+      $('cp-task-goal').focus({ preventScroll: true });
+      scrollInDeck($('cp-task-title'));
+    });
+  }
+  function assistantAskOffer(target, text) {
+    return assistantOffer(target ? 'Draft @claude on #' + target : 'Draft @claude on a new issue', '"' + text + '": fills Ask Claude to do it; Claude works on it with the tools that write only once you press Ask Claude there.', function () {
+      assistantDrawer(false);
+      $('cp-prompt').value = text;
+      $('cp-prompt-target').value = target;
+      revealTab($('cp-prompt'));
+      $('cp-prompt').focus({ preventScroll: true });
+      scrollInDeck($('cp-prompt'));
+    });
+  }
+
+  // the drawer above the bar holds the answer; Answer opens it again once closed
+  function assistantDrawer(open) {
+    var d = $('cp-as-drawer'), t = $('cp-as-toggle');
+    if (!d) return;
+    var has = !!$('cp-as-answer').firstChild;
+    d.hidden = !(open && has);
+    t.classList[has ? 'remove' : 'add']('hidden');
+    t.setAttribute('aria-expanded', d.hidden ? 'false' : 'true');
+    t.textContent = d.hidden ? 'Answer' : 'Hide answer';
+  }
+  // the box grows with the question, up to the few lines the bar allows, and Enter sends it
+  function assistantFit() {
+    var q = $('cp-as-q');
+    q.style.height = 'auto';
+    q.style.height = q.scrollHeight + 2 + 'px';
+  }
+  // The bar and its drawer are made here, into the frame's empty #cp-askbar (which the frame hides
+  // while it is empty) and over the foot of the stage, since the bar scrolls inside itself and would
+  // clip a drawer it held
+  function assistantBuildBar() {
+    var bar = $('cp-askbar'), stage = document.querySelector('#console .console__stage');
+    if (!bar || !stage || $('cp-as-q')) return;
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'Ask Claude');
+    var row = el('div', 'console__askrow');
+    add(row, el('span', 'console__askname', '❖ Ask Claude'));
+    var box = el('div', 'console__askbox hidden');
+    box.id = 'cp-as-box';
+    var q = el('textarea');
+    q.id = 'cp-as-q';
+    q.rows = 1;
+    q.setAttribute('aria-label', 'The question');
+    q.placeholder = 'Ask, or tell Claude what to do here (Enter sends)';
+    var ask = el('button', 'console__primary', 'Ask');
+    ask.id = 'cp-as-ask';
+    var stop = el('button', 'quiet hidden', 'Stop watching');
+    stop.id = 'cp-as-stop';
+    var again = el('button', 'quiet hidden', 'Ask again');
+    again.id = 'cp-as-again';
+    [ask, stop, again].forEach(function (b) { b.type = 'button'; });
+    add(box, q, ask, stop, again);
+    var st = el('p', 'admin__lead', 'Reading...');
+    st.id = 'cp-as-state';
+    var toggle = el('button', 'quiet hidden', 'Answer');
+    toggle.id = 'cp-as-toggle';
+    toggle.type = 'button';
+    toggle.setAttribute('aria-controls', 'cp-as-drawer');
+    toggle.setAttribute('aria-expanded', 'false');
+    add(row, box, st, toggle);
+    bar.appendChild(row);
+    var drawer = el('div', 'console__askdrawer');
+    drawer.id = 'cp-as-drawer';
+    drawer.hidden = true;
+    drawer.setAttribute('role', 'region');
+    drawer.setAttribute('aria-label', 'Claude’s answer');
+    var head = el('div', 'console__askhead');
+    var close = el('button', 'quiet', 'Close');
+    close.id = 'cp-as-close';
+    close.type = 'button';
+    add(head, el('strong', '', 'Claude’s answer'), close);
+    var body = el('div', 'console__askbody');
+    var answer = el('div', 'control__answer control__assistant');
+    answer.id = 'cp-as-answer';
+    var acts = el('div', 'console__askactions');
+    acts.id = 'cp-as-actions';
+    add(body, acts, answer);
+    add(drawer, head, body);
+    stage.appendChild(drawer);
+  }
   function initAssistant() {
+    assistantBuildBar();
     $('cp-as-ask').addEventListener('click', assistantAsk);
     $('cp-as-stop').addEventListener('click', function () { assistantStop('pressed'); });
     $('cp-as-again').addEventListener('click', function () { if (assistant.last) { $('cp-as-q').value = assistant.last; assistantAsk(); } });
+    $('cp-as-q').addEventListener('input', assistantFit);
+    $('cp-as-q').addEventListener('keydown', function (e) {
+      // 229 is the key a browser reports while an input method composes, Safari's last Enter included
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      if (!$('cp-as-ask').disabled) assistantAsk();
+    });
+    $('cp-as-toggle').addEventListener('click', function () { assistantDrawer($('cp-as-drawer').hidden); });
+    $('cp-as-close').addEventListener('click', function () { assistantDrawer(false); $('cp-as-toggle').focus(); });
+    // Escape shuts the drawer from inside it or from the bar
+    [$('cp-as-drawer'), $('cp-askbar')].forEach(function (n) {
+      n.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cp-as-drawer').hidden) { assistantDrawer(false); $('cp-as-toggle').focus(); } });
+    });
+    if ($('cp-as-goto')) $('cp-as-goto').addEventListener('click', function () { $('cp-as-q').focus(); });
   }
 
   /* ============================================================
@@ -2846,13 +3260,14 @@
   // reset counts as empty, and a slot with a window at 90 percent or more is held until it resets,
   // or for five hours from its reading when no reset is known.
   var POOL_BRANCH = 'pool';
-  var POOL_FILE = /^slot-(main|[1-8])\.(run|probe|cswap)\.json$/;
+  var POOL_FILE = /^slot-(main|[1-9]|[12][0-9]|3[0-2])\.(run|probe|cswap)\.json$/;
   var POOL_THRESHOLD = 0.9;
   var POOL_UNKNOWN_HOLD_MS = 5 * 3600 * 1000;
   var POOL_WINDOWS = [['five_hour', '5 hours'], ['seven_day', '7 days']];
   var ASSIGNMENTS_PATH = '.github/symphony/accounts.json';
-  var CHOICES = ['main', 'auto', '1', '2', '3', '4', '5', '6', '7', '8'];
-  var SLOT_ORDER = ['1', '2', '3', '4', '5', '6', '7', '8', 'main'];
+  // an organization's pool holds every member's tokens, so it has room for 32, as tools/pool.py's SLOTS
+  var POOL_SLOTS = Array.apply(null, Array(32)).map(function (x, i) { return String(i + 1); });
+  var CHOICES = ['main', 'auto'].concat(POOL_SLOTS);
   var reading = 0;
 
   function moment(v) {
@@ -2889,19 +3304,6 @@
       if (resets > now && (until == null || resets > until)) until = resets;
     });
     return until;
-  }
-  // the slot auto would take now, as pool.py's pick does: the most room in five hours, then seven
-  // days, a slot no reading names after every one a reading does, the list's order last
-  function autoPick(rows) {
-    var free = rows.filter(function (r) { return r.slot !== 'main' && !r.until; });
-    if (!free.length) return null;
-    free.sort(function (a, b) {
-      var ka = [a.empty ? 1 : 0].concat(POOL_WINDOWS.map(function (p) { return a.found.windows[p[0]] ? used(a.found.windows[p[0]].utilization) : 0; }));
-      var kb = [b.empty ? 1 : 0].concat(POOL_WINDOWS.map(function (p) { return b.found.windows[p[0]] ? used(b.found.windows[p[0]].utilization) : 0; }));
-      for (var i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
-      return SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot);
-    });
-    return free[0].slot;
   }
   function percent(v) { return v == null ? 'n/a' : Math.round(v * 100) + '%'; }
   function windowText(each) {
@@ -2953,132 +3355,20 @@
     }).catch(function (e) { if (e.status === 404) return []; throw e; });
   }
 
-  function showSlots(repo, by) {
-    var body = $('tk-slots').querySelector('tbody');
-    clear(body);
-    var now = Date.now();
-    var rows = SLOT_ORDER.filter(function (slot) { return by[slot]; }).map(function (slot) {
-      var found = slotWindows(by[slot], now);
-      return { slot: slot, found: found, until: heldUntil(found, now), empty: !Object.keys(found.windows).length,
-               at: by[slot].map(function (r) { return r.at; }).sort().pop(), sources: by[slot].map(function (r) { return r.source; }) };
-    });
-    if (!rows.length) {
-      var tr = el('tr');
-      add(tr, el('td', 'admin__none', 'No reading yet on ' + repo + '\'s branch pool. Press "Read every slot now", or run python3 scripts/tokens.py usage on your machine for cswap\'s, Fable\'s included.')).firstChild.colSpan = 6;
-      body.appendChild(tr);
-    }
-    rows.forEach(function (r) {
-      var tr = el('tr');
-      add(tr, el('th', '', r.slot === 'main' ? 'main (CLAUDE_CODE_OAUTH_TOKEN)' : 'slot ' + r.slot + ' (SYMPHONY_CLAUDE_' + r.slot + ')'));
-      POOL_WINDOWS.forEach(function (p) { add(tr, el('td', '', windowText(r.found.windows[p[0]]))); });
-      add(tr, el('td', '', r.found.scoped.length ? r.found.scoped.map(function (s) { return s.name + ': ' + windowText(s); }).join('; ') : 'none read (only cswap reads them)'));
-      add(tr, el('td', r.until ? 'admin__warn' : '', r.until ? 'held until ' + stamp(new Date(r.until).toISOString()) : 'free'));
-      var last = add(el('td'), timeEl(r.at), ' from ' + r.sources.filter(function (s, i, a) { return a.indexOf(s) === i; }).map(sourceWord).join(', '));
-      add(tr, last);
-      body.appendChild(tr);
-    });
-    var pick = autoPick(rows);
-    var held = rows.filter(function (r) { return r.slot !== 'main' && r.until; });
-    $('tk-auto').textContent = pick
-      ? 'Auto would take slot ' + pick + ' now, the read slot with the most room. A slot with no reading comes after every read one, and a held slot is passed over until it resets.'
-      : held.length ? 'Every read slot is held; the first is free at ' + stamp(new Date(Math.min.apply(null, held.map(function (r) { return r.until; }))).toISOString()) + '. A worker on auto waits until then.'
-      : 'No slot is read yet, so auto takes the first slot of SYMPHONY_CLAUDE_ACCOUNTS.';
-  }
-
-  function choiceSelect(id, value) {
-    var s = el('select');
-    s.id = id;
-    CHOICES.forEach(function (c) {
-      var o = el('option', '', c === 'main' ? 'main (CLAUDE_CODE_OAUTH_TOKEN)' : c === 'auto' ? 'auto (the pool)' : 'slot ' + c);
-      o.value = c;
-      if (c === value) o.selected = true;
-      s.appendChild(o);
-    });
-    return s;
-  }
-  function showAssignments(a, workers) {
-    var box = $('tk-assign');
-    clear(box);
-    if (a.broken) none(box, ASSIGNMENTS_PATH + ' is there but does not parse as JSON; saving here replaces it.');
-    add(box, add(el('div', 'admin__row'), add(el('div'), add(el('label', '', 'Every worker not named below'), ''), choiceSelect('tk-default', a['default']))));
-    box.querySelector('label').htmlFor = 'tk-default';
-    var names = workers.slice();
-    Object.keys(a.workers).forEach(function (n) { if (names.indexOf(n) < 0 && WORKER_NAME.test(n)) names.push(n); });
-    if (!names.length) none(box, 'No worker in Actions is registered yet: the control panel\'s "Add a worker" makes one.');
-    names.forEach(function (n, i) {
-      var row = el('div', 'admin__row'), cell = el('div'), label = el('label', '', n + (workers.indexOf(n) < 0 ? ' (no longer registered)' : ''));
-      var choice = a.workers[n] && CHOICES.indexOf(a.workers[n]) >= 0 ? a.workers[n] : 'default';
-      var s = choiceSelect('tk-w-' + i, choice);
-      var o = el('option', '', 'the default above');
-      o.value = 'default';
-      s.insertBefore(o, s.firstChild);
-      if (choice === 'default') o.selected = true;
-      s.setAttribute('data-worker', n);
-      label.htmlFor = s.id;
-      add(box, add(row, add(cell, label, s)));
-    });
-    add(box, add(el('p', 'admin__bar'), btn('Propose these assignments as a pull request', false, saveAssignments)));
-  }
-  function chosenAssignments() {
-    var out = { 'default': $('tk-default').value, workers: {} };
-    Array.prototype.forEach.call(document.querySelectorAll('#tk-assign select[data-worker]'), function (s) {
-      if (s.value !== 'default') out.workers[s.getAttribute('data-worker')] = s.value;
-    });
-    return out;
-  }
-  // main takes only pull requests, so the change is a branch of its own and a pull request, which the
-  // repository's check and its owner then take as any other
-  function saveAssignments() {
-    var repo = tokensRepo();
-    if (!repo) return;
-    var text = JSON.stringify(chosenAssignments(), null, 2) + '\n';
-    var branch = 'symphony/accounts-' + new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
-    var base = 'main', existing = null;
-    say('Opening a pull request that sets ' + ASSIGNMENTS_PATH + '...');
-    gh('GET', '/repos/' + repo).then(function (r) {
-      base = r.data.default_branch || 'main';
-      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(base));
-    }).then(function (r) {
-      return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + branch, sha: r.data.object.sha });
-    }).then(function () {
-      return gh('GET', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH + '?ref=' + encodeURIComponent(branch)).then(function (r) { existing = r.data && r.data.sha; }).catch(function (e) { if (e.status !== 404) throw e; });
-    }).then(function () {
-      var body = { message: 'Which Claude account each worker in Actions runs on', content: btoa(text), branch: branch };
-      if (existing) body.sha = existing;
-      return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, body);
-    }).then(function () {
-      return gh('POST', '/repos/' + repo + '/pulls', { title: 'Which Claude account each worker in Actions runs on', head: branch, base: base,
-        body: 'Sets ' + ASSIGNMENTS_PATH + ' from the control panel\'s Tokens tab: main is CLAUDE_CODE_OAUTH_TOKEN, a number is that slot\'s SYMPHONY_CLAUDE_<slot>, and auto takes the slot of SYMPHONY_CLAUDE_ACCOUNTS with the most room at the start of each run (docs/setup/claude-tokens.md).' });
-    }).then(function (r) {
-      clear($('msg'));
-      add($('msg'), 'Opened ', link(r.data.html_url, 'pull request #' + r.data.number), '; the assignments take effect once it merges.');
-      $('msg').className = 'admin__box';
-    }).catch(function (e) { say(e.message + (e.status === 403 || e.status === 404 ? ' Proposing the change needs Contents and Pull requests: read and write on the repository.' : ''), true); });
-  }
-
   function loadTokens() {
     var asked = ++reading;
     var repo = tokensRepo();
-    var slots = $('tk-slots').querySelector('tbody');
-    clear(slots);
-    clear($('tk-assign'));
-    $('tk-auto').textContent = '';
     tokensFor = repo;
     if (!repo) { say('Choose a repository in the side column first.', true); return; }
     writeKey(KEY_REPO, repo, true);
-    var tr = el('tr');
-    add(tr, el('td', 'admin__none', 'Reading the branch pool of ' + repo + '...')).firstChild.colSpan = 6;
-    slots.appendChild(tr);
     readPool(repo).catch(function (e) { if (e.status === 404) return {}; throw e; }).then(function (by) {
-      if (asked === reading) { showSlots(repo, by); tk.pool = by; drawTiles(); }
-    }).catch(function (e) { if (asked === reading) { clear(slots); say(e.message, true); } });
-    showAddSlot(repo, asked);
-    Promise.all([readAssignments(repo), readActionWorkers(repo)]).then(function (both) {
-      if (asked === reading) showAssignments(both[0], both[1]);
-    }).catch(function (e) { if (asked === reading) none($('tk-assign'), 'The assignments could not be read: ' + e.message); });
+      if (asked === reading) { tk.pool = by; drawTiles(); }
+    }).catch(function (e) { if (asked === reading) say(e.message, true); });
+    readTokenPlace(repo, asked);
   }
   // one word from each slot of SYMPHONY_CLAUDE_ACCOUNTS through the workflow Pool, which spends that
   // word of each slot's window, so it runs only on this press (the owner's choice, 2026-10-17)
+  var PROBE_SETTLE_MS = 100 * 1000;
   function probeSlots() {
     var repo = tokensRepo();
     if (!repo) return;
@@ -3086,7 +3376,9 @@
     gh('GET', '/repos/' + repo).then(function (r) {
       return gh('POST', '/repos/' + repo + '/actions/workflows/pool.yml/dispatches', { ref: r.data.default_branch || 'main' });
     }).then(function () {
-      say('Pool is queued: it asks each slot for one word, which spends that word of the slot\'s window, and writes the readings to the branch pool in a minute or two. Press "Read the pool again" then.');
+      say('Reading every token: each spends one word of its window, and the tiles show the new use in a minute or two.');
+      var repoNow = repo;
+      setTimeout(function () { if (tokensRepo() === repoNow) loadTokens(); }, PROBE_SETTLE_MS);
     }).catch(function (e) { say(e.message + (e.status === 404 ? ' The repository has no workflow Pool yet (.github/workflows/pool.yml).' : e.status === 403 ? ' Starting a workflow needs Actions: read and write.' : ''), true); });
   }
   /* ---------- adding a slot: a Claude token sealed in this browser for GitHub ---------- */
@@ -3100,40 +3392,12 @@
   var ACCOUNTS_VARIABLE = SLOT_PREFIX + 'ACCOUNTS';
   var MAIN_SECRET = 'CLAUDE_CODE_OAUTH_TOKEN';
   var CROWD_VARIABLE = 'CLAUDE_CROWD';
-  var SEALEDBOX_JS = '/assets/js/vendor/sealedbox.js';
-  // built from pieces, as tools/check_docs.py's shapes are, so this file never looks like a secret
-  var SECRET_HEAD = 'sk-' + 'ant-';
-  var CLAUDE_TOKEN = new RegExp('^' + SECRET_HEAD + 'oat[0-9]{2}-[A-Za-z0-9_-]{20,}$');
-  var API_KEY = new RegExp(SECRET_HEAD + 'api');
   // the wizard's label shape (scripts/tokens.py LABEL_SHAPE): a word, never an e-mail address
   var SLOT_LABEL = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$/;
   var SECRETS_NEEDED = ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions (for a personal account\'s repository, the repository permissions Secrets and Variables).';
-  var sealer = null;
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
-  function loadSealer() {
-    if (sealer) return sealer;
-    sealer = new Promise(function (resolve, reject) {
-      if (window.sealedBox) { resolve(window.sealedBox); return; }
-      var s = document.createElement('script');
-      s.src = SEALEDBOX_JS;
-      s.onload = function () { window.sealedBox ? resolve(window.sealedBox) : reject(new Error('The sealing script loaded without its function.')); };
-      s.onerror = function () { sealer = null; reject(new Error('The sealing script could not be loaded; try again.')); };
-      document.head.appendChild(s);
-    });
-    return sealer;
-  }
-  function fromBase64(text) {
-    var bin = atob(text), out = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  function toBase64(bytes) {
-    var bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  }
-  function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return /^[1-8]$/.test(w); }); }
+  function slotWords(text) { return String(text || '').split(/[,\s]+/).filter(function (w) { return POOL_SLOTS.indexOf(w) >= 0; }); }
 
   // where a repository's slots live: its organization's secrets, or for a personal account's
   // repository, the repository's own
@@ -3166,105 +3430,38 @@
     });
   }
 
-  function showAddSlot(repo, asked) {
-    var box = $('tk-add');
-    clear(box);
-    none(box, 'Reading which slots ' + repo + ' has...');
+  // An organization's owners hold every token in its pool; anyone else only the ones they added
+  // (the owner, 2026-10-18). GitHub says who is an owner; a personal account is its own.
+  function ownsPlace(place) {
+    if (!shownLogin) return Promise.resolve(false);
+    if (!place.org) return Promise.resolve(place.owner.toLowerCase() === shownLogin.toLowerCase());
+    return gh('GET', '/orgs/' + place.owner + '/memberships/' + shownLogin).then(function (r) {
+      return !!(r.data && r.data.role === 'admin' && r.data.state === 'active');
+    }, function () { return false; });
+  }
+
+  // where the tokens live, which are set and their names and settings, read when the tab opens
+  function readTokenPlace(repo, asked) {
     var place = null, secrets = null;
-    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null }; drawTiles(); }
+    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
     }).then(function (found) {
       secrets = found;
-      return readTileVariables(place);
-    }).then(function (vars) {
+      return Promise.all([readTileVariables(place), ownsPlace(place)]);
+    }).then(function (both) {
+      var vars = both[0];
       if (asked !== reading) return;
+      tk.admin = both[1];
       tk.place = place;
       tk.secrets = secrets;
       tk.settings = vars[0];
       tk.labels = vars[1];
       drawTiles();
-      clear(box);
-      drawAddSlot(box, repo, place, secrets);
-    }).catch(function (e) { if (asked === reading) { clear(box); none(box, 'The slots could not be read: ' + e.message); } });
-  }
-  function drawAddSlot(box, repo, place, secrets) {
-    var unread = secrets.unread;
-    // claude setup-token on a GitHub Actions runner, its token sealed there for GitHub (addByActions),
-    // after the dialog that sets the new token's slot, name and settings
-    var one = btn('Add a Claude account', false, function () { openTokenDialog('', true); });
-    one.id = 'tk-one';
-    add(box, add(el('p', 'admin__bar'), one));
-    add(box, el('p', 'admin__lead', 'A GitHub Actions run makes the token: in about a minute this page shows a claude.ai sign-in button and a box for the code claude.ai gives. The slot you pick is saved, and ' + MAIN_SECRET + ' too while it is not set.'));
-    var app = add(el('p', 'admin__lead'), 'The Claude GitHub App, which @claude and the workers need: ', link(claudeAppLink(place), 'install it on ' + repo), ' (GitHub says so if it is installed already).');
-    add(box, app);
-    claudeAppSeen(place).then(function (seen) { if (seen && app.parentNode) app.parentNode.removeChild(app); });
-    if (unread) none(box, 'GitHub would not list the secrets (' + unread.message + '), so which slots are set is not known here.');
-    else if (!TILE_SLOTS.some(function (slot) { return secrets[slotSecret(slot)]; })) none(box, 'No token is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
-
-    // choosing the slot, a label or renewing one stays a pasted token, folded away under the button
-    var more = el('details', 'control__token');
-    add(more, el('summary', '', 'Paste a token instead: choose the slot, add a label, or renew one'));
-    add(more, add(el('p', 'admin__lead'), 'Run ', el('code', '', 'claude setup-token'), ' signed in to the account and paste what it prints. The page seals it in this browser and sends GitHub only the sealed box; it never stores or shows it. Or ',
-      link('https://codespaces.new/' + repo, 'open a Codespace on ' + repo), ' for the whole setup, the repository\'s settings included.'));
-    add(box, more);
-    box = more;
-    var free = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return unread || !secrets[slotSecret(n)]; });
-    var pick = el('select');
-    pick.id = 'tk-add-slot';
-    ['main', '1', '2', '3', '4', '5', '6', '7', '8'].forEach(function (slot) {
-      var o = el('option', '', (slot === 'main' ? 'main (' + MAIN_SECRET + ')' : 'slot ' + slot + ' (' + slotSecret(slot) + ')') + (!unread && secrets[slotSecret(slot)] ? ', renew' : ''));
-      o.value = slot;
-      if (slot === (free[0] || '1')) o.selected = true;
-      pick.appendChild(o);
-    });
-    var label = el('input');
-    label.id = 'tk-add-label';
-    label.type = 'text';
-    label.maxLength = 40;
-    label.autocomplete = 'off';
-    label.placeholder = 'runners';
-    var token = el('input');
-    token.id = 'tk-add-token';
-    token.type = 'password';
-    token.autocomplete = 'off';
-    token.spellcheck = false;
-    token.placeholder = SECRET_HEAD + 'oat01-...';
-    function field(input, text) {
-      var l = el('label', '', text);
-      l.htmlFor = input.id;
-      return add(el('div'), l, input);
-    }
-    add(box, add(el('div', 'admin__row'), field(pick, 'Slot'), field(label, 'Label (a word, optional)')));
-    add(box, add(el('div', 'admin__row'), field(token, 'The token claude setup-token printed')));
-    var reach = el('div', 'admin__checks');
-    reach.id = 'tk-add-reach';
-    if (place.org) {
-      add(reach, el('p', 'admin__lead', 'Repositories that see the secret (the ones it already reaches keep it):'));
-      var mine = repos().filter(function (r) { return r.split('/')[0].toLowerCase() === place.owner.toLowerCase(); });
-      if (mine.indexOf(repo) < 0) mine.unshift(repo);
-      mine.forEach(function (name) {
-        var c = el('input');
-        c.type = 'checkbox';
-        c.value = name;
-        // the repository chosen and the bench, which reads the slots, are ticked; the rest are offered
-        c.checked = name === repo || /\/coordbench$/i.test(name);
-        add(reach, add(el('label'), c, ' ' + name));
-      });
-    } else add(reach, el('p', 'admin__lead', repo + ' belongs to a personal account, so the slot is a secret of that repository alone.'));
-    add(box, reach);
-    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', false, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
+    }).catch(function (e) { if (asked === reading) say('The tokens could not be read: ' + e.message, true); });
   }
 
-  function reachIds(place, repo) {
-    if (!place.org) return Promise.resolve([]);
-    var names = Array.prototype.filter.call(document.querySelectorAll('#tk-add-reach input[type=checkbox]'), function (c) { return c.checked; }).map(function (c) { return c.value; });
-    if (!names.length) return Promise.reject(new Error('Tick at least one repository to see the secret.'));
-    return Promise.all(names.map(function (name) {
-      return gh('GET', '/repos/' + name).then(function (r) { return { name: name, id: r.data.id }; });
-    }));
-  }
   // a repository in crowd mode holds no Claude token (docs/setup/crowdsourcing.md), as the wizard refuses
   function refuseCrowd(names, place) {
     var orgWide = place.org ? gh('GET', place.base + '/variables/' + CROWD_VARIABLE).then(function (r) {
@@ -3308,18 +3505,6 @@
     });
   }
 
-  // a repository's own secret or variable of the same name outranks the organization's, as
-  // scripts/tokens.py warns, so the save says when the chosen repository holds one
-  function shadowed(place, repo, name, slot) {
-    if (!place.org) return Promise.resolve('');
-    function own(kind, n) { return readOne('/repos/' + repo + '/actions/' + kind + '/' + n).catch(function () { return null; }); }
-    return Promise.all([own('secrets', name), slot === 'main' ? null : own('variables', ACCOUNTS_VARIABLE)]).then(function (have) {
-      var out = '';
-      if (have[0]) out += ' But ' + repo + ' holds its own secret ' + name + ', which its workflows take in place of the organization\'s: delete it under the repository\'s Settings, Secrets and variables, Actions, or the new token goes unused there.';
-      if (have[1]) out += ' ' + repo + ' also holds its own ' + ACCOUNTS_VARIABLE + ' (' + have[1].value + '), which outranks the organization\'s list.';
-      return out;
-    });
-  }
   /* ---------- one press: a GitHub Actions run mints the next slot's token ---------- */
   // The page opens an issue on the repository and starts the workflow Token there
   // (.github/workflows/token.yml, tools/token_run.py) with the issue's number and the public key
@@ -3342,19 +3527,37 @@
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
   var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
 
+  // the sign-in in the token's dialog: a line that says where the run is, and the step it needs from
+  // the person, the claude.ai button and the code's box, under it
+  function signInView(title) {
+    var d = $('tk-dialog');
+    clear(d);
+    var box = el('div', 'tkdlg__form');
+    var line = el('p', 'admin__lead tkdlg__line');
+    line.id = 'tk-line';
+    var step = el('div', 'tkdlg__step');
+    var close = btn('Close', true, function () { d.close(); });
+    add(box, el('h3', 'console__boxh', title), line, step, add(el('p', 'admin__bar tkdlg__bar'), close));
+    add(d, box);
+    if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+    return {
+      tell: function (text, warn) { line.textContent = text; line.className = 'tkdlg__line ' + (warn ? 'admin__warn' : 'admin__lead'); },
+      step: step,
+      close: close
+    };
+  }
+
   function addByActions(repo, place, button, wanted) {
     if (button.disabled) return;
-    var issue = 0, slot = '', ids = [], key = null, mainMissing = false, step = 'secrets';
+    var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets';
+    var view = signInView(wanted && tk.secrets && tk.secrets[slotSecret(wanted)] ? 'Renew ' + tileName(wanted) : 'Add a token');
     button.disabled = true;
-    say('Starting the workflow Token on ' + repo + '...');
-    reachIds(place, repo).then(function (found) {
-      ids = found.map(function (f) { return f.id; });
-      return refuseCrowd(place.org ? found.map(function (f) { return f.name; }) : [repo], place);
-    }).then(function () {
+    view.tell('Starting the sign-in on GitHub Actions...');
+    refuseCrowd([repo], place).then(function () {
       return readSecrets(place);
     }).then(function (by) {
-      slot = wanted || ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
-      if (!slot) throw new Error('All eight slots are set; remove one with its X, or renew one from its tile.');
+      slot = wanted || POOL_SLOTS.filter(function (n) { return !by[slotSecret(n)]; })[0] || '';
+      if (!slot) throw new Error('All 32 slots are set; remove one with its X, or renew one from its tile.');
       mainMissing = slot !== 'main' && !by[MAIN_SECRET];
       return gh('GET', place.base + '/secrets/public-key');
     }).then(function (r) {
@@ -3371,11 +3574,12 @@
         { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), key: key.key, key_id: key.key_id } });
     }).then(function () {
       step = 'run';
-      say('The run is starting on GitHub Actions; the sign-in button appears here in about a minute.');
-      return followRun(repo, issue, key.key_id);
+      view.tell('The sign-in is starting; its button appears here in about a minute.');
+      return followRun(repo, issue, key.key_id, view);
     }).then(function (sealed) {
       step = 'secrets';
-      say('Saving ' + slotSecret(slot) + '...');
+      clear(view.step);
+      view.tell('Saving the token...');
       return storeSealed(place, repo, slot, sealed, key.key_id, ids, '').then(function () {
         if (mainMissing) return putSecret(place, place.base + '/secrets/' + MAIN_SECRET, sealed, key.key_id, ids).then(function () { return true; });
         return false;
@@ -3383,21 +3587,23 @@
     }).then(function (alsoMain) {
       closeRunIssue(repo, issue);
       button.disabled = false;
-      say(slotSecret(slot) + ' is saved and listed in ' + ACCOUNTS_VARIABLE + ' for auto and the bench' + (alsoMain ? ', and as ' + MAIN_SECRET + ', which @claude and the workers read and which was not set yet' : '') + '. Press "Read every slot now" to take its first reading.');
-      showAddSlot(repo, reading);
+      view.tell(tileName(slot) + ' is saved' + (alsoMain ? ', and as main too, which @claude and the workers read and which was not set yet' : '') + '. Its use shows on its tile after its first run, or press its tile and Read use now.');
+      view.close.textContent = 'Done';
+      readTokenPlace(repo, reading);
     }).catch(function (e) {
       if (issue) closeRunIssue(repo, issue, true);
       button.disabled = false;
+      clear(view.step);
       var hint = '';
       if (step === 'dispatch' && e.status === 404) hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml): pick symphony-template in the Repository box.';
       else if ((step === 'dispatch' || step === 'issue') && e.status === 403) hint = ACTIONS_NEEDED;
       else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = SECRETS_NEEDED;
-      say(e.message + hint, true);
+      view.tell(e.message + hint, true);
     });
   }
   // the issue's comments from the run, read every three seconds: the link shows the sign-in box, the
   // sealed box ends the wait, and a failure says what the run said
-  function followRun(repo, issue, keyId) {
+  function followRun(repo, issue, keyId, view) {
     var until = Date.now() + RUN_FOR_MS, shown = false;
     return new Promise(function (resolve, reject) {
       function look() {
@@ -3413,7 +3619,7 @@
             }
             if (lines[0] === TOKEN_MARK.link && !shown && /^https:\/\/claude\.(ai|com)\//.test(lines[1] || '')) {
               shown = true;
-              drawSignIn(repo, issue, lines[1]);
+              drawSignIn(repo, issue, lines[1], view);
             }
           }
           if (Date.now() > until) { reject(new Error('The run gave no token within 15 minutes; see its log under the repository\'s Actions, workflow Token.')); return; }
@@ -3423,10 +3629,10 @@
       setTimeout(look, RUN_POLL_MS);
     });
   }
-  function drawSignIn(repo, issue, url) {
-    var m = $('msg');
+  function drawSignIn(repo, issue, url, view) {
+    var m = view.step;
     clear(m);
-    m.className = 'admin__box';
+    view.tell('Sign in as the Claude account this token is for.');
     var open = btn('Sign in to claude.ai', false, function () { window.open(url, '_blank', 'noopener'); });
     var code = el('input');
     code.id = 'tk-code';
@@ -3440,11 +3646,11 @@
       send.disabled = true;
       code.disabled = true;
       gh('POST', '/repos/' + repo + '/issues/' + issue + '/comments', { body: TOKEN_MARK.code + '\n' + text }).then(function () {
-        add(m, el('p', 'admin__lead', 'Code sent; the run is making the token and this page saves it in a few seconds.'));
+        view.tell('Code sent; the run is making the token, and it is saved here in a few seconds.');
       }, function (e) { send.disabled = false; code.disabled = false; add(m, el('p', 'admin__warn', 'The code could not be sent: ' + e.message)); });
     });
-    add(m, el('p', 'admin__lead', '1. Sign in as the Claude account to add and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it here and send it.'));
-    add(m, add(el('p', 'admin__bar'), open, ' ', code, ' ', send));
+    add(m, el('p', 'admin__lead', '1. Press Sign in to claude.ai, sign in as the account and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it below and send it.'));
+    add(m, add(el('p', 'admin__bar'), open), add(el('p', 'admin__bar tkdlg__code'), code, ' ', send));
   }
   function closeRunIssue(repo, issue, failed) {
     return gh('PATCH', '/repos/' + repo + '/issues/' + issue, { state: 'closed', state_reason: failed ? 'not_planned' : 'completed' }).catch(function () { return null; });
@@ -3478,63 +3684,6 @@
       });
     }).catch(function (e) { e.stored = stored; throw e; });
   }
-  // The Claude GitHub App, which @claude and the workers need on the repository, installed from
-  // GitHub's own page opened for this one repository; the page offers it unless it can see the App on
-  // the repository's organization already
-  function claudeAppLink(place) {
-    return 'https://github.com/apps/claude/installations/new/permissions?target_id=' + place.ownerId + '&repository_ids[]=' + place.id;
-  }
-  function claudeAppSeen(place) {
-    if (!place.org) return Promise.resolve(false);
-    return gh('GET', '/orgs/' + place.owner + '/installations?per_page=100').then(function (r) {
-      return ((r.data && r.data.installations) || []).some(function (i) { return i.app_slug === 'claude' && i.repository_selection === 'all'; });
-    }, function () { return false; });
-  }
-
-  function saveSlot(repo, place, button) {
-    if (button.disabled) return;
-    var slot = $('tk-add-slot').value;
-    var labelText = $('tk-add-label').value.trim();
-    var input = $('tk-add-token');
-    // the token leaves the box at once, so a second press finds nothing to seal
-    var text = input.value.trim();
-    input.value = '';
-    if (API_KEY.test(text)) { say('That is an Anthropic API key, which Symphony never uses: paste the token claude setup-token prints, which starts ' + SECRET_HEAD + 'oat.', true); return; }
-    if (!CLAUDE_TOKEN.test(text)) { say('That is not the shape of the token claude setup-token prints (' + SECRET_HEAD + 'oat and two digits, then a long run of letters); nothing was saved. Paste it again.', true); return; }
-    if (labelText && !SLOT_LABEL.test(labelText)) { text = ''; say('A label is one word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address. Paste the token again with it.', true); return; }
-    button.disabled = true;
-    var name = slotSecret(slot), secretPath = place.base + '/secrets/' + name, ids = [], sealed = '', keyId = '', stored = false;
-    say('Sealing the token in this browser and saving ' + name + '...');
-    reachIds(place, repo).then(function (found) {
-      ids = found.map(function (f) { return f.id; });
-      return refuseCrowd(place.org ? found.map(function (f) { return f.name; }) : [repo], place);
-    }).then(function () {
-      return Promise.all([loadSealer(), gh('GET', place.base + '/secrets/public-key')]);
-    }).then(function (both) {
-      keyId = both[1].data.key_id;
-      sealed = toBase64(both[0](new TextEncoder().encode(text), fromBase64(both[1].data.key)));
-      // from here only the sealed box is held; the box empties so a second press seals nothing
-      text = '';
-    }).then(function () {
-      return storeSealed(place, repo, slot, sealed, keyId, ids, labelText).catch(function (e) { stored = !!e.stored; throw e; });
-    }).then(function () {
-      sealed = '';
-      return Promise.all([readOne(secretPath), shadowed(place, repo, name, slot)]);
-    }).then(function (both) {
-      var now = both[0];
-      button.disabled = false;
-      say(name + ' is saved' + (now && now.updated_at ? ', updated ' + stamp(now.updated_at) : '') + (slot === 'main' ? '.' : ', and ' + ACCOUNTS_VARIABLE + ' lists slot ' + slot + '. Press "Read every slot now" to take its first reading.') + both[1], !!both[1]);
-      showAddSlot(repo, reading);
-    }).catch(function (e) {
-      button.disabled = false;
-      text = '';
-      sealed = '';
-      // once the secret is in, a failed label or list leaves the token saved, so it is not asked for again
-      if (stored) say(name + ' is saved, but its label or ' + ACCOUNTS_VARIABLE + ' could not be written: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : '') + ' Add the slot to ' + ACCOUNTS_VARIABLE + ' on GitHub\'s variables page, or save the slot again.', true);
-      else say(e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : '') + ' Paste the token again to retry.', true);
-    });
-  }
-
   /* ---------- the tokens as tiles: settings on a click, an X to remove, + Add Token last ---------- */
   // Each token set on the repository's place is a square tile, main first and then the slots, and the
   // dashed + Add Token tile comes last, so tokens fill a row from the left and go on at the next.
@@ -3544,15 +3693,26 @@
   // the token comes back by itself once its limit resets. The X deletes the token's secret, its label
   // and its settings, and takes it off SYMPHONY_CLAUDE_ACCOUNTS.
   var SETTINGS_VARIABLE = SLOT_PREFIX + 'SETTINGS';
-  var TILE_SLOTS = ['main', '1', '2', '3', '4', '5', '6', '7', '8'];
+  var TILE_SLOTS = ['main'].concat(POOL_SLOTS);
   // not MODELS, which the cost page's prices hold in the same scope
   var TILE_MODELS = [['', 'The worker\'s own model'], ['claude-fable-5-1', 'Fable 5.1'], ['claude-opus-5-5', 'Opus 5.5'],
                 ['claude-sonnet-5-5', 'Sonnet 5.5'], ['claude-haiku-5-5', 'Haiku 5.5']];
   var EFFORTS = [['', 'The model\'s default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
-  // as tools/pool.py's MODEL_SHAPE, so the page never writes a value the workers would leave out
-  var MODEL_NAME = /^[a-z][a-z0-9.-]{0,63}(\[1m\])?$/;
-  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null };
+  // tools/pool.py takes only these models (KNOWN_MODELS), so the page never writes one it would leave out
+  function knownModel(m) { return TILE_MODELS.some(function (t) { return t[0] && t[0] === m; }); }
+  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' };
 
+  function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
+  function canChange(slot) {
+    return tk.admin || (!!shownLogin && ownerOf(slot).toLowerCase() === shownLogin.toLowerCase());
+  }
+  // eight hex digits, as tools/pool.py's TOKEN_ID, made once per token and kept while it is renewed
+  function newTokenId() {
+    var bytes = new Uint8Array(4);
+    window.crypto.getRandomValues(bytes);
+    return Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+  var LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
   function tileName(slot) { return tk.labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot); }
   function modelWord(model) {
     for (var i = 0; i < TILE_MODELS.length; i++) if (TILE_MODELS[i][0] === (model || '')) return i ? TILE_MODELS[i][1] : 'Worker\'s model';
@@ -3599,7 +3759,7 @@
     var labels = listed(place.base + '/variables', 'variables').then(function (list) {
       var out = {};
       list.forEach(function (v) {
-        var m = /^SYMPHONY_CLAUDE_([1-8])_LABEL$/.exec(v.name || '');
+        var m = /^SYMPHONY_CLAUDE_([1-9]|[12][0-9]|3[0-2])_LABEL$/.exec(v.name || '');
         if (m && SLOT_LABEL.test(v.value || '')) out[m[1]] = v.value;
       });
       return out;
@@ -3621,6 +3781,55 @@
     plus.addEventListener('click', function () { openTokenDialog('', true); });
     add(box, add(el('div', 'tok'), plus));
     if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
+    drawSide();
+  }
+
+  // The side panel: one token's use, each window's reset, the per-model limits, where it is on and
+  // who it belongs to, kept open while the tiles are read again
+  function openTokenSide(slot) {
+    tk.side = tk.side === slot ? '' : slot;
+    drawTiles();
+  }
+  function drawSide() {
+    var side = $('tk-side');
+    if (!side) return;
+    var slot = tk.side;
+    if (!slot || !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(slot)]) { tk.side = ''; side.hidden = true; clear(side); return; }
+    clear(side);
+    side.hidden = false;
+    var s = tk.settings[slot] || {}, state = tileState(slot);
+    var close = el('button', 'tkside__close', '\u00d7');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function () { openTokenSide(slot); });
+    add(side, close, el('h3', 'console__boxh', tileName(slot)), el('p', 'tok__owner', s.owner ? '@' + s.owner : 'no owner yet'));
+    if (state.text) add(side, el('p', 'tok__state ' + state.cls, state.text));
+    var records = tk.pool && tk.pool[slot];
+    if (records) {
+      var found = slotWindows(records, Date.now());
+      POOL_WINDOWS.forEach(function (p) { add(side, sideMeter(p[1], found.windows[p[0]])); });
+      found.scoped.forEach(function (x) { add(side, sideMeter(x.name + ' weekly', x)); });
+      var last = records.map(function (r) { return r.at; }).sort().pop();
+      add(side, add(el('p', 'tkdlg__fact tkdlg__faint'), 'Read ', timeEl(last), ' from ' + records.map(function (r) { return sourceWord(r.source); }).filter(function (w, i, a) { return a.indexOf(w) === i; }).join(', ')));
+    } else add(side, el('p', 'admin__none', 'No reading yet: its first run, or Read use now, takes one.'));
+    add(side, el('p', 'tkdlg__fact', 'Runs on ' + modelWord(s.model) + (s.effort ? ', thinking ' + s.effort : '') + (s.fallback ? '; then ' + modelWord(s.fallback) + ' when its model\'s weekly limit runs out' : '') + '.'));
+    add(side, el('p', 'tkdlg__fact', s.paused ? 'Paused.' : s.resume === false ? 'Waits for Resume once at its limit.' : 'Resumes by itself when its limit resets.'));
+    add(side, el('p', 'tkdlg__fact tkdlg__faint', slotSecret(slot) + (tk.secrets[slotSecret(slot)].updated_at ? ', set ' + stamp(tk.secrets[slotSecret(slot)].updated_at) : '')));
+    var probe = btn('Read use now', true, probeSlots);
+    probe.id = 'tk-probe';
+    probe.title = 'Asks every token for one word on Haiku, which spends that word of each one\'s window';
+    add(side, add(el('p', 'admin__bar'), probe));
+  }
+  function sideMeter(name, each) {
+    var u = each ? used(each.utilization) : null;
+    var box = el('div', 'tkside__meter');
+    var bar = el('span', 'tok__bar' + (u != null && u >= POOL_THRESHOLD ? ' tok__bar--full' : ''));
+    var fill = el('span', 'tok__fill');
+    fill.style.width = (u == null ? 0 : Math.round(Math.min(u, 1) * 100)) + '%';
+    add(bar, fill);
+    var resets = each && each.resetsAt ? (each.reset ? 'reset ' : 'resets ') + stamp(new Date(moment(each.resetsAt)).toISOString()) : (each ? 'reset not known' : 'not read yet');
+    add(box, add(el('p', 'tkside__line'), el('span', '', name), el('span', 'tkside__pct', u == null ? '' : percent(u))), bar, el('p', 'tkside__reset', resets));
+    return box;
   }
   function tileOf(slot) {
     var s = tk.settings[slot] || {}, state = tileState(slot);
@@ -3628,20 +3837,44 @@
     var open = el('button', 'tok__open');
     open.type = 'button';
     open.id = 'tk-tile-' + slot;
-    open.title = 'Settings of ' + tileName(slot) + ' (' + slotSecret(slot) + ')';
+    open.title = 'The use of ' + tileName(slot) + ' (' + slotSecret(slot) + ')';
+    if (tk.side === slot) wrap.className += ' tok--on';
     add(open, el('span', 'tok__icon', slot === 'main' ? 'M' : slot), el('span', 'tok__name', tileName(slot)),
+        el('span', 'tok__owner', s.owner ? '@' + s.owner : 'no owner yet'),
         el('span', 'tok__meta', modelWord(s.model) + (s.effort ? ', ' + s.effort : '')),
-        state.text ? el('span', 'tok__state ' + state.cls, state.text) : null);
-    open.addEventListener('click', function () { openTokenDialog(slot, false); });
+        useBars(slot), state.text ? el('span', 'tok__state ' + state.cls, state.text) : null);
+    open.addEventListener('click', function () { openTokenSide(slot); });
+    if (!canChange(slot)) return add(wrap, open);
+    var gear = el('button', 'tok__gear', '\u2699');
+    gear.type = 'button';
+    gear.id = 'tk-gear-' + slot;
+    gear.title = 'Settings of ' + tileName(slot);
+    gear.setAttribute('aria-label', 'Settings of ' + tileName(slot));
+    gear.addEventListener('click', function (ev) { ev.stopPropagation(); openTokenDialog(slot, false); });
     var x = el('button', 'tok__x', '\u00d7');
     x.type = 'button';
     x.id = 'tk-remove-' + slot;
     x.title = 'Remove ' + tileName(slot);
     x.setAttribute('aria-label', 'Remove ' + tileName(slot));
     x.addEventListener('click', function (ev) { ev.stopPropagation(); removeToken(slot, x); });
-    return add(wrap, open, x);
+    return add(wrap, open, gear, x);
   }
 
+  function useBars(slot) {
+    var records = tk.pool && tk.pool[slot];
+    if (!records) return null;
+    var found = slotWindows(records, Date.now());
+    var box = el('span', 'tok__use');
+    POOL_WINDOWS.forEach(function (p) {
+      var each = found.windows[p[0]], u = each ? used(each.utilization) : null;
+      var bar = el('span', 'tok__bar' + (u != null && u >= POOL_THRESHOLD ? ' tok__bar--full' : ''));
+      bar.title = p[1] + ': ' + windowText(each);
+      var fill = el('span', 'tok__fill');
+      fill.style.width = (u == null ? 0 : Math.round(Math.min(u, 1) * 100)) + '%';
+      add(box, add(el('span', 'tok__window'), el('span', 'tok__wname', p[0] === 'five_hour' ? '5h' : '7d'), add(bar, fill)));
+    });
+    return box;
+  }
   function selectOf(id, options, value) {
     var s = el('select');
     s.id = id;
@@ -3677,14 +3910,10 @@
     form.method = 'dialog';
     add(form, el('h3', 'console__boxh', adding ? 'Add a token' : tileName(slot)));
     var free = TILE_SLOTS.filter(function (n) { return !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(n)]; });
-    var pick = null;
     if (adding) {
-      var choices = free.filter(function (n) { return n !== 'main'; });
-      if (!free.length) add(form, el('p', 'admin__lead', 'All eight slots and main are set: remove one with its X, or renew one from its tile.'));
-      pick = selectOf('tk-d-slot', free.map(function (n) { return [n, n === 'main' ? 'main (' + MAIN_SECRET + ', which @claude and the workers read)' : 'slot ' + n + ' (' + slotSecret(n) + ')']; }), choices[0] || free[0]);
-      add(form, labelled(pick, 'Where it is kept'));
-      slot = pick.value;
-    } else add(form, el('p', 'admin__lead', slotSecret(slot) + (tk.secrets && tk.secrets[slotSecret(slot)] ? ', set ' + stamp(tk.secrets[slotSecret(slot)].updated_at) : '')));
+      slot = free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '';
+      if (!slot) add(form, el('p', 'admin__lead', 'All 32 slots and main are set: remove one with its \u00d7, or renew one from its tile.'));
+    } else if (!canChange(slot)) { drawSomeoneElses(d, form, slot); return; }
     var label = el('input');
     label.id = 'tk-d-label';
     label.type = 'text';
@@ -3701,10 +3930,18 @@
     add(form, labelled(fallback, 'When its model\'s weekly limit runs out, switch to'));
     add(form, tickOf('tk-d-resume', s.resume !== false, 'Resume by itself when its limit resets'));
     add(form, tickOf('tk-d-paused', s.paused, 'Pause: auto passes this token over'));
-    function labelShown() { labelField.hidden = slot === 'main'; }
-    labelShown();
-    if (pick) pick.addEventListener('change', function () { slot = pick.value; labelShown(); });
-    add(form, el('p', 'admin__lead tkdlg__note', 'Workers in Actions follow these on their next run: on auto, and when .github/symphony/accounts.json gives them this token. @claude and the coordinator run on main with the model they name.'));
+    labelField.hidden = slot === 'main';
+    var owner = null;
+    if (tk.admin) {
+      owner = el('input');
+      owner.id = 'tk-d-owner';
+      owner.type = 'text';
+      owner.maxLength = 39;
+      owner.autocomplete = 'off';
+      owner.value = s.owner || (adding ? shownLogin : '');
+      add(form, labelled(owner, 'Belongs to (a GitHub login)'));
+    } else add(form, el('p', 'admin__lead tkdlg__faint', adding ? 'It will be yours: only you and an owner of ' + tk.place.owner + ' can change or remove it.' : 'Yours: only you and an owner of ' + tk.place.owner + ' can change or remove it.'));
+    add(form, el('p', 'admin__lead tkdlg__note', 'Runs on this token follow these from their next start.'));
     var problem = el('p', 'admin__warn tkdlg__problem');
     problem.hidden = true;
     add(form, problem);
@@ -3720,11 +3957,15 @@
         out.resumedAt = s.resume === false && s.resumedAt ? s.resumedAt : new Date().toISOString().replace(/\.\d+Z$/, 'Z');
       }
       if ($('tk-d-paused').checked) out.paused = true;
+      out.id = s.id || newTokenId();
+      var who = owner ? owner.value.trim() : (s.owner || (adding ? shownLogin : ''));
+      if (who) out.owner = who;
       return out;
     }
     function check() {
       var text = label.value.trim();
       if (text && !SLOT_LABEL.test(text)) return 'A name is a word or a few, of letters, digits, blanks, dots, dashes and underscores, at most 40, never an e-mail address.';
+      if (owner && owner.value.trim() && !LOGIN.test(owner.value.trim())) return 'Belongs to takes a GitHub login, such as ' + (shownLogin || 'octocat') + '.';
       return '';
     }
     function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''); }
@@ -3740,13 +3981,14 @@
       save.disabled = true;
       var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
       saveTokenSettings(wanted, chosen(), labelText).then(function () {
-        d.close();
         drawTiles();
-        if (adding) addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted);
-        else say('Saved the settings of ' + tileName(wanted) + '; the workers follow them from their next run.');
+        if (adding) { addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted); return; }
+        d.close();
+        say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
       }, function (e) { save.disabled = false; fail(e); });
     });
     add(bar, cancel, ' ', save);
+    if (!adding && tk.place.org) add(form, reachBox(slot));
     if (!adding) {
       if (s.resume === false) {
         var resume = btn('Resume now', true, function () {
@@ -3760,23 +4002,212 @@
         resume.id = 'tk-resume';
         add(bar, ' ', resume);
       }
-      var renew = btn('Sign in again to renew', true, function () {
-        d.close();
-        addByActions(tk.repo, tk.place, renew, slot);
-      });
+      var renew = btn('Sign in again to renew', true, function () { addByActions(tk.repo, tk.place, renew, slot); });
       renew.id = 'tk-renew';
       add(bar, ' ', renew);
     }
     add(form, bar);
     add(d, form);
     if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
-    (adding ? pick || model : model).focus();
+    model.focus();
+  }
+
+  function drawSomeoneElses(d, form, slot) {
+    var s = tk.settings[slot] || {};
+    add(form, el('p', 'tkdlg__fact', 'Model: ' + modelWord(s.model) + (s.effort ? ', thinking ' + s.effort : '') + (s.fallback ? '; switches to ' + modelWord(s.fallback) + ' when its model\'s weekly limit runs out' : '')));
+    add(form, el('p', 'tkdlg__fact', s.paused ? 'Paused.' : s.resume === false ? 'Waits for Resume once at its limit.' : 'Resumes by itself when its limit resets.'));
+    add(form, el('p', 'admin__lead tkdlg__faint', (s.owner ? 'This token belongs to @' + s.owner : 'This token has no owner yet') + '; only ' + (s.owner ? 'they' : 'the person who adds it') + ' and an owner of ' + tk.place.owner + ' can change or remove it.'));
+    add(form, add(el('p', 'admin__bar tkdlg__bar'), btn('Close', true, function () { d.close(); })));
+    add(d, form);
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  }
+
+  // The repositories a token is on: an organization secret's own list of repositories, which GitHub
+  // keeps, so switching one is a single call and takes effect at the next run there.
+  function reachBox(slot) {
+    var box = el('div', 'tkdlg__reach');
+    add(box, el('p', 'tkdlg__fact', 'On in these repositories'));
+    var list = el('div', 'tkdlg__repos');
+    add(box, list);
+    none(list, 'Reading...');
+    var path = tk.place.base + '/secrets/' + slotSecret(slot);
+    readOne(path).then(function (have) {
+      if (!have) throw new Error('GitHub does not list this token\'s secret');
+      if (have.visibility !== 'selected') {
+        clear(list);
+        none(list, have.visibility === 'all' ? 'On in every repository of ' + tk.place.owner + '.' : 'On in every private repository of ' + tk.place.owner + '.');
+        return null;
+      }
+      return listed(path + '/repositories', 'repositories');
+    }).then(function (on) {
+      if (!on) return;
+      clear(list);
+      var mine = repos().filter(function (r) { return r.split('/')[0].toLowerCase() === tk.place.owner.toLowerCase(); });
+      var rows = on.map(function (r) { return { name: r.full_name, id: r.id, on: true }; });
+      mine.forEach(function (name) { if (!rows.some(function (r) { return r.name.toLowerCase() === name.toLowerCase(); })) rows.push({ name: name, id: null, on: false }); });
+      rows.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      rows.forEach(function (r, i) { add(list, reachTick(path, r, i)); });
+    }).catch(function (e) { clear(list); none(list, 'Could not read where it is on: ' + e.message); });
+    return box;
+  }
+  function reachTick(path, r, i) {
+    var label = tickOf('tk-d-repo-' + i, r.on, r.name);
+    var tick = label.querySelector('input');
+    tick.addEventListener('change', function () {
+      tick.disabled = true;
+      var id = r.id ? Promise.resolve(r.id) : gh('GET', '/repos/' + r.name).then(function (x) { return (r.id = x.data.id); });
+      id.then(function (n) {
+        return gh(tick.checked ? 'PUT' : 'DELETE', path + '/repositories/' + n);
+      }).then(function () {
+        tick.disabled = false;
+        say(r.name + (tick.checked ? ' can use this token from its next run.' : ' no longer sees this token.'));
+      }, function (e) {
+        tick.disabled = false;
+        tick.checked = !tick.checked;
+        say('Could not switch it on ' + r.name + ': ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
+      });
+    });
+    return label;
+  }
+
+  /* ---------- which tokens an agent takes in one repository ---------- */
+  // The Agents tab gives each agent (a worker by name in accounts.json) a share of the repository's
+  // tokens: its line becomes a list of slots, which tools/pool.py picks over as auto picks over the
+  // pool, main only where the list names it. The list belongs to the repository, so anyone who may
+  // write to it may change it, through a pull request as every change under .github/ is made; who
+  // may switch a token on for the repository at all stays its owner's (reachBox).
+  var ASSIGN_BRANCH = 'symphony/tokens-';
+  var AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+  function assignedSlots(choice, pooled) {
+    if (Array.isArray(choice)) return choice.filter(function (s) { return TILE_SLOTS.indexOf(s) >= 0; });
+    if (choice === 'auto') return pooled.slice();
+    return TILE_SLOTS.indexOf(choice) >= 0 ? [choice] : ['main'];
+  }
+  // the tokens the repository can use, by name: the Tokens tab's own reading where it is of this
+  // repository, else the organization's lists, else the ones GitHub shows the repository
+  function usableTokens(repo) {
+    if (tk.repo === repo && tk.secrets && !tk.secrets.unread) {
+      return readAccounts(tk.place, repo).then(function (pooled) {
+        return { pooled: pooled, slots: TILE_SLOTS.filter(function (s) { return tk.secrets[slotSecret(s)]; }), labels: tk.labels };
+      });
+    }
+    var place;
+    return slotPlace(repo).then(function (p) {
+      place = p;
+      return readSecrets(place).catch(function () {
+        return Promise.all([
+          place.org ? listed('/repos/' + repo + '/actions/organization-secrets', 'secrets') : Promise.resolve([]),
+          listed('/repos/' + repo + '/actions/secrets', 'secrets').catch(function () { return []; })
+        ]).then(function (both) {
+          var by = {};
+          both[0].concat(both[1]).forEach(function (s) { if (s && s.name) by[s.name] = s; });
+          return by;
+        });
+      });
+    }).then(function (secrets) {
+      return Promise.all([readTileVariables(place), readAccounts(place, repo)]).then(function (both) {
+        return { pooled: both[1], slots: TILE_SLOTS.filter(function (s) { return secrets[slotSecret(s)]; }), labels: both[0][1] };
+      });
+    });
+  }
+  function readAccounts(place, repo) {
+    return readOne(place.base + '/variables/' + ACCOUNTS_VARIABLE).catch(function () {
+      return listed('/repos/' + repo + '/actions/organization-variables', 'variables').then(function (list) {
+        return list.filter(function (v) { return v.name === ACCOUNTS_VARIABLE; })[0] || null;
+      }, function () { return null; });
+    }).then(function (v) { return slotWords(v ? v.value : ''); });
+  }
+  function assignLabel(slot, labels) {
+    return labels[slot] || (slot === 'main' ? 'Main' : 'Slot ' + slot);
+  }
+  function tokenAssignBox(repo, agentName) {
+    var box = el('div', 'tkassign');
+    if (!repo || !AGENT_NAME.test(agentName || '') || agentName.indexOf('..') >= 0 || /\.lock$/i.test(agentName)) { none(box, 'No such agent.'); return box; }
+    none(box, 'Reading the tokens...');
+    Promise.all([usableTokens(repo), readAssignments(repo)]).then(function (both) {
+      var found = both[0], plan = both[1];
+      clear(box);
+      if (plan.broken) { none(box, ASSIGNMENTS_PATH + ' is not JSON, so it is left as it is.'); return; }
+      var choice = Object.prototype.hasOwnProperty.call(plan.workers, agentName) ? plan.workers[agentName] : plan['default'];
+      var have = assignedSlots(choice, found.pooled);
+      if (!found.slots.length) { none(box, 'Runs on the main token: this repository sees no token yet.'); return; }
+      var ticks = found.slots.map(function (slot) {
+        var label = tickOf('tka-' + agentName + '-' + slot, have.indexOf(slot) >= 0, assignLabel(slot, found.labels));
+        if (slot !== 'main' && found.pooled.indexOf(slot) < 0) label.title = 'Not in ' + ACCOUNTS_VARIABLE + ', so no run takes it until it is';
+        return { slot: slot, input: label.querySelector('input'), label: label };
+      });
+      var save = btn('Save', false, function () {
+        var list = ticks.filter(function (t) { return t.input.checked; }).map(function (t) { return t.slot; });
+        save.disabled = true;
+        say('Proposing the tokens of ' + agentName + '...');
+        proposeAssignment(repo, agentName, list).then(function (url) {
+          clear(note);
+          add(note, 'Proposed in ', link(url, 'a pull request'), '; ' + agentName + ' takes them once it merges.');
+          say('The tokens of ' + agentName + ' are proposed in a pull request; its runs take them once it merges.');
+        }, function (e) {
+          save.disabled = false;
+          say('Could not propose the tokens of ' + agentName + ': ' + e.message + (e.status === 403 || e.status === 404 ? ' It needs Contents and Pull requests: read and write on ' + repo + '.' : ''), true);
+        });
+      });
+      save.id = 'tka-save-' + agentName;
+      save.disabled = true;
+      ticks.forEach(function (t) {
+        t.input.addEventListener('change', function () { save.disabled = !ticks.some(function (x) { return x.input.checked; }); });
+        add(box, t.label);
+      });
+      var note = el('p', 'tkdlg__fact tkdlg__faint', Array.isArray(choice) ? '' : choice === 'auto' ? 'Now: any token of the pool.' : 'Now: ' + assignLabel(have[0], found.labels) + '.');
+      add(box, add(el('p', 'admin__bar'), save), note);
+    }).catch(function (e) { clear(box); none(box, 'Could not read the tokens: ' + e.message); });
+    return box;
+  }
+  function utf8Base64(text) { return btoa(unescape(encodeURIComponent(text))); }
+  // accounts.json read again on the default branch just before the change, so the change carries
+  // whatever merged meanwhile; one branch per agent, moved to the default branch's head each time
+  function proposeAssignment(repo, agent, list) {
+    var base, head, branch = ASSIGN_BRANCH + agent.toLowerCase();
+    return gh('GET', '/repos/' + repo).then(function (r) {
+      base = r.data.default_branch || 'main';
+      return gh('GET', '/repos/' + repo + '/git/ref/heads/' + encodeURIComponent(base));
+    }).then(function (r) {
+      head = r.data.object.sha;
+      // a pool.py older than the lists would refuse the whole file and stop every worker's run
+      return file(repo, 'tools/pool.py', base).catch(function (e) { if (e.status === 404) return ''; throw e; });
+    }).then(function (code) {
+      if (code.indexOf('def is_choice(') < 0) throw new Error('this repository\'s tools/pool.py does not take a list of tokens yet; bring the template\'s newer tools/pool.py in first');
+      return file(repo, ASSIGNMENTS_PATH, base).catch(function (e) { if (e.status === 404) return '{}'; throw e; });
+    }).then(function (text) {
+      var data = JSON.parse(text || '{}');
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error(ASSIGNMENTS_PATH + ' is not an object');
+      data.workers = data.workers && typeof data.workers === 'object' ? data.workers : {};
+      data.workers[agent] = list;
+      var body = JSON.stringify(data, null, 2) + '\n';
+      return gh('POST', '/repos/' + repo + '/git/refs', { ref: 'refs/heads/' + branch, sha: head }).catch(function (e) {
+        if (e.status !== 422) throw e;
+        return gh('PATCH', '/repos/' + repo + '/git/refs/heads/' + branch, { sha: head, force: true });
+      }).then(function () {
+        return gh('GET', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH + '?ref=' + encodeURIComponent(branch)).then(function (r) { return r.data.sha; }, function (e) { if (e.status === 404) return null; throw e; });
+      }).then(function (sha) {
+        var put = { message: 'Give ' + agent + ' the tokens ' + list.join(', '), content: utf8Base64(body), branch: branch };
+        if (sha) put.sha = sha;
+        return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, put);
+      });
+    }).then(function () {
+      return gh('GET', '/repos/' + repo + '/pulls?state=open&head=' + encodeURIComponent(repo.split('/')[0] + ':' + branch));
+    }).then(function (r) {
+      if (Array.isArray(r.data) && r.data.length) return r.data[0];
+      return gh('POST', '/repos/' + repo + '/pulls', { title: 'Give ' + agent + ' its tokens', head: branch, base: base,
+        body: 'The control panel\'s Agents tab: ' + agent + ' takes the tokens ' + list.join(', ') + ' in this repository (' + ASSIGNMENTS_PATH + ', a list tools/pool.py picks over as auto picks over the pool).' }).then(function (x) { return x.data; });
+    }).then(function (pr) {
+      // GitHub merges it once its checks pass where the repository allows auto-merge; else it waits for a press
+      return gh('POST', '/graphql', { query: 'mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:MERGE}){clientMutationId}}', variables: { id: pr.node_id } })
+        .then(function () { return pr.html_url; }, function () { return pr.html_url; });
+    });
   }
 
   // the settings are read again just before the write, so a change another page made meanwhile stays
   function saveTokenSettings(slot, setting, labelText) {
     var place = tk.place, ids = [place.id], path = place.base + '/variables/' + SETTINGS_VARIABLE;
-    if ([setting.model, setting.fallback].some(function (m) { return m && !MODEL_NAME.test(m); })) return Promise.reject(new Error('That is not a model\'s name.'));
+    if ([setting.model, setting.fallback].some(function (m) { return m && !knownModel(m); })) return Promise.reject(new Error('That is not a model the tiles offer.'));
     return readOne(path).then(function (have) {
       var all = {};
       try { all = have ? JSON.parse(have.value) : {}; } catch (e) { all = {}; }
@@ -3823,7 +4254,7 @@
       return writeVariable(place, SETTINGS_VARIABLE, JSON.stringify(all), [place.id]);
     }).then(function () {
       say(name + ' is removed' + (slot === 'main' ? '.' : ' and off ' + ACCOUNTS_VARIABLE + '.'));
-      showAddSlot(tk.repo, reading);
+      readTokenPlace(tk.repo, reading);
     }).catch(function (e) {
       button.disabled = false;
       say('Removing ' + name + ' stopped: ' + e.message + (e.status === 403 || e.status === 404 ? SECRETS_NEEDED : ''), true);
@@ -3836,10 +4267,88 @@
   var tokensFor = null;
   function tokensRepo() { return state && state.repo ? state.repo : ''; }
   function initTokensTab() {
-    $('tk-reload').addEventListener('click', loadTokens);
-    $('tk-probe').addEventListener('click', probeSlots);
-    $('tk-add-top').addEventListener('click', function () { openTokenDialog('', true); });
     consoleOnOpen.tokens = function () { if (tokensFor !== tokensRepo()) loadTokens(); };
+    if ($('lb-people')) consoleOnOpen.leaders = function () { if (leadersFor !== tokensRepo()) loadLeaders(); };
+  }
+
+  /* ---------- the leaderboard: the issues each token worked, by the label token:<id> ---------- */
+  // A worker's run labels the issue it worked token:<id> (symphony-template's workers.yml), and the
+  // token's settings name its owner, so GitHub's issue search over the organization, or the personal
+  // account, counts what each token and each person's tokens worked and closed as done.
+  var LEADER_PAGES = 10;
+  var leadersFor = null;
+  function issuesOf(scope, id) {
+    var q = scope + ' label:"token:' + id + '" is:issue';
+    var worked = 0, closed = 0;
+    function step(page) {
+      return gh('GET', '/search/issues?q=' + encodeURIComponent(q) + '&per_page=100&page=' + page).then(function (r) {
+        var items = (r.data && r.data.items) || [];
+        worked += items.length;
+        closed += items.filter(function (i) { return i.state === 'closed' && i.state_reason === 'completed'; }).length;
+        if (items.length < 100 || page >= LEADER_PAGES) return { worked: worked, closed: closed };
+        return step(page + 1);
+      });
+    }
+    return step(1);
+  }
+  function rankRows(body, rows, cells) {
+    clear(body);
+    rows.sort(function (a, b) { return b.closed - a.closed || b.worked - a.worked || a.key.localeCompare(b.key); });
+    var top = rows.length ? rows[0].closed : 0;
+    rows.forEach(function (r, i) {
+      var tr = el('tr');
+      add(tr, el('td', '', String(i + 1)));
+      cells(r).forEach(function (c) { add(tr, el('td', '', c)); });
+      var bar = el('span', 'lb__bar');
+      bar.style.width = (top ? Math.round(r.closed / top * 100) : 0) + '%';
+      add(tr, add(el('td', 'lb__closed'), add(el('span', 'lb__track'), bar), el('span', 'lb__n', String(r.closed))), el('td', '', String(r.worked)));
+      body.appendChild(tr);
+    });
+  }
+  function loadLeaders() {
+    var repo = tokensRepo();
+    leadersFor = repo;
+    var people = $('lb-people').querySelector('tbody'), toks = $('lb-tokens').querySelector('tbody');
+    clear(people);
+    clear(toks);
+    if (!repo) { $('lb-lead').textContent = 'Choose a repository in the side column first.'; return; }
+    $('lb-lead').textContent = 'Counting the issues each token worked...';
+    var place = null, settings = {}, labels = {};
+    slotPlace(repo).then(function (p) {
+      place = p;
+      return readTileVariables(p);
+    }).then(function (vars) {
+      settings = vars[0];
+      labels = vars[1];
+      var slots = Object.keys(settings).filter(function (slot) { return settings[slot] && /^[0-9a-f]{8}$/.test(settings[slot].id || ''); });
+      var scope = (place.org ? 'org:' : 'user:') + place.owner;
+      // one token at a time, since GitHub's search takes 30 questions a minute
+      var out = [];
+      return slots.reduce(function (chain, slot) {
+        return chain.then(function () {
+          return issuesOf(scope, settings[slot].id).then(function (n) { out.push({ slot: slot, worked: n.worked, closed: n.closed }); });
+        });
+      }, Promise.resolve()).then(function () { return out; });
+    }).then(function (counts) {
+      if (leadersFor !== repo) return;
+      var tokenRows = counts.map(function (c) {
+        var s = settings[c.slot];
+        return { key: c.slot, name: labels[c.slot] || (c.slot === 'main' ? 'Main' : 'Slot ' + c.slot), owner: s.owner || '', worked: c.worked, closed: c.closed };
+      });
+      var by = {};
+      tokenRows.forEach(function (t) {
+        var who = t.owner || '';
+        var row = by[who] || (by[who] = { key: who, tokens: 0, worked: 0, closed: 0 });
+        row.tokens += 1;
+        row.worked += t.worked;
+        row.closed += t.closed;
+      });
+      rankRows(people, Object.keys(by).map(function (k) { return by[k]; }), function (r) { return [r.key ? '@' + r.key : 'no owner yet', String(r.tokens)]; });
+      rankRows(toks, tokenRows, function (r) { return [r.name, r.owner ? '@' + r.owner : 'no owner yet']; });
+      $('lb-lead').textContent = tokenRows.length
+        ? 'Issues the tokens of ' + place.owner + ' worked, by the label token:<id> a worker\'s run puts on them; closed counts those closed as done.'
+        : 'No token of ' + place.owner + ' has an id yet: a token gets one when it is added, or when its settings are saved on the Tokens tab.';
+    }).catch(function (e) { if (leadersFor === repo) $('lb-lead').textContent = 'The leaderboard could not be read: ' + e.message; });
   }
 
   // The Share tab: the person is invited as a collaborator through GitHub's API, as the signed-in
@@ -3967,9 +4476,12 @@
     consoleOnOpen.share = shareRefresh;
   }
 
+  // the Agents tab puts one in each agent's row
+  window.tokenAssignBox = tokenAssignBox;
+
   // the cost page carries a signed-in box of its own, so its marker is read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-slots')) initTokensTab(); if ($('sh-who')) initShareTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); }
 })();
