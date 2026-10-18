@@ -79,6 +79,8 @@
 .control__assistant table { font-size: 0.88rem; }
 .control tr.control__focus td { background: rgba(14, 95, 88, 0.08); box-shadow: inset 3px 0 0 var(--teal); }
 .control tr.control__off { display: none; }
+/* the filter's words above the tables and the actions under the answer: nothing, and no gap, until there is something to say */
+.control #cp-as-filter:empty, .control #cp-as-actions:empty { display: none; }
 
 /* ---------- the cost page ---------- */
 .cost__facts { margin: 6px 0 14px; }

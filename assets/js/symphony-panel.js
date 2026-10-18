@@ -980,8 +980,9 @@
     issues.forEach(function (it) {
       if (it.pull_request) return;
       var l = labelsOf(it);
-      // the assistant issues are the page's own, one a person (the Assistant section), not tasks
-      if (l.indexOf(ASSISTANT_LABEL) >= 0) return;
+      // the assistant issues are the page's own, one a person (the Assistant section), not tasks;
+      // a task someone labelled assistant by hand stays a task, grouped by its other labels
+      if (l.indexOf(ASSISTANT_LABEL) >= 0 && /^Assistant: /.test(String(it.title || ''))) return;
       var worker = workerOf(l);
       if (l.indexOf('blocker') >= 0) g.blockers.push(it);
       else if (l.indexOf('epic') >= 0) g.epics.push(it);
@@ -1503,17 +1504,31 @@
   // on it that mentions @claude and ends with the page's state in a fenced block, and the
   // repository's claude.yml answers on the repository's Claude token, reading only, in a comment the
   // page watches for (symphony-template, docs/setup/claude-action.md, "The assistant issue"; the
-  // vocabulary is .github/symphony/assistant.md there). The action posts a progress comment first and
-  // edits it into the answer, so the page compares bodies, never counts comments. The page executes
-  // only the few lines of the fenced block the answer may end with, each of them a read of what the
-  // page already shows: nothing here writes to the repository but the label, the issue and the
-  // comments, each on a press.
+  // vocabulary is .github/symphony/assistant.md there). The action posts a progress comment first,
+  // edits it as it works, and when the run ends writes a header in front of whatever the comment
+  // holds, so the page compares bodies, never counts comments, and reads a body as the answer only
+  // once that header opens it. The page executes only the few lines of the fenced block the answer
+  // may end with, each of them a read of what the page already shows: nothing here writes to the
+  // repository but the label, the issue and the comments, each on a press.
   var ASSISTANT_LABEL = 'assistant';
+  // the file the repository's workflow appends to the assistant's system prompt: a repository
+  // without it on its default branch has no assistant, and a question there would run as an
+  // ordinary mention, with fifty turns and the tools that write
+  var ASSISTANT_FILE = '.github/symphony/assistant.md';
   // the logins the action answers as: claude[bot] where the Claude GitHub App is installed,
   // github-actions[bot] where the workflow gives it its own token; a comment by any author of type
   // Bot after the question counts too, so a repository set up another way is not left waiting
   var ASSISTANT_BOTS = ['claude[bot]', 'github-actions[bot]'];
-  var ASSISTANT_WORKING = /Claude Code is working/i;
+  // the header the action writes in front of its comment when the run ends, whatever Claude left
+  // in it (claude-code-action, src/github/operations/comment-logic.ts). Before it the comment is
+  // the run's progress: first "Claude Code is working..." and then the checklist Claude keeps in
+  // its place, which says no such phrase, so the phrase's absence is no sign of the answer; and an
+  // answer may well say "working" itself. A run the runner stops at the workflow's timeout writes
+  // no header, and the watch ends by its own limit.
+  var ASSISTANT_FINAL = /^\s*\*\*Claude (finished|encountered an error)\b/;
+  var ASSISTANT_FAILED = /^\s*\*\*Claude encountered an error\b/;
+  // GitHub takes a comment body of at most this many characters
+  var ASSISTANT_COMMENT_MAX = 65536;
   // how often the issue is read: every 5 seconds for ten minutes, then every 30 seconds, for 45
   // minutes at most (the workflow's own timeout), and for a minute and a half after the answer, for
   // a late edit; each read is conditional on the last ETag, so one GitHub answers 304 to costs
@@ -1526,15 +1541,17 @@
   var ASSISTANT_FAILURES = 3;
   var ASSISTANT_SECTIONS = { queue: 'Queue', blockers: 'Blockers', overlaps: 'Overlaps', given: 'Given to workers', dependencies: 'Dependencies' };
   var ASSISTANT_TABLES = { 'cp-queue': 'Queue', 'cp-given': 'Given to workers', 'cp-claimed': 'Claimed', 'cp-review': 'In review', 'cp-blocked': 'Blocked, and blockers', 'cp-epics': 'Epics' };
+  var ASSISTANT_UNLABELLED = 'is open but carries no label assistant';
   var KEY_ASSISTANT = 'symphony_panel_assistant';
 
   // one assistant per repository and person: the issue, the question on its way, the ETag of the
   // last read, the answer, and the focus, filter and section the page sends with the next question
   function assistantEmpty() {
-    return { s: null, repo: '', login: '', issue: null, unlabelled: false, question: null, etag: '', timer: 0, progress: '', answer: null, finalAt: 0, failures: 0, focus: 0, filter: 'none', section: '', last: '', watching: false };
+    return { s: null, repo: '', login: '', issue: null, posting: false, question: null, etag: '', timer: 0, progress: '', answer: null, failed: false, finalAt: 0, failures: 0, focus: 0, filter: 'none', section: '', last: '', watching: false };
   }
   var assistant = assistantEmpty();
-  // the assistant issues the page opened, one number a repository, kept as the other preferences are
+  // the assistant issues the page uses, one number a repository, one it opened or found, kept as
+  // the other preferences are
   function assistantIssues() {
     try {
       var o = JSON.parse(readKey(KEY_ASSISTANT) || '{}');
@@ -1549,6 +1566,18 @@
   function assistantTitle() { return 'Assistant: ' + assistant.login; }
   function assistantIssueOf(it) {
     return !!it && !it.pull_request && it.state === 'open' && it.title === assistantTitle() && labelsOf(it).indexOf(ASSISTANT_LABEL) >= 0;
+  }
+  // why an issue the page kept is no longer the assistant's, in words, or nothing while it still is
+  function assistantIssueGone(it) {
+    if (assistantIssueOf(it)) return '';
+    if (!it || it.state !== 'open') return 'is closed';
+    if (it.pull_request || it.title !== assistantTitle()) return 'is open but no longer titled "' + assistantTitle() + '"';
+    return ASSISTANT_UNLABELLED;
+  }
+  // an open issue titled for this person that has lost its label is kept and said, never replaced:
+  // another opened in its place would lose the label the same way where the token may not label
+  function assistantUnlabelledWords(n) {
+    return '#' + n + ' ' + ASSISTANT_UNLABELLED + ', so the Claude workflow would not answer on it as the assistant: add the label on GitHub (the token may not label issues), or close it, then ask.';
   }
   function assistantLink() {
     var it = assistant.issue;
@@ -1569,15 +1598,27 @@
     // one question at a time: while an answer is awaited, the next waits for Stop watching
     $('cp-as-ask').disabled = !!stop;
   }
-  function assistantSeconds(ms) { return ms < 60000 ? plural(Math.round(ms / 1000), 'second') : plural(Math.round(ms / 60000), 'minute'); }
+  // a span in words: seconds unless it is whole minutes, so that 90 seconds never reads "2 minutes"
+  function assistantSeconds(ms) { return ms < 60000 || ms % 60000 ? plural(Math.round(ms / 1000), 'second') : plural(ms / 60000, 'minute'); }
 
   // Called as the page starts reading a repository, before anything of it is known, so a poll under
   // way is rebound at once. The assistant keeps its watch, its focus and its filter across a
   // Refresh of the same repository for the same person, and starts over for another: it asks GitHub
-  // whether the person may write, since the workflow answers nobody else, then looks for the issue.
+  // whether the person may write, since the workflow answers nobody else, then whether the
+  // repository's workflow has the assistant, then looks for the issue.
   function assistantRepo(s) {
     var a = assistant;
-    if (a.repo === s.repo && a.login && a.login === shownLogin) { a.s = s; return; }
+    if (a.repo === s.repo && a.login && a.login === shownLogin) {
+      a.s = s;
+      // a press or a read that was on its way when the tab signed out never settles (the client
+      // leaves such a call unanswered), so the press is over and a watch left with no timer, which
+      // only a settled read schedules, is read on; a read that does settle later schedules nothing
+      // twice, since a new timer takes the place of the one before it
+      a.posting = false;
+      if (!a.watching) $('cp-as-ask').disabled = false;
+      if (a.watching && !a.timer) assistantSchedule();
+      return;
+    }
     assistantStop('');
     a = assistant = assistantEmpty();
     a.s = s;
@@ -1595,79 +1636,119 @@
       var perm = r.data && r.data.permission ? String(r.data.permission) : 'none';
       // GitHub's permission field says write for the maintain role too, and read for triage
       if (perm !== 'admin' && perm !== 'write') { assistantWords(['The assistant answers only people with write access to ' + s.repo + ', and GitHub says yours is ' + perm + '.']); return; }
-      return assistantFind(s).then(function (words) {
+      return assistantHasFile(s).then(function (has) {
         if (a !== assistant || stale(s)) return;
-        assistantWords(words);
-        assistantButtons(true, false, false);
+        if (!has) { assistantWords(['This repository\'s Claude workflow has no assistant yet: ' + ASSISTANT_FILE + ' is not on its default branch, so a question here would run as an ordinary @claude mention, with the tools that write. Bring in the template release that carries it first.']); return; }
+        return assistantFind(s).then(function (words) {
+          if (a !== assistant || stale(s)) return;
+          assistantWords(words);
+          assistantButtons(true, false, false);
+        }, function (e) {
+          if (a !== assistant || stale(s)) return;
+          assistantWords(['The page could not look for the assistant issue in ' + s.repo + ' (' + e.message + '); the first question looks again.'], true);
+          assistantButtons(true, false, false);
+        });
       }, function (e) {
         if (a !== assistant || stale(s)) return;
-        assistantWords(['The page could not look for the assistant issue in ' + s.repo + ' (' + e.message + '); the first question looks again.'], true);
-        assistantButtons(true, false, false);
+        assistantWords(['GitHub would not say whether ' + s.repo + ' has the assistant (' + e.message + '); press Refresh to ask again.'], true);
       });
     }, function (e) {
       if (a !== assistant || stale(s)) return;
       assistantWords(['GitHub would not say whether you may write to ' + s.repo + ' (' + e.message + '), and the assistant answers only people with write access.'], true);
     });
   }
+  // whether the assistant's file is on the default branch, which the contents API reads with no ref
+  function assistantHasFile(s) {
+    return gh('GET', '/repos/' + s.repo + '/contents/' + ASSISTANT_FILE).then(function () { return true; }, function (e) {
+      if (e.status === 404) return false;
+      throw e;
+    });
+  }
   // the issue the page remembered for this repository, where it is still open and still the
   // assistant's, else the newest open issue labelled assistant titled for this person, else none;
-  // a remembered issue that is closed is forgotten, so the first question opens another
+  // a remembered issue that is closed, gone or retitled is forgotten, so the first question opens
+  // another, and one that has lost its label is kept and said (assistantUnlabelledWords)
   function assistantFind(s) {
     var kept = assistantIssues()[s.repo];
-    var closed = 0;
     var remembered = /^[0-9]{1,9}$/.test(String(kept || '')) ? gh('GET', '/repos/' + s.repo + '/issues/' + kept).then(function (r) {
-      if (assistantIssueOf(r.data)) return r.data;
-      closed = kept;
-      return null;
+      return { it: r.data, why: assistantIssueGone(r.data) };
     }, function (e) {
-      if (e.status === 404 || e.status === 410) { closed = kept; return null; }
+      if (e.status === 404 || e.status === 410) return { it: null, why: 'is gone' };
       throw e;
-    }) : Promise.resolve(null);
-    return remembered.then(function (found) {
-      if (found) return found;
+    }) : Promise.resolve({ it: null, why: '' });
+    return remembered.then(function (got) {
+      if ((got.it && !got.why) || got.why === ASSISTANT_UNLABELLED) return got;
       return gh('GET', '/repos/' + s.repo + '/issues?state=open&labels=' + ASSISTANT_LABEL + '&per_page=100').then(function (r) {
         var list = Array.isArray(r.data) ? r.data.filter(assistantIssueOf) : [];
         list.sort(function (x, y) { return y.number - x.number; });
-        return list[0] || null;
+        return { it: list[0] || null, why: got.why };
       });
-    }).then(function (found) {
-      if (found) {
-        assistant.issue = found;
-        rememberAssistantIssue(s.repo, found.number);
-        return ['The assistant issue is ', assistantLink(), ' (' + found.title + '); each question is a comment on it, and each answer one run of the Claude workflow.'];
+    }).then(function (got) {
+      if (got.why === ASSISTANT_UNLABELLED) {
+        assistant.issue = got.it;
+        return [assistantUnlabelledWords(got.it.number)];
       }
-      if (closed) rememberAssistantIssue(s.repo, 0);
+      if (got.it) {
+        assistant.issue = got.it;
+        rememberAssistantIssue(s.repo, got.it.number);
+        return ['The assistant issue is ', assistantLink(), ' (' + got.it.title + '); each question is a comment on it, and each answer one run of the Claude workflow.'];
+      }
+      if (got.why) rememberAssistantIssue(s.repo, 0);
       assistant.issue = null;
-      return ['No assistant issue yet in ' + s.repo + (closed ? ' (the one the page remembered, #' + closed + ', is closed)' : '') + ': the first question opens one, "' + assistantTitle() + '", labelled assistant, and asks on it.'];
+      return ['No assistant issue yet in ' + s.repo + (got.why ? ' (the one the page remembered, #' + kept + ', ' + got.why + ')' : '') + ': the first question opens one, "' + assistantTitle() + '", labelled assistant, and asks on it.'];
     });
   }
+  // three short lines: what the issue is, how a question and its answer go, and that closing it
+  // makes the page open another; no "@claude", which would start a run as the issue opens
   function assistantIssueBody() {
-    return 'This issue is the control panel\'s assistant for ' + assistant.login + ': the page at https://openspineconsortium.com/symphony/control/ asks here, one question a comment with the page\'s state in a fenced block, and the repository\'s Claude workflow answers each on the repository\'s own Claude token, reading only, as .github/symphony/assistant.md says. The page opened this issue and reads its comments; close it and the page opens another.\n';
+    return 'This issue is the control panel\'s assistant for ' + assistant.login + ' (https://openspineconsortium.com/symphony/control/).\n\n'
+      + 'Each question is a comment from the page, with the page\'s state in a fenced block; the repository\'s Claude workflow answers it here, reading only (.github/symphony/assistant.md).\n\n'
+      + 'The page reads this issue\'s comments for the answer. Close it and the page opens another.\n';
   }
-  // the label first, where the repository lacks it (template-init makes only the protocol's six),
-  // then the issue, only where none was found; its body names no @claude, since claude.yml runs on
-  // an issue opened with that word in its body or title. Both writes are for the account the page
-  // named when Ask was pressed.
+  // The cached issue is read again before each question, one read a question, since a person
+  // retires one by closing it between two questions and GitHub takes comments on a closed issue:
+  // one that is closed, gone or retitled is forgotten and another opened, one that has lost its
+  // label is said. Then the label, where the repository lacks it (template-init makes only the
+  // protocol's six), then the issue, only where none is there; its body names no @claude, since
+  // claude.yml runs on an issue opened with that word in its body or title. Every write is for the
+  // account the page named when Ask was pressed.
   function assistantEnsureIssue(s, account) {
-    if (assistant.issue) return Promise.resolve(assistant.issue);
-    assistantWords(['Opening the assistant issue in ' + s.repo + '...']);
-    return gh('GET', '/repos/' + s.repo + '/labels/' + ASSISTANT_LABEL).catch(function (e) {
-      if (e.status !== 404) throw e;
-      return gh('POST', '/repos/' + s.repo + '/labels', { name: ASSISTANT_LABEL, color: LABEL_COLOR, description: 'The control panel\'s assistant: a question a comment, answered by the Claude workflow' }, undefined, false, account);
-    }).then(function () {
-      return gh('POST', '/repos/' + s.repo + '/issues', { title: assistantTitle(), body: assistantIssueBody(), labels: [ASSISTANT_LABEL] }, undefined, false, account);
-    }).then(function (r) {
-      var it = r.data || {};
-      assistant.issue = it;
-      rememberAssistantIssue(s.repo, it.number);
-      // GitHub drops a label from a new issue, with no error, when the token may not label issues;
-      // without the label the workflow would read the question as an ordinary mention
-      if (labelsOf(it).indexOf(ASSISTANT_LABEL) < 0) {
-        assistant.unlabelled = true;
-        throw new Error('GitHub opened #' + it.number + ' but did not set the label assistant on it, so the Claude workflow would not read it as the assistant\'s: the token may not label issues. Add the label on GitHub, then press Refresh and ask again.');
-      }
-      return it;
+    var had = assistant.issue;
+    var note = '';
+    var again = had ? gh('GET', '/repos/' + s.repo + '/issues/' + had.number).then(function (r) {
+      var why = assistantIssueGone(r.data);
+      if (!why) return r.data;
+      if (why === ASSISTANT_UNLABELLED) throw new Error(assistantUnlabelledWords(had.number));
+      note = assistantForget(s, had.number, why);
+      return null;
+    }, function (e) {
+      if (e.status === 404 || e.status === 410) { note = assistantForget(s, had.number, 'is gone'); return null; }
+      throw e;
+    }) : Promise.resolve(null);
+    return again.then(function (it) {
+      if (it) return it;
+      assistantWords([note + 'Opening the assistant issue in ' + s.repo + '...']);
+      return gh('GET', '/repos/' + s.repo + '/labels/' + ASSISTANT_LABEL).catch(function (e) {
+        if (e.status !== 404) throw e;
+        return gh('POST', '/repos/' + s.repo + '/labels', { name: ASSISTANT_LABEL, color: LABEL_COLOR, description: 'The control panel\'s assistant: a question a comment, answered by the Claude workflow' }, undefined, false, account);
+      }).then(function () {
+        return gh('POST', '/repos/' + s.repo + '/issues', { title: assistantTitle(), body: assistantIssueBody(), labels: [ASSISTANT_LABEL] }, undefined, false, account);
+      }).then(function (r) {
+        var it = r.data || {};
+        assistant.issue = it;
+        // GitHub drops a label from a new issue, with no error, when the token may not label
+        // issues; the issue is kept for this page, so the next question reads it again and goes
+        // once the label is on it, and remembered only then, so no other page opens a second one
+        if (labelsOf(it).indexOf(ASSISTANT_LABEL) < 0) throw new Error('GitHub opened #' + it.number + ' but did not set the label assistant on it, so the Claude workflow would not read it as the assistant\'s: the token may not label issues. Add the label on GitHub, then ask again.');
+        rememberAssistantIssue(s.repo, it.number);
+        return it;
+      });
     });
+  }
+  function assistantForget(s, number, why) {
+    assistant.issue = null;
+    rememberAssistantIssue(s.repo, 0);
+    return '#' + number + ' ' + why + ', so the question opens another. ';
   }
   function assistantStateBlock() {
     var a = assistant;
@@ -1677,24 +1758,39 @@
     var s = state, a = assistant;
     var text = ($('cp-as-q').value || '').trim().replace(/^@claude\s*/i, '');
     if (!s.repo || a.s !== s || !a.login) { assistantWords(['The assistant is not ready for this repository yet; press Refresh.'], true); return; }
+    // the page writes as whoever GitHub named last, which another tab's token can change under
+    // it, while the issue and the permission were read for the person named before
+    if (a.login !== shownLogin) { assistantWords(['The sign-in changed to ' + shownLogin + ' since the assistant was read for ' + a.login + '; press Refresh, and the assistant starts over for ' + shownLogin + '.'], true); return; }
     if (!text) { assistantWords(['Write the question first.'], true); return; }
+    // one press at a time: the label, the issue and the question are three writes, and a second
+    // press while they are on their way would make a second issue or a second question
+    if (a.posting) { assistantWords(['The question is on its way; the page says when it is posted.'], true); return; }
     if (a.watching) { assistantWords(['One question at a time: the page is still waiting for the answer to the last one on ', assistantLink(), '. Press Stop watching to drop it first.'], true); return; }
-    if (a.unlabelled) { assistantWords(['#' + a.issue.number + ' carries no label assistant, so the Claude workflow would not answer it as the assistant. Add the label on GitHub, then press Refresh.'], true); return; }
+    var body = '@claude ' + text + '\n\n' + assistantStateBlock();
+    if (body.length > ASSISTANT_COMMENT_MAX) { assistantWords(['GitHub takes a comment of at most ' + ASSISTANT_COMMENT_MAX + ' characters, and this question with the page\'s state is ' + body.length + ': shorten it by ' + (body.length - ASSISTANT_COMMENT_MAX) + '.'], true); return; }
     a.last = text;
+    a.posting = true;
+    $('cp-as-ask').disabled = true;
     var account = shownLogin;
     assistantEnsureIssue(s, account).then(function (issue) {
       if (a !== assistant || stale(s)) return;
       assistantWords(['Posting the question on ', assistantLink(), '...']);
-      return gh('POST', '/repos/' + s.repo + '/issues/' + issue.number + '/comments', { body: '@claude ' + text + '\n\n' + assistantStateBlock() }, undefined, false, account).then(function (r) {
+      return gh('POST', '/repos/' + s.repo + '/issues/' + issue.number + '/comments', { body: body }, undefined, false, account).then(function (r) {
         if (a !== assistant || stale(s)) return;
         $('cp-as-q').value = '';
         assistantWatch(r.data || {});
       });
-    }).catch(function (e) {
+    }).then(function () { assistantPosted(a, s); }, function (e) {
+      assistantPosted(a, s);
       if (a !== assistant || stale(s)) return;
       assistantWords([e.message], true);
       assistantButtons(true, false, false);
     });
+  }
+  // the press is over, whatever came of it: Ask is given back unless an answer is now awaited
+  function assistantPosted(a, s) {
+    a.posting = false;
+    if (a === assistant && !stale(s) && !a.watching) $('cp-as-ask').disabled = false;
   }
   function assistantWatch(c) {
     var a = assistant;
@@ -1702,6 +1798,7 @@
     a.etag = '';
     a.progress = '';
     a.answer = null;
+    a.failed = false;
     a.finalAt = 0;
     a.failures = 0;
     a.watching = true;
@@ -1717,9 +1814,13 @@
       + (a.progress || 'A run of the Claude workflow answers in tens of seconds to a few minutes, first with a progress comment, then with the answer in its place; ')
       + 'the page reads the issue every ' + assistantSeconds(ASSISTANT_POLL_MS) + ' for ' + assistantSeconds(ASSISTANT_SLOW_AFTER_MS) + ', then every ' + assistantSeconds(ASSISTANT_SLOW_MS) + ', and stops after ' + assistantSeconds(ASSISTANT_GIVE_UP_MS) + ' or when you press Stop watching.']);
   }
+  // the answer is in, or the run ended in an error, which its header says: the one state a person
+  // most needs told apart from an answer
   function assistantAnsweredWords() {
     var a = assistant;
-    assistantWords(['The assistant answered on ', assistantLink(), ', ' + ago(a.answer.at) + (a.watching ? '; the page watches ' + assistantSeconds(ASSISTANT_AFTER_MS) + ' more for a late edit.' : '. Watching stopped.')]);
+    var more = a.watching ? '; the page watches ' + assistantSeconds(ASSISTANT_AFTER_MS) + ' more for a late edit.' : '. Watching stopped.';
+    if (a.failed) assistantWords(['The run failed on ', assistantLink(), ', ' + ago(a.answer.at) + ' (Claude encountered an error): its log is behind View job in the comment below, and Ask again sends the question once more' + more], true);
+    else assistantWords(['The assistant answered on ', assistantLink(), ', ' + ago(a.answer.at) + more]);
     assistantButtons(true, a.watching, true);
   }
   // the next read, by a timer and never chained on the last read's promise, which never settles
@@ -1757,8 +1858,9 @@
       assistantSchedule();
     });
   }
-  // the answer is the newest comment by the action's identity that came after the question: while
-  // it says the run is working it is the progress comment, and once it no longer does it is final
+  // the answer is the newest comment by the action's identity that came after the question (a
+  // person's comment, or a bot's from before the question that an edit brought back, is neither),
+  // and it is final once the action's header opens it; until then it is the run's progress
   function assistantRead(list) {
     var a = assistant, q = a.question;
     var after = new Date(q.at).getTime();
@@ -1773,16 +1875,33 @@
     });
     if (!found) { if (!a.answer) assistantWaitingWords(); return; }
     var body = String(found.body || '');
-    if (ASSISTANT_WORKING.test(body)) {
+    if (!ASSISTANT_FINAL.test(body)) {
       if (!a.answer) { a.progress = 'The run is at work: its progress comment is on the issue, and the answer takes its place; '; assistantWaitingWords(); }
       return;
     }
     if (a.answer && a.answer.id === found.id && a.answer.body === body) return;
     if (!a.answer) a.finalAt = Date.now();
+    a.failed = ASSISTANT_FAILED.test(body);
     a.answer = { id: found.id, body: body, at: found.updated_at || found.created_at };
-    $('cp-as-answer').innerHTML = markdown(body);
-    assistantRun(body);
+    assistantShow(body);
+    // a failed run's comment holds what Claude left, not an answer, so no line of it is acted on
+    if (a.failed) clear($('cp-as-actions')); else assistantRun(body);
     assistantAnsweredWords();
+  }
+  // the answer through the board's renderer, which admits no tag, script, handler or image: the
+  // action's spinner image, which the renderer would show as words, is dropped first, and a link
+  // that leads off github.com, which anyone commenting on a public issue could put in the run's
+  // context, is shown as words beside the page's own Open #N links rather than as a link
+  function assistantShow(body) {
+    var box = $('cp-as-answer');
+    box.innerHTML = markdown(body.replace(/<img\b[^>]*>/gi, ''));
+    var links = box.querySelectorAll('a');
+    for (var i = 0; i < links.length; i++) {
+      var host = '';
+      try { host = new URL(links[i].href).host; } catch (e) { host = ''; }
+      if (host === 'github.com') continue;
+      links[i].parentNode.replaceChild(document.createTextNode(links[i].textContent + ' (' + links[i].getAttribute('href') + ')'), links[i]);
+    }
   }
   // stops the watch: the answer is in and its grace is over, Stop watching was pressed, the page
   // left the repository or signed out, GitHub refused the reads, or the time ran out with no answer
@@ -1830,10 +1949,13 @@
     add(span, link('https://github.com/' + assistant.repo + '/issues/' + n, 'Open #' + n), ' (on GitHub, in a new tab).');
     return span;
   }
+  // the focus is marked whatever the filter does, and said as hidden where the filter hides its
+  // row, since the vocabulary fixes no order and "filter blocked" may come before "focus #N"
   function assistantFocus(n) {
     assistant.focus = n;
     var row = assistantRedraw().row;
     if (!row) return '#' + n + ' is the focus, but it is not in the task tables (closed, a pull request, or without the protocol\'s labels).';
+    if (row.classList.contains('control__off')) return '#' + n + ' is the focus, but the filter (' + assistantFilterWords() + ') hides its row; Show all tasks, above the tables, shows it.';
     row.scrollIntoView({ block: 'center' });
     var table = row.closest ? row.closest('table') : null;
     return 'Focused #' + n + (table && ASSISTANT_TABLES[table.id] ? ' (under ' + ASSISTANT_TABLES[table.id] + ')' : '') + '.';

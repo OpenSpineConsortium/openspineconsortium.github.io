@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610180105">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610180105">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610180105">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610180202">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610180202">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610180202">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -161,7 +161,7 @@
     </div>
 
     <h2 id="h-assistant">Assistant</h2>
-    <p class="admin__lead">Ask the repository&rsquo;s own Claude about the board: what is claimed, what is blocked, what to take next, where something stands. It answers from GitHub Actions on the repository&rsquo;s own Claude token and only reads, through an issue of yours labelled <code>assistant</code> that the page opens once per repository (&ldquo;Assistant: your login&rdquo;); each question is one comment on that issue and one run of the Claude workflow, and the answer comes back here, since the page reads the issue&rsquo;s comments every few seconds while it waits. The workflow answers only people with write access to the repository. When the answer names an issue or a board section, the page centres that row in the task tables, filters them, or scrolls to the section, and offers a link that opens the issue on GitHub; it opens nothing by itself and changes nothing in the repository.</p>
+    <p class="admin__lead">Ask the repository&rsquo;s own Claude about the board: what is claimed, what is blocked, what to take next, where something stands. It answers from GitHub Actions on the repository&rsquo;s own Claude token and only reads (the page offers the box only where the repository&rsquo;s workflow carries the assistant, the file <code>.github/symphony/assistant.md</code> on its default branch), through an issue of yours labelled <code>assistant</code> that the page opens once per repository (&ldquo;Assistant: your login&rdquo;); each question is one comment on that issue and one run of the Claude workflow, and the answer comes back here, since the page reads the issue&rsquo;s comments every few seconds while it waits. The workflow answers only people with write access to the repository. When the answer names an issue or a board section, the page centres that row in the task tables, filters them, or scrolls to the section, and offers a link that opens the issue on GitHub; acting on an answer opens no tab by itself and changes nothing in the repository: the page writes only the label, the issue and your questions, each on a press.</p>
     <div class="admin__box">
       <p id="cp-as-state" class="admin__lead">Reading...</p>
       <div id="cp-as-box" class="hidden">
@@ -214,7 +214,7 @@
     <div class="table-scroll"><table id="cp-runs" class="admin__stack"><thead><tr><th>Workflow</th><th>Event</th><th>Branch</th><th>Outcome</th><th>Started by</th><th>Started</th></tr></thead><tbody></tbody></table></div>
 
     <h2 id="h-privacy">What this page keeps and sends</h2>
-    <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, and the number of the assistant issue the page opened in each repository. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+    <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, and the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
   </div>
 </section>
 </main>
@@ -268,8 +268,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610180105"></script>
+<script src="/assets/js/main.js?v=202610180202"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610180105"></script>
+<script src="/assets/js/symphony-panel.js?v=202610180202"></script>
 </body>
 </html>
