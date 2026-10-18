@@ -2606,7 +2606,7 @@
   // where the tokens live, which are set and their names and settings, read when the tab opens
   function readTokenPlace(repo, asked) {
     var place = null, secrets = null;
-    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false }; drawTiles(); }
+    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
@@ -2863,7 +2863,7 @@
   var EFFORTS = [['', 'The model\'s default'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
   // tools/pool.py takes only these models (KNOWN_MODELS), so the page never writes one it would leave out
   function knownModel(m) { return TILE_MODELS.some(function (t) { return t[0] && t[0] === m; }); }
-  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false };
+  var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' };
 
   function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
   function canChange(slot) {
@@ -2944,6 +2944,55 @@
     plus.addEventListener('click', function () { openTokenDialog('', true); });
     add(box, add(el('div', 'tok'), plus));
     if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
+    drawSide();
+  }
+
+  // The side panel: one token's use, each window's reset, the per-model limits, where it is on and
+  // who it belongs to, kept open while the tiles are read again
+  function openTokenSide(slot) {
+    tk.side = tk.side === slot ? '' : slot;
+    drawTiles();
+  }
+  function drawSide() {
+    var side = $('tk-side');
+    if (!side) return;
+    var slot = tk.side;
+    if (!slot || !tk.secrets || tk.secrets.unread || !tk.secrets[slotSecret(slot)]) { tk.side = ''; side.hidden = true; clear(side); return; }
+    clear(side);
+    side.hidden = false;
+    var s = tk.settings[slot] || {}, state = tileState(slot);
+    var close = el('button', 'tkside__close', '\u00d7');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function () { openTokenSide(slot); });
+    add(side, close, el('h3', 'console__boxh', tileName(slot)), el('p', 'tok__owner', s.owner ? '@' + s.owner : 'no owner yet'));
+    if (state.text) add(side, el('p', 'tok__state ' + state.cls, state.text));
+    var records = tk.pool && tk.pool[slot];
+    if (records) {
+      var found = slotWindows(records, Date.now());
+      POOL_WINDOWS.forEach(function (p) { add(side, sideMeter(p[1], found.windows[p[0]])); });
+      found.scoped.forEach(function (x) { add(side, sideMeter(x.name + ' weekly', x)); });
+      var last = records.map(function (r) { return r.at; }).sort().pop();
+      add(side, add(el('p', 'tkdlg__fact tkdlg__faint'), 'Read ', timeEl(last), ' from ' + records.map(function (r) { return sourceWord(r.source); }).filter(function (w, i, a) { return a.indexOf(w) === i; }).join(', ')));
+    } else add(side, el('p', 'admin__none', 'No reading yet: its first run, or Read use now, takes one.'));
+    add(side, el('p', 'tkdlg__fact', 'Runs on ' + modelWord(s.model) + (s.effort ? ', thinking ' + s.effort : '') + (s.fallback ? '; then ' + modelWord(s.fallback) + ' when its model\'s weekly limit runs out' : '') + '.'));
+    add(side, el('p', 'tkdlg__fact', s.paused ? 'Paused.' : s.resume === false ? 'Waits for Resume once at its limit.' : 'Resumes by itself when its limit resets.'));
+    add(side, el('p', 'tkdlg__fact tkdlg__faint', slotSecret(slot) + (tk.secrets[slotSecret(slot)].updated_at ? ', set ' + stamp(tk.secrets[slotSecret(slot)].updated_at) : '')));
+    var probe = btn('Read use now', true, probeSlots);
+    probe.id = 'tk-probe';
+    probe.title = 'Asks every token for one word on Haiku, which spends that word of each one\'s window';
+    add(side, add(el('p', 'admin__bar'), probe));
+  }
+  function sideMeter(name, each) {
+    var u = each ? used(each.utilization) : null;
+    var box = el('div', 'tkside__meter');
+    var bar = el('span', 'tok__bar' + (u != null && u >= POOL_THRESHOLD ? ' tok__bar--full' : ''));
+    var fill = el('span', 'tok__fill');
+    fill.style.width = (u == null ? 0 : Math.round(Math.min(u, 1) * 100)) + '%';
+    add(bar, fill);
+    var resets = each && each.resetsAt ? (each.reset ? 'reset ' : 'resets ') + stamp(new Date(moment(each.resetsAt)).toISOString()) : (each ? 'reset not known' : 'not read yet');
+    add(box, add(el('p', 'tkside__line'), el('span', '', name), el('span', 'tkside__pct', u == null ? '' : percent(u))), bar, el('p', 'tkside__reset', resets));
+    return box;
   }
   function tileOf(slot) {
     var s = tk.settings[slot] || {}, state = tileState(slot);
@@ -2951,20 +3000,27 @@
     var open = el('button', 'tok__open');
     open.type = 'button';
     open.id = 'tk-tile-' + slot;
-    open.title = 'Settings of ' + tileName(slot) + ' (' + slotSecret(slot) + ')';
+    open.title = 'The use of ' + tileName(slot) + ' (' + slotSecret(slot) + ')';
+    if (tk.side === slot) wrap.className += ' tok--on';
     add(open, el('span', 'tok__icon', slot === 'main' ? 'M' : slot), el('span', 'tok__name', tileName(slot)),
         el('span', 'tok__owner', s.owner ? '@' + s.owner : 'no owner yet'),
         el('span', 'tok__meta', modelWord(s.model) + (s.effort ? ', ' + s.effort : '')),
         useBars(slot), state.text ? el('span', 'tok__state ' + state.cls, state.text) : null);
-    open.addEventListener('click', function () { openTokenDialog(slot, false); });
+    open.addEventListener('click', function () { openTokenSide(slot); });
     if (!canChange(slot)) return add(wrap, open);
+    var gear = el('button', 'tok__gear', '\u2699');
+    gear.type = 'button';
+    gear.id = 'tk-gear-' + slot;
+    gear.title = 'Settings of ' + tileName(slot);
+    gear.setAttribute('aria-label', 'Settings of ' + tileName(slot));
+    gear.addEventListener('click', function (ev) { ev.stopPropagation(); openTokenDialog(slot, false); });
     var x = el('button', 'tok__x', '\u00d7');
     x.type = 'button';
     x.id = 'tk-remove-' + slot;
     x.title = 'Remove ' + tileName(slot);
     x.setAttribute('aria-label', 'Remove ' + tileName(slot));
     x.addEventListener('click', function (ev) { ev.stopPropagation(); removeToken(slot, x); });
-    return add(wrap, open, x);
+    return add(wrap, open, gear, x);
   }
 
   function useBars(slot) {
@@ -2982,19 +3038,6 @@
     });
     return box;
   }
-  // the dialog's account of a token's use: each window, each per-model limit, and the last reading
-  function useLines(slot) {
-    var records = tk.pool && tk.pool[slot];
-    var box = el('div', 'tkdlg__use');
-    if (!records) { add(box, el('p', 'admin__none', 'No reading yet: its first run, or Read use now, takes one.')); return box; }
-    var found = slotWindows(records, Date.now());
-    POOL_WINDOWS.forEach(function (p) { add(box, el('p', 'tkdlg__fact', p[1] + ': ' + windowText(found.windows[p[0]]))); });
-    found.scoped.forEach(function (x) { add(box, el('p', 'tkdlg__fact', x.name + ' weekly: ' + windowText(x))); });
-    var last = records.map(function (r) { return r.at; }).sort().pop();
-    add(box, add(el('p', 'tkdlg__fact tkdlg__faint'), 'Read ', timeEl(last), ' from ' + records.map(function (r) { return sourceWord(r.source); }).filter(function (w, i, a) { return a.indexOf(w) === i; }).join(', ')));
-    return box;
-  }
-
   function selectOf(id, options, value) {
     var s = el('select');
     s.id = id;
@@ -3033,10 +3076,7 @@
     if (adding) {
       slot = free.filter(function (n) { return n !== 'main'; })[0] || free[0] || '';
       if (!slot) add(form, el('p', 'admin__lead', 'All 32 slots and main are set: remove one with its \u00d7, or renew one from its tile.'));
-    } else {
-      add(form, useLines(slot));
-      if (!canChange(slot)) { drawSomeoneElses(d, form, slot); return; }
-    }
+    } else if (!canChange(slot)) { drawSomeoneElses(d, form, slot); return; }
     var label = el('input');
     label.id = 'tk-d-label';
     label.type = 'text';
@@ -3127,10 +3167,7 @@
       }
       var renew = btn('Sign in again to renew', true, function () { addByActions(tk.repo, tk.place, renew, slot); });
       renew.id = 'tk-renew';
-      var probe = btn('Read use now', true, function () { d.close(); probeSlots(); });
-      probe.id = 'tk-probe';
-      probe.title = 'Asks every token for one word on Haiku, which spends that word of each one\'s window';
-      add(bar, ' ', probe, ' ', renew);
+      add(bar, ' ', renew);
     }
     add(form, bar);
     add(d, form);
