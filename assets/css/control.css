@@ -717,7 +717,11 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   .console__body > .console__split, .console__colgrip, .console__split--tkside, .console__split--drawer { display: none; }
 }
 /* who is signed in, the text size and Refresh wrap rather than run past the window's edge */
-.console__me { flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
+/* the status line stays one line on a laptop, the name of who is signed in giving way first; it
+   wraps only where the window is too narrow for the text size and the buttons side by side */
+.console__me { max-width: 62%; justify-content: flex-end; row-gap: 4px; }
+.console__me small { flex: 1 1 auto; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+@media (max-width: 1100px) { .console__me { flex-wrap: wrap; } }
 
 /* runs: one line each, the mark of how it ended, its name, where and by whom, and when */
 .console #cp-runs tbody { grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 6px; }
