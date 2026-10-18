@@ -652,7 +652,8 @@ def license_parts(text):
 def markdown_parts(md_path):
     """A Markdown text (a privacy statement, the third-party notices) through pandoc.
     Returns (title html, text html)."""
-    r = subprocess.run([PANDOC, str(md_path), "-f", "markdown+pipe_tables", "-t", "html5", "--wrap=none"],
+    # raw_html off: a statement's "<your login>" is words to show, never a tag to pass through
+    r = subprocess.run([PANDOC, str(md_path), "-f", "markdown+pipe_tables-raw_html", "-t", "html5", "--wrap=none"],
                        check=True, capture_output=True)
     frag = r.stdout.decode("utf-8").replace("\r\n", "\n").strip()
     # a wide table scrolls inside its own box, never the page
