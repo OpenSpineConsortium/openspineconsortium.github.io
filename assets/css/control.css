@@ -165,7 +165,7 @@ body[data-shell] main > .console.section, .console.section {
    one more bar under the site's two */
 .console__app { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .console__app.hidden { display: none; }
-.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 10px; }
+.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: var(--side-w, 210px) 10px minmax(0, 1fr); gap: 0; }
 .console__side { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); overflow: hidden; }
 .console__id { flex: 0 0 auto; padding: 8px 10px 8px; border-bottom: 1px solid var(--line-soft); }
 .console__titlerow { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
@@ -242,7 +242,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console .console__askrow button { margin: 0; padding: 5px 14px; font-size: 0.85rem; white-space: nowrap; }
 .console .console__askrow #cp-as-state { flex: 1 1 38%; min-width: 0; margin: 0; max-height: 2.7em; overflow: auto; font-size: 0.78rem; line-height: 1.35; }
 .console .console__stage { position: relative; }
-.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: min(70%, 520px); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
+.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: calc(100% - 16px); height: var(--drawer-h, auto); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
 .console__askdrawer[hidden] { display: none; }
 .console__askhead { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .console .console__askhead button { margin: 0; padding: 4px 12px; font-size: 0.82rem; }
@@ -341,7 +341,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 
 /* a narrow laptop: the side column and the side forms narrow */
 @media (max-width: 1279px) {
-  .console__body { grid-template-columns: 184px minmax(0, 1fr); }
+  .console__body { grid-template-columns: var(--side-w, 184px) 10px minmax(0, 1fr); }
   .console__panel--split { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
 }
 
@@ -457,7 +457,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console tr > td.cell--when { grid-row: 1; grid-column: 2; }
 
 /* the task board: the six lists side by side, each a column of cards that scrolls by itself */
-.console .console__kanban { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: minmax(240px, 1fr); gap: 8px 10px; overflow-x: auto; overflow-y: hidden; }
+.console .console__kanban { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: var(--col-w, minmax(240px, 1fr)); gap: 8px 10px; overflow-x: auto; overflow-y: hidden; }
 .console .console__kanban > h3 { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); font-size: 0.82rem; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
 .console .console__kanban > h3::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--col, var(--ink-faint)); flex: 0 0 auto; }
 .console .console__kanban > .table-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 2px 6px; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
@@ -578,7 +578,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tok--on .tok__open { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
 .tkwrap { display: flex; gap: 18px; align-items: flex-start; }
 .tkwrap .toks { flex: 1; min-width: 0; align-content: start; }
-.tkside { position: sticky; top: 0; flex: none; width: 320px; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.tkside { position: sticky; top: 0; flex: none; width: var(--tkside-w, 320px); display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .tkside[hidden] { display: none; }
 .tkside .console__boxh { margin: 0; padding-right: 32px; }
 .tkside p { margin: 0; }
@@ -629,3 +629,65 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 }
 .console #lb-people tbody tr:nth-child(2) > td:first-child::before, .console #lb-tokens tbody tr:nth-child(2) > td:first-child::before { color: #C9CDD2; }
 .console #lb-people tbody tr:nth-child(3) > td:first-child::before, .console #lb-tokens tbody tr:nth-child(3) > td:first-child::before { color: #C98A55; }
+
+/* ============================================================
+   The layout the person sets (symphony-panel.js, initLayout): grips
+   between the parts, which show a two-headed arrow on hover and size
+   the part as they are dragged, and the text size, which zooms the
+   whole deck so its buttons and boxes grow and shrink with the words.
+   ============================================================ */
+.console > .console__app, .console > .console__askbar, .console > .console__status { zoom: var(--console-zoom, 1); }
+.console__split { position: relative; cursor: col-resize; touch-action: none; outline: none; }
+.console__split::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px; background: transparent; transition: background 0.12s; }
+.console__split:hover::after, .console__split:focus-visible::after, body.console-dragging .console__split:active::after { background: var(--teal); }
+/* a grip on a part's own edge: a strip inside the edge the part is sized by */
+.console__split--edge { position: absolute; z-index: 3; }
+.console__split--tkside { top: 0; bottom: 0; left: -9px; width: 12px; }
+.console__split--drawer { left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; }
+.console__split--drawer::after { top: 50%; bottom: auto; left: 8px; right: 8px; width: auto; height: 2px; margin: -1px 0 0; }
+/* a task list's heading carries a grip on its right edge that sizes every list at once */
+.console .console__kanban > h3 { position: relative; }
+.console .console__kanban > h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console__colgrip { position: absolute; top: 0; bottom: 0; right: -8px; width: 10px; cursor: col-resize; touch-action: none; z-index: 2; }
+.console__colgrip::after { content: ""; position: absolute; top: 6px; bottom: 6px; left: 4px; width: 2px; border-radius: 2px; background: transparent; }
+.console__colgrip:hover::after { background: var(--teal); }
+/* while a grip is held the whole page shows its arrow and nothing is selected */
+body.console-dragging { user-select: none; -webkit-user-select: none; }
+body.console-dragging--x, body.console-dragging--x * { cursor: col-resize !important; }
+body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !important; }
+.console__zoom { gap: 0 !important; }
+.console .console__zoom button { padding: 4px 8px; border-radius: 0; margin: 0 0 0 -1px; font-variant-numeric: tabular-nums; }
+.console .console__zoom button:first-child { border-radius: 100px 0 0 100px; }
+.console .console__zoom button:last-child { border-radius: 0 100px 100px 0; }
+#cp-zoom-reset { min-width: 4.2em; }
+
+/* the console is the page: on a computer the breadcrumb and the site's directory below it are
+   left off, so the window never scrolls past the deck; the site's bar keeps every link */
+@media (min-width: 901px) and (min-height: 521px) {
+  body.page-console .crumbs-band, body.page-console .footer { display: none; }
+  body.page-console { overflow: hidden; }
+}
+@media (max-width: 900px), (max-height: 520px) {
+  .console__body { grid-template-columns: minmax(0, 1fr) !important; }
+  .console__body > .console__split, .console__colgrip, .console__split--tkside { display: none; }
+}
+
+/* runs: one line each, the mark of how it ended, its name, where and by whom, and when */
+.console #cp-runs tbody { grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 6px; }
+.console #cp-runs tr { display: flex; align-items: center; gap: 0 10px; padding: 5px 12px; border-radius: 8px; min-width: 0; }
+.console #cp-runs tr::before { flex: 0 0 22px; width: 22px; height: 22px; font-size: 0.78rem; }
+.console #cp-runs td { display: block; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console #cp-runs td.cell--name { flex: 0 1 auto; max-width: 40%; }
+.console #cp-runs td.cell--event::after, .console #cp-runs td.cell--branch::after { content: " \00b7"; color: var(--ink-faint); }
+.console #cp-runs td.cell--outcome { display: none; }
+.console #cp-runs td.cell--when { margin-left: auto; flex: 0 0 auto; }
+.console #cp-runs td.admin__none { white-space: normal; }
+
+/* the Command tab's buttons: as large as their words, no larger */
+.deck__launch { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.console button.launch { min-height: 0; padding: 7px 10px; column-gap: 10px; border-radius: 10px; }
+.launch__icon { width: 30px; height: 30px; font-size: 0.95rem; }
+.launch__name { font-size: 0.92rem; line-height: 1.25; }
+.launch__note { font-size: 0.74rem; line-height: 1.3; }
+.console button.readout { padding: 5px 10px; }
+.readout__n { font-size: 1.3rem; }

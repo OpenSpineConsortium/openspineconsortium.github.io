@@ -5,13 +5,17 @@ css: /assets/css/control.css
 js: /assets/js/symphony-panel.js
 canonical: https://openspineconsortium.com/symphony/control/
 robots: noindex
+body_class: page-console
 ---
 <!-- The console: one screen under the site's header, a side column (the repository and the rail of
      tabs), one tab at a time and a status line at the foot (the page's message, who is signed in), each scrolling inside itself so the page does not. assets/js/symphony-panel.js (initConsole)
      sizes it to the window, switches the tabs, keeps the tab in the address (#board, #tokens, ...),
      counts the rows of each list onto the readouts, and opens the tab of anything the page points
      at. A new section is one more rail button (data-tab="name") and one more
-     <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. -->
+     <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. Every element with
+     data-split is a grip the person drags to size a part (the side column, the task lists, a token's
+     panel, Claude's answer), and the status line's A- and A+ set the text size; both are kept in
+     this browser (initLayout). -->
 <section class="section admin control console" id="console" aria-labelledby="cp-title">
 
   <div class="admin__box control__gate console__gate" id="cp-gate">
@@ -64,6 +68,7 @@ robots: noindex
           <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
         </div>
       </div>
+      <div class="console__split" data-split="side" role="separator" aria-orientation="vertical" aria-label="Drag to size the side column; double-click to reset" tabindex="0"></div>
 
       <div class="console__stage">
 
@@ -79,7 +84,10 @@ robots: noindex
               <button type="button" class="readout" data-goto="pulls"><span class="readout__n" data-count="cp-pulls">&ndash;</span><span class="readout__l">Pull requests</span></button>
               <button type="button" class="readout" data-goto="workers"><span class="readout__n" data-count="cp-workers">&ndash;</span><span class="readout__l">Workers</span></button>
             </div>
-            <p id="cp-summary" class="control__summary deck__summary">Reading...</p>
+            <!-- the summary in words stays for a screen reader and a browsing agent; on screen the
+                 readouts say it, and only what could not be read shows -->
+            <p id="cp-summary" class="console__shadow">Reading...</p>
+            <p id="cp-summary-warn" class="admin__warn deck__summary" hidden></p>
 
             <h2 class="console__h">Launch</h2>
             <div class="deck__launch">
@@ -126,17 +134,17 @@ robots: noindex
             </div>
             <p id="cp-as-filter" class="admin__lead"></p>
             <div class="console__scroll console__kanban">
-              <h3 data-col="queue">Queue: unclaimed, given to no worker</h3>
+              <h3 data-col="queue"><span>Queue: unclaimed, given to no worker</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-queue" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="given">Given to workers, not yet claimed</h3>
+              <h3 data-col="given"><span>Given to workers, not yet claimed</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-given" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="claimed">Claimed, at work</h3>
+              <h3 data-col="claimed"><span>Claimed, at work</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-claimed" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="review">In review</h3>
+              <h3 data-col="review"><span>In review</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-review" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="blocked">Blocked, and blockers</h3>
+              <h3 data-col="blocked"><span>Blocked, and blockers</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-blocked" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="epics">Epics, which the coordinator plans</h3>
+              <h3 data-col="epics"><span>Epics, which the coordinator plans</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-epics" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
               <p id="cp-other" class="admin__lead"></p>
             </div>
@@ -383,7 +391,7 @@ robots: noindex
             <h2 class="console__h">About the control panel</h2>
             <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#leaders</code>, <code>#share</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
             <h3 id="h-privacy">What this page keeps and sends</h3>
-            <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; on the Share tab, an invitation to the GitHub user you name, sent to GitHub as you, and an address you type to GitHub&rsquo;s user search to find that user, while its mail buttons open Gmail, Outlook, your email app or your device&rsquo;s share sheet with a note you send yourself; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
+            <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the layout you set (the sizes you dragged the parts to and the text size), the plan you chose on the cost page, the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; on the Share tab, an invitation to the GitHub user you name, sent to GitHub as you, and an address you type to GitHub&rsquo;s user search to find that user, while its mail buttons open Gmail, Outlook, your email app or your device&rsquo;s share sheet with a note you send yourself; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
           </div>
         </section>
 
@@ -399,6 +407,7 @@ robots: noindex
     <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
     <div class="console__me">
       <small id="cp-who"></small>
+      <p class="console__mebuttons console__zoom" role="group" aria-label="Text size"><button id="cp-zoom-down" type="button" class="quiet" title="Smaller text and buttons">A&minus;</button><button id="cp-zoom-reset" type="button" class="quiet" title="Back to the usual size">100%</button><button id="cp-zoom-up" type="button" class="quiet" title="Larger text and buttons">A+</button></p>
       <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
         <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
     </div>

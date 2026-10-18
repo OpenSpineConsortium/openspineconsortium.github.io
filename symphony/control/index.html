@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610181026">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610181026">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610181026">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610181526">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610181526">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610181526">
 </head>
-<body data-shell="page">
+<body data-shell="page" class="page-console">
 <a class="skip-link" href="#main">Skip to content</a>
 <!-- site:header -->
 <script>if (window.matchMedia && matchMedia("(hover: hover) and (min-width: 901px)").matches) document.documentElement.classList.add("nav-hover");</script>
@@ -108,7 +108,10 @@
      sizes it to the window, switches the tabs, keeps the tab in the address (#board, #tokens, ...),
      counts the rows of each list onto the readouts, and opens the tab of anything the page points
      at. A new section is one more rail button (data-tab="name") and one more
-     <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. -->
+     <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. Every element with
+     data-split is a grip the person drags to size a part (the side column, the task lists, a token's
+     panel, Claude's answer), and the status line's A- and A+ set the text size; both are kept in
+     this browser (initLayout). -->
 <section class="section admin control console" id="console" aria-labelledby="cp-title">
 
   <div class="admin__box control__gate console__gate" id="cp-gate">
@@ -161,6 +164,7 @@
           <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
         </div>
       </div>
+      <div class="console__split" data-split="side" role="separator" aria-orientation="vertical" aria-label="Drag to size the side column; double-click to reset" tabindex="0"></div>
 
       <div class="console__stage">
 
@@ -176,7 +180,10 @@
               <button type="button" class="readout" data-goto="pulls"><span class="readout__n" data-count="cp-pulls">&ndash;</span><span class="readout__l">Pull requests</span></button>
               <button type="button" class="readout" data-goto="workers"><span class="readout__n" data-count="cp-workers">&ndash;</span><span class="readout__l">Workers</span></button>
             </div>
-            <p id="cp-summary" class="control__summary deck__summary">Reading...</p>
+            <!-- the summary in words stays for a screen reader and a browsing agent; on screen the
+                 readouts say it, and only what could not be read shows -->
+            <p id="cp-summary" class="console__shadow">Reading...</p>
+            <p id="cp-summary-warn" class="admin__warn deck__summary" hidden></p>
 
             <h2 class="console__h">Launch</h2>
             <div class="deck__launch">
@@ -223,17 +230,17 @@
             </div>
             <p id="cp-as-filter" class="admin__lead"></p>
             <div class="console__scroll console__kanban">
-              <h3 data-col="queue">Queue: unclaimed, given to no worker</h3>
+              <h3 data-col="queue"><span>Queue: unclaimed, given to no worker</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-queue" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="given">Given to workers, not yet claimed</h3>
+              <h3 data-col="given"><span>Given to workers, not yet claimed</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-given" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="claimed">Claimed, at work</h3>
+              <h3 data-col="claimed"><span>Claimed, at work</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-claimed" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="review">In review</h3>
+              <h3 data-col="review"><span>In review</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-review" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="blocked">Blocked, and blockers</h3>
+              <h3 data-col="blocked"><span>Blocked, and blockers</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-blocked" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
-              <h3 data-col="epics">Epics, which the coordinator plans</h3>
+              <h3 data-col="epics"><span>Epics, which the coordinator plans</span><span class="console__colgrip" data-split="col" aria-hidden="true"></span></h3>
               <div class="table-scroll"><table id="cp-epics" class="admin__stack console__cards"><thead><tr><th>Issue</th><th>Title</th><th>Labels</th><th>Worker</th><th>Updated</th><th><span class="admin__sr">Actions</span></th></tr></thead><tbody></tbody></table></div>
               <p id="cp-other" class="admin__lead"></p>
             </div>
@@ -496,6 +503,7 @@
     <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
     <div class="console__me">
       <small id="cp-who"></small>
+      <p class="console__mebuttons console__zoom" role="group" aria-label="Text size"><button id="cp-zoom-down" type="button" class="quiet" title="Smaller text and buttons">A&minus;</button><button id="cp-zoom-reset" type="button" class="quiet" title="Back to the usual size">100%</button><button id="cp-zoom-up" type="button" class="quiet" title="Larger text and buttons">A+</button></p>
       <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
         <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
     </div>
@@ -553,8 +561,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610181026"></script>
+<script src="/assets/js/main.js?v=202610181526"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610181026"></script>
+<script src="/assets/js/symphony-panel.js?v=202610181526"></script>
 </body>
 </html>
