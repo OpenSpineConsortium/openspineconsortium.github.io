@@ -376,6 +376,9 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tok__bar { flex: 1; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
 .tok__fill { display: block; height: 100%; background: var(--teal); }
 .tok__bar--full .tok__fill { background: var(--ochre); }
+.tok__owner { font-size: 0.72rem; color: var(--teal); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tkdlg__reach { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tkdlg__repos { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; }
 .tkdlg__use { display: flex; flex-direction: column; gap: 2px; }
 .tkdlg .tkdlg__fact { margin: 0; font-size: 0.86rem; }
 .tkdlg__faint { color: var(--ink-faint); }
