@@ -2558,14 +2558,23 @@
       var s = !unread && secrets[slotSecret(slot)];
       if (s) add(setList, add(el('li'), (slot === 'main' ? 'main' : 'slot ' + slot) + ' (' + slotSecret(slot) + '): set, updated ', timeEl(s.updated_at)));
     });
+    // the same wizard in a Codespace on the repository: claude setup-token's sign-in opens in a tab
+    // and the token goes from claude to GitHub with nothing to paste (docs/setup/codespace.md)
+    var one = btn('Add a Claude account', false, function (ev) { addByCodespace(repo, place, ev.currentTarget); });
+    one.id = 'tk-one';
+    add(box, add(el('p', 'admin__bar'), one));
+    add(box, el('p', 'admin__lead', 'Opens claude.ai\'s sign-in in a new tab: sign in as the account to add and press Authorize. The next free slot is saved and this page says so.'));
     if (unread) none(box, 'GitHub would not list the secrets (' + unread.message + '), so which slots are set is not known here.');
     else if (!setList.firstChild) none(box, 'No slot is set on ' + (place.org ? 'the organization ' + place.owner : repo) + ' yet.');
     else add(box, setList);
 
-    // the same wizard in a Codespace on the repository: claude setup-token's sign-in opens in a tab
-    // and the token goes from claude to GitHub with nothing to paste (docs/setup/codespace.md)
-    add(box, add(el('p', 'admin__lead'), '"Add with one press" opens a Codespace on ' + repo + ' in a new tab, signed in to GitHub as you with this page\'s sign-in, which opens claude.ai\'s sign-in in another tab; press Authorize there as the new account, and this page says when the next free slot is saved. To choose the slot or a label, or to renew one, paste a token below instead, or ',
+    // choosing the slot, a label or renewing one stays a pasted token, folded away under the button
+    var more = el('details', 'control__token');
+    add(more, el('summary', '', 'Paste a token instead: choose the slot, add a label, or renew one'));
+    add(more, add(el('p', 'admin__lead'), 'Run ', el('code', '', 'claude setup-token'), ' signed in to the account and paste what it prints. The page seals it in this browser and sends GitHub only the sealed box; it never stores or shows it. Or ',
       link('https://codespaces.new/' + repo, 'open a Codespace on ' + repo), ' for the whole setup, the repository\'s settings included.'));
+    add(box, more);
+    box = more;
     var free = ['1', '2', '3', '4', '5', '6', '7', '8'].filter(function (n) { return unread || !secrets[slotSecret(n)]; });
     var pick = el('select');
     pick.id = 'tk-add-slot';
@@ -2610,8 +2619,7 @@
       });
     } else add(reach, el('p', 'admin__lead', repo + ' belongs to a personal account, so the slot is a secret of that repository alone.'));
     add(box, reach);
-    add(box, add(el('p', 'admin__bar'), btn('Add with one press', false, function (ev) { addByCodespace(repo, place, ev.currentTarget); })));
-    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', true, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
+    add(box, add(el('p', 'admin__bar'), btn('Seal and save the slot', false, function (ev) { saveSlot(repo, place, ev.currentTarget); })));
   }
 
   function reachIds(place, repo) {
@@ -2716,7 +2724,7 @@
       return setSlots(place);
     }).then(function (names) {
       before = names;
-      if (before.length >= 8) throw new Error('All eight slots are set; renew one by pasting its token and pressing "Seal and save the slot".');
+      if (before.length >= 8) throw new Error('All eight slots are set; renew one under "Paste a token instead".');
       return handOver(repo);
     }).then(function (given) {
       handed = given;
@@ -2849,6 +2857,12 @@
     $('tk-repo').addEventListener('change', loadTokens);
     $('tk-reload').addEventListener('click', loadTokens);
     $('tk-probe').addEventListener('click', probeSlots);
+    // the button at the top presses the Add box's own, within the same click, so its new tab may open
+    $('tk-add-top').addEventListener('click', function () {
+      var one = $('tk-one');
+      if (one) one.click();
+      else say('The slots are still being read; press again in a moment.');
+    });
     function startTokens() {
       fillRepoSelect($('tk-repo'), chosenRepo());
       loadTokens();
