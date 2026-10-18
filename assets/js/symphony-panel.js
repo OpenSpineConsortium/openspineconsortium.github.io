@@ -607,6 +607,10 @@
   function gh(method, path, body, headers, raw, account) {
     return call(method, path, body, headers, raw, account === undefined ? shownLogin : account, false);
   }
+  // the calls GitHub said the token has left this hour on its latest answer to any call of the page,
+  // so the Dependencies tab's reserve is held to the newest count and not to the one its draw began
+  // from, which the console's other reads made in parallel may have spent since
+  var rateLatest = null;
   function call(method, path, body, headers, raw, account, again) {
     var sent = '', byApp = false, era = ends;
     return ready(method, path, account).then(function () {
@@ -623,6 +627,8 @@
       if (path === '/user') ask.signal = within(20000);
       return fetch(API + path, ask);
     }).then(function (r) {
+      var seen = rateLeft(r.headers);
+      if (seen !== null) rateLatest = seen;
       // a 304, the answer to a read made conditional on an ETag (the assistant's), has no body either
       if (r.status === 204 || r.status === 205 || r.status === 304) return { status: r.status, data: null, headers: r.headers, sent: sent };
       return r.text().then(function (t) {
@@ -651,17 +657,12 @@
     var m = /<([^>]+)>;\s*rel="next"/.exec(l);
     return m ? m[1].replace(API, '') : '';
   }
-  // the pages of a list, up to a number of them; the array says .more when GitHub had another page,
-  // and .left the calls the token has left this hour where the latest page that says it said so,
-  // which a draw of the Dependencies tab that follows the open issues starts from (loadGraph)
+  // the pages of a list, up to a number of them; the array says .more when GitHub had another page
   function ghList(path, pages) {
-    var out = [], calls = null;
+    var out = [];
     function step(p, left) {
       return gh('GET', p).then(function (r) {
         if (Array.isArray(r.data)) out = out.concat(r.data);
-        var said = rateLeft(r.headers);
-        if (said !== null) calls = said;
-        if (calls !== null) out.left = calls;
         var n = nextPage(r.headers);
         if (n && left <= 1) { out.more = true; return out; }
         return n ? step(n, left - 1) : out;
@@ -2800,6 +2801,7 @@
     function step(p) {
       if (!graphLive(draw)) return Promise.resolve(out);
       if (draw.reads >= GRAPH_READS_MAX) { var e = new Error('more than ' + GRAPH_READS_MAX + ' reads'); e.cap = true; return Promise.reject(e); }
+      if (rateLatest !== null && (draw.left === null || rateLatest < draw.left)) draw.left = rateLatest;
       if (draw.left !== null && draw.left < GRAPH_RESERVE) { var low = new Error('fewer than ' + GRAPH_RESERVE + ' calls left on the token'); low.reserve = true; return Promise.reject(low); }
       draw.reads++;
       return gh('GET', p).then(function (r) {
@@ -2853,9 +2855,13 @@
   // carries the new one.
   function loadGraph(s) {
     var repo = s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo;
-    // the draw starts from the calls GitHub said were left when it answered the open issues, so
-    // once the token is under the reserve no draw reads, a draw that follows a Refresh included
-    var left = typeof s.issues.left === 'number' ? s.issues.left : null;
+    // the draw starts from the calls GitHub said were left on its newest answer, the open issues'
+    // that come just before it among them, so once the token is under the reserve no draw reads, a
+    // draw that follows a Refresh included
+    var left = rateLatest;
+    // a draw started afresh says nothing yet, so an earlier draw's failure leaves the summary
+    s.failed = s.failed.filter(function (f) { return f.indexOf('the dependencies (') !== 0; });
+    if (s.ready) summary();
     var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
     var open = s.issues.filter(function (it) { return !it.pull_request; });
     open.forEach(function (it) { draw.listed[Number(it.number)] = graphIssue(it); });
@@ -3052,14 +3058,15 @@
   // The lines of a chart as the board's mermaid_block writes them, and only those: the header; a
   // node whose label starts with its own number and whose title holds only the characters
   // node_label leaves raw, every printable ASCII character but the quote, "$", "%", "<", ">" and
-  // "|", which it writes as entities; an edge of the three kinds; and the five classes. Anyone who
-  // may push the branch board writes its text, and Mermaid at its strict level still draws the HTML
+  // "|", which it writes as entities, and "#", which it writes only as the first of one of those
+  // entities; an edge of the three kinds; and the five classes. Anyone who may push the branch board
+  // writes its text, and Mermaid at its strict level still draws the HTML
   // a label holds (an image, a form, a field with an id the page's own forms answer to, a link) and
   // obeys a directive, so a block of any other line is never handed to it. This follows node_label's
   // escapes: a change to the labels in the library changes it in the same step, and the panel's
   // checks (symphony-app, signin/panel-checks/e2e2/graph.test.mjs, R2 and R3) hand this tab the
   // library's own lines for titles of every printable ASCII character, so a step missed fails them.
-  var BOARD_NODE_LINE = /^  i([1-9][0-9]{0,8})\["#\1(?: [ !#&-;=?-{}~]*)?"\](?::::(?:todo|claimed|review|blocked|closed))?$/;
+  var BOARD_NODE_LINE = /^  i([1-9][0-9]{0,8})\["#\1(?: (?:[ !&-;=?-{}~]|#(?:35|36|37|124|quot|lt|gt);)*)?"\](?::::(?:todo|claimed|review|blocked|closed))?$/;
   var BOARD_EDGE_LINE = /^  i[1-9][0-9]{0,8} (?:-->|-\.->|==>) i[1-9][0-9]{0,8}$/;
   function boardChartLines(text) {
     var lines = String(text).split('\n');
@@ -3088,7 +3095,15 @@
       return false;
     });
     if (!hosts.length) return;
-    function undrawn(host, e) { host.textContent = 'This chart could not be drawn (' + e.message + ').'; }
+    // a chart that could not be drawn keeps its text under the words, as the Dependencies tab keeps
+    // its table, so the board still says what it holds
+    function undrawn(host, e) {
+      var text = host.getAttribute('data-chart');
+      host.removeAttribute('class');
+      clear(host);
+      add(host, el('p', 'admin__lead', 'This chart could not be drawn (' + e.message + '); it is shown here as text.'));
+      add(host, el('pre', 'admin__text', text));
+    }
     loadMermaid().then(function (m) {
       return hosts.reduce(function (p, host) {
         return p.then(function () {
