@@ -1246,8 +1246,9 @@
         var go = el('button', '', 'Run');
         go.type = 'button';
         go.addEventListener('click', function () { choose.value = a.name; $('cp-a-target').focus(); say('Name the pull request or issue for ' + a.name + ', then press Run it.'); });
-        add(tr, add(el('td'), go));
-        body.appendChild(tr);
+        add(tr, add(el('td', 'admin__act'), go));
+        tr.setAttribute('data-purpose', a.entry.purpose || 'other');
+        body.appendChild(cardCells(tr, ['name', 'purpose', 'about', 'tools', 'runs', 'from', 'tokens', 'act']));
       });
     });
   }
