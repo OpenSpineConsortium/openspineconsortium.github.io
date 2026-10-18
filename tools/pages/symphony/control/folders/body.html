@@ -54,7 +54,7 @@ strip: no
 
     <h2 id="h-pick">Step 2: tick what to track</h2>
     <div class="admin__box">
-      <p class="admin__lead">Your OneDrive, drawn here from Microsoft Graph as you, in this browser: open a folder with Open, tick a file or a folder to track it, and untick to let it go. A ticked folder is tracked with everything in it, six levels down. Nothing of the list leaves this browser but the names and ids of what you tick, which go into the repository&rsquo;s file.</p>
+      <p class="admin__lead">Your OneDrive, drawn here from Microsoft Graph as you, in this browser: open a folder with Open, tick a file or a folder to track it, and untick to let it go. The page draws the list itself rather than opening OneDrive&rsquo;s own picker, since the access you gave reaches every file already and the picker would need a token for your tenant&rsquo;s SharePoint, a page of Microsoft&rsquo;s inside this one and an address that differs between a personal and a work account. A ticked folder is tracked with everything in it, six levels down. Nothing of the list leaves this browser but the names and ids of what you tick, which go into the repository&rsquo;s file.</p>
       <div id="fd-browser"></div>
       <p class="admin__lead" id="fd-picked-head">Ticked:</p>
       <ul id="fd-picked" class="folders__picked"></ul>

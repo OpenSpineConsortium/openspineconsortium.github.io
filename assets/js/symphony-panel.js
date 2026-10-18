@@ -2788,8 +2788,9 @@
   var MS_SCOPE = 'Files.ReadWrite offline_access';
   var MS_REFRESH_DAYS = 90;
   var DRIVE_PARAMS = ['code', 'state', 'error', 'error_description', 'error_uri', 'session_state', 'admin_consent'];
-  // the folder's shape as drive-sync.yml reads it, one path segment
-  var FOLDER_NAME = /^[A-Za-z0-9_][A-Za-z0-9_. -]{0,79}$/;
+  // the folder's shape as drive-sync.yml reads it, one path segment; it ends in no dot or blank,
+  // which the workflow's rule admits and Windows refuses
+  var FOLDER_NAME = /^[A-Za-z0-9_]([A-Za-z0-9_. -]{0,78}[A-Za-z0-9_])?$/;
   var SECRETS_WAITING = 'SymphonyBoard\'s Secrets permission is still waiting on the owner (403), so the secret could not be saved and nothing else was written; a fine-grained token with Secrets: read and write would do it meanwhile.';
   // the connection, in this page's memory alone; the provider the service listed; what is ticked
   var drive = null;
@@ -3202,7 +3203,7 @@
     if (!repo) { say('Choose a repository first (or make one in step 3).', true); return; }
     if (!drive || !drive.refresh) { say('Connect OneDrive first (step 1): the drive\'s refresh token is what the repository keeps.', true); return; }
     if (!pickedOrder.length) { say('Tick at least one file or folder to track (step 2).', true); return; }
-    if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { say('The folder is one name of letters, digits, dots, dashes, underscores and blanks, as drive-sync.yml takes it; "papers" is the default.', true); return; }
+    if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { say('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
     button.disabled = true;
     var d = drive, refresh = d.refresh;
     var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { return picked[id]; }), connected: dayOf(new Date()) };
