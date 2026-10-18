@@ -23,7 +23,7 @@
    the refresh token that came with it) and the names of the repositories
    you listed, and never sends anything anywhere but GitHub and, for the
    sign-in, that service. The one Claude token it touches is one pasted
-   into the Tokens page's "Add or renew a slot", which it seals in this
+   into the Tokens tab's "Add or renew a slot", which it seals in this
    browser for GitHub's public key and sends to GitHub as that sealed box
    alone, never stored, logged or shown (the owner, 2026-10-18).
 
@@ -1042,8 +1042,9 @@
   function askButton(it) {
     return btn('Ask Claude on it', true, function () {
       $('cp-prompt-target').value = String(it.number);
-      $('cp-prompt').focus();
-      $('cp-prompt').scrollIntoView();
+      revealTab($('cp-prompt'));
+      $('cp-prompt').focus({ preventScroll: true });
+      scrollInDeck($('cp-prompt'));
     });
   }
   // "Give to" is offered where the protocol lets a label give the issue: the queue, the issues given
@@ -1307,6 +1308,7 @@
     rememberRepo(name);
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
+    if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
       return Promise.all([loadBoard(s), loadWorkers(s), loadRuns(s), loadPulls(s)]);
@@ -1460,6 +1462,124 @@
     }).catch(function (e) { say(e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write' + (signedInByApp() ? ', which the sign-in has once SymphonyBoard holds it; a fine-grained token with it starts one now.' : ' on the token.') : ''), true); });
   }
 
+  /* ---------- the console: its height, its tabs, its readouts ---------- */
+  // The control panel is one screen under the site's header and strip: a bar, a rail of tabs and one
+  // tab at a time, each scrolling inside itself. The tab is kept in the address (#board, #tokens),
+  // so a link or a reload opens it again, and nothing about it is stored. Anything the page points
+  // at, a row the assistant centres or the box "Ask Claude on it" fills, opens its tab first.
+  var consoleTab = '';
+  var consoleOnOpen = {};
+  var CONSOLE_TASK_TABLES = ['cp-queue', 'cp-given', 'cp-claimed', 'cp-review', 'cp-blocked', 'cp-epics'];
+  function consoleTabs() { return Array.prototype.slice.call(document.querySelectorAll('.console__rail [data-tab]')); }
+  function showTab(name) {
+    var tabs = consoleTabs();
+    if (!tabs.length) return;
+    if (!tabs.some(function (t) { return t.getAttribute('data-tab') === name; })) name = tabs[0].getAttribute('data-tab');
+    tabs.forEach(function (t) {
+      var on = t.getAttribute('data-tab') === name;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-tab-panel]'), function (p) { p.hidden = p.getAttribute('data-tab-panel') !== name; });
+    var changed = consoleTab !== name;
+    consoleTab = name;
+    if (location.hash !== '#' + name) {
+      try { history.replaceState(null, '', location.pathname + location.search + '#' + name); } catch (e) { /* the address stays */ }
+    }
+    if (changed && consoleOnOpen[name]) consoleOnOpen[name]();
+  }
+  function revealTab(node) {
+    var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
+    if (panel && panel.hidden) showTab(panel.getAttribute('data-tab-panel'));
+  }
+  // scrollIntoView moves every box around the node, the window too, which would carry the bar and
+  // the strip out of sight; while the deck holds the window, the window is put back where it was
+  function scrollInDeck(node, how) {
+    var x = window.pageXOffset || 0, y = window.pageYOffset || 0;
+    node.scrollIntoView(how);
+    var c = $('console');
+    if (c && getComputedStyle(c).overflow === 'hidden') window.scrollTo(x, y);
+  }
+  // the deck takes the height the window has left below the header and the strip
+  function fitConsole() {
+    var c = $('console');
+    if (!c) return;
+    var top = c.getBoundingClientRect().top + (window.pageYOffset || 0);
+    c.style.setProperty('--console-h', Math.max(Math.floor(window.innerHeight - top), 0) + 'px');
+    var rail = c.querySelector('.console__rail');
+    if (rail) rail.setAttribute('aria-orientation', getComputedStyle(rail).flexDirection === 'row' ? 'horizontal' : 'vertical');
+  }
+  // the rows of a list, a line that says the list is empty or still reading counting for none
+  function consoleRows(id) {
+    var t = $(id);
+    if (!t) return 0;
+    return Array.prototype.filter.call(t.querySelectorAll('tbody tr'), function (tr) { return !tr.querySelector('.admin__none'); }).length;
+  }
+  function countConsole() {
+    Array.prototype.forEach.call(document.querySelectorAll('#console [data-count]'), function (span) {
+      var key = span.getAttribute('data-count');
+      var n = key === 'tasks' ? CONSOLE_TASK_TABLES.reduce(function (sum, id) { return sum + consoleRows(id); }, 0) : consoleRows(key);
+      var text = state && state.ready ? String(n) : '';
+      if (span.classList.contains('readout__n')) text = text || '\u2013';
+      if (span.textContent !== text) span.textContent = text;
+      var readout = span.closest ? span.closest('.readout') : null;
+      if (readout) readout.classList.toggle('readout--on', n > 0);
+    });
+  }
+  // a list's heading at the top of the tab that holds it
+  function jumpTo(id) {
+    var table = $(id);
+    if (!table) return;
+    revealTab(table);
+    var wrap = table.closest('.table-scroll') || table;
+    var head = wrap.previousElementSibling && /^H[1-6]$/.test(wrap.previousElementSibling.tagName) ? wrap.previousElementSibling : wrap;
+    var box = wrap.closest('.console__scroll');
+    if (box) box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+  }
+  function initConsole() {
+    var c = $('console');
+    if (!c) return;
+    fitConsole();
+    window.addEventListener('resize', fitConsole);
+    window.addEventListener('load', fitConsole);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitConsole);
+    showTab(location.hash.slice(1));
+    window.addEventListener('hashchange', function () {
+      var name = location.hash.slice(1);
+      if (consoleTabs().some(function (t) { return t.getAttribute('data-tab') === name; })) showTab(name);
+    });
+    consoleTabs().forEach(function (t, i, all) {
+      t.addEventListener('click', function () { showTab(t.getAttribute('data-tab')); });
+      t.addEventListener('keydown', function (e) {
+        var step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+        var next = e.key === 'Home' ? all[0] : e.key === 'End' ? all[all.length - 1] : step ? all[(i + step + all.length) % all.length] : null;
+        if (!next) return;
+        e.preventDefault();
+        showTab(next.getAttribute('data-tab'));
+        next.focus();
+      });
+    });
+    // the readouts, the launch buttons that open a tab, and the chips that press a button elsewhere
+    c.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('[data-goto],[data-jump],[data-press]') : null;
+      if (!b || b.getAttribute('role') === 'tab') return;
+      if (b.hasAttribute('data-press')) {
+        var target = $(b.getAttribute('data-press'));
+        if (target && !target.disabled) target.click();
+        return;
+      }
+      if (b.hasAttribute('data-goto')) showTab(b.getAttribute('data-goto'));
+      if (b.hasAttribute('data-jump')) jumpTo(b.getAttribute('data-jump'));
+      var f = b.getAttribute('data-focus');
+      if (f && $(f)) $(f).focus();
+    });
+    var pending = 0;
+    function later() { if (!pending) pending = setTimeout(function () { pending = 0; countConsole(); }, 60); }
+    if (window.MutationObserver && $('cp-app')) new MutationObserver(later).observe($('cp-app'), { childList: true, subtree: true });
+    var summaryNode = $('cp-summary');
+    if (window.MutationObserver && summaryNode) new MutationObserver(later).observe(summaryNode, { characterData: true, childList: true, subtree: true });
+  }
+
   function initPanel() {
     wireGate(function () { enter(start); });
     watchOtherTabs();
@@ -1475,7 +1595,7 @@
       dropKey(KEY_REPO);
       say(state.repo + ' is off the list.');
       var next = repos()[0];
-      if (next) loadRepo(next); else { state = emptyState(''); fillRepoSelect($('cp-repo'), ''); $('cp-summary').textContent = 'No repository listed. Add one below.'; }
+      if (next) loadRepo(next); else { state = emptyState(''); fillRepoSelect($('cp-repo'), ''); $('cp-summary').textContent = 'No repository listed. Add one on the Repositories tab.'; }
     });
     $('cp-task-queue').addEventListener('click', queueTask);
     $('cp-w-add').addEventListener('click', addWorker);
@@ -1488,9 +1608,11 @@
     initAssistant();
 
     function start() {
+      // a sign-in, perhaps as someone else, reads the Tokens tab again rather than show the last one's
+      tokensFor = null;
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
-      if (name) loadRepo(name); else $('cp-summary').textContent = 'No repository listed yet. Find them, or add one by name, below.';
+      if (name) loadRepo(name); else $('cp-summary').textContent = 'No repository listed yet. Find them, or add one by name, on the Repositories tab.';
     }
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
@@ -1956,7 +2078,8 @@
     var row = assistantRedraw().row;
     if (!row) return '#' + n + ' is the focus, but it is not in the task tables (closed, a pull request, or without the protocol\'s labels).';
     if (row.classList.contains('control__off')) return '#' + n + ' is the focus, but the filter (' + assistantFilterWords() + ') hides its row; Show all tasks, above the tables, shows it.';
-    row.scrollIntoView({ block: 'center' });
+    revealTab(row);
+    scrollInDeck(row, { block: 'center' });
     var table = row.closest ? row.closest('table') : null;
     return 'Focused #' + n + (table && ASSISTANT_TABLES[table.id] ? ' (under ' + ASSISTANT_TABLES[table.id] + ')' : '') + '.';
   }
@@ -1992,6 +2115,7 @@
   function assistantFilter(kind) {
     assistant.filter = kind;
     var r = assistantRedraw();
+    if (kind !== 'none') revealTab($('cp-queue'));
     return kind === 'none' ? 'Showing every task again.' : 'Filtered the task tables to ' + assistantFilterWords() + ': ' + r.shown + ' of ' + r.total + '; Show all tasks, above the tables, clears it.';
   }
   function assistantShowSection(key) {
@@ -2000,7 +2124,8 @@
     for (var i = 0; i < hs.length; i++) {
       if (hs[i].textContent.trim().toLowerCase().indexOf(name.toLowerCase()) === 0) {
         assistant.section = name;
-        hs[i].scrollIntoView({ block: 'start' });
+        revealTab(hs[i]);
+        scrollInDeck(hs[i], { block: 'start' });
         return 'Showing the board\'s ' + name + ' section.';
       }
     }
@@ -2115,7 +2240,7 @@
     var repo = $('cost-repo').value;
     var box = $('cost-measured');
     clear(box);
-    if (!repo) { none(box, 'Choose a repository from the control panel\'s list first.'); return; }
+    if (!repo) { none(box, 'Choose a repository in the bar above first.'); return; }
     writeKey(KEY_REPO, repo, true);
     none(box, 'Reading the branch metrics of ' + repo + '...');
     var metaRead = gh('GET', '/repos/' + repo).then(function (r) { return r.data; }).catch(function () { return null; });
@@ -2401,7 +2526,7 @@
   // main takes only pull requests, so the change is a branch of its own and a pull request, which the
   // repository's check and its owner then take as any other
   function saveAssignments() {
-    var repo = $('tk-repo').value;
+    var repo = tokensRepo();
     if (!repo) return;
     var text = JSON.stringify(chosenAssignments(), null, 2) + '\n';
     var branch = 'symphony/accounts-' + new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
@@ -2420,7 +2545,7 @@
       return gh('PUT', '/repos/' + repo + '/contents/' + ASSIGNMENTS_PATH, body);
     }).then(function () {
       return gh('POST', '/repos/' + repo + '/pulls', { title: 'Which Claude account each worker in Actions runs on', head: branch, base: base,
-        body: 'Sets ' + ASSIGNMENTS_PATH + ' from the control panel\'s Tokens page: main is CLAUDE_CODE_OAUTH_TOKEN, a number is that slot\'s SYMPHONY_CLAUDE_<slot>, and auto takes the slot of SYMPHONY_CLAUDE_ACCOUNTS with the most room at the start of each run (docs/setup/claude-tokens.md).' });
+        body: 'Sets ' + ASSIGNMENTS_PATH + ' from the control panel\'s Tokens tab: main is CLAUDE_CODE_OAUTH_TOKEN, a number is that slot\'s SYMPHONY_CLAUDE_<slot>, and auto takes the slot of SYMPHONY_CLAUDE_ACCOUNTS with the most room at the start of each run (docs/setup/claude-tokens.md).' });
     }).then(function (r) {
       clear($('msg'));
       add($('msg'), 'Opened ', link(r.data.html_url, 'pull request #' + r.data.number), '; the assignments take effect once it merges.');
@@ -2430,12 +2555,13 @@
 
   function loadTokens() {
     var asked = ++reading;
-    var repo = $('tk-repo').value;
+    var repo = tokensRepo();
     var slots = $('tk-slots').querySelector('tbody');
     clear(slots);
     clear($('tk-assign'));
     $('tk-auto').textContent = '';
-    if (!repo) { say('Choose a repository from the control panel\'s list first.', true); return; }
+    tokensFor = repo;
+    if (!repo) { say('Choose a repository in the bar above first.', true); return; }
     writeKey(KEY_REPO, repo, true);
     var tr = el('tr');
     add(tr, el('td', 'admin__none', 'Reading the branch pool of ' + repo + '...')).firstChild.colSpan = 6;
@@ -2451,7 +2577,7 @@
   // one word from each slot of SYMPHONY_CLAUDE_ACCOUNTS through the workflow Pool, which spends that
   // word of each slot's window, so it runs only on this press (the owner's choice, 2026-10-17)
   function probeSlots() {
-    var repo = $('tk-repo').value;
+    var repo = tokensRepo();
     if (!repo) return;
     say('Starting the workflow Pool...');
     gh('GET', '/repos/' + repo).then(function (r) {
@@ -2902,11 +3028,12 @@
     });
   }
 
-  function initTokens() {
-    wireGate(function () { enter(startTokens); });
-    watchOtherTabs();
-    $('cp-signout').addEventListener('click', signOut);
-    $('tk-repo').addEventListener('change', loadTokens);
+  // The Tokens tab of the console: the repository is the one the console shows, and the slots are
+  // read when the tab opens, or when the console moves to another repository while it is open, so a
+  // person who never opens the tab sends none of its reads.
+  var tokensFor = null;
+  function tokensRepo() { return state && state.repo ? state.repo : ''; }
+  function initTokensTab() {
     $('tk-reload').addEventListener('click', loadTokens);
     $('tk-probe').addEventListener('click', probeSlots);
     // the button at the top presses the Add box's own, within the same click, so its new tab may open
@@ -2915,18 +3042,12 @@
       if (one) one.click();
       else say('The slots are still being read; press again in a moment.');
     });
-    function startTokens() {
-      fillRepoSelect($('tk-repo'), chosenRepo());
-      loadTokens();
-    }
-    finishOauth().then(function () {
-      if (!loadToken()) { showGate(); return; }
-      enter(startTokens);
-    });
+    consoleOnOpen.tokens = function () { if (tokensFor !== tokensRepo()) loadTokens(); };
   }
 
   // the cost page carries a signed-in box of its own, so its marker is read first
-  if ($('tokens-app')) initTokens();
+  // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
+  if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) initPanel();
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-slots')) initTokensTab(); }
 })();

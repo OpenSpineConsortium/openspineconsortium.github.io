@@ -1,66 +1,17 @@
 ---
 title: Claude tokens · Symphony
-description: The Claude accounts a Symphony repository's workers run on: each slot's five-hour and seven-day use with their resets, the per-model weekly limits such as Fable's, which slot auto takes, and which worker runs on which.
+description: The Claude accounts a Symphony repository's workers run on are now the Tokens tab of the control panel: each slot's use with its resets, which slot auto takes, adding an account, and which worker runs on which.
 css: /assets/css/control.css
 js: /assets/js/symphony-panel.js
-canonical: https://openspineconsortium.com/symphony/control/tokens.html
+canonical: https://openspineconsortium.com/symphony/control/
 robots: noindex
 ---
-<section class="section admin control tokens" aria-labelledby="tk-title">
+<!-- The Tokens page is the console's Tokens tab now; this address is kept for the links and
+     bookmarks that name it, and symphony-panel.js sends the visitor on with the query. -->
+<section class="section admin control" aria-labelledby="tk-title">
   <header class="page-head">
     <span class="eyebrow">Symphony</span>
     <h1 id="tk-title">Claude tokens</h1>
-    <p>The Claude accounts your workers run on: add one with a press, see how much of each is used and when it resets, and choose which worker runs on which. <a href="/symphony/control/">Back to the control panel</a>.</p>
+    <p id="tokens-moved">The Claude accounts your workers run on are now the Tokens tab of the control panel. <a href="/symphony/control/">Open the control panel</a> and press Tokens.</p>
   </header>
-
-  <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
-
-  <div class="admin__box control__gate" id="cp-gate">
-    <h2>Sign in</h2>
-    <p class="admin__lead">One press, as on the control panel: GitHub sends you straight back here signed in, and the page reads the branch as you.</p>
-    <div><button id="cp-signin" type="button" class="control__signin">Sign in with GitHub</button></div>
-    <p id="cp-signin-off" class="admin__lead admin__warn hidden">Sign in with GitHub switches on once its sign-in service is running; until then, use a token below.</p>
-    <div class="admin__checks"><label><input id="cp-keep" type="checkbox"> Keep me signed in on this browser</label></div>
-    <details id="cp-token-way" class="control__token">
-      <summary>Use a fine-grained token instead</summary>
-      <label for="cp-token">A fine-grained personal access token</label>
-      <input id="cp-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_...">
-      <small>The same token as the control panel&rsquo;s: Contents read reads the readings, Contents and Pull requests write propose the assignments, Actions write starts the workflow Pool, and the organization permissions Secrets and Variables write add a slot. It stays in this browser and goes to GitHub&rsquo;s API only. Make one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>. This is a GitHub token; the one Claude token the page takes is the one you paste under &ldquo;Add or renew a slot&rdquo;.</small>
-      <div><button id="cp-open" type="button">Read my repository</button></div>
-    </details>
-  </div>
-
-  <div id="cp-app" class="hidden">
-    <p class="admin__bar"><button id="cp-signout" type="button" class="quiet">Forget the token</button> <small id="cp-who"></small></p>
-    <div class="admin__box">
-      <div class="admin__row">
-        <div><label for="tk-repo">Repository (the control panel&rsquo;s list)</label><select id="tk-repo"></select></div>
-      </div>
-      <p class="admin__bar"><button id="tk-add-top" type="button">Add a Claude account</button> <button id="tk-probe" type="button" class="quiet" title="Starts the workflow Pool, which asks each slot for one word on Haiku">Read every slot now</button> <button id="tk-reload" type="button" class="quiet">Read the pool again</button></p>
-    </div>
-
-    <h2 id="h-slots">The slots</h2>
-    <div class="table-scroll"><table id="tk-slots" class="admin__stack"><thead><tr><th>Slot</th><th>5 hours</th><th>7 days</th><th>Per-model weekly limits</th><th>State</th><th>Last read</th></tr></thead><tbody></tbody></table></div>
-    <p id="tk-auto" class="admin__lead"></p>
-    <details class="control__token">
-      <summary>How the readings are taken and how auto picks a slot</summary>
-      <p class="admin__lead">A slot is an organization secret, <code>SYMPHONY_CLAUDE_1</code> to <code>SYMPHONY_CLAUDE_8</code>; <code>main</code> is <code>CLAUDE_CODE_OAUTH_TOKEN</code>. GitHub never gives a secret back, so the page reads only the readings on the repository&rsquo;s branch <code>pool</code>: what each worker&rsquo;s run saw in Claude&rsquo;s answers, what the workflow Pool&rsquo;s one-word probes saw, and what cswap on your machine sent with <code>python3 scripts/tokens.py usage</code>, the only source of the per-model limits such as Fable&rsquo;s. No reading holds a token. &ldquo;Read every slot now&rdquo; starts the workflow Pool, which asks each slot of <code>SYMPHONY_CLAUDE_ACCOUNTS</code> for one word on Haiku: that spends one word of each slot&rsquo;s window, so nothing reads them on a schedule.</p>
-      <p class="admin__lead">A slot is held once a window or a model limit reaches 90 percent, until it resets, or for five hours from its reading when its reset is not known. A worker on auto takes, at the start of each run, the free slot with the most room in five hours and then seven days, and the workers of one run take different free slots; a run already going finishes on its account. The Fable limit and the other per-model ones come only from cswap: run <code>python3 scripts/tokens.py usage</code> on your machine to send them.</p>
-    </details>
-
-    <h2 id="h-add">Add a Claude account</h2>
-    <details class="control__token">
-      <summary>What the button does, and what it needs</summary>
-      <p class="admin__lead">It opens an issue on the repository and starts the workflow Token there, which runs <code>claude setup-token</code> on a GitHub Actions runner and posts its sign-in link on the issue. This page shows it as a button: sign in as the account to add, press Authorize, and paste the code claude.ai shows into the box. The run takes the token out of what Claude Code prints and posts it only sealed for GitHub, which alone can open it; the page saves it as the next free slot, as <code>CLAUDE_CODE_OAUTH_TOKEN</code> too while that is not set, lists it in <code>SYMPHONY_CLAUDE_ACCOUNTS</code> so auto and the bench can take it, and closes the issue. The token is never on this page, in the issue or in the log, and lives a year. It needs you to be an owner of the organization, a repository with the workflow Token (symphony-template has it), and the SymphonyBoard App&rsquo;s permissions Secrets and Variables (organization) and Actions and Issues (repository), each Read and write.</p>
-    </details>
-    <div id="tk-add" class="admin__box"></div>
-
-    <h2 id="h-assign">Which account each worker runs on</h2>
-    <details class="control__token">
-      <summary>Where this is kept</summary>
-      <p class="admin__lead">Each worker in Actions runs on <code>main</code>, a slot, or <code>auto</code>, from the file <code>.github/symphony/accounts.json</code>; with no file every worker runs on <code>main</code>. The default branch takes only pull requests, so saving here opens one, which takes effect once it merges. @claude and the coordinator stay on <code>main</code>.</p>
-    </details>
-    <div id="tk-assign" class="admin__box"></div>
-  </div>
-  <div id="tokens-app" class="hidden"></div>
 </section>
