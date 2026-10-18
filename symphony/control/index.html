@@ -154,6 +154,7 @@
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
           <button type="button" role="tab" data-tab="ask" id="rail-ask" aria-controls="tab-ask"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Ask Claude</span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
+          <button type="button" role="tab" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
           <button type="button" role="tab" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
           <button type="button" role="tab" data-tab="repos" id="rail-repos" aria-controls="tab-repos"><span class="rail__icon" aria-hidden="true">&#43;</span><span class="rail__name">Repositories</span></button>
           <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
@@ -384,6 +385,20 @@
           </div>
         </section>
 
+        <!-- Leaderboard: the issues each token, and each person whose tokens they are, worked and closed -->
+        <section class="console__panel" id="tab-leaders" data-tab-panel="leaders" role="tabpanel" aria-labelledby="rail-leaders" hidden>
+          <div class="console__head">
+            <h2 id="h-leaders" class="console__h">Leaderboard</h2>
+          </div>
+          <div class="console__scroll">
+            <p id="lb-lead" class="admin__lead"></p>
+            <h3 class="console__boxh">People</h3>
+            <div class="table-scroll"><table id="lb-people" class="admin__stack"><thead><tr><th>#</th><th>Person</th><th>Tokens</th><th>Issues closed</th><th>Issues worked</th></tr></thead><tbody></tbody></table></div>
+            <h3 class="console__boxh">Tokens</h3>
+            <div class="table-scroll"><table id="lb-tokens" class="admin__stack"><thead><tr><th>#</th><th>Token</th><th>Belongs to</th><th>Issues closed</th><th>Issues worked</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </section>
+
         <!-- Share: invite a person by GitHub username or email, and send them the link -->
         <section class="console__panel" id="tab-share" data-tab-panel="share" role="tabpanel" aria-labelledby="rail-share" hidden>
           <div class="console__head">
@@ -415,7 +430,7 @@
         <section class="console__panel" id="tab-about" data-tab-panel="about" role="tabpanel" aria-labelledby="rail-about" hidden>
           <div class="console__scroll">
             <h2 class="console__h">About the control panel</h2>
-            <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#share</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
+            <p class="admin__lead">Your Symphony repositories from one console: the board, the queue, the workers, the checks and the pull requests, the Claude accounts, and a box to ask Claude. The page talks to GitHub&rsquo;s API as you, from this browser, and to nothing else; the token stays in this browser. Every state here is written in words and every action is a button or a link with a name, so you and a browsing Claude read and drive it alike. Each tab has its own address: <code>#command</code>, <code>#board</code>, <code>#tasks</code>, <code>#pulls</code>, <code>#runs</code>, <code>#workers</code>, <code>#ask</code>, <code>#tokens</code>, <code>#leaders</code>, <code>#share</code>, <code>#repos</code> and <code>#about</code>. What it costs, against the other ways of running agents, is on <a href="/symphony/cost.html">the cost page</a>.</p>
             <h3 id="h-privacy">What this page keeps and sends</h3>
             <p class="admin__lead">In this browser: the GitHub token, until you press Forget the token. With Keep me signed in ticked, it is kept for every tab of this browser, beside the refresh token GitHub issued with it after Sign in with GitHub, with which the page renews the token after its eight hours. Unticked, the token is kept in this tab&rsquo;s own storage, which the browser clears when the tab closes and brings back when it reopens or restores the tab, and the refresh token is held by the open page alone, never stored, so the renewals end once that page is gone (closed, reloaded, or replaced by another page such as the cost page) and that sign-in ends with its eight-hour token. Also kept: the names of the repositories you listed, the plan you chose on the cost page, the number of the assistant issue the page uses in each repository, one it opened or found. Sent: requests to GitHub&rsquo;s API, as you, for what the page shows and does (a question to the assistant goes as a comment on that issue, and the page reads the issue&rsquo;s comments every few seconds while it waits for the answer), and nothing to anyone else, a token you paste included, which GitHub is asked about before the page keeps it; on the Share tab, an invitation to the GitHub user you name, sent to GitHub as you, and an address you type to GitHub&rsquo;s user search to find that user, while its mail buttons open Gmail, Outlook, your email app or your device&rsquo;s share sheet with a note you send yourself; with Sign in with GitHub, GitHub&rsquo;s one-time code to the sign-in service, which answers with the token and keeps nothing, the refresh token to the same service when the token is renewed, and a sign-in&rsquo;s token once more when you press Forget the token, or sign in or paste a token GitHub accepts over it, so that GitHub revokes it. The developer receives nothing from this page. The Apps&rsquo; privacy statement, which covers it, is at <a href="/symphony/apps-privacy.html">/symphony/apps-privacy.html</a>.</p>
           </div>
