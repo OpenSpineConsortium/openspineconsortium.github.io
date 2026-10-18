@@ -1652,7 +1652,7 @@
         Array.prototype.forEach.call(tiles, function (t) { t.setAttribute('aria-pressed', Number(t.getAttribute('data-index')) === select.selectedIndex ? 'true' : 'false'); });
       }
       Array.prototype.forEach.call(tiles, function (t) {
-        t.addEventListener('click', function () { select.selectedIndex = Number(t.getAttribute('data-index')); light(); });
+        t.addEventListener('click', function () { select.selectedIndex = Number(t.getAttribute('data-index')); select.dispatchEvent(new Event('change', { bubbles: true })); });
       });
       select.addEventListener('change', light);
       light();
