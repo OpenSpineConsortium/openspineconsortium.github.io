@@ -1,0 +1,207 @@
+---
+title: Use cases · Symphony
+description: What Symphony can be used for, told for someone who has never heard of it: several Claude sessions on one code base, a team on their own accounts, work that carries on overnight, papers revised from reviewers' comments, jobs on a university cluster and volunteer projects.
+css: /assets/css/compare.css
+canonical: https://openspineconsortium.com/symphony/use-cases.html
+---
+<section class="section uc" aria-labelledby="uc-title">
+  <header class="page-head">
+    <span class="eyebrow">Symphony</span>
+    <h1 id="uc-title">What Symphony is for</h1>
+    <p>Claude Code can already do a task well on its own. Symphony is for the moment you want more than one at once: several of your own sessions, a colleague's, or agents that keep working in GitHub while you sleep, all on the same project, without two of them doing the same task or one undoing another. Each case below is a situation, what you do, and how far along it is. To see the same powers set beside the tools you may already use, read <a href="/symphony/compare.html">Symphony compared</a>.</p>
+  </header>
+
+  <h2 id="minute">The idea in one minute</h2>
+  <div class="uc-story">
+    <p>Think of a kitchen with one order rail. Every dish is a ticket on the rail. A cook takes a ticket by pinning it to their own station, and once it is pinned no other cook can take it. If a cook walks away from a ticket for too long, it goes back on the rail with a note of what was already done. Before a plate leaves, someone checks it.</p>
+    <p>Symphony is that rail, kept in a GitHub repository. The tickets are GitHub issues. Taking one is pushing a branch named after it, and GitHub refuses a second push of the same name, so only one worker can hold it. The work comes back as a pull request, and it lands only when the repository's checks pass. A worker can be you, a colleague, one of your Claude Code sessions or an agent running in GitHub Actions; they all follow the same rule, and the board shows who holds what.</p>
+  </div>
+
+  <h2 id="example">A worked example</h2>
+  <p class="cmp-dom__lede">One person, Maya, keeps a small web app in a GitHub repository that Symphony has set up. She has three things to fix before Monday.</p>
+  <ol class="uc-steps">
+    <li><b>Friday afternoon, she writes three issues</b> and labels them <code>todo</code>: the sign-up form forgets the email, the dates are in the wrong time zone, and the help page is out of date. That is the queue.</li>
+    <li><b>She opens two Claude Code sessions</b>, one in a terminal and one in the browser. Each reads the board, the first takes the sign-up issue by pushing the branch <code>claude/12</code>, and the second tries the same issue a moment later. GitHub refuses its push, so it takes the time-zone issue, <code>claude/13</code>, instead. Neither had to be told.</li>
+    <li><b>Each session writes its plan first</b>: a short file on its branch naming the worker, the plan and the files it will touch. The two plans both list <code>settings.js</code>, so the board says the two pieces of work meet there and which should land first.</li>
+    <li><b>Each opens a draft pull request at once</b> and pushes as it goes, so Maya can watch both from one page, the <a href="/symphony/control/">control panel</a>, without opening a terminal.</li>
+    <li><b>She goes home.</b> The help-page issue is still in the queue, so the worker in GitHub Actions she registered once, which runs on her Claude plan when work is waiting, takes it and opens its own pull request. Her computer is off.</li>
+    <li><b>The terminal session stalls</b> overnight when the laptop sleeps. After about a day with no new commit, the board hands the issue back to the queue, renames the branch so its half-done work is kept, and leaves a comment saying what it held.</li>
+    <li><b>Monday morning</b>, two pull requests have passed their checks and wait for her press of Merge (she could have let a worker merge its own once green), and the third issue is back in the queue with notes for whichever worker picks it up next.</li>
+  </ol>
+  <p class="cmp-dom__lede">Nothing in that story needed a server, an API key or a new app: issues, branches, pull requests and GitHub Actions, plus one Claude plan.</p>
+
+  <h2 id="cases">Use cases</h2>
+  <div class="uc-key">
+    <span><span class="uc-status uc-status--now">Works today</span> built and in use</span>
+    <span><span class="uc-status uc-status--early">Early</span> built, still being proven</span>
+  </div>
+
+  <div class="uc-list">
+    <article class="uc-case" id="solo">
+      <span class="uc-status uc-status--now">Works today</span>
+      <h3>Several Claude sessions on one code base</h3>
+      <p class="uc-who">For one developer who already runs more than one session.</p>
+      <h4>The problem</h4>
+      <p>Two sessions started on the same afternoon pick the same bug, or one rewrites the file the other is in the middle of.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Write each task as an issue labelled todo.</li>
+        <li>Open as many sessions as you like; each takes a different issue by itself.</li>
+        <li>Review and merge their pull requests as they turn green.</li>
+      </ol>
+      <p class="uc-replaces">Instead of: keeping a list of which tab is doing what.</p>
+    </article>
+
+    <article class="uc-case" id="team">
+      <span class="uc-status uc-status--now">Works today</span>
+      <h3>A team, each on their own Claude account</h3>
+      <p class="uc-who">For two or more people sharing one repository.</p>
+      <h4>The problem</h4>
+      <p>Each person's Claude knows only what that person told it, and nobody can see what the others' sessions are doing.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>The project's instructions, goal and shared notes live in the repository, so every session on every account reads the same ones.</li>
+        <li>Everyone's sessions claim from the same queue, under each person's GitHub name.</li>
+        <li>The board shows the whole team's work in one place.</li>
+      </ol>
+      <p class="uc-replaces">Instead of: a chat thread asking "is anyone on this?"</p>
+    </article>
+
+    <article class="uc-case" id="overnight">
+      <span class="uc-status uc-status--now">Works today</span>
+      <h3>Work that carries on while you are away</h3>
+      <p class="uc-who">For anyone with more tasks than hours.</p>
+      <h4>The problem</h4>
+      <p>Claude stops when you close the laptop, and paying per token for agents in the cloud adds up.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Register a worker in GitHub Actions with a short form; it runs on your Claude plan's token, never an API key.</li>
+        <li>It starts when an issue is queued, and again while work remains.</li>
+        <li>It works by the same rule as your own sessions, so it never takes the task you are on.</li>
+      </ol>
+      <p class="uc-replaces">Instead of: a hosted coding agent billed by the token.</p>
+    </article>
+
+    <article class="uc-case" id="epic">
+      <span class="uc-status uc-status--now">Works today</span>
+      <h3>A big request split into pieces</h3>
+      <p class="uc-who">For a feature too large for one sitting.</p>
+      <h4>The problem</h4>
+      <p>One session on a large change runs out of room; several sessions on it trip over each other.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Write the request once and label it epic.</li>
+        <li>Claude plans it into tasks, each owning its own files, and puts them in the queue.</li>
+        <li>When the last task lands, Claude checks the whole and fixes what the pieces broke together.</li>
+      </ol>
+      <p class="uc-replaces">Instead of: splitting the work up by hand.</p>
+    </article>
+
+    <article class="uc-case" id="ask">
+      <span class="uc-status uc-status--now">Works today</span>
+      <h3>Run the project from one web page</h3>
+      <p class="uc-who">For someone who would rather not live in a terminal.</p>
+      <h4>The problem</h4>
+      <p>The state of the work is spread over issues, branches, pull requests and workflow runs.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Sign in to the <a href="/symphony/control/">control panel</a> with GitHub.</li>
+        <li>See the board, queue a task, start the workers and merge a green pull request, all as buttons.</li>
+        <li>Ask Claude a question about the project in its Assistant box; the answer comes back on the page.</li>
+      </ol>
+      <p class="uc-replaces">Instead of: a dozen GitHub tabs.</p>
+    </article>
+
+    <article class="uc-case" id="papers">
+      <span class="uc-status uc-status--early">Early</span>
+      <h3>Revising papers from reviewers' comments</h3>
+      <p class="uc-who">For anyone whose Word documents come back full of comments.</p>
+      <h4>The problem</h4>
+      <p>Every comment needs an edit and a reply, across several documents, and each edit must stay reviewable.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Put the documents in a repository; each one becomes one task, made from its comments.</li>
+        <li>A worker takes a document, answers each comment, and its edits are written back into the .docx as Word's own tracked changes, each with a comment saying why.</li>
+        <li>You open the file in Word and accept or reject each change, as you would a colleague's.</li>
+      </ol>
+      <p class="uc-replaces">Built and checked on documents it made; not yet proven on one saved by Word.</p>
+    </article>
+
+    <article class="uc-case" id="folders">
+      <span class="uc-status uc-status--early">Early</span>
+      <h3>A folder of Drive or OneDrive files, kept in step</h3>
+      <p class="uc-who">For a group whose work lives in shared folders, not in code.</p>
+      <h4>The problem</h4>
+      <p>Files in a shared drive have no queue, no claim and no review before a change lands.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Sign in to Google Drive or OneDrive once, in the browser, and pick the files or folders.</li>
+        <li>A new repository tracks them and stays in step with the drive.</li>
+        <li>A new comment on a file starts a task, worked by the same rules as code.</li>
+      </ol>
+      <p class="uc-replaces">The sync is built; the one sign-in waits on a one-time setup, and until then it goes through a folder on your own computer.</p>
+    </article>
+
+    <article class="uc-case" id="cluster">
+      <span class="uc-status uc-status--early">Early</span>
+      <h3>A job on a university cluster, from GitHub</h3>
+      <p class="uc-who">For a research lab whose code is on GitHub and whose computing is on a shared cluster.</p>
+      <h4>The problem</h4>
+      <p>Running a job means signing in, copying files, writing a batch script and copying results back by hand.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>The lab sets it up once, in the cluster's own web shell.</li>
+        <li>Press Run on a workflow in GitHub; a runner that lives for that one job starts on a compute node through the cluster's own scheduler.</li>
+        <li>The output comes back as the job's log and a file, beside the commit that made it. GitHub holds no password, only a key that can start, check or stop the runner.</li>
+      </ol>
+      <p class="uc-replaces">Running on one university's cluster so far.</p>
+    </article>
+
+    <article class="uc-case" id="crowd">
+      <span class="uc-status uc-status--early">Early</span>
+      <h3>A project open to volunteers</h3>
+      <p class="uc-who">For an open project that many people want to help with.</p>
+      <h4>The problem</h4>
+      <p>Volunteers duplicate each other's work, abandon tasks halfway, and nobody wants to hand out an AI key.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>The owner turns on crowd mode once; the repository then holds no Claude credential of anyone's.</li>
+        <li>Once the owner invites them, each volunteer works on their own Claude account and claims from the queue the maintainers fill.</li>
+        <li>Abandoned tasks come back after about a day, and every contribution passes the required check.</li>
+      </ol>
+      <p class="uc-replaces">Built; waiting for its first crowd.</p>
+    </article>
+
+    <article class="uc-case" id="accounts">
+      <span class="uc-status uc-status--early">Early</span>
+      <h3>Several Claude accounts as one pool</h3>
+      <p class="uc-who">For one person with more than one Claude plan of their own.</p>
+      <h4>The problem</h4>
+      <p>One plan's usage window runs out while another account sits idle.</p>
+      <h4>With Symphony</h4>
+      <ol>
+        <li>Add each of your accounts to the pool from the control panel's Tokens page.</li>
+        <li>The page shows each account's recent use.</li>
+        <li>A worker can run on a chosen account, or on whichever has room.</li>
+      </ol>
+      <p class="uc-replaces">The pool works; the page's Add box waits on a one-time permission. Each account stays its owner's own; a pool is never shared between people.</p>
+    </article>
+  </div>
+
+  <h2 id="study">Case study: Symphony builds Symphony</h2>
+  <div class="uc-story">
+    <p>Symphony's own repositories, its protocol library, its template, its GitHub Apps, its extensions and this website, are built the way the cases above describe. One person sets the direction, and many Claude Code sessions work in parallel, each in its own thread: each takes one piece of work, does it on its own branch, opens one pull request, runs the repository's checks first, and merges only once they are green. When two pieces of work need the same file, one owns it and the other hands its change over. When a session is cut off halfway, its branch and its notes are still there for the next one.</p>
+    <p>What this case shows is that the way of working holds up day to day, on real work, with one person and many sessions. What it does not show is a measured speed-up over one agent working alone: that comparison is a benchmark still running, and no result is claimed here until it is done.</p>
+  </div>
+
+  <h2 id="fits">Other work with the same shape</h2>
+  <div class="uc-story">
+    <p>Symphony fits any work that splits into tasks, where each task changes files and can be checked before it counts. Beyond the cases above, that includes translating a set of documents, writing course material chapter by chapter, cleaning a collection of data files, keeping a set of policies or procedures up to date, and building out a website page by page. None of these has been run under Symphony here yet; they are named so you can see whether your own work has the shape.</p>
+  </div>
+
+  <div class="uc-cta">
+    <a class="btn btn--solid" href="/symphony/#install">Start with Symphony</a>
+    <a class="btn btn--ghost" href="/symphony/compare.html">Compare it with the tools you know</a>
+    <a class="btn btn--ghost" href="/symphony/cost.html">What it costs</a>
+  </div>
+</section>
