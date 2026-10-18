@@ -332,10 +332,12 @@ body[data-shell] main > .console.section, .console.section {
 .tok__meta { -webkit-line-clamp: 1; }
 .tok__state--go { color: var(--go); }
 .tok__state--warn { color: var(--ochre); }
-.console button.tok__x {
-  position: absolute; top: 6px; right: 6px; margin: 0; padding: 0; width: 24px; height: 24px; display: grid; place-items: center;
-  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint); font-size: 1.05rem; line-height: 1;
+.console button.tok__x, .console button.tok__gear {
+  position: absolute; top: 6px; right: 6px; margin: 0; padding: 0; width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-soft); font-size: 1.35rem; line-height: 1;
 }
+.console button.tok__gear { right: 40px; font-size: 1.25rem; }
+.console button.tok__gear:hover { color: var(--teal); background: rgba(60, 194, 177, 0.12); border-color: rgba(60, 194, 177, 0.5); }
 .console button.tok__x:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
 .console button.tok--add { align-items: center; justify-content: center; border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); }
 .console button.tok--add:hover { border-color: var(--teal); color: var(--teal); background: rgba(60, 194, 177, 0.06); }
@@ -359,7 +361,6 @@ body[data-shell] main > .console.section, .console.section {
 .tok__owner { font-size: 0.72rem; color: var(--teal); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tkdlg__reach { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 .tkdlg__repos { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; }
-.tkdlg__use { display: flex; flex-direction: column; gap: 2px; }
 .tkdlg .tkdlg__fact { margin: 0; font-size: 0.86rem; }
 .tkdlg__faint { color: var(--ink-faint); }
 .tkdlg__line { margin: 0; }
@@ -370,3 +371,18 @@ body[data-shell] main > .console.section, .console.section {
 .lb__track { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
 .lb__bar { display: block; height: 100%; background: var(--teal); }
 .lb__n { flex: none; min-width: 2ch; text-align: right; }
+.tok--on .tok__open { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+.tkwrap { display: flex; gap: 18px; align-items: flex-start; }
+.tkwrap .toks { flex: 1; min-width: 0; align-content: start; }
+.tkside { position: sticky; top: 0; flex: none; width: 320px; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.tkside[hidden] { display: none; }
+.tkside .console__boxh { margin: 0; padding-right: 32px; }
+.tkside p { margin: 0; }
+.console button.tkside__close { position: absolute; top: 8px; right: 8px; margin: 0; padding: 0; width: 32px; height: 32px; border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-soft); font-size: 1.35rem; line-height: 1; }
+.tkside { position: sticky; }
+.tkside__meter { display: flex; flex-direction: column; gap: 4px; }
+.tkside__line { display: flex; justify-content: space-between; font-size: 0.88rem; }
+.tkside__pct { font-weight: 600; }
+.tkside__meter .tok__bar { height: 8px; border-radius: 4px; }
+.tkside__reset { font-size: 0.78rem; color: var(--ink-faint); }
+@media (max-width: 760px) { .tkwrap { flex-direction: column; } .tkside { position: relative; width: auto; align-self: stretch; } }
