@@ -1849,6 +1849,9 @@ def main():
                         sitemap.append(n["path"])
                     continue
                 page, used = render_page(n, texts)
+                if listed(n) and parse_body(used)[0].get("strip", "").lower() == "no":
+                    # a page in the strip that hides the strip leaves its reader no way to the others
+                    problems.append(f"{rel}: 'strip: no' on a page the strip lists; take the line out")
                 page = stamp_html(page)
                 changed = write(OUT / rel, page)
                 written[rel] = used
