@@ -4255,7 +4255,10 @@
     return gh('GET', '/repos/' + repo).then(function (r) {
       var org = r.data.owner && r.data.owner.type === 'Organization';
       var owner = r.data.owner.login;
-      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
+      // GitHub says whether the signed-in person administers the repository; a secret needs that,
+      // or for an organization's pool, an owner of the organization
+      var admin = r.data.permissions ? !!r.data.permissions.admin : null;
+      return { org: org, owner: owner, ownerId: r.data.owner.id, id: r.data.id, admin: admin, base: org ? '/orgs/' + owner + '/actions' : '/repos/' + repo + '/actions' };
     });
   }
   // GitHub lists secrets, variables and a secret's repositories as an object holding the array
@@ -4631,6 +4634,16 @@
   function knownModel(m) { return TILE_MODELS.some(function (t) { return t[0] && t[0] === m; }); }
   var tk = { repo: '', place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' };
 
+  // why the signed-in person can add no token where the repository's slots live, said before the
+  // press, since GitHub would refuse the first write with a bare 403
+  function cannotAdd() {
+    var place = tk.place;
+    if (!place || place.admin !== false) return '';
+    if (place.org && tk.admin) return '';
+    return place.org
+      ? 'Only an owner of ' + place.owner + ' can add a token to its pool, and you are not one. Pick a repository of your own in the Repository box and add your token there, or ask an owner of ' + place.owner + '.'
+      : 'Only ' + place.owner + ', who owns this repository, can add its tokens. Pick a repository of your own in the Repository box.';
+  }
   function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
   function canChange(slot) {
     return tk.admin || (!!shownLogin && ownerOf(slot).toLowerCase() === shownLogin.toLowerCase());
@@ -4909,6 +4922,8 @@
     save.type = 'button';
     save.id = adding ? 'tk-start' : 'tk-save';
     if (adding && !slot) save.disabled = true;
+    var barred = adding && cannotAdd();
+    if (barred) { save.disabled = true; problem.hidden = false; problem.textContent = barred; }
     save.addEventListener('click', function () {
       var why = check();
       if (why) { problem.hidden = false; problem.textContent = why; return; }
