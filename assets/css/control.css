@@ -165,7 +165,7 @@ body[data-shell] main > .console.section, .console.section {
    one more bar under the site's two */
 .console__app { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .console__app.hidden { display: none; }
-.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: var(--side-w, 210px) 10px minmax(0, 1fr); gap: 0; }
+.console__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: min(var(--side-w, 210px), 40%) 10px minmax(0, 1fr); gap: 0; }
 .console__side { min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); overflow: hidden; }
 .console__id { flex: 0 0 auto; padding: 8px 10px 8px; border-bottom: 1px solid var(--line-soft); }
 .console__titlerow { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
@@ -242,7 +242,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console .console__askrow button { margin: 0; padding: 5px 14px; font-size: 0.85rem; white-space: nowrap; }
 .console .console__askrow #cp-as-state { flex: 1 1 38%; min-width: 0; margin: 0; max-height: 2.7em; overflow: auto; font-size: 0.78rem; line-height: 1.35; }
 .console .console__stage { position: relative; }
-.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: calc(100% - 16px); height: var(--drawer-h, auto); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
+.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: var(--drawer-max, min(70%, 520px)); height: var(--drawer-h, auto); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
 .console__askdrawer[hidden] { display: none; }
 .console__askhead { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .console .console__askhead button { margin: 0; padding: 4px 12px; font-size: 0.82rem; }
@@ -341,7 +341,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 
 /* a narrow laptop: the side column and the side forms narrow */
 @media (max-width: 1279px) {
-  .console__body { grid-template-columns: var(--side-w, 184px) 10px minmax(0, 1fr); }
+  .console__body { grid-template-columns: min(var(--side-w, 184px), 40%) 10px minmax(0, 1fr); }
   .console__panel--split { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
 }
 
@@ -669,8 +669,10 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 }
 @media (max-width: 900px), (max-height: 520px) {
   .console__body { grid-template-columns: minmax(0, 1fr) !important; }
-  .console__body > .console__split, .console__colgrip, .console__split--tkside { display: none; }
+  .console__body > .console__split, .console__colgrip, .console__split--tkside, .console__split--drawer { display: none; }
 }
+/* who is signed in, the text size and Refresh wrap rather than run past the window's edge */
+.console__me { flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
 
 /* runs: one line each, the mark of how it ended, its name, where and by whom, and when */
 .console #cp-runs tbody { grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 6px; }

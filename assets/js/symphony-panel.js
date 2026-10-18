@@ -1823,6 +1823,9 @@
       if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, layout[k] + 'px');
       else c.style.removeProperty(LAYOUT_PARTS[k].prop);
     });
+    // the answer keeps its usual cap until the person sizes it, and may then take the stage
+    if (layout.drawer != null) c.style.setProperty('--drawer-max', 'calc(100% - 16px)');
+    else c.style.removeProperty('--drawer-max');
     c.style.setProperty('--console-zoom', String(zoomOf()));
     if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
   }
@@ -1869,16 +1872,23 @@
       grip.setPointerCapture(e.pointerId);
       document.body.classList.add('console-dragging', 'console-dragging--' + p.axis);
       function move(ev) { setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale); }
+      // the grip may be drawn again mid-drag (the Tokens tab redraws its panel as readings land), so
+      // a lost capture ends the drag as a release does
+      var done = false;
       function up() {
+        if (done) return;
+        done = true;
         grip.removeEventListener('pointermove', move);
         grip.removeEventListener('pointerup', up);
         grip.removeEventListener('pointercancel', up);
+        grip.removeEventListener('lostpointercapture', up);
         document.body.classList.remove('console-dragging', 'console-dragging--' + p.axis);
         saveLayout();
       }
       grip.addEventListener('pointermove', move);
       grip.addEventListener('pointerup', up);
       grip.addEventListener('pointercancel', up);
+      grip.addEventListener('lostpointercapture', up);
     });
     c.addEventListener('dblclick', function (e) {
       var grip = e.target && e.target.closest ? e.target.closest('[data-split]') : null;
