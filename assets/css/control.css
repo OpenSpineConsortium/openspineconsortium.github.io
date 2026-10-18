@@ -366,3 +366,7 @@ body[data-shell] main > .console.section, .console.section {
 .tkdlg__code { display: flex; gap: 8px; }
 .tkdlg__code input { flex: 1; min-width: 0; }
 @media (max-width: 520px) { .tkdlg__row { grid-template-columns: 1fr; } }
+.lb__closed { display: flex; align-items: center; gap: 8px; min-width: 160px; }
+.lb__track { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.lb__bar { display: block; height: 100%; background: var(--teal); }
+.lb__n { flex: none; min-width: 2ch; text-align: right; }

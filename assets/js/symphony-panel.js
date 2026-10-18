@@ -1326,6 +1326,7 @@
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
+    if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
     if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
@@ -3205,6 +3206,87 @@
   function tokensRepo() { return state && state.repo ? state.repo : ''; }
   function initTokensTab() {
     consoleOnOpen.tokens = function () { if (tokensFor !== tokensRepo()) loadTokens(); };
+    if ($('lb-people')) consoleOnOpen.leaders = function () { if (leadersFor !== tokensRepo()) loadLeaders(); };
+  }
+
+  /* ---------- the leaderboard: the issues each token worked, by the label token:<id> ---------- */
+  // A worker's run labels the issue it worked token:<id> (symphony-template's workers.yml), and the
+  // token's settings name its owner, so GitHub's issue search over the organization, or the personal
+  // account, counts what each token and each person's tokens worked and closed as done.
+  var LEADER_PAGES = 10;
+  var leadersFor = null;
+  function issuesOf(scope, id) {
+    var q = scope + ' label:"token:' + id + '" is:issue';
+    var worked = 0, closed = 0;
+    function step(page) {
+      return gh('GET', '/search/issues?q=' + encodeURIComponent(q) + '&per_page=100&page=' + page).then(function (r) {
+        var items = (r.data && r.data.items) || [];
+        worked += items.length;
+        closed += items.filter(function (i) { return i.state === 'closed' && i.state_reason === 'completed'; }).length;
+        if (items.length < 100 || page >= LEADER_PAGES) return { worked: worked, closed: closed };
+        return step(page + 1);
+      });
+    }
+    return step(1);
+  }
+  function rankRows(body, rows, cells) {
+    clear(body);
+    rows.sort(function (a, b) { return b.closed - a.closed || b.worked - a.worked || a.key.localeCompare(b.key); });
+    var top = rows.length ? rows[0].closed : 0;
+    rows.forEach(function (r, i) {
+      var tr = el('tr');
+      add(tr, el('td', '', String(i + 1)));
+      cells(r).forEach(function (c) { add(tr, el('td', '', c)); });
+      var bar = el('span', 'lb__bar');
+      bar.style.width = (top ? Math.round(r.closed / top * 100) : 0) + '%';
+      add(tr, add(el('td', 'lb__closed'), add(el('span', 'lb__track'), bar), el('span', 'lb__n', String(r.closed))), el('td', '', String(r.worked)));
+      body.appendChild(tr);
+    });
+  }
+  function loadLeaders() {
+    var repo = tokensRepo();
+    leadersFor = repo;
+    var people = $('lb-people').querySelector('tbody'), toks = $('lb-tokens').querySelector('tbody');
+    clear(people);
+    clear(toks);
+    if (!repo) { $('lb-lead').textContent = 'Choose a repository in the side column first.'; return; }
+    $('lb-lead').textContent = 'Counting the issues each token worked...';
+    var place = null, settings = {}, labels = {};
+    slotPlace(repo).then(function (p) {
+      place = p;
+      return readTileVariables(p);
+    }).then(function (vars) {
+      settings = vars[0];
+      labels = vars[1];
+      var slots = Object.keys(settings).filter(function (slot) { return settings[slot] && /^[0-9a-f]{8}$/.test(settings[slot].id || ''); });
+      var scope = (place.org ? 'org:' : 'user:') + place.owner;
+      // one token at a time, since GitHub's search takes 30 questions a minute
+      var out = [];
+      return slots.reduce(function (chain, slot) {
+        return chain.then(function () {
+          return issuesOf(scope, settings[slot].id).then(function (n) { out.push({ slot: slot, worked: n.worked, closed: n.closed }); });
+        });
+      }, Promise.resolve()).then(function () { return out; });
+    }).then(function (counts) {
+      if (leadersFor !== repo) return;
+      var tokenRows = counts.map(function (c) {
+        var s = settings[c.slot];
+        return { key: c.slot, name: labels[c.slot] || (c.slot === 'main' ? 'Main' : 'Slot ' + c.slot), owner: s.owner || '', worked: c.worked, closed: c.closed };
+      });
+      var by = {};
+      tokenRows.forEach(function (t) {
+        var who = t.owner || '';
+        var row = by[who] || (by[who] = { key: who, tokens: 0, worked: 0, closed: 0 });
+        row.tokens += 1;
+        row.worked += t.worked;
+        row.closed += t.closed;
+      });
+      rankRows(people, Object.keys(by).map(function (k) { return by[k]; }), function (r) { return [r.key ? '@' + r.key : 'no owner yet', String(r.tokens)]; });
+      rankRows(toks, tokenRows, function (r) { return [r.name, r.owner ? '@' + r.owner : 'no owner yet']; });
+      $('lb-lead').textContent = tokenRows.length
+        ? 'Issues the tokens of ' + place.owner + ' worked, by the label token:<id> a worker\'s run puts on them; closed counts those closed as done.'
+        : 'No token of ' + place.owner + ' has an id yet: a token gets one when it is added, or when its settings are saved on the Tokens tab.';
+    }).catch(function (e) { if (leadersFor === repo) $('lb-lead').textContent = 'The leaderboard could not be read: ' + e.message; });
   }
 
   // The Share tab: the person is invited as a collaborator through GitHub's API, as the signed-in
