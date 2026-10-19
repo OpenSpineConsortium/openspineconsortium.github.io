@@ -496,7 +496,6 @@ body.console-full[data-shell] { padding-top: 0 !important; }
   .console__side { overflow: visible; }
   .console__askbar { max-height: 40vh; }
   .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
-  .console__me { max-width: none; }
   /* the page never pans sideways: the deck is clipped to the window's width (clip, which makes no
      scroll box, so the status line still sticks to the window's foot, where hidden on html would
      unstick it), and what is wider than a phone scrolls inside its own box, the rail, a table or
@@ -505,16 +504,9 @@ body.console-full[data-shell] { padding-top: 0 !important; }
   .console__rail[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
-  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next */
+  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next; the
+     rest of the phone's rules stand at the end of this file, after the rules they must win over */
   .console .console__status #msg { flex: 1 1 100%; }
-  .console__me { flex: 1 1 auto; justify-content: space-between; }
-  /* a run's card: its name and when it ran on the first line, the rest under them */
-  .console #cp-runs tr { flex-wrap: wrap; gap: 2px 8px; }
-  .console #cp-runs td.cell--name { flex: 1 1 calc(100% - 120px); }
-  .console #cp-runs td.cell--when { flex: 0 0 auto; }
-  .console #cp-runs td.cell--event { margin-left: 30px; }
-  /* the token tiles two to a row */
-  .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
@@ -747,7 +739,8 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tkside__pct { font-weight: 600; }
 .tkside__meter .tok__bar { height: 8px; border-radius: 4px; }
 .tkside__reset { font-size: 0.78rem; color: var(--ink-faint); }
-@media (max-width: 760px) { .tkwrap { flex-direction: column; } .tkside { position: relative; width: auto; align-self: stretch; } }
+/* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row */
+@media (max-width: 760px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; align-self: stretch; } }
 .tkassign { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .tkassign .admin__bar, .tkassign .tkdlg__fact { flex-basis: 100%; margin: 0; }
 .console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
@@ -1034,3 +1027,18 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   #tab-explore .ex__tile { transition: none; }
 }
 #tab-explore .ex__again { margin: 10px 0 0; font-size: 0.84rem; }
+
+/* The phone's rules that must win over unconditional rules above them (.console__me, the run rows,
+   .toks): a media query adds no specificity, so an earlier phone rule of the same selector lost to
+   the later desktop one and never showed. They stand last here for that reason. */
+@media (max-width: 900px), (max-height: 520px) {
+  /* Clear and the sign-in's buttons spread across the foot's second row */
+  .console__me { max-width: none; flex: 1 1 auto; justify-content: space-between; }
+  /* a run's card: its name and when it ran on the first line, the rest under them */
+  .console #cp-runs tr { flex-wrap: wrap; gap: 2px 8px; }
+  .console #cp-runs td.cell--name { flex: 1 1 calc(100% - 120px); max-width: none; }
+  .console #cp-runs td.cell--when { flex: 0 0 auto; }
+  .console #cp-runs td.cell--event { margin-left: 30px; }
+  /* the tiles two to a row, filling it */
+  .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
