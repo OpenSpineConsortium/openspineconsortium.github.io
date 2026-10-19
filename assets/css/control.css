@@ -366,6 +366,9 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .msgtask__steps li[data-state="skipped"]::before { content: "\2013"; }
 .msgtask__log { margin: 4px 0 0; padding: 4px 8px; max-height: 7.5em; overflow: auto; border-radius: 6px; background: var(--paper-deep); font-family: var(--font-mono); font-size: 0.74rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-soft); }
 .msgtask__step:empty, .msgtask__bar[hidden], .msgtask__steps[hidden], .msgtask__log[hidden] { display: none; }
+/* the bar is an .admin__bar, laid out inline-flex by the rule above at a strength a bare [hidden]
+   does not reach, so its hidden rule is written at the same strength */
+.console .console__status #msg .msgtask__bar[hidden] { display: none; }
 .console .console__status #msg .msgtask__step .admin__bar, .console .console__status #msg .msgtask__bar { margin: 4px 0 0; }
 .console .console__status #msg a.msgtask__go { display: inline-block; padding: 5px 14px; border: 1px solid var(--teal); border-radius: 8px; color: var(--teal); font-weight: 600; text-decoration: none; }
 .console .console__status #msg a.msgtask__go:hover { background: rgba(60, 194, 177, 0.12); }
@@ -496,7 +499,6 @@ body.console-full[data-shell] { padding-top: 0 !important; }
   .console__side { overflow: visible; }
   .console__askbar { max-height: 40vh; }
   .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
-  .console__me { max-width: none; }
   /* the page never pans sideways: the deck is clipped to the window's width (clip, which makes no
      scroll box, so the status line still sticks to the window's foot, where hidden on html would
      unstick it), and what is wider than a phone scrolls inside its own box, the rail, a table or
@@ -505,16 +507,9 @@ body.console-full[data-shell] { padding-top: 0 !important; }
   .console__rail[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
-  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next */
+  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next; the
+     rest of the phone's rules stand at the end of this file, after the rules they must win over */
   .console .console__status #msg { flex: 1 1 100%; }
-  .console__me { flex: 1 1 auto; justify-content: space-between; }
-  /* a run's card: its name and when it ran on the first line, the rest under them */
-  .console #cp-runs tr { flex-wrap: wrap; gap: 2px 8px; }
-  .console #cp-runs td.cell--name { flex: 1 1 calc(100% - 120px); }
-  .console #cp-runs td.cell--when { flex: 0 0 auto; }
-  .console #cp-runs td.cell--event { margin-left: 30px; }
-  /* the token tiles two to a row */
-  .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
@@ -747,7 +742,8 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tkside__pct { font-weight: 600; }
 .tkside__meter .tok__bar { height: 8px; border-radius: 4px; }
 .tkside__reset { font-size: 0.78rem; color: var(--ink-faint); }
-@media (max-width: 760px) { .tkwrap { flex-direction: column; } .tkside { position: relative; width: auto; align-self: stretch; } }
+/* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row */
+@media (max-width: 760px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; align-self: stretch; } }
 /* the Notebooks tab: the Tokens tab's tiles and side panel in shape; a card's kinds as small
    chips, the side panel's files one under another, and the dialog's list of the catalog's files */
 #nb-side { width: var(--nbside-w, 320px); }
@@ -812,8 +808,9 @@ body.console-full[data-shell] { padding-top: 0 !important; }
    ============================================================ */
 .console > .console__app, .console > .console__askbar, .console > .console__status { zoom: var(--console-zoom, 1); }
 /* a phone keeps its own text size and pinch: the deck's saved text size, which widens its fixed
-   parts (a tile, a box) past the window, is not applied there, and its buttons are not shown */
-@media (max-width: 900px) {
+   parts (a tile, a box) past the window, is not applied there, and its buttons are not shown; the
+   media list is the phone layout's, so a phone held sideways, wide but short, is a phone here too */
+@media (max-width: 900px), (max-height: 520px) {
   .console > .console__app, .console > .console__askbar, .console > .console__status { zoom: 1; }
   .console__zoom { display: none; }
 }
@@ -1050,3 +1047,22 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   #tab-explore .ex__tile { transition: none; }
 }
 #tab-explore .ex__again { margin: 10px 0 0; font-size: 0.84rem; }
+
+/* The phone's rules that must win over unconditional rules above them (.console__me, the run rows,
+   .toks): a media query adds no specificity, so an earlier phone rule of the same selector lost to
+   the later desktop one and never showed. They stand last here for that reason. */
+@media (max-width: 900px), (max-height: 520px) {
+  /* Clear and the sign-in's buttons spread across the foot's second row */
+  .console__me { max-width: none; flex: 1 1 auto; justify-content: space-between; }
+  /* a run's card: its name and when it ran on the first line, the rest under them, indented to the
+     name; the cells are ordered name, when, then the rest, and the outcome cell, which the desktop
+     hides, is the break between the two lines (a full-width item of no height) */
+  .console #cp-runs tr { flex-wrap: wrap; gap: 2px 8px; }
+  .console #cp-runs td.cell--name { flex: 1 1 auto; max-width: none; }
+  .console #cp-runs td.cell--when { order: 0; flex: 0 0 auto; }
+  .console #cp-runs td.cell--outcome { display: block; order: 1; flex: 0 0 100%; height: 0; padding: 0; margin: 0; visibility: hidden; }
+  .console #cp-runs td.cell--event, .console #cp-runs td.cell--branch, .console #cp-runs td.cell--who { order: 2; }
+  .console #cp-runs td.cell--event { margin-left: 30px; }
+  /* the tiles two to a row, filling it */
+  .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}

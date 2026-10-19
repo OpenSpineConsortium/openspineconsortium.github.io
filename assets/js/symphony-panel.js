@@ -1491,7 +1491,7 @@
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
     // the write goes out for the account the press was made as, since the read before it may name one
     var account = shownLogin;
-    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1));
+    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1) + ' on ' + s.repo);
     task.tell('Starting...');
     return newestRunId(s.repo, 'agents.yml').then(function (after) {
       return gh('POST', '/repos/' + s.repo + '/actions/workflows/agents.yml/dispatches', { ref: branch, inputs: inputs }, undefined, false, account).then(function () {
@@ -2225,7 +2225,7 @@
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
     // the write goes out for the account the press was made as, since the read before it may name one
     var account = shownLogin;
-    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1));
+    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1) + ' on ' + s.repo);
     task.tell('Starting...');
     newestRunId(s.repo, workflow).then(function (after) {
       return gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', { ref: branch }, undefined, false, account).then(function () {
@@ -2365,18 +2365,32 @@
   // Tokens tab) shrinks what holds it, and the window, or the tab's own scroll, lands somewhere
   // else: the view jumps. So a box being read again keeps its height until it is drawn, and on a
   // phone, where the page scrolls as a whole, the stage keeps its own through a refresh.
-  function holdHeight(node) {
-    var done = false;
+  // Each hold marks the node as its own, so the release of an older hold, a refresh that went stale
+  // under a newer one or its own safety timer, lets nothing go once a newer hold has the node. The
+  // height is measured here unless the caller took it first.
+  var holdsMade = 0;
+  function holdHeight(node, height) {
     if (!node) return function () {};
-    var h = node.offsetHeight;
+    var mine = String(++holdsMade);
+    node.setAttribute('data-held', mine);
+    var h = height === undefined ? node.offsetHeight : height;
     if (h) node.style.minHeight = h + 'px';
-    return function () { if (done) return; done = true; node.style.minHeight = ''; };
+    return function () {
+      if (node.getAttribute('data-held') !== mine) return;
+      node.removeAttribute('data-held');
+      node.style.minHeight = '';
+    };
   }
   // the stage through one refresh, where the page and not the deck scrolls; a refresh that never
   // ends, its calls dropped by a sign-out, lets it go after a while anyway
+  // where the page and not the deck scrolls, as on a phone
+  function pageScrolls() {
+    var c = $('console');
+    return !!c && getComputedStyle(c).overflow !== 'hidden';
+  }
   function holdStage() {
     var c = $('console');
-    if (!c || getComputedStyle(c).overflow === 'hidden') return function () {};
+    if (!pageScrolls()) return function () {};
     var release = holdHeight(c.querySelector('.console__stage'));
     var timer = setTimeout(release, 20000);
     return function () { clearTimeout(timer); requestAnimationFrame(release); };
@@ -2410,7 +2424,9 @@
     var step = el('div', 'msgtask__step');
     var bar = el('p', 'admin__bar msgtask__bar');
     bar.hidden = true;
-    add(box, head, line, steps, log, step, bar);
+    // the step the person takes and the buttons come right under the line, before the steps and the
+    // log, so on a phone's short foot the sign-in's link is in view and the quiet parts are below
+    add(box, head, line, step, bar, steps, log);
     var task = {
       box: box,
       step: step,
@@ -2443,6 +2459,8 @@
       // the work is over: its last word is the newest, so a message said meanwhile goes as it would
       // before any message, and the box stays until Clear or the next message
       end: function (text, warn) {
+        // a task a sign-out dropped has nothing left to say, and never touches what was said since
+        if (task.dropped) return;
         task.live = false;
         box.setAttribute('data-state', warn ? 'failed' : 'done');
         bar.hidden = true;
@@ -2488,19 +2506,29 @@
   function newestRunId(repo, workflow) {
     return runsOf(repo, workflow, 'per_page=1').then(function (runs) { return runs.length ? runs[0].id : 0; }, function () { return 0; });
   }
+  // a read of GitHub that fails is made again at the next look, since one lost answer says nothing
+  // of the run; the follow gives up after this many in a row, and says so
+  var RUN_FAILS = 3;
   function findRun(repo, workflow, after, over) {
-    var until = Date.now() + RUN_FIND_FOR_MS;
+    var until = Date.now() + RUN_FIND_FOR_MS, fails = 0;
     return new Promise(function (resolve) {
       function look() {
         if (over()) { resolve(null); return; }
         runsOf(repo, workflow, 'event=workflow_dispatch&per_page=5').then(function (runs) {
+          fails = 0;
           var fresh = runs.filter(function (run) { return run.id > after && !followedRuns[run.id]; });
-          var mine = fresh.filter(function (run) { return run.actor && run.actor.login === shownLogin; });
-          var run = (mine.length ? mine : fresh)[0];
+          // the signed-in person's own run, where GitHub names who started each: another person's,
+          // started in the same minute, speaks at their foot, and this person's is waited for
+          var named = fresh.filter(function (run) { return isPlain(run.actor) && typeof run.actor.login === 'string' && run.actor.login; });
+          var mine = named.filter(function (run) { return run.actor.login === shownLogin; });
+          var run = mine[0] || (!shownLogin || !named.length ? fresh[0] : null);
           if (run) { resolve(run); return; }
-          if (Date.now() > until) { resolve(null); return; }
+          if (Date.now() > until) { resolve({ late: true }); return; }
           setTimeout(look, RUN_FIND_MS);
-        }, function () { resolve(null); });
+        }, function (e) {
+          if (++fails >= RUN_FAILS) { resolve({ failed: e }); return; }
+          setTimeout(look, RUN_FIND_MS);
+        });
       }
       setTimeout(look, 2000);
     });
@@ -2522,13 +2550,14 @@
     return m ? m + ' min ' + sec + ' s' : sec + ' s';
   }
   function followRunSteps(repo, run, task, over) {
-    var until = Date.now() + RUN_FOR_MS, read = {}, shown = [];
+    var until = Date.now() + RUN_FOR_MS, read = {}, shown = [], fails = 0;
     followedRuns[run.id] = true;
     task.at(exHttps(run.html_url), 'Run #' + String(run.run_number || run.id) + ' on GitHub');
     return new Promise(function (resolve) {
       function look() {
         if (over()) { resolve(null); return; }
         gh('GET', '/repos/' + repo + '/actions/runs/' + encodeURIComponent(run.id) + '/jobs?per_page=20&at=' + Date.now()).then(function (r) {
+          fails = 0;
           var jobs = (r.data && Array.isArray(r.data.jobs) ? r.data.jobs : []).filter(isPlain);
           var steps = [];
           jobs.forEach(function (job) {
@@ -2555,21 +2584,33 @@
             if (Date.now() > until) { resolve({ conclusion: 'running' }); return; }
             setTimeout(look, RUN_STEPS_MS);
           });
-        }, function () { resolve(null); });
+        }, function (e) {
+          if (++fails >= RUN_FAILS) { resolve({ conclusion: 'unread', message: e.message }); return; }
+          setTimeout(look, RUN_STEPS_MS);
+        });
       }
       look();
     });
   }
-  // a run a launch button started: found, followed, and its end said; one that cannot be found or
-  // read leaves the task at its last word
+  // a run a launch button started: found, followed, and its end said. One GitHub could not be read
+  // about, or did not list in time, ends the task with the reason, never as done while its line says
+  // Running; one the page left, going to another repository, is left at its link.
   function followDispatched(s, workflow, after, task) {
     var era = ends;
-    function over() { return ends !== era || !task.live; }
+    // the follow is over with a sign-out, with the task (Clear leaves it live; a drop does not) and
+    // once the page shows another repository, whose foot the run's end would otherwise land on
+    function over() { return ends !== era || !task.live || stale(s); }
+    function left() {
+      if (task.live && ends === era) task.end('Left as the page went to another repository; the run goes on at its link.');
+    }
     return findRun(s.repo, workflow, after, over).then(function (run) {
-      if (!run) { task.end(); return; }
+      if (!run) { left(); return; }
+      if (run.failed) { task.end('GitHub could not be read while the run was looked for (' + run.failed.message + '); the Runs tab shows it.', true); return; }
+      if (run.late) { task.end('Not listed within two minutes; the Runs tab shows the run once GitHub lists it.', true); return; }
       task.tell('Running; its steps show here as GitHub lists them.');
       return followRunSteps(s.repo, run, task, over).then(function (out) {
-        if (!out) { task.end(); return; }
+        if (!out) { left(); return; }
+        if (out.conclusion === 'unread') { task.end('GitHub could not be read while the run was followed (' + out.message + '); the run on GitHub shows the rest.', true); return; }
         if (!stale(s)) loadRuns(s);
         if (out.conclusion === 'running') { task.end('Still running after 15 minutes; the run on GitHub shows the rest.', true); return; }
         task.end('Finished: ' + out.conclusion + (out.seconds ? ', in ' + durationWords(out.seconds) : '') + '.', out.conclusion !== 'success');
@@ -3833,8 +3874,21 @@
   var graphHeld = function () {};
   function graphReset(words, warn, reading) {
     var box = $('cp-graph');
+    // the height is taken before the earlier hold is let go: a box that hold emptied stands at
+    // nothing of its own, so a read begun under a read would hold it at nothing and the tab would
+    // shrink while the sub-issues are read
+    var h = box ? box.offsetHeight : 0;
+    var tab = $('tab-dependencies');
+    var th = tab ? tab.offsetHeight : 0;
     graphHeld();
-    graphHeld = reading ? holdHeight(box) : function () {};
+    graphHeld = function () {};
+    if (reading) {
+      var heldBox = holdHeight(box, h);
+      // where the page scrolls as a whole, the chips and the line above the box, emptied with it, would
+      // still pull the page up, so the tab holds its height too
+      var heldTab = pageScrolls() ? holdHeight(tab, th) : function () {};
+      graphHeld = function () { heldBox(); heldTab(); };
+    }
     clear(box);
     graphStripClear();
     $('cp-graph-said').textContent = '';
@@ -4020,6 +4074,7 @@
       exploreAfterDraw();
     }).catch(function (e) {
       if (!graphLive(draw)) return;
+      graphHeld();
       clear($('cp-graph'));
       if (e.cap) graphWords('Not drawn: it would take more than ' + GRAPH_READS_MAX + ' reads of GitHub, the most this page makes for one draw; stopped at ' + draw.reading + '. Closing the epics that are done makes it fewer.', true);
       else if (e.reserve) graphWords('Not drawn: GitHub says this token has ' + draw.left + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console; stopped at ' + draw.reading + '. Press Refresh once GitHub\'s hourly limit has reset.', true);
@@ -4681,7 +4736,7 @@
   // where the tokens live, which are set and their names and settings, read when the tab opens
   function readTokenPlace(repo, asked) {
     var place = null, secrets = null;
-    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
+    if (tk.repo !== repo) { yourLent = null; lendTo = null; lendToFor = ''; lendToError = ''; lendToBusy = ''; tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
@@ -4758,6 +4813,7 @@
     code: '<!-- symphony-token: code -->',
     sealed: '<!-- symphony-token: sealed -->',
     stored: '<!-- symphony-token: stored -->',
+    lent: '<!-- symphony-token: lent -->',
     failed: '<!-- symphony-token: failed -->'
   };
   var RUN_BOT = 'github-actions[bot]';
@@ -4771,6 +4827,9 @@
   // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
   // the deck's foot, shown again when Add Token is pressed after Clear hid it, and how to stop it
   var tokenRun = null;
+  // the slot whose settings Save and sign in is saving before its sign-in starts, with the sign-out
+  // count of the press, so a save that never answers after a sign-out holds nothing
+  var tokenAdding = null;
 
   // the sign-in at the deck's foot (msgTask): a line that says where the run is, the run's steps
   // under it, and the step it needs from the person, the claude.ai link and the code's box; the
@@ -4816,7 +4875,7 @@
     if (tokenRun && tokenRun.era !== ends) tokenRun = null;
     if (tokenRun) {
       var busy = tokenRun.repo !== repo || (wanted && wanted !== tokenRun.wanted) ? 'Another sign-in is under way; finish it or stop it first.' : '';
-      if (given) given.end(busy || 'This sign-in is under way already; it shows below.', !!busy);
+      if (given) given.end(busy || 'This sign-in is under way already; its task is the one above.', !!busy);
       tokenRun.view.show(given ? '' : busy);
       return;
     }
@@ -4882,14 +4941,16 @@
       // the run's steps, and its log once it has ended, show under the words meanwhile; the issue's
       // comments, below, are what the sign-in goes by
       function over() { return stopped || !view.task.live; }
-      findRun(repo, TOKEN_WORKFLOW, after, over).then(function (found) { if (found) return followRunSteps(repo, found, view.task, over); }).catch(function () { /* the words stand */ });
+      // a run not found, or not read, leaves only the steps out: the sign-in goes by the comments
+      findRun(repo, TOKEN_WORKFLOW, after, over).then(function (found) { if (found && typeof found.id === 'number') return followRunSteps(repo, found, view.task, over); }).catch(function () { /* the words stand */ });
       return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
-      if (pooled) return { pooled: sealed.stored };
-      // the token is sealed and on its way into the secret, which a stop now would only cut short
+      // the sign-in is done, so the person's step (the link and the code box) and Stop go, whichever
+      // way the token lands: a stop now would only cut the saving short
       view.stop.hidden = true;
-      step = 'secrets';
       clear(view.step);
+      if (pooled) return { pooled: sealed.stored || sealed.lent, already: !!sealed.lent };
+      step = 'secrets';
       view.tell('Saving the token...');
       return storeSealed(place, repo, slot, sealed, key.key_id, ids, '').then(function () {
         if (mainMissing) return putSecret(place, place.base + '/secrets/' + MAIN_SECRET, sealed, key.key_id, ids).then(function () { return true; });
@@ -4899,7 +4960,9 @@
       closeRunIssue(repo, issue);
       over();
       if (alsoMain && alsoMain.pooled) {
-        view.task.end('Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours. An owner of ' + place.owner + ' sets its model and the repositories it runs on.');
+        view.task.end(alsoMain.already
+          ? 'You have a token already (slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool), so it is now lent to ' + repo + ' too; no new sign-in was needed. Your token, on the Tokens tab, shows every repository it is lent to.'
+          : 'Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours, and lent to ' + repo + '. Press Add Token in another repository to lend it there too.');
         readTokenPlace(repo, reading);
         return;
       }
@@ -4937,6 +5000,13 @@
             if (lines[0] === TOKEN_MARK.stored && !keyId) {
               if (!/^([1-9]|[12][0-9]|3[0-2])$/.test(lines[1] || '')) { reject(new Error('The run said it stored the token, but not in which slot; see the issue, and ask an owner to look at the pool.')); return; }
               resolve({ stored: lines[1] });
+              return;
+            }
+            // a person's own token, lent here, or where it is lent after a list, revoke or delete:
+            // the slot, then the ids of the repositories it is lent to
+            if (lines[0] === TOKEN_MARK.lent && !keyId) {
+              if (!/^([1-9]|[12][0-9]|3[0-2])$/.test(lines[1] || '')) { reject(new Error('The run answered without naming the slot; see the issue.')); return; }
+              resolve({ lent: lines[1], ids: String(lines[2] || '').split(',').filter(function (x) { return x === 'all' || x === 'organization' || /^[1-9][0-9]{0,15}$/.test(x); }) });
               return;
             }
             if (lines[0] === TOKEN_MARK.sealed) {
@@ -4982,6 +5052,71 @@
     });
     add(m, el('p', 'admin__lead', '1. Open Sign in to claude.ai, sign in as the account and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it here and send it.'));
     add(m, add(el('p', 'admin__bar'), open), add(el('p', 'admin__bar tkdlg__code'), code, ' ', send));
+  }
+  // Your token, for someone who is not an owner of the organization: one token per person in the
+  // pool, lent to the repositories they choose (the owner's choice of 2026-10-19). Only the Token
+  // run may read or change the pool for them, so each press is a short run with no sign-in.
+  var yourLent = null, yourBusy = '';
+  function yourTokenBox() {
+    var box = el('div', 'toks__note');
+    var line = el('p', 'admin__lead');
+    var list = el('div');
+    var where = btn('Where is my token lent?', true, function () { manageToken('list', '', line, list); });
+    var gone = btn('Delete my token', true, function () {
+      if (!window.confirm('Delete your Claude token from ' + tk.place.owner + '\'s pool? Every repository it is lent to loses it at once.')) return;
+      manageToken('delete', '', line, list);
+    });
+    where.disabled = gone.disabled = yourBusy;
+    add(box, el('h3', 'console__boxh', 'Your token'), add(el('p', 'admin__bar'), where, ' ', gone), line, list);
+    if (yourBusy) line.textContent = yourBusy;
+    else if (yourLent) drawLent(yourLent, line, list);
+    return box;
+  }
+  function drawLent(found, line, list) {
+    clear(list);
+    if (found.failed) { line.textContent = found.failed; return; }
+    if (!found.ids.length) { line.textContent = found.deleted ? 'Your token is deleted.' : 'Your token (slot ' + found.lent + ') is lent to no repository.'; return; }
+    if (found.ids[0] === 'all') { line.textContent = 'Your token (slot ' + found.lent + ') is on in every repository of ' + tk.place.owner + ', which an owner set.'; return; }
+    // lent with no say: the organization places it, and the lender is told no repository
+    if (found.ids[0] === 'organization') { line.textContent = 'Your token (slot ' + found.lent + ') is in ' + tk.place.owner + '\'s keeping: its owners choose where it runs, and you can delete it at any time.'; return; }
+    line.textContent = 'Your token (slot ' + found.lent + ') is lent to:';
+    found.ids.forEach(function (id) {
+      var row = el('p', 'admin__bar');
+      var name = el('span', '', 'repository ' + id);
+      gh('GET', '/repositories/' + id).then(function (r) { name.textContent = r.data.full_name; }, function () { name.textContent = 'a repository you cannot see (' + id + ')'; });
+      var back = btn('Take back', true, function () { manageToken('revoke', id, line, list); });
+      back.disabled = yourBusy;
+      add(row, name, ' ', back);
+      add(list, row);
+    });
+  }
+  function manageToken(action, target, line, list) {
+    // one run at a time, since each opens its own issue and nothing else stops a second
+    if (yourBusy) return;
+    yourBusy = action === 'list' ? 'Asking the Token run where your token is lent...' : action === 'revoke' ? 'Taking your token back...' : 'Deleting your token...';
+    drawTiles();
+    var repo = tk.repo, issue = 0;
+    function done() { yourBusy = ''; if (action !== 'list') readTokenPlace(repo, reading); else drawTiles(); }
+    gh('POST', '/repos/' + repo + '/issues', { title: 'Your Claude token: ' + action,
+      body: 'The control panel\'s Tokens page opened this issue for one run of the workflow Token (.github/workflows/token.yml) on your own token in the pool. The page closes it when the run answers.' }).then(function (r) {
+      issue = r.data.number;
+      return gh('GET', '/repos/' + repo);
+    }).then(function (r) {
+      return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
+        { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), store: 'manage', manage: action, target: String(target || '') } });
+    }).then(function () {
+      return followRun(repo, issue, null, { step: el('div') }, function () { return false; });
+    }).then(function (found) {
+      closeRunIssue(repo, issue);
+      found.deleted = action === 'delete';
+      if (found.deleted) found.ids = [];
+      yourLent = found;
+      done();
+    }).catch(function (e) {
+      if (issue) closeRunIssue(repo, issue, true);
+      yourLent = { lent: '', ids: [], failed: 'That did not work: ' + e.message };
+      done();
+    });
   }
   function closeRunIssue(repo, issue, failed) {
     return gh('PATCH', '/repos/' + repo + '/issues/' + issue, { state: 'closed', state_reason: failed ? 'not_planned' : 'completed' }).catch(function () { return null; });
@@ -5040,7 +5175,7 @@
     if (!place) return '';
     if (place.org) {
       if (tk.admin || place.push !== false) return '';
-      return 'Adding a token to ' + place.owner + '\'s pool takes write access to this repository, which you do not have. Ask an owner of ' + place.owner + ' to share it with you, or pick a repository of your own in the Repository box.';
+      return 'Adding a token to ' + place.owner + '\'s pool takes write access to this repository, which you do not have. Ask to join, below, and an administrator lets you in from their Share tab; or pick a repository of your own in the Repository box.';
     }
     if (place.admin !== false) return '';
     return 'Only ' + place.owner + ', who owns this repository, can add its tokens. Pick a repository of your own in the Repository box.';
@@ -5128,9 +5263,103 @@
     add(plus, el('span', 'tok__plus', waiting ? '\u2026' : '+'), el('span', 'tok__name', waiting ? 'Sign-in waiting' : 'Add Token'));
     plus.addEventListener('click', function () { if (tokenRun && tokenRun.era === ends) tokenRun.view.show(''); else openTokenDialog('', true); });
     add(box, add(el('div', 'tok'), plus));
-    if (unread && intoPool(tk.place)) add(box, el('p', 'admin__none toks__note', 'Only an owner of ' + tk.place.owner + ' sees the tokens in its pool; Add Token puts yours in a free slot, marked as yours.'));
+    if (unread && intoPool(tk.place)) {
+      add(box, el('p', 'admin__none toks__note', 'Only an owner of ' + tk.place.owner + ' sees every token in its pool. Add Token lends yours to this repository, or makes it if you have none yet.'));
+      add(box, yourTokenBox());
+    }
     else if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
+    // an owner whose membership GitHub would not show (tk.admin null) keeps the owner's path here too
+    if (tk.admin !== false && tk.place.org) add(box, lendToBox());
     drawSide();
+  }
+
+  // Where tokens lent with no say run: the organization variable SYMPHONY_LEND_TO, a list of
+  // repository ids an owner keeps here, which the Token run lends each such token to as it comes
+  // (the owner's choice of 2026-10-19). Someone who lends with no say never sees this list.
+  var LEND_TO_VARIABLE = 'SYMPHONY_LEND_TO';
+  var lendTo = null, lendToFor = '', lendToBusy = '', lendToError = '', repoNames = {};
+  function lendToIds(value) { return String(value || '').split(/[,\s]+/).filter(function (w) { return /^[1-9][0-9]{0,15}$/.test(w); }); }
+  // every call here is made for one place; one that answers after the repository changed is dropped
+  function lendToStale(place) { return place !== tk.place; }
+  function lendToBox() {
+    var box = el('div', 'toks__note');
+    var line = el('p', 'admin__lead');
+    var list = el('div');
+    var place = tk.place;
+    add(box, el('h3', 'console__boxh', 'Tokens lent with no say run on'), line, list);
+    if (lendToFor !== tk.repo) {
+      lendToFor = tk.repo;
+      lendTo = null;
+      lendToError = '';
+      readOne(place.base + '/variables/' + LEND_TO_VARIABLE).then(function (have) {
+        if (lendToStale(place)) return;
+        lendTo = lendToIds(have && have.value);
+        drawTiles();
+      }, function (e) {
+        if (lendToStale(place)) return;
+        lendTo = [];
+        lendToError = 'The list could not be read: ' + e.message;
+        drawTiles();
+      });
+    }
+    if (lendToBusy) { line.textContent = lendToBusy; return box; }
+    if (!lendTo) { line.textContent = 'Reading the list...'; return box; }
+    line.textContent = lendToError || (lendTo.length
+      ? 'A token someone lends to ' + place.owner + ' without a say runs in these repositories from the moment it arrives:'
+      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.');
+    lendTo.forEach(function (id) {
+      var row = el('p', 'admin__bar');
+      var name = el('span', '', repoNames[id] || 'repository ' + id);
+      // named once, since every redraw of the tiles draws this box again
+      if (!repoNames[id]) gh('GET', '/repositories/' + id).then(function (r) { repoNames[id] = r.data.full_name; name.textContent = repoNames[id]; }, function () { name.textContent = 'a repository that cannot be read (' + id + ')'; });
+      add(row, name, ' ', btn('Take off', true, function () { writeLendTo(place, lendTo.filter(function (x) { return x !== id; })); }));
+      add(list, row);
+    });
+    var field = el('input');
+    field.type = 'text';
+    field.placeholder = place.owner + '/repository';
+    field.autocomplete = 'off';
+    field.setAttribute('aria-label', 'Repository to add');
+    var addRepo = btn('+ Add repository', true, function () {
+      var full = field.value.trim();
+      if (!/^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}\/[A-Za-z0-9._-]{1,100}$/.test(full)) { line.textContent = 'Type the repository as owner/name.'; return; }
+      lendToBusy = 'Reading ' + full + '...';
+      drawTiles();
+      gh('GET', '/repos/' + full).then(function (r) {
+        if (lendToStale(place)) return;
+        if (r.data.owner.login.toLowerCase() !== place.owner.toLowerCase()) throw new Error(full + ' is not a repository of ' + place.owner + ', whose secrets reach only its own.');
+        lendToBusy = '';
+        return writeLendTo(place, union(lendTo, [String(r.data.id)]));
+      }).catch(function (e) {
+        if (lendToStale(place)) return;
+        lendToBusy = '';
+        lendToError = e.status === 404 ? full + ' could not be read; check its name.' : e.message;
+        drawTiles();
+      });
+    });
+    add(box, add(el('p', 'admin__bar'), field, ' ', addRepo));
+    return box;
+  }
+  function writeLendTo(place, ids) {
+    lendToBusy = 'Saving the list...';
+    lendToError = '';
+    drawTiles();
+    // the run reads the list with the App's token, so the variable reaches no repository itself;
+    // an empty list is the variable gone, since GitHub keeps no empty value
+    var path = place.base + '/variables/' + LEND_TO_VARIABLE;
+    var write = !ids.length
+      ? gh('DELETE', path).catch(function (e) { if (e.status !== 404) throw e; })
+      : readOne(path).then(function (have) {
+        if (!have) return gh('POST', place.base + '/variables', { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'private' });
+        return gh('PATCH', path, { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'private' });
+      });
+    return write.then(function () {
+      if (lendToStale(place)) return;
+      lendTo = ids;
+    }, function (e) {
+      if (lendToStale(place)) return;
+      lendToError = 'The list could not be saved: ' + e.message + secretsNeeded(place);
+    }).then(function () { if (lendToStale(place)) return; lendToBusy = ''; drawTiles(); });
   }
 
   // The side panel: one token's use, each window's reset, the per-model limits, where it is on and
@@ -5254,6 +5483,9 @@
   function openTokenDialog(slot, adding) {
     var d = $('tk-dialog');
     if (!d || !tk.place) { say('The tokens are still being read; press again in a moment.'); return; }
+    // a token whose settings are still being saved is one press's: a second press meanwhile would
+    // save the slot again under another id and start a second sign-in
+    if (adding && tokenAdding && tokenAdding.era === ends) { say('A token is being added already; it speaks at the foot.'); return; }
     clear(d);
     var s = tk.settings[slot] || {};
     var form = el('form', 'tkdlg__form');
@@ -5314,6 +5546,12 @@
       out.id = s.id || newTokenId();
       var who = owner ? owner.value.trim() : (s.owner || (adding ? shownLogin : ''));
       if (who) out.owner = who;
+      // the Token run's marks stay through a save here: the account id while the token still belongs
+      // to the same login, since a login can pass to someone else, and the word that a token lent
+      // with no say is in the organization's keeping; a save that dropped them would let the run name
+      // repositories to that lender, and refuse them their own token from an issue
+      if (s.uid != null && who && typeof s.owner === 'string' && who.toLowerCase() === s.owner.toLowerCase()) out.uid = s.uid;
+      if (s.keeping) out.keeping = s.keeping;
       return out;
     }
     function check() {
@@ -5339,13 +5577,16 @@
       // sign-in that follows it, as one task
       d.close();
       var task = adding ? msgTask('Add ' + tileName(wanted) + ' on ' + tk.repo) : null;
+      if (adding) tokenAdding = { era: ends };
       if (task) task.tell('Saving the settings of ' + tileName(wanted) + '...');
       else say('Saving the settings of ' + tileName(wanted) + '...');
       saveTokenSettings(wanted, chosen(), labelText).then(function () {
+        tokenAdding = null;
         drawTiles();
         if (adding) { addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted, task); return; }
         say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
       }, function (e) {
+        tokenAdding = null;
         var words = 'The settings of ' + tileName(wanted) + ' could not be saved: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : '');
         if (task) task.end(words, true); else say(words, true);
       });
@@ -5392,7 +5633,16 @@
     save.id = 'tk-start';
     save.disabled = !!barred;
     save.addEventListener('click', function () { save.disabled = true; d.close(); addByActions(tk.repo, tk.place, $('tk-tile-add') || save, ''); });
-    add(form, add(el('p', 'admin__bar tkdlg__bar'), btn('Cancel', true, function () { d.close(); }), ' ', save));
+    var bar = add(el('p', 'admin__bar tkdlg__bar'), btn('Cancel', true, function () { d.close(); }), ' ', save);
+    // without write access, asking to join is the way in, answered on the administrators' Share tab
+    if (barred && tk.place.org) {
+      var ask = btn('Ask to join ' + tk.repo, true, function () {
+        ask.disabled = true;
+        requestAccess(tk.repo, function (t, failed) { problem.textContent = t; if (failed) ask.disabled = false; });
+      });
+      add(bar, ' ', ask);
+    }
+    add(form, bar);
     add(d, form);
     if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
   }
@@ -7070,24 +7320,29 @@
     $('sh-state').textContent = 'Reading who has access to ' + repo + '...';
     var people = ghList('/repos/' + repo + '/collaborators?affiliation=' + (org ? 'direct' : 'all') + '&per_page=100', 2);
     var waiting = ghList('/repos/' + repo + '/invitations?per_page=100', 1).catch(function () { return null; });
-    Promise.all([people, waiting, whoAmI().catch(function () { return ''; })]).then(function (r) {
+    var asking = accessRequests(repo).catch(function () { return null; });
+    Promise.all([people, waiting, whoAmI().catch(function () { return ''; }), asking]).then(function (r) {
       if (mine !== shareSeq || state.repo !== repo) return;
-      var list = r[0], invites = r[1], me = r[2];
+      var list = r[0], invites = r[1], me = r[2], asks = r[3] || [];
       clear(body);
       var owner = state.meta && state.meta.owner;
       if (!org && owner && owner.login && !list.some(function (p) { return p.login === owner.login; })) list.unshift({ login: owner.login, role_name: 'admin' });
+      asks.forEach(function (issue) { add(body, shareAskRow(issue)); });
       list.forEach(function (p) { add(body, sharePersonRow(p, me, owner)); });
       (invites || []).forEach(function (inv) { add(body, shareInviteRow(inv)); });
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
-      $('sh-state').textContent = plural(list.length, 'person', 'people') + ' with access' + (org ? ' by name' : '') +
+      $('sh-state').textContent = (r[3] === null ? 'the requests to join could not be read; ' : asks.length ? plural(asks.length, 'request') + ' to join, ' : '') + plural(list.length, 'person', 'people') + ' with access' + (org ? ' by name' : '') +
         (invites ? (invites.length ? ', ' + plural(invites.length, 'invitation') + ' waiting' : ', no invitation waiting') : '; the invitations could not be read') +
         (org ? '. Members of ' + owner.login + ' may reach it through the organization too: see GitHub\'s Collaborators and teams.' : '.');
     }).catch(function (e) {
       if (mine !== shareSeq) return;
       clear(body);
+      var refused = e.status === 403 || e.status === 404;
+      // someone who may not push here can still ask to join, which an administrator answers on this tab
+      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) $('sh-state').textContent = t; }); }, 5));
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
-      $('sh-state').textContent = (e.status === 403 || e.status === 404
-        ? 'GitHub shows who has access to ' + repo + ' only to people who may push to it' + (signedInByApp() ? ', through an installation that may read its administration' : ', with a token that may') + '.'
+      $('sh-state').textContent = (refused
+        ? 'GitHub shows who has access to ' + repo + ' only to people who may push to it' + (signedInByApp() ? ', through an installation that may read its administration' : ', with a token that may') + '. + Ask to join asks its administrators to let you in.'
         : 'Who has access could not be read: ' + e.message) + ' + Add people still works, and so does GitHub\'s own page.';
     });
   }
@@ -7184,6 +7439,87 @@
     }).catch(function (e) {
       button.disabled = false;
       say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+    });
+  }
+  // A request to join is an issue whose first line is ACCESS_MARK, opened by the person asking, which
+  // anyone who may open an issue can do with no role at all (the owner, 2026-10-19). Its author is who
+  // asks, whatever its title says; an administrator answers it here, Invite or the X, and the issue's
+  // close tells the person, since GitHub notifies an issue's author.
+  var ACCESS_MARK = '<!-- symphony-access: request -->';
+  function isAccessRequest(issue) {
+    return !!issue && !issue.pull_request && !!issue.user && String(issue.body || '').split(/\r?\n/)[0].trim() === ACCESS_MARK;
+  }
+  function accessRequests(repo) {
+    return ghList('/repos/' + repo + '/issues?state=open&per_page=100', 1).then(function (list) {
+      var seen = {};
+      // one row per person, their oldest request, since a second press opens no second row
+      return list.filter(isAccessRequest).reverse().filter(function (i) {
+        var who = i.user.login.toLowerCase();
+        if (seen[who]) return false;
+        seen[who] = true;
+        return true;
+      });
+    });
+  }
+  function requestAccess(repo, tell) {
+    tell('Asking ' + repo + '\'s administrators...');
+    return whoAmI().then(function (me) {
+      if (!me) throw new Error('Sign in first.');
+      return ghList('/repos/' + repo + '/issues?state=open&creator=' + encodeURIComponent(me) + '&per_page=100', 1).catch(function () { return []; }).then(function (open) {
+        var mine = open.filter(isAccessRequest).pop();
+        if (mine) { tell('You asked already (issue #' + mine.number + '); an administrator answers it on the Share tab, and GitHub tells you when they do.'); return null; }
+        return gh('POST', '/repos/' + repo + '/issues', { title: 'Access request: ' + me,
+          body: ACCESS_MARK + '\n' + me + ' asks to join ' + repo + ' as a collaborator. An administrator answers on the control panel\'s Share tab (Invite, or the X to decline), or on GitHub\'s Collaborators and teams page; closing this issue tells ' + me + '.' }).then(function (r) {
+          tell('Asked. ' + repo + '\'s administrators see your request on their Share tab (issue #' + r.data.number + '); GitHub tells you when they answer, and an invitation comes by email and at https://github.com/' + repo + '/invitations.');
+        });
+      });
+    }).catch(function (e) {
+      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly.' : 'Asking did not work: ' + e.message), true);
+    });
+  }
+  function shareAskRow(issue) {
+    var login = issue.user.login;
+    var tr = el('tr', 'share__pending');
+    var invite = btn('Invite', false, function () { shareAnswer(issue, true, invite); });
+    invite.className = 'console__primary';
+    var status = add(el('td', 'share__status'), 'Asked ', timeEl(issue.created_at), ' ', invite);
+    add(tr, add(el('td', 'share__facecell'), shareInitial(login)), add(el('td', 'share__who'), link('https://github.com/' + encodeURIComponent(login), login)), add(el('td'), el('span', 'share__role', 'Asks to join')), status);
+    add(tr, cardControls(tr, 'the request of ' + login, {
+      open: function () {
+        var form = itemDialog(login);
+        add(form, fact('Stands:', 'Asks to join ' + shareRepo() + '; Invite gives them ' + (shareInOrg() ? 'Write' : 'collaborator') + ' access, which the gear changes later.'));
+        add(form, fact('Asked:', timeEl(issue.created_at)));
+        add(form, add(el('p', 'tkdlg__bar'), link('https://github.com/' + encodeURIComponent(login), 'Their profile'), link(issue.html_url, 'The request on GitHub')));
+      },
+      x: function (b) { shareAnswer(issue, false, b); }
+    }));
+    return tr;
+  }
+  // Invite, or decline with the X: the issue is closed with a word to the person either way
+  function shareAnswer(issue, yes, button) {
+    var repo = shareRepo(), login = issue.user.login;
+    if (!yes && !window.confirm('Decline ' + login + '\'s request to join ' + repo + '?')) return;
+    button.disabled = true;
+    say(yes ? 'Inviting ' + login + '...' : 'Declining...');
+    var invited = false, had = false;
+    var call = yes
+      ? gh('PUT', '/repos/' + repo + '/collaborators/' + encodeURIComponent(login), shareInOrg() ? { permission: 'push' } : undefined)
+      : Promise.resolve(null);
+    call.then(function (r) {
+      // GitHub answers 204 when they have access already, through the organization or an earlier invitation
+      invited = yes;
+      had = yes && !!r && r.status !== 201;
+      var words = !yes ? 'Declined by an administrator of ' + repo + '.' : had ? 'You have access to ' + repo + ' already.' : 'Invited: accept at https://github.com/' + repo + '/invitations.';
+      return gh('POST', '/repos/' + repo + '/issues/' + issue.number + '/comments', { body: words }).catch(function () { return null; }).then(function () {
+        return gh('PATCH', '/repos/' + repo + '/issues/' + issue.number, { state: 'closed', state_reason: yes ? 'completed' : 'not_planned' });
+      });
+    }).then(function () {
+      say(!yes ? login + '\'s request is declined.' : had ? login + ' has access to ' + repo + ' already; the request is closed.' : 'Invited ' + login + ' with ' + (shareInOrg() ? 'Write' : 'collaborator') + ' access.');
+      if (state.repo === repo) sharePeople();
+    }).catch(function (e) {
+      button.disabled = false;
+      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
+      say(invited ? 'Invited ' + login + ', but the request could not be closed: ' + why : why, true);
     });
   }
   function initShareTab() {
