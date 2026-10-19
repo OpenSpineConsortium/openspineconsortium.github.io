@@ -4394,7 +4394,7 @@
   // where the tokens live, which are set and their names and settings, read when the tab opens
   function readTokenPlace(repo, asked) {
     var place = null, secrets = null;
-    if (tk.repo !== repo) { tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
+    if (tk.repo !== repo) { yourLent = null; tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
@@ -4471,6 +4471,7 @@
     code: '<!-- symphony-token: code -->',
     sealed: '<!-- symphony-token: sealed -->',
     stored: '<!-- symphony-token: stored -->',
+    lent: '<!-- symphony-token: lent -->',
     failed: '<!-- symphony-token: failed -->'
   };
   var RUN_BOT = 'github-actions[bot]';
@@ -4604,7 +4605,7 @@
       view.tell('The sign-in is starting; its button appears here in about a minute.');
       return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
-      if (pooled) return { pooled: sealed.stored };
+      if (pooled) return { pooled: sealed.stored || sealed.lent, already: !!sealed.lent };
       // the token is sealed and on its way into the secret, which a stop now would only cut short
       view.stop.hidden = true;
       step = 'secrets';
@@ -4618,7 +4619,9 @@
       closeRunIssue(repo, issue);
       over();
       if (alsoMain && alsoMain.pooled) {
-        view.tell('Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours. An owner of ' + place.owner + ' sets its model and the repositories it runs on.');
+        view.tell(alsoMain.already
+          ? 'You have a token already (slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool), so it is now lent to ' + repo + ' too; no new sign-in was needed. Your token, below, shows every repository it is lent to.'
+          : 'Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours, and lent to ' + repo + '. Press Add Token in another repository to lend it there too.');
         view.close.textContent = 'Done';
         readTokenPlace(repo, reading);
         return;
@@ -4660,6 +4663,13 @@
               resolve({ stored: lines[1] });
               return;
             }
+            // a person's own token, lent here, or where it is lent after a list, revoke or delete:
+            // the slot, then the ids of the repositories it is lent to
+            if (lines[0] === TOKEN_MARK.lent && !keyId) {
+              if (!/^([1-9]|[12][0-9]|3[0-2])$/.test(lines[1] || '')) { reject(new Error('The run answered without naming the slot; see the issue.')); return; }
+              resolve({ lent: lines[1], ids: String(lines[2] || '').split(',').filter(function (x) { return x === 'all' || /^[1-9][0-9]{0,15}$/.test(x); }) });
+              return;
+            }
             if (lines[0] === TOKEN_MARK.sealed) {
               if (!keyId || lines[1] !== keyId || !/^[A-Za-z0-9+\/=]{40,}$/.test(lines[2] || '')) { reject(new Error('The run posted a sealed token for another key; nothing was saved. Press Add a Claude account again.')); return; }
               resolve(lines[2]);
@@ -4699,6 +4709,59 @@
     });
     add(m, el('p', 'admin__lead', '1. Press Sign in to claude.ai, sign in as the account and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it below and send it.'));
     add(m, add(el('p', 'admin__bar'), open), add(el('p', 'admin__bar tkdlg__code'), code, ' ', send));
+  }
+  // Your token, for someone who is not an owner of the organization: one token per person in the
+  // pool, lent to the repositories they choose (the owner's choice of 2026-10-19). Only the Token
+  // run may read or change the pool for them, so each press is a short run with no sign-in.
+  var yourLent = null;
+  function yourTokenBox() {
+    var box = el('div', 'toks__note');
+    var line = el('p', 'admin__lead');
+    var list = el('div');
+    var where = btn('Where is my token lent?', true, function () { manageToken('list', '', line, list); });
+    var gone = btn('Delete my token', true, function () {
+      if (!window.confirm('Delete your Claude token from ' + tk.place.owner + '\'s pool? Every repository it is lent to loses it at once.')) return;
+      manageToken('delete', '', line, list);
+    });
+    add(box, el('h3', 'console__boxh', 'Your token'), add(el('p', 'admin__bar'), where, ' ', gone), line, list);
+    if (yourLent) drawLent(yourLent, line, list);
+    return box;
+  }
+  function drawLent(found, line, list) {
+    yourLent = found;
+    clear(list);
+    if (!found.ids.length) { line.textContent = found.deleted ? 'Your token is deleted.' : 'Your token (slot ' + found.lent + ') is lent to no repository.'; return; }
+    if (found.ids[0] === 'all') { line.textContent = 'Your token (slot ' + found.lent + ') is on in every repository of ' + tk.place.owner + ', which an owner set.'; return; }
+    line.textContent = 'Your token (slot ' + found.lent + ') is lent to:';
+    found.ids.forEach(function (id) {
+      var row = el('p', 'admin__bar');
+      var name = el('span', '', 'repository ' + id);
+      gh('GET', '/repositories/' + id).then(function (r) { name.textContent = r.data.full_name; }, function () { name.textContent = 'a repository you cannot see (' + id + ')'; });
+      add(row, name, ' ', btn('Take back', true, function () { manageToken('revoke', id, line, list); }));
+      add(list, row);
+    });
+  }
+  function manageToken(action, target, line, list) {
+    var repo = tk.repo, issue = 0;
+    line.textContent = action === 'list' ? 'Asking the Token run where your token is lent...' : action === 'revoke' ? 'Taking your token back...' : 'Deleting your token...';
+    gh('POST', '/repos/' + repo + '/issues', { title: 'Your Claude token: ' + action,
+      body: 'The control panel\'s Tokens page opened this issue for one run of the workflow Token (.github/workflows/token.yml) on your own token in the pool. The page closes it when the run answers.' }).then(function (r) {
+      issue = r.data.number;
+      return gh('GET', '/repos/' + repo);
+    }).then(function (r) {
+      return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
+        { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), store: 'manage', manage: action, target: String(target || '') } });
+    }).then(function () {
+      return followRun(repo, issue, null, { step: list }, function () { return false; });
+    }).then(function (found) {
+      closeRunIssue(repo, issue);
+      found.deleted = action === 'delete';
+      if (found.deleted) found.ids = [];
+      drawLent(found, line, list);
+    }).catch(function (e) {
+      if (issue) closeRunIssue(repo, issue, true);
+      line.textContent = 'That did not work: ' + e.message;
+    });
   }
   function closeRunIssue(repo, issue, failed) {
     return gh('PATCH', '/repos/' + repo + '/issues/' + issue, { state: 'closed', state_reason: failed ? 'not_planned' : 'completed' }).catch(function () { return null; });
@@ -4845,7 +4908,10 @@
     add(plus, el('span', 'tok__plus', waiting ? '\u2026' : '+'), el('span', 'tok__name', waiting ? 'Sign-in waiting' : 'Add Token'));
     plus.addEventListener('click', function () { if (tokenRun && tokenRun.era === ends) tokenRun.view.show(''); else openTokenDialog('', true); });
     add(box, add(el('div', 'tok'), plus));
-    if (unread && intoPool(tk.place)) add(box, el('p', 'admin__none toks__note', 'Only an owner of ' + tk.place.owner + ' sees the tokens in its pool; Add Token puts yours in a free slot, marked as yours.'));
+    if (unread && intoPool(tk.place)) {
+      add(box, el('p', 'admin__none toks__note', 'Only an owner of ' + tk.place.owner + ' sees every token in its pool. Add Token lends yours to this repository, or makes it if you have none yet.'));
+      add(box, yourTokenBox());
+    }
     else if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
     drawSide();
   }
