@@ -5339,8 +5339,9 @@
     lendToBusy = 'Saving the list...';
     lendToError = '';
     drawTiles();
-    // the run reads the list with the App's token, so the variable reaches no repository itself;
-    // an empty list is the variable gone, since GitHub keeps no empty value
+    // the run reads the list with the App's token, so it needs no repository's reach; private
+    // visibility still lets the organization's private repositories' workflows read it, which the
+    // statement says; an empty list is the variable gone, since GitHub keeps no empty value
     var path = place.base + '/variables/' + LEND_TO_VARIABLE;
     var write = !ids.length
       ? gh('DELETE', path).catch(function (e) { if (e.status !== 404) throw e; })
