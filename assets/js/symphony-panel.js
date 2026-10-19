@@ -319,8 +319,9 @@
       tokenStored = true;
     } catch (e) { tokenStored = false; /* storage refused: the token lives for this page only */ }
     // another way in ends a sign-in by code still asking, whose token would otherwise come later and
-    // take this one's place
-    endCode();
+    // take this one's place; its words go with it, since GitHub's return says nothing of its own and
+    // the panel that opens next finds no code left to clear them for
+    if (endCode()) say('');
     ended = false;
     token = chosen;
     own = [chosen];
