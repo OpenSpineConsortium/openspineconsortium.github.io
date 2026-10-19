@@ -4851,7 +4851,7 @@
   // the hint for a repository without the workflow Token: one not adopted yet, or whose adoption pull
   // request is still open, as a repository named before its merge is
   function noTokenWorkflow(repo, view) {
-    var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption.';
+    var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption' + (tk.place && tk.place.org ? ', and no other repository of ' + tk.place.owner + ' that you may push to and that carries the topic symphony has it.' : '.');
     var reach = gh('GET', '/repos/' + repo).then(function () { return true; }, function (e) { return e.status !== 404; });
     return reach.then(function (reached) {
       if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it.';
@@ -4869,6 +4869,32 @@
     });
   }
 
+  // a repository of the organization that carries the workflow Token, for one that has none, as a
+  // repository adopted for the protocol alone has not: the run goes there and lends the token to the
+  // repository shown, through the workflow's input lend_to (tools/token_run.py, lend_target). An adopted
+  // repository carries the topic symphony, so those are tried, newest push first, among the ones the
+  // person may push to, since the dispatch needs that; found once per organization and person
+  var tokenHomes = {};
+  function tokenHome(place, repo) {
+    if (!place.org) return Promise.resolve('');
+    var key = place.owner + '/' + shownLogin;
+    if (tokenHomes[key]) return Promise.resolve(tokenHomes[key]);
+    // a listing or a probe GitHub refuses finds nothing, so the repository's own word stands
+    return gh('GET', '/orgs/' + place.owner + '/repos?per_page=100&sort=pushed&type=all').then(function (r) {
+      var names = (r.data || []).filter(function (x) {
+        return x && x.full_name && x.full_name !== repo && !x.archived && (x.topics || []).indexOf('symphony') >= 0 && x.permissions && x.permissions.push;
+      }).map(function (x) { return x.full_name; });
+      function probe(i) {
+        if (i >= names.length) return '';
+        return gh('GET', '/repos/' + names[i] + '/actions/workflows/' + TOKEN_WORKFLOW).then(function (w) {
+          if (w.data && w.data.state === 'active') { tokenHomes[key] = names[i]; return names[i]; }
+          return probe(i + 1);
+        }, function () { return probe(i + 1); });
+      }
+      return probe(0);
+    }, function () { return ''; });
+  }
+
   // given: the task the token's dialog opened for the settings it saved first, carried on here
   function addByActions(repo, place, button, wanted, given) {
     // a sign-in begun before the page signed out waits on calls that never answer, so it is let go
@@ -4880,13 +4906,15 @@
       return;
     }
     var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets', stopped = false, after = 0;
+    // where the workflow runs: this repository, or another of the organization's when this one has none
+    var home = repo;
     var renewing = wanted && tk.secrets && tk.secrets[slotSecret(wanted)];
     var pooled = intoPool(place);
     var view = signInView((renewing ? 'Renew ' + tileName(wanted) : pooled ? 'Add your token to ' + place.owner + '\'s pool' : 'Add a token') + ' on ' + repo, given);
     // a stop frees Add Token at once, whatever call is on its way; the chain ends quietly when it answers
     var run = tokenRun = { view: view, repo: repo, wanted: wanted || '', era: ends, stop: function () {
       stopped = true;
-      if (issue) closeRunIssue(repo, issue, true);
+      if (issue) closeRunIssue(home, issue, true);
       over();
       clear(view.step);
       view.task.end(STOPPED, true);
@@ -4913,6 +4941,15 @@
       step = 'workflow';
       // read before the issue is opened, so a repository without the workflow gets no issue
       return gh('GET', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW);
+    }).then(null, function (e) {
+      // a repository without the workflow: one of the organization's that has it runs the sign-in
+      if (step !== 'workflow' || e.status !== 404 || !place.org || stopped) throw e;
+      return tokenHome(place, repo).then(function (found) {
+        if (!found) throw e;
+        home = found;
+        view.tell('Starting the sign-in on GitHub Actions in ' + home + ', since ' + repo + ' has no workflow Token; the token is lent to ' + repo + '.');
+        return { data: { state: 'active' } };
+      });
     }).then(unlessStopped).then(function (r) {
       var state = r.data && r.data.state;
       if (state && state !== 'active') {
@@ -4925,25 +4962,26 @@
     }).then(unlessStopped).then(function (r) {
       key = r.data;
       step = 'issue';
-      return gh('POST', '/repos/' + repo + '/issues', { title: pooled ? 'Add a Claude account to ' + place.owner + '\'s pool' : 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
-        body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml). The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
+      return gh('POST', '/repos/' + home + '/issues', { title: pooled ? 'Add a Claude account to ' + place.owner + '\'s pool' : 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
+        body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml)' + (home === repo ? '' : ', for ' + repo + ', which has no workflow Token of its own') + '. The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
     }).then(function (r) {
       issue = r.data.number;
       step = 'dispatch';
-      return Promise.all([gh('GET', '/repos/' + repo), newestRunId(repo, TOKEN_WORKFLOW)]);
+      return Promise.all([gh('GET', '/repos/' + home), newestRunId(home, TOKEN_WORKFLOW)]);
     }).then(unlessStopped).then(function (both) {
       after = both[1];
-      return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
-        { ref: both[0].data.default_branch || 'main', inputs: pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id } });
+      var inputs = pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id };
+      if (pooled && home !== repo) inputs.lend_to = String(place.id);
+      return gh('POST', '/repos/' + home + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches', { ref: both[0].data.default_branch || 'main', inputs: inputs });
     }).then(function () {
       step = 'run';
-      view.tell('The sign-in is starting on GitHub Actions; its link appears here in about a minute.');
+      view.tell('The sign-in is starting on GitHub Actions' + (home === repo ? '' : ' in ' + home) + '; its link appears here in about a minute.');
       // the run's steps, and its log once it has ended, show under the words meanwhile; the issue's
       // comments, below, are what the sign-in goes by
       function over() { return stopped || !view.task.live; }
       // a run not found, or not read, leaves only the steps out: the sign-in goes by the comments
-      findRun(repo, TOKEN_WORKFLOW, after, over).then(function (found) { if (found && typeof found.id === 'number') return followRunSteps(repo, found, view.task, over); }).catch(function () { /* the words stand */ });
-      return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
+      findRun(home, TOKEN_WORKFLOW, after, over).then(function (found) { if (found && typeof found.id === 'number') return followRunSteps(home, found, view.task, over); }).catch(function () { /* the words stand */ });
+      return followRun(home, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
       // the sign-in is done, so the person's step (the link and the code box) and Stop go, whichever
       // way the token lands: a stop now would only cut the saving short
@@ -4957,7 +4995,7 @@
         return false;
       });
     }).then(function (alsoMain) {
-      closeRunIssue(repo, issue);
+      closeRunIssue(home, issue);
       over();
       if (alsoMain && alsoMain.pooled) {
         view.task.end(alsoMain.already
@@ -4971,7 +5009,9 @@
     }).catch(function (e) {
       // a stop has closed the issue and said so already
       if (e.stopped || stopped) return;
-      if (issue) closeRunIssue(repo, issue, true);
+      if (issue) closeRunIssue(home, issue, true);
+      // the repository found for the workflow is looked for again next time, since it may have lost it
+      if (home !== repo) delete tokenHomes[place.owner + '/' + shownLogin];
       over();
       clear(view.step);
       if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
@@ -5344,8 +5384,9 @@
     lendToBusy = 'Saving the list...';
     lendToError = '';
     drawTiles();
-    // the run reads the list with the App's token, so the variable reaches no repository itself;
-    // an empty list is the variable gone, since GitHub keeps no empty value
+    // the run reads the list with the App's token, so it needs no repository's reach; private
+    // visibility still lets the organization's private repositories' workflows read it, which the
+    // statement says; an empty list is the variable gone, since GitHub keeps no empty value
     var path = place.base + '/variables/' + LEND_TO_VARIABLE;
     var write = !ids.length
       ? gh('DELETE', path).catch(function (e) { if (e.status !== 404) throw e; })

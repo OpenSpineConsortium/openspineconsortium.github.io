@@ -731,7 +731,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tok--on .tok__open { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
 .tkwrap { display: flex; gap: 18px; align-items: flex-start; }
 .tkwrap .toks { flex: 1; min-width: 0; align-content: start; }
-.tkside { position: sticky; top: 0; flex: none; width: var(--tkside-w, 320px); display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.tkside { position: sticky; top: 0; flex: none; width: var(--tkside-w, 320px); max-width: 50%; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .tkside[hidden] { display: none; }
 .tkside .console__boxh { margin: 0; padding-right: 32px; }
 .tkside p { margin: 0; }
@@ -742,8 +742,10 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tkside__pct { font-weight: 600; }
 .tkside__meter .tok__bar { height: 8px; border-radius: 4px; }
 .tkside__reset { font-size: 0.78rem; color: var(--ink-faint); }
-/* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row */
-@media (max-width: 760px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; align-self: stretch; } }
+/* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row;
+   the column comes with the console's phone rules, where the grip that sets the panel's width is hidden, so a
+   width kept from a wider window never squeezes the tiles, and the half-width cap stands in for it above them */
+@media (max-width: 900px), (max-height: 520px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; max-width: none; align-self: stretch; } }
 /* the Notebooks tab: the Tokens tab's tiles and side panel in shape; a card's kinds as small
    chips, the side panel's files one under another, and the dialog's list of the catalog's files */
 #nb-side { width: var(--nbside-w, 320px); }
@@ -759,7 +761,8 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tkdlg .nb__pick input { width: auto; flex: none; margin: 0; }
 .tkdlg .nb__pick span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tkdlg__field textarea { width: 100%; min-height: 64px; resize: vertical; }
-@media (max-width: 760px) { #nb-side { width: auto; } }
+/* the Notebooks panel's own width outranks the class's phone width, so it gives way in the same query */
+@media (max-width: 900px), (max-height: 520px) { #nb-side { width: auto; } }
 .tkassign { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .tkassign .admin__bar, .tkassign .tkdlg__fact { flex-basis: 100%; margin: 0; }
 .console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
