@@ -1,0 +1,31 @@
+{
+  "id": "/symphony/control/",
+  "name": "Symphony control panel",
+  "short_name": "Symphony",
+  "description": "Drive your Symphony repositories as yourself: the board, the tasks, the workers, the Claude tokens and the pull requests.",
+  "start_url": "/symphony/control/",
+  "scope": "/symphony/control/",
+  "display": "standalone",
+  "background_color": "#F1EEE3",
+  "theme_color": "#F1EEE3",
+  "icons": [
+    {
+      "src": "/assets/img/symphony-app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/symphony-app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/symphony-app-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

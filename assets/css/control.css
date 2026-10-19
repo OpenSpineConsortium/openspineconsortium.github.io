@@ -1069,3 +1069,16 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   /* the tiles two to a row, filling it */
   .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
+
+/* the Home Screen app (the page's manifest, tools/build_site.py) covers the whole screen, under a
+   phone's rounded corners, its notch and its home bar, so the deck keeps its own edges inside the
+   phone's safe areas; in a browser's tab and on a computer every inset is 0 and nothing moves */
+body[data-shell] main > .console.section, .console.section {
+  padding-left: calc(14px + env(safe-area-inset-left, 0px));
+  padding-right: calc(14px + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+body.page-console #nav { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); }
+@media (max-width: 900px), (max-height: 520px) {
+  .console__status { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+}
