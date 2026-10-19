@@ -442,6 +442,42 @@ body[data-shell] main > .console.section, .console.section {
    the console takes the whole screen; symphony-panel.js sets console-full on the body */
 body.console-full #nav, body.console-full #flyouts, body.console-full .crumbs-band { display: none !important; }
 body.console-full[data-shell] { padding-top: 0 !important; }
+/* the site's bar hides itself on this page, as a taskbar set to hide does (symphony-panel.js,
+   initBar sets console-bar-auto on the body, and console-bar-shown while the bar is wanted): the
+   deck starts at the window's top, inside the Home Screen app's safe area, and the bar slides back
+   over the deck's top rather than pushing it down. The pointer brings it at the window's top edge
+   (the hot strip), a touch screen by the handle at the top centre. */
+body.console-bar-auto[data-shell] { padding-top: env(safe-area-inset-top, 0px); }
+/* over the dark deck the bar's usual see-through ground would show the deck's words through it */
+body.console-bar-auto #nav { background: rgba(241, 238, 227, 0.97); transition: transform 0.24s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease); box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.55); }
+body.console-bar-auto:not(.console-bar-shown) #nav { transform: translateY(calc(-100% - 32px)); }
+/* where no pointer hovers, the section's strip stands in the page under the bar (site.css); here it
+   rides with the bar, fixed under it */
+html:not(.nav-hover) body.console-bar-auto #flyouts { position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 99; transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1); }
+html:not(.nav-hover) body.console-bar-auto #flyouts .subnav { background: #FBFAF4; }
+html:not(.nav-hover) body.console-bar-auto:not(.console-bar-shown) #flyouts { transform: translateY(calc(-100% - var(--nav-h) - 32px)); }
+/* where one hovers, a strip dropped from a tab goes with the bar, though main.js closes it a moment later */
+html.nav-hover body.console-bar-auto:not(.console-bar-shown) .subnav--fly.is-open { opacity: 0; visibility: hidden; transform: translateY(-8px); }
+.console__barstrip, .console__barhandle { display: none; }
+@media (hover: hover) {
+  body.console-bar-auto .console__barstrip { display: block; position: fixed; top: 0; left: 0; right: 0; height: calc(6px + env(safe-area-inset-top, 0px)); z-index: 98; }
+}
+/* the handle: a thin tab in the site's colours, its press area a thumb's, above the deck's own top
+   padding and the title row's middle, where nothing is pressed; a laptop with a touch screen gets it
+   too, since a finger brings no pointer to the edge */
+@media (hover: none), (any-pointer: coarse) {
+  body.console-bar-auto .console__barhandle {
+    display: block; position: fixed; z-index: 98; top: env(safe-area-inset-top, 0px); left: 50%; width: 72px; height: 22px; margin: 0 0 0 -36px;
+    padding: 0; border: 0; border-radius: 0; background: transparent; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .console__barhandle::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 9px; border-radius: 0 0 8px 8px; background: #F1EEE3; box-shadow: inset 0 -2px 0 #0E5F58, 0 2px 8px rgba(0, 0, 0, 0.45); }
+  .console__barhandle:focus-visible { outline: none; }
+  .console__barhandle:focus-visible::before { outline: 2px solid #3CC2B1; outline-offset: 2px; }
+}
+body.console-full .console__barstrip, body.console-full .console__barhandle { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  body.console-bar-auto #nav, html:not(.nav-hover) body.console-bar-auto #flyouts { transition: none; }
+}
 /* the select says the repository by itself; its label stays for a screen reader */
 .console__id label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console__rail { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-x: hidden; overflow-y: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
@@ -985,6 +1021,26 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console__split--tkside, .console__split--nbside { top: 0; bottom: 0; left: -9px; width: 12px; }
 .console__split--drawer { left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; }
 .console__split--drawer::after { top: 50%; bottom: auto; left: 8px; right: 8px; width: auto; height: 2px; margin: -1px 0 0; }
+/* the foot's grip lies across the gap above the status line, and a short bar in its middle shows
+   it is there to take, since the foot is sized like the parts beside it (the owner, 2026-10-19: "i
+   cant resize the message board panel") */
+.console__split--foot { left: 0; right: 0; top: -9px; height: 13px; cursor: row-resize; }
+.console__split--foot::after { top: 50%; bottom: auto; left: calc(50% - 22px); width: 44px; height: 4px; margin: -2px 0 0; background: rgba(233, 230, 218, 0.3); }
+/* a foot the person sized (symphony-panel.js, LAYOUT_PARTS.foot) is that tall whatever it holds: the
+   message fills it and what is taller scrolls inside the message, as before; Clear and the buttons
+   stand at its top */
+.console.console--foot > .console__status { height: var(--foot-h); align-items: flex-start; }
+.console.console--foot > .console__status #msg { align-self: stretch; max-height: none; }
+@media (max-width: 900px), (max-height: 520px) {
+  /* on a phone the message takes the first row, all the foot leaves it, and Clear and the buttons
+     the second; the grip is a thumb's, its bar wider, in a top padding the foot keeps for it */
+  .console.console--foot > .console__status { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: center; }
+  .console.console--foot > .console__status #msg { grid-column: 1 / -1; }
+  .console__status { padding-top: 14px; }
+  .console__status:has(#msg:empty)::before { top: 14px; }
+  .console__split--foot { top: -8px; height: 26px; }
+  .console__split--foot::after { top: 13px; left: calc(50% - 28px); width: 56px; height: 5px; margin-top: 0; }
+}
 /* a task list's heading carries a grip on its right edge that sizes every list at once */
 .console .console__kanban > h3 { position: relative; }
 .console .console__kanban > h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
