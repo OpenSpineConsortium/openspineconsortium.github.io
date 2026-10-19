@@ -339,6 +339,12 @@
   .console .graph__zoom button.graph__zbtn, .graph__pos { display: none; }
   .graph__tools { gap: 8px; }
   .console .graph__nearacts button { padding: 2px 10px; }
+  /* a node in focus takes the room of the tiles and of its card's heading and pills, kept for a
+     reader and back with the whole chart, so it comes up larger than the whole chart drew it, where
+     the focus's own card would otherwise have taken that room from the stage (symphony-panel.js,
+     graphNearShow) */
+  #tab-dependencies.graph--near #cp-graph-focus { display: none; }
+  #tab-dependencies.graph--near #cp-graph:not(.graph--all) .graph__head > :is(h3, .graph__meta) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 /* a phone held upright: the card's tools first, at the top of every card, then its heading, then its
    count of closed tasks and its pills on one row, the bar beside the count left to the tile's */
@@ -365,7 +371,9 @@
    cut to one line; the tiles give their titles alone; a card gives the stage its whole height, its
    heading and pills kept for a reader (the selected tile shows its title and its states) and its
    tools floating over the stage's top left corner, where the stage fits the chart beside or below
-   them; and a focus's card beside the stage is cut to fit it */
+   them; and a focus's card beside the stage has smaller words, its title whole wherever the card
+   has the room for it, and where it has not, as for a very long title at a large text size, the
+   title alone gives way, so its link and Centre its row stay in sight */
 #tab-dependencies.graph--short #cp-graph-state:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; cursor: pointer; }
 #tab-dependencies.graph--short #cp-graph-focus .graph__tkind { display: none; }
 #tab-dependencies.graph--short #cp-graph-focus .graph__tile { padding-top: 5px; padding-bottom: 6px; }
@@ -375,7 +383,7 @@
 #tab-dependencies.graph--short #cp-graph:not(.graph--all) .graph__tools { position: absolute; z-index: 3; top: 13px; left: 7px; padding: 3px; border-radius: 99px; background: rgba(15, 25, 22, 0.88); }
 #tab-dependencies.graph--short #cp-graph:not(.graph--all) .graph__section[data-view="list"] .graph__list { margin-top: calc(var(--gbtn) + 12px); }
 #tab-dependencies.graph--short .graph__near { flex-basis: clamp(220px, 40%, 380px); gap: 3px; padding: 6px 10px; font-size: 0.78rem; }
-#tab-dependencies.graph--short .graph__neartitle { font-size: 0.84rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+#tab-dependencies.graph--short .graph__neartitle { font-size: 0.84rem; flex: 0 1 auto; min-height: 0; overflow: hidden; }
 #tab-dependencies.graph--short .graph__nearrel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #tab-dependencies.graph--short .graph__nearacts { flex-wrap: nowrap; gap: 8px; }
 #tab-dependencies.graph--short .graph__nearhead .graph__pill { padding: 0 7px 0 6px; }

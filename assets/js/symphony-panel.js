@@ -3957,6 +3957,9 @@
     }
     graphStripPage = 0;
     graphKey(false);
+    // a draw done again drops its cards with any focus open on them, and the room that focus took
+    var tab = $('tab-dependencies');
+    if (tab) tab.classList.remove('graph--near');
   }
   // the key to the colours and the arrows, shown only while there are charts to read it by; where
   // room is short it folds behind its Key button, which opens it over the stage (graphKeyFold)
@@ -4215,16 +4218,28 @@
     var cells = Array.prototype.filter.call(box.querySelectorAll('.graph__section'), function (s) { return !s.hidden; });
     var n = cells.length, W = box.clientWidth, H = box.clientHeight;
     if (!n || !W || !H) return;
-    var gap = 10, title = 34;
+    // what a cell keeps from its stage, its title, gap, padding and frame, read off a cell's own
+    // parts and not off its size, which may be the grid's last guess; its title grows with the
+    // console's text size
+    var gap = 10, aside = graphAllAside(cells[0]);
     var sizes = cells.map(function (sec) { var st = stageOf(sec.querySelector('.control__chart')); return st && st.w ? st : { w: 400, h: 300 }; });
     var best = 1, bestScale = -1;
     for (var cols = 1; cols <= n; cols++) {
-      var rows = Math.ceil(n / cols), cw = (W - gap * (cols - 1)) / cols - 2 * STAGE_PAD, ch = (H - gap * (rows - 1)) / rows - title - 2 * STAGE_PAD;
+      var rows = Math.ceil(n / cols), cw = (W - gap * (cols - 1)) / cols - aside.w - 2 * STAGE_PAD, ch = (H - gap * (rows - 1)) / rows - aside.h - 2 * STAGE_PAD;
       var scale = Math.min.apply(null, sizes.map(function (s) { return Math.min(cw / s.w, ch / s.h, 1); }));
       if (scale > bestScale + 1e-6) { best = cols; bestScale = scale; }
     }
     box.style.gridTemplateColumns = 'repeat(' + best + ', minmax(0, 1fr))';
     box.style.gridTemplateRows = 'repeat(' + Math.ceil(n / best) + ', minmax(0, 1fr))';
+  }
+  function graphAllAside(sec) {
+    var cs = getComputedStyle(sec), head = sec.querySelector('.graph__head'), stage = sec.querySelector('.control__chart');
+    var px = function (v) { return parseFloat(v) || 0; };
+    var frame = stage ? [stage.offsetWidth - stage.clientWidth, stage.offsetHeight - stage.clientHeight] : [0, 0];
+    return {
+      w: px(cs.paddingLeft) + px(cs.paddingRight) + px(cs.borderLeftWidth) + px(cs.borderRightWidth) + frame[0],
+      h: (head ? head.offsetHeight + px(cs.rowGap) : 0) + px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth) + frame[1]
+    };
   }
   // the tab laid out again for its size: its short form, the key's fold, the tiles' rows and pages,
   // All's grid; each chart fits itself to its own stage as that changes size (stageMake). A tab under
@@ -5099,6 +5114,9 @@
     view.whole.style.display = 'none';
     view.focus = n;
     view.host.classList.add('control__chart--near');
+    // on a phone the tiles and the card's heading give their room to the focus, so the node comes up
+    // larger than the whole chart drew it, as the request asks (control.css, graph--near)
+    if (view.section) $('tab-dependencies').classList.add('graph--near');
     if (view.stage) view.stage.hooks.near = true;
     graphNearCard(view, n);
     stageShow(view.host, svg, STAGE_NEAR_MAX);
@@ -5110,6 +5128,7 @@
     if (svg) svg.parentNode.removeChild(svg);
     view.focus = null;
     view.host.classList.remove('control__chart--near');
+    if (view.section) $('tab-dependencies').classList.remove('graph--near');
     if (view.stage) view.stage.hooks.near = false;
     view.near.hidden = true;
     clear(view.near);
