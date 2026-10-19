@@ -731,7 +731,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tok--on .tok__open { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
 .tkwrap { display: flex; gap: 18px; align-items: flex-start; }
 .tkwrap .toks { flex: 1; min-width: 0; align-content: start; }
-.tkside { position: sticky; top: 0; flex: none; width: var(--tkside-w, 320px); display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.tkside { position: sticky; top: 0; flex: none; width: var(--tkside-w, 320px); max-width: 50%; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .tkside[hidden] { display: none; }
 .tkside .console__boxh { margin: 0; padding-right: 32px; }
 .tkside p { margin: 0; }
@@ -742,8 +742,10 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .tkside__pct { font-weight: 600; }
 .tkside__meter .tok__bar { height: 8px; border-radius: 4px; }
 .tkside__reset { font-size: 0.78rem; color: var(--ink-faint); }
-/* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row */
-@media (max-width: 760px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; align-self: stretch; } }
+/* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row;
+   the column comes with the console's phone rules, where the grip that sets the panel's width is hidden, so a
+   width kept from a wider window never squeezes the tiles, and the half-width cap stands in for it above them */
+@media (max-width: 900px), (max-height: 520px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; max-width: none; align-self: stretch; } }
 .tkassign { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .tkassign .admin__bar, .tkassign .tkdlg__fact { flex-basis: 100%; margin: 0; }
 .console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
