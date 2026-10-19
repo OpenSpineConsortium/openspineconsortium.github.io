@@ -4520,7 +4520,7 @@
   // the hint for a repository without the workflow Token: one not adopted yet, or whose adoption pull
   // request is still open, as a repository named before its merge is
   function noTokenWorkflow(repo, view) {
-    var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption.';
+    var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption' + (tk.place && tk.place.org ? ', and no other repository of ' + tk.place.owner + ' that you may push to and that carries the topic symphony has it.' : '.');
     var reach = gh('GET', '/repos/' + repo).then(function () { return true; }, function (e) { return e.status !== 404; });
     return reach.then(function (reached) {
       if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it.';
@@ -4538,6 +4538,32 @@
     });
   }
 
+  // a repository of the organization that carries the workflow Token, for one that has none, as a
+  // repository adopted for the protocol alone has not: the run goes there and lends the token to the
+  // repository shown, through the workflow's input lend_to (tools/token_run.py, lend_target). An adopted
+  // repository carries the topic symphony, so those are tried, newest push first, among the ones the
+  // person may push to, since the dispatch needs that; found once per organization and person
+  var tokenHomes = {};
+  function tokenHome(place, repo) {
+    if (!place.org) return Promise.resolve('');
+    var key = place.owner + '/' + shownLogin;
+    if (tokenHomes[key]) return Promise.resolve(tokenHomes[key]);
+    // a listing or a probe GitHub refuses finds nothing, so the repository's own word stands
+    return gh('GET', '/orgs/' + place.owner + '/repos?per_page=100&sort=pushed&type=all').then(function (r) {
+      var names = (r.data || []).filter(function (x) {
+        return x && x.full_name && x.full_name !== repo && !x.archived && (x.topics || []).indexOf('symphony') >= 0 && x.permissions && x.permissions.push;
+      }).map(function (x) { return x.full_name; });
+      function probe(i) {
+        if (i >= names.length) return '';
+        return gh('GET', '/repos/' + names[i] + '/actions/workflows/' + TOKEN_WORKFLOW).then(function (w) {
+          if (w.data && w.data.state === 'active') { tokenHomes[key] = names[i]; return names[i]; }
+          return probe(i + 1);
+        }, function () { return probe(i + 1); });
+      }
+      return probe(0);
+    }, function () { return ''; });
+  }
+
   function addByActions(repo, place, button, wanted) {
     // a sign-in begun before the page signed out waits on calls that never answer, so it is let go
     if (tokenRun && tokenRun.era !== ends) tokenRun = null;
@@ -4546,13 +4572,15 @@
       return;
     }
     var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets', stopped = false;
+    // where the workflow runs: this repository, or another of the organization's when this one has none
+    var home = repo;
     var renewing = wanted && tk.secrets && tk.secrets[slotSecret(wanted)];
     var pooled = intoPool(place);
     var view = signInView((renewing ? 'Renew ' + tileName(wanted) : pooled ? 'Add your token to ' + place.owner + '\'s pool' : 'Add a token') + ' on ' + repo);
     // a stop frees Add Token at once, whatever call is on its way; the chain ends quietly when it answers
     var run = tokenRun = { view: view, repo: repo, wanted: wanted || '', era: ends, stop: function () {
       stopped = true;
-      if (issue) closeRunIssue(repo, issue, true);
+      if (issue) closeRunIssue(home, issue, true);
       over();
       clear(view.step);
       view.tell(STOPPED);
@@ -4579,6 +4607,15 @@
       step = 'workflow';
       // read before the issue is opened, so a repository without the workflow gets no issue
       return gh('GET', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW);
+    }).then(null, function (e) {
+      // a repository without the workflow: one of the organization's that has it runs the sign-in
+      if (step !== 'workflow' || e.status !== 404 || !place.org || stopped) throw e;
+      return tokenHome(place, repo).then(function (found) {
+        if (!found) throw e;
+        home = found;
+        view.tell('Starting the sign-in on GitHub Actions in ' + home + ', since ' + repo + ' has no workflow Token; the token is lent to ' + repo + '.');
+        return { data: { state: 'active' } };
+      });
     }).then(unlessStopped).then(function (r) {
       var state = r.data && r.data.state;
       if (state && state !== 'active') {
@@ -4591,19 +4628,20 @@
     }).then(unlessStopped).then(function (r) {
       key = r.data;
       step = 'issue';
-      return gh('POST', '/repos/' + repo + '/issues', { title: pooled ? 'Add a Claude account to ' + place.owner + '\'s pool' : 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
-        body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml). The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
+      return gh('POST', '/repos/' + home + '/issues', { title: pooled ? 'Add a Claude account to ' + place.owner + '\'s pool' : 'Add a Claude account as ' + (slot === 'main' ? 'main' : 'slot ' + slot),
+        body: 'The control panel\'s Tokens page opened this issue for one sign-in through the workflow Token (.github/workflows/token.yml)' + (home === repo ? '' : ', for ' + repo + ', which has no workflow Token of its own') + '. The run posts the sign-in link here and the token only as a sealed box GitHub alone can open; the page closes the issue when the slot is saved.' });
     }).then(function (r) {
       issue = r.data.number;
       step = 'dispatch';
-      return gh('GET', '/repos/' + repo);
+      return gh('GET', '/repos/' + home);
     }).then(unlessStopped).then(function (r) {
-      return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
-        { ref: r.data.default_branch || 'main', inputs: pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id } });
+      var inputs = pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id };
+      if (pooled && home !== repo) inputs.lend_to = String(place.id);
+      return gh('POST', '/repos/' + home + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches', { ref: r.data.default_branch || 'main', inputs: inputs });
     }).then(function () {
       step = 'run';
       view.tell('The sign-in is starting; its button appears here in about a minute.');
-      return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
+      return followRun(home, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
       if (pooled) return { pooled: sealed.stored || sealed.lent, already: !!sealed.lent };
       // the token is sealed and on its way into the secret, which a stop now would only cut short
@@ -4616,7 +4654,7 @@
         return false;
       });
     }).then(function (alsoMain) {
-      closeRunIssue(repo, issue);
+      closeRunIssue(home, issue);
       over();
       if (alsoMain && alsoMain.pooled) {
         view.tell(alsoMain.already
@@ -4632,7 +4670,9 @@
     }).catch(function (e) {
       // a stop has closed the issue and said so already
       if (e.stopped || stopped) return;
-      if (issue) closeRunIssue(repo, issue, true);
+      if (issue) closeRunIssue(home, issue, true);
+      // the repository found for the workflow is looked for again next time, since it may have lost it
+      if (home !== repo) delete tokenHomes[place.owner + '/' + shownLogin];
       over();
       clear(view.step);
       if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
