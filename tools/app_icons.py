@@ -1,6 +1,6 @@
 """tools/app_icons.py: draw the control panel's Home Screen icons.
 
-    python -X utf8 tools/app_icons.py        # rewrite the four PNGs under assets/img/
+    python -X utf8 tools/app_icons.py        # rewrite the four PNGs under assets/img/ where they differ
 
 The control panel installs as an app of its own from a phone's browser (Safari's "Add to Home
 Screen", Chrome's "Install app"), and a Home Screen wants a raster icon, which an SVG in the page's
@@ -8,7 +8,11 @@ head is not. The mark is Symphony's, as the Symphony browser extension draws it 
 public/icon.svg: a ring of eight players, the small orange circles, around the conductor's warm
 white point, on a dark slate tile. It is drawn here from the same geometry with the standard library
 alone, each pixel shaded by how much of it a shape covers (its signed distance, clamped to one
-pixel), so no image library is needed and the files come out the same on every machine.
+pixel), so no image library is needed and the pixels come out the same on every machine. The
+compressed bytes are the same only where the zlib is: zlib-ng, which Python 3.14's Windows builds
+and Fedora's zlib-ng-compat put behind the zlib module, packs the same rows into other bytes. So a
+file is rewritten only when its decoded pixel rows differ from the drawing, never because its bytes
+do, and a run under one zlib leaves alone what a run under the other wrote.
 
 Four files, each for the place that asks for it:
 - symphony-app-180.png: Apple's touch icon. iOS rounds the corners itself and fills anything
@@ -83,6 +87,8 @@ def pixel(shapes, x, y):
 
 
 def draw(size, full_bleed=False, scale=1.0):
+    """The icon's pixel rows as a PNG holds them before compression: each row a filter byte of 0, then
+    red, green, blue and alpha for each pixel."""
     shapes = layers(size, full_bleed, scale)
     rows = []
     for y in range(size):
@@ -93,14 +99,45 @@ def draw(size, full_bleed=False, scale=1.0):
                 r, g, b = r / a, g / a, b / a
             row += bytes((round(r), round(g), round(b), round(a * 255)))
         rows.append(bytes(row))
-    return png(size, b"".join(rows))
+    return b"".join(rows)
+
+
+SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def chunk(kind, data):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+
+def header(size):
+    """The signature and the IHDR chunk: a square of 8-bit RGBA, not interlaced."""
+    return SIGNATURE + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
 
 
 def png(size, raw):
-    def chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
-    head = struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0)
-    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", head) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+    return header(size) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+
+
+def pixel_rows(data):
+    """The rows a PNG's IDAT chunks hold, decompressed, or None where they cannot be read."""
+    idat, at = [], len(SIGNATURE)
+    while at + 8 <= len(data):
+        length, kind = struct.unpack(">I4s", data[at:at + 8])
+        if kind == b"IDAT":
+            idat.append(data[at + 8:at + 8 + length])
+        at += 12 + length
+    try:
+        return zlib.decompress(b"".join(idat))
+    except zlib.error:
+        return None
+
+
+def same_pixels(path, size, raw):
+    """Whether the file on disk is this script's PNG of these rows, whatever zlib compressed them."""
+    if not path.exists():
+        return False
+    data = path.read_bytes()
+    return data.startswith(header(size)) and pixel_rows(data) == raw
 
 
 ICONS = {
@@ -113,10 +150,10 @@ ICONS = {
 
 def main():
     for name, how in ICONS.items():
-        data = draw(**how)
+        raw = draw(**how)
         path = OUT / name
-        if not path.exists() or path.read_bytes() != data:
-            path.write_bytes(data)
+        if not same_pixels(path, how["size"], raw):
+            path.write_bytes(png(how["size"], raw))
             print("wrote", path.relative_to(ROOT).as_posix())
 
 

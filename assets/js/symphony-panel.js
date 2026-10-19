@@ -2637,6 +2637,10 @@
   }
   function initFullScreen() {
     var b = $('cp-full');
+    // an iPhone gives a page no full screen, only a video, and has no F11 to press either, so where
+    // the browser has neither the standard call nor WebKit's older one the button is not offered
+    var can = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+    if (b && !can) b.hidden = true;
     if (b) b.addEventListener('click', function () {
       var root = document.documentElement;
       if (document.fullscreenElement || document.webkitFullscreenElement) {
