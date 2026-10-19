@@ -1491,7 +1491,7 @@
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
     // the write goes out for the account the press was made as, since the read before it may name one
     var account = shownLogin;
-    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1));
+    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1) + ' on ' + s.repo);
     task.tell('Starting...');
     return newestRunId(s.repo, 'agents.yml').then(function (after) {
       return gh('POST', '/repos/' + s.repo + '/actions/workflows/agents.yml/dispatches', { ref: branch, inputs: inputs }, undefined, false, account).then(function () {
@@ -2222,7 +2222,7 @@
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
     // the write goes out for the account the press was made as, since the read before it may name one
     var account = shownLogin;
-    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1));
+    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1) + ' on ' + s.repo);
     task.tell('Starting...');
     newestRunId(s.repo, workflow).then(function (after) {
       return gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', { ref: branch }, undefined, false, account).then(function () {
@@ -2362,18 +2362,32 @@
   // Tokens tab) shrinks what holds it, and the window, or the tab's own scroll, lands somewhere
   // else: the view jumps. So a box being read again keeps its height until it is drawn, and on a
   // phone, where the page scrolls as a whole, the stage keeps its own through a refresh.
-  function holdHeight(node) {
-    var done = false;
+  // Each hold marks the node as its own, so the release of an older hold, a refresh that went stale
+  // under a newer one or its own safety timer, lets nothing go once a newer hold has the node. The
+  // height is measured here unless the caller took it first.
+  var holdsMade = 0;
+  function holdHeight(node, height) {
     if (!node) return function () {};
-    var h = node.offsetHeight;
+    var mine = String(++holdsMade);
+    node.setAttribute('data-held', mine);
+    var h = height === undefined ? node.offsetHeight : height;
     if (h) node.style.minHeight = h + 'px';
-    return function () { if (done) return; done = true; node.style.minHeight = ''; };
+    return function () {
+      if (node.getAttribute('data-held') !== mine) return;
+      node.removeAttribute('data-held');
+      node.style.minHeight = '';
+    };
   }
   // the stage through one refresh, where the page and not the deck scrolls; a refresh that never
   // ends, its calls dropped by a sign-out, lets it go after a while anyway
+  // where the page and not the deck scrolls, as on a phone
+  function pageScrolls() {
+    var c = $('console');
+    return !!c && getComputedStyle(c).overflow !== 'hidden';
+  }
   function holdStage() {
     var c = $('console');
-    if (!c || getComputedStyle(c).overflow === 'hidden') return function () {};
+    if (!pageScrolls()) return function () {};
     var release = holdHeight(c.querySelector('.console__stage'));
     var timer = setTimeout(release, 20000);
     return function () { clearTimeout(timer); requestAnimationFrame(release); };
@@ -2407,7 +2421,9 @@
     var step = el('div', 'msgtask__step');
     var bar = el('p', 'admin__bar msgtask__bar');
     bar.hidden = true;
-    add(box, head, line, steps, log, step, bar);
+    // the step the person takes and the buttons come right under the line, before the steps and the
+    // log, so on a phone's short foot the sign-in's link is in view and the quiet parts are below
+    add(box, head, line, step, bar, steps, log);
     var task = {
       box: box,
       step: step,
@@ -2440,6 +2456,8 @@
       // the work is over: its last word is the newest, so a message said meanwhile goes as it would
       // before any message, and the box stays until Clear or the next message
       end: function (text, warn) {
+        // a task a sign-out dropped has nothing left to say, and never touches what was said since
+        if (task.dropped) return;
         task.live = false;
         box.setAttribute('data-state', warn ? 'failed' : 'done');
         bar.hidden = true;
@@ -2485,19 +2503,29 @@
   function newestRunId(repo, workflow) {
     return runsOf(repo, workflow, 'per_page=1').then(function (runs) { return runs.length ? runs[0].id : 0; }, function () { return 0; });
   }
+  // a read of GitHub that fails is made again at the next look, since one lost answer says nothing
+  // of the run; the follow gives up after this many in a row, and says so
+  var RUN_FAILS = 3;
   function findRun(repo, workflow, after, over) {
-    var until = Date.now() + RUN_FIND_FOR_MS;
+    var until = Date.now() + RUN_FIND_FOR_MS, fails = 0;
     return new Promise(function (resolve) {
       function look() {
         if (over()) { resolve(null); return; }
         runsOf(repo, workflow, 'event=workflow_dispatch&per_page=5').then(function (runs) {
+          fails = 0;
           var fresh = runs.filter(function (run) { return run.id > after && !followedRuns[run.id]; });
-          var mine = fresh.filter(function (run) { return run.actor && run.actor.login === shownLogin; });
-          var run = (mine.length ? mine : fresh)[0];
+          // the signed-in person's own run, where GitHub names who started each: another person's,
+          // started in the same minute, speaks at their foot, and this person's is waited for
+          var named = fresh.filter(function (run) { return isPlain(run.actor) && typeof run.actor.login === 'string' && run.actor.login; });
+          var mine = named.filter(function (run) { return run.actor.login === shownLogin; });
+          var run = mine[0] || (!shownLogin || !named.length ? fresh[0] : null);
           if (run) { resolve(run); return; }
-          if (Date.now() > until) { resolve(null); return; }
+          if (Date.now() > until) { resolve({ late: true }); return; }
           setTimeout(look, RUN_FIND_MS);
-        }, function () { resolve(null); });
+        }, function (e) {
+          if (++fails >= RUN_FAILS) { resolve({ failed: e }); return; }
+          setTimeout(look, RUN_FIND_MS);
+        });
       }
       setTimeout(look, 2000);
     });
@@ -2519,13 +2547,14 @@
     return m ? m + ' min ' + sec + ' s' : sec + ' s';
   }
   function followRunSteps(repo, run, task, over) {
-    var until = Date.now() + RUN_FOR_MS, read = {}, shown = [];
+    var until = Date.now() + RUN_FOR_MS, read = {}, shown = [], fails = 0;
     followedRuns[run.id] = true;
     task.at(exHttps(run.html_url), 'Run #' + String(run.run_number || run.id) + ' on GitHub');
     return new Promise(function (resolve) {
       function look() {
         if (over()) { resolve(null); return; }
         gh('GET', '/repos/' + repo + '/actions/runs/' + encodeURIComponent(run.id) + '/jobs?per_page=20&at=' + Date.now()).then(function (r) {
+          fails = 0;
           var jobs = (r.data && Array.isArray(r.data.jobs) ? r.data.jobs : []).filter(isPlain);
           var steps = [];
           jobs.forEach(function (job) {
@@ -2552,21 +2581,33 @@
             if (Date.now() > until) { resolve({ conclusion: 'running' }); return; }
             setTimeout(look, RUN_STEPS_MS);
           });
-        }, function () { resolve(null); });
+        }, function (e) {
+          if (++fails >= RUN_FAILS) { resolve({ conclusion: 'unread', message: e.message }); return; }
+          setTimeout(look, RUN_STEPS_MS);
+        });
       }
       look();
     });
   }
-  // a run a launch button started: found, followed, and its end said; one that cannot be found or
-  // read leaves the task at its last word
+  // a run a launch button started: found, followed, and its end said. One GitHub could not be read
+  // about, or did not list in time, ends the task with the reason, never as done while its line says
+  // Running; one the page left, going to another repository, is left at its link.
   function followDispatched(s, workflow, after, task) {
     var era = ends;
-    function over() { return ends !== era || !task.live; }
+    // the follow is over with a sign-out, with the task (Clear leaves it live; a drop does not) and
+    // once the page shows another repository, whose foot the run's end would otherwise land on
+    function over() { return ends !== era || !task.live || stale(s); }
+    function left() {
+      if (task.live && ends === era) task.end('Left as the page went to another repository; the run goes on at its link.');
+    }
     return findRun(s.repo, workflow, after, over).then(function (run) {
-      if (!run) { task.end(); return; }
+      if (!run) { left(); return; }
+      if (run.failed) { task.end('GitHub could not be read while the run was looked for (' + run.failed.message + '); the Runs tab shows it.', true); return; }
+      if (run.late) { task.end('Not listed within two minutes; the Runs tab shows the run once GitHub lists it.', true); return; }
       task.tell('Running; its steps show here as GitHub lists them.');
       return followRunSteps(s.repo, run, task, over).then(function (out) {
-        if (!out) { task.end(); return; }
+        if (!out) { left(); return; }
+        if (out.conclusion === 'unread') { task.end('GitHub could not be read while the run was followed (' + out.message + '); the run on GitHub shows the rest.', true); return; }
         if (!stale(s)) loadRuns(s);
         if (out.conclusion === 'running') { task.end('Still running after 15 minutes; the run on GitHub shows the rest.', true); return; }
         task.end('Finished: ' + out.conclusion + (out.seconds ? ', in ' + durationWords(out.seconds) : '') + '.', out.conclusion !== 'success');
@@ -3828,8 +3869,21 @@
   var graphHeld = function () {};
   function graphReset(words, warn, reading) {
     var box = $('cp-graph');
+    // the height is taken before the earlier hold is let go: a box that hold emptied stands at
+    // nothing of its own, so a read begun under a read would hold it at nothing and the tab would
+    // shrink while the sub-issues are read
+    var h = box ? box.offsetHeight : 0;
+    var tab = $('tab-dependencies');
+    var th = tab ? tab.offsetHeight : 0;
     graphHeld();
-    graphHeld = reading ? holdHeight(box) : function () {};
+    graphHeld = function () {};
+    if (reading) {
+      var heldBox = holdHeight(box, h);
+      // where the page scrolls as a whole, the chips and the line above the box, emptied with it, would
+      // still pull the page up, so the tab holds its height too
+      var heldTab = pageScrolls() ? holdHeight(tab, th) : function () {};
+      graphHeld = function () { heldBox(); heldTab(); };
+    }
     clear(box);
     graphStripClear();
     $('cp-graph-said').textContent = '';
@@ -4015,6 +4069,7 @@
       exploreAfterDraw();
     }).catch(function (e) {
       if (!graphLive(draw)) return;
+      graphHeld();
       clear($('cp-graph'));
       if (e.cap) graphWords('Not drawn: it would take more than ' + GRAPH_READS_MAX + ' reads of GitHub, the most this page makes for one draw; stopped at ' + draw.reading + '. Closing the epics that are done makes it fewer.', true);
       else if (e.reserve) graphWords('Not drawn: GitHub says this token has ' + draw.left + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console; stopped at ' + draw.reading + '. Press Refresh once GitHub\'s hourly limit has reset.', true);
@@ -4767,6 +4822,9 @@
   // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
   // the deck's foot, shown again when Add Token is pressed after Clear hid it, and how to stop it
   var tokenRun = null;
+  // the slot whose settings Save and sign in is saving before its sign-in starts, with the sign-out
+  // count of the press, so a save that never answers after a sign-out holds nothing
+  var tokenAdding = null;
 
   // the sign-in at the deck's foot (msgTask): a line that says where the run is, the run's steps
   // under it, and the step it needs from the person, the claude.ai link and the code's box; the
@@ -4812,7 +4870,7 @@
     if (tokenRun && tokenRun.era !== ends) tokenRun = null;
     if (tokenRun) {
       var busy = tokenRun.repo !== repo || (wanted && wanted !== tokenRun.wanted) ? 'Another sign-in is under way; finish it or stop it first.' : '';
-      if (given) given.end(busy || 'This sign-in is under way already; it shows below.', !!busy);
+      if (given) given.end(busy || 'This sign-in is under way already; its task is the one above.', !!busy);
       tokenRun.view.show(given ? '' : busy);
       return;
     }
@@ -4878,7 +4936,8 @@
       // the run's steps, and its log once it has ended, show under the words meanwhile; the issue's
       // comments, below, are what the sign-in goes by
       function over() { return stopped || !view.task.live; }
-      findRun(repo, TOKEN_WORKFLOW, after, over).then(function (found) { if (found) return followRunSteps(repo, found, view.task, over); }).catch(function () { /* the words stand */ });
+      // a run not found, or not read, leaves only the steps out: the sign-in goes by the comments
+      findRun(repo, TOKEN_WORKFLOW, after, over).then(function (found) { if (found && typeof found.id === 'number') return followRunSteps(repo, found, view.task, over); }).catch(function () { /* the words stand */ });
       return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
       // the sign-in is done, so the person's step (the link and the code box) and Stop go, whichever
@@ -5326,6 +5385,9 @@
   function openTokenDialog(slot, adding) {
     var d = $('tk-dialog');
     if (!d || !tk.place) { say('The tokens are still being read; press again in a moment.'); return; }
+    // a token whose settings are still being saved is one press's: a second press meanwhile would
+    // save the slot again under another id and start a second sign-in
+    if (adding && tokenAdding && tokenAdding.era === ends) { say('A token is being added already; it speaks at the foot.'); return; }
     clear(d);
     var s = tk.settings[slot] || {};
     var form = el('form', 'tkdlg__form');
@@ -5411,13 +5473,16 @@
       // sign-in that follows it, as one task
       d.close();
       var task = adding ? msgTask('Add ' + tileName(wanted) + ' on ' + tk.repo) : null;
+      if (adding) tokenAdding = { era: ends };
       if (task) task.tell('Saving the settings of ' + tileName(wanted) + '...');
       else say('Saving the settings of ' + tileName(wanted) + '...');
       saveTokenSettings(wanted, chosen(), labelText).then(function () {
+        tokenAdding = null;
         drawTiles();
         if (adding) { addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted, task); return; }
         say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
       }, function (e) {
+        tokenAdding = null;
         var words = 'The settings of ' + tileName(wanted) + ' could not be saved: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : '');
         if (task) task.end(words, true); else say(words, true);
       });
