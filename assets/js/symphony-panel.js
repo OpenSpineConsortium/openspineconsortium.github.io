@@ -91,6 +91,8 @@
     return a;
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  // a line's words drawn anew, its addresses as links (rich)
+  function richText(node, text) { clear(node); return rich(node, text); }
   // words that may name an address: each https address becomes a link that opens it, so a message
   // that says where to fix something is one press from the fix (Ashley, 2026-10-19); a full stop,
   // comma or bracket that ends the sentence stays out of the link
@@ -1013,8 +1015,8 @@
     var others = ' Another tab signed in for that tab alone keeps its sign-in until you forget it there or close it.';
     // a classic token is deleted on another page of GitHub's settings than a fine-grained one
     var pages = [];
-    if (pasted.some(function (t) { return /^ghp_/.test(t); })) pages.push('github.com/settings/tokens');
-    if (pasted.some(function (t) { return !/^ghp_/.test(t); })) pages.push('github.com/settings/personal-access-tokens');
+    if (pasted.some(function (t) { return /^ghp_/.test(t); })) pages.push('https://github.com/settings/tokens');
+    if (pasted.some(function (t) { return !/^ghp_/.test(t); })) pages.push('https://github.com/settings/personal-access-tokens');
     var pat = !pasted.length ? '' : pasted.length === 1
       ? ' The personal access token itself stays valid at GitHub until it runs out or you delete it at ' + pages[0] + '.'
       : ' The personal access tokens themselves stay valid at GitHub until they run out or you delete them at ' + pages.join(' and ') + '.';
@@ -1372,7 +1374,7 @@
     }).catch(function (e) {
       if (stale(s)) return;
       failed(s, 'the issues', e);
-      $('cp-other').textContent = 'The issues could not be read: ' + e.message;
+      richText($('cp-other'), 'The issues could not be read: ' + e.message);
       graphReset('Not drawn: the issues could not be read.', true);
       if (s.ready) summary();
     });
@@ -1972,7 +1974,7 @@
         ? plural(count, 'repository', 'repositories') + (signedInByApp() ? ' SymphonyBoard is installed on, ' + plural(groups.length, 'account') : ' this token reaches') + '. Press one to open it.'
         : (signedInByApp() ? 'SymphonyBoard is installed on no repository you can see yet: install it with the button below.' : 'This token reaches no repository; a fine-grained token lists only the repositories it was made for.');
       pickerDraw();
-    }).catch(function (e) { $('rp-state').textContent = 'GitHub did not list them: ' + e.message + ' Type OWNER/NAME above to open one by name.'; });
+    }).catch(function (e) { richText($('rp-state'), 'GitHub did not list them: ' + e.message + ' Type OWNER/NAME above to open one by name.'); });
     setTimeout(function () { $('cp-add-name').focus(); }, 0);
   }
   function pickerMatches(repo, q) {
@@ -5199,7 +5201,7 @@
   var RUN_FOR_MS = 15 * 60 * 1000;
   // what claude.ai shows after the sign-in, as tools/token_run.py's CODE_SHAPE takes it
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
-  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
+  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write; an administrator accepts them on the App\'s installation, at https://github.com/settings/installations for a personal account or the organization\'s own installations page, Configure beside SymphonyBoard.';
   var ADOPT_BRANCH = 'symphony/adopt';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
   // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
@@ -5232,7 +5234,7 @@
     var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption' + (tk.place && tk.place.org ? ', and no other repository of ' + tk.place.owner + ' that you may push to and that carries the topic symphony has it.' : '.');
     var reach = gh('GET', '/repos/' + repo).then(function () { return true; }, function (e) { return e.status !== 404; });
     return reach.then(function (reached) {
-      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it.';
+      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it; install it at https://github.com/apps/' + APP_SLUG + '/installations/new, then press Add Token again.';
       return adoptionHint(repo, view, hint);
     });
   }
@@ -5243,7 +5245,7 @@
       add(view.step, add(el('p', 'admin__bar'), link(pr.html_url, 'Open the adoption pull request #' + pr.number)));
       return hint + ' Merge its adoption pull request first, then press Add Token again.';
     }).catch(function () {
-      return hint + ' Merge its adoption pull request first, or adopt it if it never was, then press Add Token again.';
+      return hint + ' Merge its adoption pull request first, or adopt it if it never was, at ' + FORM_URL + ', then press Add Token again.';
     });
   }
 
@@ -5308,7 +5310,7 @@
     drawTiles();
     view.tell('Starting the sign-in on GitHub Actions...');
     refuseCrowd([repo], place).then(function () {
-      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one.');
+      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one (the owners are listed at https://github.com/orgs/' + place.owner + '/people?query=role%3Aowner).');
       // the run itself finds the free slot, since only an owner may read the pool's secrets
       return pooled ? {} : readSecrets(place);
     }).then(unlessStopped).then(function (by) {
@@ -6086,7 +6088,7 @@
     if (barred && tk.place.org) {
       var ask = btn('Ask to join ' + tk.repo, true, function () {
         ask.disabled = true;
-        requestAccess(tk.repo, function (t, failed) { problem.textContent = t; if (failed) ask.disabled = false; });
+        requestAccess(tk.repo, function (t, failed) { richText(problem, t); if (failed) ask.disabled = false; });
       });
       add(bar, ' ', ask);
     }
@@ -6435,7 +6437,7 @@
       $('lb-lead').textContent = tokenRows.length
         ? 'Issues the tokens of ' + place.owner + ' worked, by the label token:<id> a worker\'s run puts on them; closed counts those closed as done.'
         : 'No token of ' + place.owner + ' has an id yet: a token gets one when it is added, or when its settings are saved on the Tokens tab.';
-    }).catch(function (e) { if (leadersFor === repo) $('lb-lead').textContent = 'The leaderboard could not be read: ' + e.message; });
+    }).catch(function (e) { if (leadersFor === repo) richText($('lb-lead'), 'The leaderboard could not be read: ' + e.message); });
   }
 
   /* ============================================================
@@ -6647,7 +6649,7 @@
       driveConfig = null;
       driveAsked = false;
       showConnectState();
-      $('fd-connect-note').textContent = 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.';
+      richText($('fd-connect-note'), 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.');
     });
   }
   // PKCE as the GitHub sign-in does it, with a state of the drive's own, so that the return is told
@@ -7787,7 +7789,7 @@
       clear(body);
       var refused = e.status === 403 || e.status === 404;
       // someone who may not push here can still ask to join, which an administrator answers on this tab
-      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) $('sh-state').textContent = t; }); }, 5));
+      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) richText($('sh-state'), t); }); }, 5));
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
       $('sh-state').textContent = (refused
         ? 'GitHub shows who has access to ' + repo + ' only to people who may push to it' + (signedInByApp() ? ', through an installation that may read its administration' : ', with a token that may') + '. + Ask to join asks its administrators to let you in.'
@@ -7870,8 +7872,8 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      said.textContent = e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      richText(said, e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message);
+      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
     });
   }
   function shareRemove(p, button) {
@@ -7886,7 +7888,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
     });
   }
   // A request to join is an issue whose first line is ACCESS_MARK, opened by the person asking, which
@@ -7922,7 +7924,7 @@
         });
       });
     }).catch(function (e) {
-      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly.' : 'Asking did not work: ' + e.message), true);
+      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly; its owner\'s page is https://github.com/' + repo.split('/')[0] + '.' : 'Asking did not work: ' + e.message), true);
     });
   }
   function shareAskRow(issue) {
@@ -7966,7 +7968,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
+      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message;
       say(invited ? 'Invited ' + login + ', but the request could not be closed: ' + why : why, true);
     });
   }
