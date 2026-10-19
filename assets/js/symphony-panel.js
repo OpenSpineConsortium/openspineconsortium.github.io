@@ -1815,8 +1815,11 @@
     if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
     exploreForget();
     if (consoleTab === 'explore' && consoleOnOpen.explore) consoleOnOpen.explore();
+    nbForget();
+    if (consoleTab === 'notebooks') drawNotebooks();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
+      if (consoleTab === 'notebooks' && consoleOnOpen.notebooks) consoleOnOpen.notebooks();
       // the saved catalog read needs the repository's meta (private, and no drive connected), which
       // the folders tab's earlier open could not see; now that meta is in, draw it if the tab is open
       if (consoleTab === 'folders' && !drive) maybeCatalog();
@@ -2638,6 +2641,7 @@
     side: { prop: '--side-w', min: 150, max: 520, axis: 'x', sign: 1, measure: function () { return $('console').querySelector('.console__side').offsetWidth; } },
     col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
     tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
+    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } },
     drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } }
   };
   var ZOOM_STEPS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.7];
@@ -2855,6 +2859,7 @@
       // a sign-in, perhaps as someone else, reads the Tokens tab again rather than show the last one's
       tokensFor = null;
       foldersFor = null;
+      nbForget();
       // a drive connected under another account than the one GitHub names now is dropped here,
       // and one connected before any was named is bound to this one
       heldDrive();
@@ -7216,6 +7221,404 @@
     consoleOnOpen.share = shareRefresh;
   }
 
+  /* ---------- the Notebooks tab: the drive's files grouped, each group a private repository ---------- */
+  // The drive organizer proposes notebooks in notebooks.json, beside catalog.json on the branch
+  // drive-catalog of a private repository: each names a few of the catalog's files by path, with a
+  // title, a summary and the name of the repository that is, or will be, the notebook's own, and
+  // left_out lists the paths no notebook holds (tools/notebook.py in the template holds the shape and
+  // checks a proposal against the catalog). The tab draws each notebook as a card counted from the
+  // catalog's entries, as notebook.py show counts them, and writes the proposal back, as the person,
+  // when a notebook is added, changed or taken out. The files themselves are never touched: a
+  // notebook points at them where they are, and a file may sit in several.
+  var NOTEBOOKS_FILE = 'notebooks.json';
+  var NOTEBOOK_SLUG = /^[a-z0-9][a-z0-9-]{0,39}$/;
+  var NOTEBOOK_REPO = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/;
+  var NOTEBOOKS_MAX = 30;
+  // the repository read, its proposal and the catalog's files by path; the note that stands in for
+  // the cards; the problems that keep the proposal read-only; the card open in the side panel; whether
+  // each repository a notebook names exists; a write on its way
+  var nb = { repo: '', era: 0, data: null, known: null, note: '', problems: [], side: '', made: Object.create(null), busy: false };
+  function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); nb.busy = false; }
+  function nbParsed(text) { try { var v = JSON.parse(text); return isPlain(v) ? v : null; } catch (e) { return null; } }
+  // the catalog's files by path, as notebook.py reads them
+  function nbKnown(made) {
+    if (!made || !Array.isArray(made.files)) return null;
+    var known = Object.create(null);
+    made.files.forEach(function (f) { if (isPlain(f) && typeof f.path === 'string') known[f.path] = f; });
+    return known;
+  }
+  // each way a proposal does not hold together with the catalog, in notebook.py's words, so the tab
+  // and the skill refuse the same file
+  function nbProblems(proposal, known) {
+    if (!isPlain(proposal)) return ['the proposal is not an object'];
+    var books = proposal.notebooks;
+    if (!Array.isArray(books) || !books.length) return ['notebooks is not a list of at least one notebook'];
+    if (books.length > NOTEBOOKS_MAX) return [books.length + ' notebooks, more than ' + NOTEBOOKS_MAX];
+    var problems = [], slugs = Object.create(null);
+    books.forEach(function (book, i) {
+      var where = 'notebook ' + (i + 1);
+      if (!isPlain(book)) { problems.push(where + ' is not an object'); return; }
+      if (typeof book.slug !== 'string' || !NOTEBOOK_SLUG.test(book.slug)) { problems.push(where + '\'s slug is not lowercase letters, digits and dashes'); return; }
+      where = 'notebook ' + book.slug;
+      if (slugs[book.slug]) problems.push(where + ' is named twice');
+      slugs[book.slug] = true;
+      ['title', 'summary'].forEach(function (field) { if (typeof book[field] !== 'string' || !book[field].trim()) problems.push(where + ' has no ' + field); });
+      if (typeof book.repository !== 'string' || !NOTEBOOK_REPO.test(book.repository)) problems.push(where + '\'s repository is not a repository name');
+      var files = book.files;
+      if (!Array.isArray(files) || !files.length || !files.every(function (p) { return typeof p === 'string'; })) { problems.push(where + ' holds no list of file paths'); return; }
+      var seen = Object.create(null), twice = false;
+      files.forEach(function (p) {
+        if (!(p in known)) problems.push(where + ' names ' + p + ', which the catalog does not list');
+        if (seen[p]) twice = true;
+        seen[p] = true;
+      });
+      if (twice) problems.push(where + ' names a file twice');
+    });
+    var left = proposal.left_out === undefined ? [] : proposal.left_out;
+    if (!Array.isArray(left) || !left.every(function (p) { return typeof p === 'string'; })) return problems.concat(['left_out is not a list of paths']);
+    left.forEach(function (p) { if (!(p in known)) problems.push('left_out names ' + p + ', which the catalog does not list'); });
+    return problems;
+  }
+  function openNotebooks() {
+    var repo = foldersRepo();
+    // the repository's meta is still being read: loadRepo opens the tab again once it is in, since
+    // whether the repository is private decides what is read
+    if (!state.meta && repo && token) { if (nb.repo !== repo) { nbForget(); drawNotebooks(); } return; }
+    if (nb.repo === repo && (nb.data || nb.note)) { drawNotebooks(); return; }
+    loadNotebooks(repo);
+  }
+  function loadNotebooks(repo) {
+    nbForget();
+    var era = nb.era;
+    nb.repo = repo;
+    if (!repo) nb.note = 'No repository is chosen: choose one in the bar.';
+    else if (!token) nb.note = 'Sign in to read the notebooks of ' + repo + '.';
+    else if (isPublic(state.meta)) nb.note = repo + ' is public. A notebook names a person\'s files, so a proposal lives only on a private repository\'s branch ' + CATALOG_BRANCH + '.';
+    drawNotebooks();
+    if (nb.note) return;
+    nb.busy = true;
+    Promise.all([NOTEBOOKS_FILE, CATALOG_FILE].map(function (name) {
+      return file(repo, name, CATALOG_BRANCH).catch(function (e) { if (e.status === 404) return ''; throw e; });
+    })).then(function (texts) {
+      if (era !== nb.era) return;
+      nb.busy = false;
+      nb.known = nbKnown(nbParsed(texts[1]));
+      if (!nb.known) { nb.note = repo + ' has no catalog yet: the drive organizer writes ' + CATALOG_FILE + ' to its branch ' + CATALOG_BRANCH + ' first, and notebooks are proposed from it.'; drawNotebooks(); return; }
+      // no proposal yet: the + tile makes the first
+      if (!texts[0]) { nb.data = { notebooks: [], left_out: Object.keys(nb.known) }; drawNotebooks(); return; }
+      var proposal = nbParsed(texts[0]);
+      nb.problems = nbProblems(proposal, nb.known);
+      nb.data = proposal && Array.isArray(proposal.notebooks) ? proposal : { notebooks: [], left_out: [] };
+      drawNotebooks();
+      askMade(repo, era);
+    }).catch(function (e) { if (era !== nb.era) return; nb.busy = false; nb.note = repo + ' could not be read: ' + e.message; drawNotebooks(); });
+  }
+  // whether each repository the notebooks name exists under the catalog repository's owner, asked
+  // one at a time so a proposal of thirty costs no burst, and drawn once all are answered
+  function askMade(repo, era) {
+    var owner = repo.split('/')[0], names = [];
+    (nb.data.notebooks || []).forEach(function (b) {
+      if (isPlain(b) && typeof b.repository === 'string' && NOTEBOOK_REPO.test(b.repository) && names.indexOf(b.repository) < 0 && !nb.made[b.repository]) names.push(b.repository);
+    });
+    names.reduce(function (done, name) {
+      return done.then(function () {
+        if (era !== nb.era) return;
+        return gh('GET', '/repos/' + owner + '/' + name).then(function () { return 'yes'; }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
+          .then(function (word) { if (era === nb.era) nb.made[name] = word; });
+      });
+    }, Promise.resolve()).then(function () { if (era === nb.era && names.length) drawNotebooks(); });
+  }
+  function nbBook(slug) {
+    if (!slug || !nb.data) return null;
+    return (nb.data.notebooks || []).filter(function (b) { return isPlain(b) && b.slug === slug; })[0] || null;
+  }
+  function nbTitle(book) { return typeof book.title === 'string' && book.title.trim() ? book.title : String(book.slug || ''); }
+  function nbSize(it) { var n = typeof it.size === 'number' ? it.size : parseInt(it.size, 10); return n > 0 ? Math.floor(n) : 0; }
+  function nbBytes(n) { return n < 1024 ? n + ' B' : n < 1048576 ? Math.max(1, Math.round(n / 1024)).toLocaleString('en-US') + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
+  function nbDay(iso) { if (!iso) return ''; var d = new Date(iso); return isNaN(d.getTime()) ? String(iso) : d.toISOString().slice(0, 10); }
+  // what a card shows, counted as notebook.py show counts it: the files the catalog knows, their
+  // sizes summed, their kinds most common first (ties as first met) and the newest change
+  function nbSummary(book) {
+    var items = [], missing = 0, bytes = 0, counts = Object.create(null), order = [], latest = '';
+    (Array.isArray(book.files) ? book.files : []).forEach(function (p) {
+      var it = typeof p === 'string' && nb.known ? nb.known[p] : null;
+      if (!it) { missing++; return; }
+      items.push(it);
+      bytes += nbSize(it);
+      var kind = typeof it.kind === 'string' && it.kind ? it.kind : 'other';
+      if (!counts[kind]) { counts[kind] = 0; order.push(kind); }
+      counts[kind]++;
+      var when = typeof it.modified === 'string' ? it.modified : '';
+      if (when > latest) latest = when;
+    });
+    order.sort(function (a, b) { return counts[b] - counts[a]; });
+    return { items: items, missing: missing, bytes: bytes, kinds: order.map(function (k) { return [k, counts[k]]; }), latest: latest };
+  }
+  function nbKinds(kinds) {
+    var box = el('span', 'nb__kinds');
+    kinds.forEach(function (k) { add(box, el('span', 'nb__kind', k[0] + ' ' + k[1])); });
+    return box;
+  }
+  function nbMadeWords(name) {
+    var made = nb.made[name];
+    return made === 'yes' ? ['tok__state tok__state--go', 'Repository made'] : made === 'no' ? ['tok__state tok__state--warn', 'Repository not made yet'] : made === 'unread' ? ['tok__state', 'Repository not read'] : null;
+  }
+  function nbCanWrite() { return !!(token && nb.data && nb.known && !nb.problems.length); }
+  function nbTile(book, i) {
+    var sum = nbSummary(book), title = nbTitle(book) || 'notebook ' + (i + 1);
+    var wrap = el('div', 'tok');
+    var open = el('button', 'tok__open');
+    open.type = 'button';
+    open.id = 'nb-tile-' + (typeof book.slug === 'string' ? book.slug : i);
+    open.title = 'The files of ' + title;
+    if (nb.side && nb.side === book.slug) wrap.className += ' tok--on';
+    var made = nbMadeWords(book.repository);
+    var first = title.replace(/^\s+/, '').charAt(0);
+    add(open, el('span', 'tok__icon', first ? first.toUpperCase() : '?'), el('span', 'tok__name', title),
+        el('span', 'tok__owner', typeof book.repository === 'string' ? book.repository : 'no repository named'),
+        el('span', 'tok__meta', plural(sum.items.length, 'file') + (sum.bytes ? ', ' + nbBytes(sum.bytes) : '') + (sum.missing ? ', ' + sum.missing + ' not in the catalog' : '')),
+        sum.kinds.length ? nbKinds(sum.kinds) : null,
+        el('span', 'tok__meta', sum.latest ? 'Changed ' + nbDay(sum.latest) : 'No change date'),
+        made ? el('span', made[0], made[1]) : null);
+    open.addEventListener('click', function () { if (typeof book.slug === 'string') openNotebookSide(book.slug); });
+    if (!nbCanWrite()) return add(wrap, open);
+    var gear = el('button', 'tok__gear', '⚙');
+    gear.type = 'button';
+    gear.id = 'nb-gear-' + book.slug;
+    gear.title = 'Change ' + title;
+    gear.setAttribute('aria-label', 'Change ' + title);
+    gear.addEventListener('click', function (ev) { ev.stopPropagation(); openNotebookDialog(book.slug); });
+    var x = el('button', 'tok__x', '×');
+    x.type = 'button';
+    x.id = 'nb-remove-' + book.slug;
+    x.title = 'Take ' + title + ' out of the proposal';
+    x.setAttribute('aria-label', 'Take ' + title + ' out of the proposal');
+    x.addEventListener('click', function (ev) { ev.stopPropagation(); removeNotebook(book.slug, x); });
+    return add(wrap, open, gear, x);
+  }
+  function drawNotebooks() {
+    var box = $('nb-tiles');
+    if (!box) return;
+    clear(box);
+    var repo = nb.repo || foldersRepo();
+    if (nb.note) { add(box, el('p', 'admin__none toks__note', nb.note)); drawNotebookSide(); return; }
+    if (!nb.data) { none(box, !token ? 'Sign in to read the notebooks.' : repo ? 'Reading the notebooks of ' + repo + '...' : 'No repository is chosen: choose one in the bar.'); drawNotebookSide(); return; }
+    var books = (nb.data.notebooks || []).filter(isPlain);
+    if (nb.problems.length) add(box, el('p', 'admin__none admin__warn toks__note', NOTEBOOKS_FILE + ' on ' + CATALOG_BRANCH + ' does not hold together with the catalog, so it is shown as it is and changed only by hand: ' + nb.problems.join('; ') + '.'));
+    books.forEach(function (b, i) { add(box, nbTile(b, i)); });
+    if (nbCanWrite()) {
+      if (books.length < NOTEBOOKS_MAX) {
+        var plus = el('button', 'tok__open tok--add');
+        plus.type = 'button';
+        plus.id = 'nb-tile-add';
+        add(plus, el('span', 'tok__plus', '+'), el('span', 'tok__name', 'New notebook'));
+        plus.addEventListener('click', function () { openNotebookDialog(''); });
+        add(box, add(el('div', 'tok'), plus));
+      } else add(box, el('p', 'admin__none toks__note', 'A proposal holds at most ' + NOTEBOOKS_MAX + ' notebooks; take one out to propose another.'));
+    }
+    var left = Array.isArray(nb.data.left_out) ? nb.data.left_out.length : 0;
+    if (!books.length && !nb.problems.length) add(box, el('p', 'admin__none toks__note', 'No notebook is proposed yet for ' + repo + ': + makes the first from the catalog\'s ' + plural(Object.keys(nb.known).length, 'file') + '. The files stay on the drive; a notebook only points at them.'));
+    else if (left) add(box, el('p', 'admin__none toks__note', plural(left, 'file') + ' of the catalog ' + (left === 1 ? 'is' : 'are') + ' in no notebook.'));
+    drawNotebookSide();
+  }
+  // the side panel: the notebook's summary, its repository and its files, newest change first
+  function openNotebookSide(slug) {
+    nb.side = nb.side === slug ? '' : slug;
+    drawNotebooks();
+  }
+  function drawNotebookSide() {
+    var side = $('nb-side');
+    if (!side) return;
+    var book = nbBook(nb.side);
+    if (!book) { nb.side = ''; side.hidden = true; clear(side); return; }
+    clear(side);
+    side.hidden = false;
+    add(side, splitGrip('nbside', 'this panel'));
+    var close = el('button', 'tkside__close', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function () { openNotebookSide(book.slug); });
+    var sum = nbSummary(book), owner = nb.repo.split('/')[0], made = nb.made[book.repository];
+    add(side, close, el('h3', 'console__boxh', nbTitle(book)));
+    var repoLine = el('p', 'tok__owner');
+    if (made === 'yes') add(repoLine, link('https://github.com/' + owner + '/' + book.repository, owner + '/' + book.repository));
+    else add(repoLine, typeof book.repository === 'string' ? book.repository : 'no repository named');
+    add(side, repoLine);
+    if (made) add(side, el('p', 'tok__state ' + (made === 'yes' ? 'tok__state--go' : made === 'no' ? 'tok__state--warn' : ''),
+      made === 'yes' ? 'The repository is made.' : made === 'no' ? 'The repository is not made yet: the notebook skill makes it from this proposal.' : 'Whether the repository is made could not be read.'));
+    if (typeof book.summary === 'string' && book.summary.trim()) add(side, el('p', 'tkdlg__fact', book.summary));
+    add(side, el('p', 'tkdlg__fact tkdlg__faint', plural(sum.items.length, 'file') + (sum.bytes ? ', ' + nbBytes(sum.bytes) : '') + (sum.latest ? '; the newest changed ' + nbDay(sum.latest) : '') + (sum.missing ? '; ' + plural(sum.missing, 'path') + ' not in the catalog' : '') + '.'));
+    if (sum.kinds.length) add(side, nbKinds(sum.kinds));
+    var list = el('ul', 'nb__files');
+    list.id = 'nb-files';
+    sum.items.slice().sort(function (a, b) {
+      var x = typeof a.modified === 'string' ? a.modified : '', y = typeof b.modified === 'string' ? b.modified : '';
+      return x < y ? 1 : x > y ? -1 : 0;
+    }).forEach(function (it) {
+      var li = el('li', 'nb__file');
+      var name = typeof it.name === 'string' && it.name ? it.name : catLast(it.path);
+      var web = exHttps(it.web), size = nbSize(it);
+      add(li, web ? link(web, name) : el('span', 'nb__name', name), el('span', 'nb__kind', typeof it.kind === 'string' && it.kind ? it.kind : 'other'),
+          el('span', 'nb__when', (typeof it.modified === 'string' && it.modified ? 'Changed ' + nbDay(it.modified) : 'No change date') + (size ? ', ' + nbBytes(size) : '')));
+      add(list, li);
+    });
+    (Array.isArray(book.files) ? book.files : []).forEach(function (p) {
+      if (typeof p === 'string' && nb.known && nb.known[p]) return;
+      add(list, add(el('li', 'nb__file'), el('span', 'nb__name', String(p)), el('span', 'nb__kind', 'not in the catalog')));
+    });
+    add(side, list);
+  }
+  // a slug from a title, as notebook.py takes one: lowercase letters, digits and dashes, up to forty,
+  // made unique among the proposal's with a number
+  function nbSlugOf(title, taken) {
+    var base = String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '') || 'notebook';
+    var slug = base, n = 1;
+    while (taken[slug]) { n++; var tail = '-' + n; slug = base.slice(0, 40 - tail.length).replace(/-+$/, '') + tail; }
+    return slug;
+  }
+  // the dialog that proposes a notebook or changes one: its title, summary and repository, and the
+  // catalog's files ticked; Propose or Save closes it at once and the write speaks at the foot
+  function openNotebookDialog(slug) {
+    var d = $('nb-dialog');
+    if (!d) return;
+    if (!nbCanWrite()) { say('The notebooks are still being read; press again in a moment.'); return; }
+    if (nb.busy) { say('A change to ' + NOTEBOOKS_FILE + ' is on its way; press again once it has landed.'); return; }
+    var book = nbBook(slug);
+    if (slug && !book) return;
+    if (!book && (nb.data.notebooks || []).length >= NOTEBOOKS_MAX) { say('A proposal holds at most ' + NOTEBOOKS_MAX + ' notebooks: take one out first.', true); return; }
+    clear(d);
+    var form = el('form', 'tkdlg__form');
+    form.method = 'dialog';
+    add(form, el('h3', 'console__boxh', book ? nbTitle(book) : 'New notebook'));
+    var title = el('input');
+    title.id = 'nb-d-title'; title.type = 'text'; title.maxLength = 120; title.autocomplete = 'off';
+    title.placeholder = 'what these files are about';
+    title.value = book ? nbTitle(book) : '';
+    var summary = el('textarea');
+    summary.id = 'nb-d-summary'; summary.maxLength = 2000; summary.rows = 3;
+    summary.placeholder = 'a sentence or two on what the notebook is for';
+    summary.value = book && typeof book.summary === 'string' ? book.summary : '';
+    var repoName = el('input');
+    repoName.id = 'nb-d-repo'; repoName.type = 'text'; repoName.maxLength = 100; repoName.autocomplete = 'off'; repoName.spellcheck = false;
+    repoName.placeholder = 'the name of its private repository; blank takes the title\'s';
+    repoName.value = book && typeof book.repository === 'string' ? book.repository : '';
+    add(form, labelled(title, 'Title'), labelled(summary, 'Summary'), labelled(repoName, 'Repository, under ' + nb.repo.split('/')[0]));
+    var filter = el('input');
+    filter.id = 'nb-d-filter'; filter.type = 'search'; filter.autocomplete = 'off';
+    filter.placeholder = 'find a file by its path';
+    add(form, labelled(filter, 'Files'));
+    var pick = el('div', 'nb__pick');
+    pick.id = 'nb-d-files';
+    var ticked = Object.create(null);
+    (book && Array.isArray(book.files) ? book.files : []).forEach(function (p) { ticked[p] = true; });
+    var paths = Object.keys(nb.known).sort();
+    var rows = paths.map(function (p) {
+      var c = el('input');
+      c.type = 'checkbox';
+      c.checked = !!ticked[p];
+      c.setAttribute('data-path', p);
+      var row = add(el('label'), c, el('span', '', p.indexOf(CATALOG_ROOT + '/') === 0 ? p.slice(CATALOG_ROOT.length + 1) : p));
+      row.title = p;
+      add(pick, row);
+      return row;
+    });
+    if (!rows.length) add(pick, el('span', 'tkdlg__faint', 'The catalog lists no files.'));
+    var count = el('p', 'tkdlg__fact tkdlg__faint');
+    count.id = 'nb-d-count';
+    function recount() { count.textContent = plural(pick.querySelectorAll('input:checked').length, 'file') + ' ticked' + (paths.length ? ' of ' + paths.length : '') + '.'; }
+    recount();
+    pick.addEventListener('change', recount);
+    filter.addEventListener('input', function () {
+      var q = filter.value.trim().toLowerCase();
+      rows.forEach(function (r) { r.hidden = !!q && r.title.toLowerCase().indexOf(q) < 0; });
+    });
+    add(form, pick, count);
+    var problem = el('p', 'admin__warn tkdlg__problem');
+    problem.id = 'nb-d-problem';
+    problem.hidden = true;
+    var save = el('button', 'console__primary', book ? 'Save' : 'Propose');
+    save.type = 'submit';
+    save.id = 'nb-d-save';
+    add(form, problem, add(el('div', 'tkdlg__bar'), save, btn('Cancel', true, function () { d.close(); })));
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var files = Array.prototype.map.call(pick.querySelectorAll('input:checked'), function (c) { return c.getAttribute('data-path'); });
+      var t = title.value.trim(), s = summary.value.trim(), r = repoName.value.trim();
+      var taken = Object.create(null);
+      (nb.data.notebooks || []).forEach(function (b) { if (isPlain(b) && typeof b.slug === 'string' && b !== book) taken[b.slug] = true; });
+      var newSlug = book ? book.slug : nbSlugOf(t, taken);
+      if (!r) r = newSlug;
+      var why = !t ? 'Give the notebook a title.' : !s ? 'Give it a summary: a sentence on what it is for.'
+        : !NOTEBOOK_REPO.test(r) ? 'The repository\'s name takes letters, digits, dots, dashes and underscores, up to a hundred, and starts with a letter or a digit.'
+        : !files.length ? 'Tick at least one file.' : '';
+      if (why) { problem.textContent = why; problem.hidden = false; return; }
+      // a changed notebook keeps whatever else the organizer wrote on it
+      var made = {};
+      if (book) Object.keys(book).forEach(function (k) { made[k] = book[k]; });
+      made.slug = newSlug; made.title = t; made.summary = s; made.repository = r; made.files = files;
+      var books = (nb.data.notebooks || []).map(function (b) { return b === book ? made : b; });
+      if (!book) books.push(made);
+      d.close();
+      nbWrite({ notebooks: books }, (book ? 'Change the notebook ' : 'Propose the notebook ') + newSlug,
+        (book ? 'Changed ' : 'Proposed ') + t + ' in ' + NOTEBOOKS_FILE + ' on ' + CATALOG_BRANCH + (book ? '.' : '. The notebook skill makes its repository from the proposal.'));
+    });
+    add(d, form);
+    d.showModal();
+    title.focus();
+  }
+  function removeNotebook(slug, button) {
+    var book = nbBook(slug);
+    if (!book || !nbCanWrite()) return;
+    if (nb.busy) { say('A change to ' + NOTEBOOKS_FILE + ' is on its way; press again once it has landed.'); return; }
+    var others = (nb.data.notebooks || []).filter(function (b) { return b !== book; });
+    var elsewhere = Object.create(null);
+    others.forEach(function (b) { (isPlain(b) && Array.isArray(b.files) ? b.files : []).forEach(function (p) { elsewhere[p] = true; }); });
+    var files = Array.isArray(book.files) ? book.files : [];
+    var alone = files.filter(function (p) { return !elsewhere[p]; }).length;
+    if (!window.confirm('Take ' + nbTitle(book) + ' out of the proposal? Its ' + plural(files.length, 'file') + ' stay on the drive' + (alone ? ', and ' + (alone === 1 ? 'one of them is' : alone + ' of them are') + ' then in no notebook' : '') + '.' + (nb.made[book.repository] === 'yes' ? ' The repository ' + book.repository + ' stays as it is.' : ''))) return;
+    button.disabled = true;
+    nbWrite({ notebooks: others }, 'Take the notebook ' + slug + ' out of the proposal', 'Took ' + nbTitle(book) + ' out of ' + NOTEBOOKS_FILE + '. Its files stay on the drive.');
+  }
+  // the catalog's paths no notebook holds, in the catalog's order, as the organizer lists them
+  function nbLeftOut(books) {
+    var held = Object.create(null);
+    books.forEach(function (b) { (isPlain(b) && Array.isArray(b.files) ? b.files : []).forEach(function (p) { held[p] = true; }); });
+    return Object.keys(nb.known).filter(function (p) { return !held[p]; });
+  }
+  // the proposal written back on the branch drive-catalog, as the person, over the file as it was read
+  // a moment before (its sha), so a change the organizer made meanwhile is never written over; a
+  // proposal with no notebook left is no proposal, and the file goes, as notebook.py takes none
+  function nbWrite(data, message, done) {
+    var repo = nb.repo, era = nb.era, account = shownLogin;
+    data.left_out = nbLeftOut(data.notebooks);
+    var path = '/repos/' + repo + '/contents/' + NOTEBOOKS_FILE;
+    nb.busy = true;
+    say('Writing ' + NOTEBOOKS_FILE + ' on ' + repo + '...');
+    gh('GET', path + '?ref=' + encodeURIComponent(CATALOG_BRANCH)).then(function (r) { return r.data.sha; }, function (e) { if (e.status === 404) return null; throw e; }).then(function (sha) {
+      if (!data.notebooks.length) return sha ? gh('DELETE', path, { message: message, sha: sha, branch: CATALOG_BRANCH }, undefined, false, account) : null;
+      var put = { message: message, content: utf8Base64(JSON.stringify(data, null, 2) + '\n'), branch: CATALOG_BRANCH };
+      if (sha) put.sha = sha;
+      return gh('PUT', path, put, undefined, false, account);
+    }).then(function () {
+      if (era !== nb.era) return;
+      nb.busy = false;
+      nb.data = data;
+      if (nb.side && !nbBook(nb.side)) nb.side = '';
+      drawNotebooks();
+      say(done);
+      askMade(repo, era);
+    }).catch(function (e) {
+      if (era !== nb.era) return;
+      nb.busy = false;
+      if (e.status === 409) { say(NOTEBOOKS_FILE + ' on ' + CATALOG_BRANCH + ' changed while this was on its way, so nothing was written; it is read again: look it over and press again.', true); loadNotebooks(repo); return; }
+      drawNotebooks();
+      say(e.message + (e.status === 403 || e.status === 404 ? ' Writing ' + NOTEBOOKS_FILE + ' needs write access to ' + repo + (signedInByApp() ? ' and Contents: read and write on SymphonyBoard.' : ', with Contents: read and write on the token.') : ''), true);
+    });
+  }
+  function initNotebooksTab() {
+    consoleOnOpen.notebooks = openNotebooks;
+  }
+
   /* ---------- Explore: the project as a map to go into ---------- */
   // The repository at the top, then its goals and epics, each epic's tasks, a task's pull requests
   // (or its claim branch where it has none), the runs on that branch, a run's jobs, a job's steps and,
@@ -7669,5 +8072,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('ex-stage')) initExploreTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('ex-stage')) initExploreTab(); }
 })();
