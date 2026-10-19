@@ -3133,6 +3133,7 @@
       var heading = $('h-dependencies'), charts = $('cp-graph').closest('.console__scroll');
       assistant.section = name;
       revealTab(heading);
+      graphShowFirst();
       scrollInDeck(heading, { block: 'start' });
       if (charts) charts.scrollTop = 0;
       return 'Showing the Dependencies tab, which this page draws.';
@@ -3552,8 +3553,86 @@
   }
   function graphReset(words, warn) {
     clear($('cp-graph'));
+    graphStripClear();
     $('cp-graph-said').textContent = '';
     graphWords(words, warn);
+  }
+  // The focus strip that lets a person see one epic's chart at a time, or a zoomed-out goals chart,
+  // instead of scrolling every chart at once, the next step of the owner's 2026-10-17 ask ("if there
+  // are multiple epics per repo the board should allow focusing on one epic ... or a more zoomed out
+  // view where epics are shown connected to each other to reach product goals",
+  // docs/research/control-board-graph.md). The charts are the same, drawn the same, from the same
+  // reads; the strip only shows one of their sections at a time, with an All chip that shows every
+  // one, as the tab did before. It appears only where there are two charts or more, so a repository
+  // with one epic reads as it did; it keeps the console's own chip look (control.css), and which chip
+  // a person last chose is kept per repository in this browser, as the panel's sizes are. It writes
+  // nothing of the repository and asks nothing of anyone.
+  var KEY_GRAPH_FOCUS = 'symphony_panel_graph_focus';
+  function graphFocusGet(repo) {
+    try { var m = JSON.parse(localStorage.getItem(KEY_GRAPH_FOCUS) || '{}'); return m && typeof m === 'object' ? (m[String(repo).toLowerCase()] || '') : ''; } catch (e) { return ''; }
+  }
+  function graphFocusSet(repo, key) {
+    try {
+      var m = JSON.parse(localStorage.getItem(KEY_GRAPH_FOCUS) || '{}');
+      if (!m || typeof m !== 'object') m = {};
+      if (key) m[String(repo).toLowerCase()] = key; else delete m[String(repo).toLowerCase()];
+      localStorage.setItem(KEY_GRAPH_FOCUS, JSON.stringify(m));
+    } catch (e) { /* storage refused: the choice lasts while the page is open */ }
+  }
+  function graphStripClear() {
+    var strip = $('cp-graph-focus');
+    if (strip) { clear(strip); strip.hidden = true; }
+  }
+  // show the chart a chip names, or every chart for All, and press that chip; the sections are the
+  // page's own and read by their data-focus, so the assistant's "show dependencies" can reset to the
+  // first without the draw's own list
+  function graphSelect(key, repo) {
+    var strip = $('cp-graph-focus');
+    if (!strip) return;
+    Array.prototype.forEach.call(strip.querySelectorAll('.graph__chip'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-focus') === key ? 'true' : 'false');
+    });
+    Array.prototype.forEach.call($('cp-graph').querySelectorAll('.graph__section'), function (sec) {
+      sec.hidden = !(key === 'all' || sec.getAttribute('data-focus') === key);
+    });
+    if (repo) {
+      graphFocusSet(repo, key);
+      // a person's press shows the chosen chart from its top, not where the last one was scrolled to
+      var box = $('cp-graph').closest('.console__scroll');
+      if (box) box.scrollTop = 0;
+    }
+  }
+  // the chips for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
+  // was or it is gone, the first chart; a chart is a section the strip shows and hides by its key
+  function graphStrip(draw, charts) {
+    var strip = $('cp-graph-focus');
+    if (!strip) return;
+    clear(strip);
+    if (charts.length < 2) { strip.hidden = true; return; }
+    strip.hidden = false;
+    var keys = charts.map(function (c) { return c.key; });
+    var saved = graphFocusGet(draw.repo);
+    var selected = saved === 'all' || keys.indexOf(saved) >= 0 ? saved : charts[0].key;
+    function chip(key, label, title) {
+      var b = el('button', 'graph__chip', label);
+      b.type = 'button';
+      b.setAttribute('data-focus', key);
+      b.setAttribute('aria-pressed', 'false');
+      if (title) b.title = title;
+      b.addEventListener('click', function () { graphSelect(key, draw.repo); });
+      add(strip, b);
+    }
+    chip('all', 'All', 'Show every chart');
+    charts.forEach(function (c) { chip(c.key, c.label, c.heading); });
+    graphSelect(selected, '');
+  }
+  // the assistant's "show dependencies ... at its first chart": the first section shown, so its
+  // heading is the one in view, without changing the chip a person chose for next time
+  function graphShowFirst() {
+    var strip = $('cp-graph-focus');
+    if (!strip || strip.hidden) return;
+    var first = $('cp-graph').querySelector('.graph__section');
+    if (first) graphSelect(first.getAttribute('data-focus'), '');
   }
   // the issue a number names: the open list first, then what the reads brought (a closed sub-issue,
   // a blocker from outside the epic), else a bare one, so a node is drawn for every number an edge names
@@ -3728,10 +3807,20 @@
   }
   // one chart's heading, its picture (empty until Mermaid draws it) and its table, which says the
   // same in words and stands alone when the picture cannot be drawn
-  function graphSection(draw, box, heading, chart, relation, relationCell) {
-    add(box, el('h3', '', heading));
+  // a chip's short label for an epic: its number, a few words of its title and its progress, so the
+  // strip reads at a glance where the heading says it in full
+  function graphChipLabel(epic) {
+    var t = graphFold(epic.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
+    if (t.length > 22) t = t.slice(0, 19).replace(GRAPH_SPACE_END, '') + '...';
+    var p = epic.progress && epic.progress[1] > 0 ? ' ' + epic.progress[0] + '/' + epic.progress[1] : '';
+    return '#' + epic.number + (t ? ' ' + t : '') + p;
+  }
+  function graphSection(draw, box, heading, chart, relation, relationCell, key, label) {
+    var sec = el('section', 'graph__section');
+    sec.setAttribute('data-focus', key);
+    add(sec, el('h3', '', heading));
     var host = el('div', 'control__chart');
-    add(box, host);
+    add(sec, host);
     var table = el('table', 'control__tasks'), head = el('tr');
     ['Issue', 'Title', 'State', relation, 'Worker'].forEach(function (c) { add(head, el('th', '', c)); });
     add(head, add(el('th'), el('span', 'admin__sr', 'Actions')));
@@ -3748,20 +3837,23 @@
       body.appendChild(tr);
     });
     add(table, body);
-    add(box, add(el('div', 'table-scroll'), table));
-    return { host: host, heading: heading, text: graphChart(draw, chart.nodes, chart.edges) };
+    add(sec, add(el('div', 'table-scroll'), table));
+    add(box, sec);
+    return { host: host, heading: heading, text: graphChart(draw, chart.nodes, chart.edges), key: key, label: label };
   }
   function graphRender(draw) {
     var box = $('cp-graph');
     var goals = graphWithSubIssues(draw, 'goal'), epics = graphWithSubIssues(draw, 'epic');
     clear(box);
+    graphStripClear();
     if (!goals.length && !epics.length) {
       graphWords('Nothing to draw yet: ' + plural(draw.reads, 'read') + ' of GitHub found no sub-issue of an open epic or goal in this repository. ' + GRAPH_START + graphCut(draw));
       return;
     }
     var charts = [];
-    if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf));
-    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy)); });
+    if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf, 'goals', 'Goals'));
+    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, graphChipLabel(epic))); });
+    graphStrip(draw, charts);
     var drew = (goals.length ? [plural(goals.length, 'goal')] : []).concat(epics.length ? [plural(epics.length, 'epic')] : []);
     var drawn = 'from ' + plural(draw.reads, 'read') + ' of GitHub: ' + drew.join(' and ') + ' with sub-issues';
     graphWords('Drawing ' + drawn + '...');

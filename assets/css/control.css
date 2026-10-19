@@ -98,7 +98,21 @@
    lines between the tab's head and its charts sit tight, as the Runs tab's note does */
 .console .control__chart { background: #FBFAF4; color: #1A1C18; }
 .console #cp-graph-state, .console #cp-graph-said { margin: 0; }
-.console .control__graph > h3:first-child { margin-top: 2px; }
+.console .control__graph .graph__section:first-child > h3:first-child { margin-top: 2px; }
+/* the focus strip: chips to show one epic's chart at a time, or a zoomed-out goals chart, or All; it
+   keeps the console rail's own look, a pill tinted teal when it is the one shown, and is there only
+   where there are two charts or more */
+#cp-graph-focus { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+#cp-graph-focus[hidden] { display: none; }
+/* the focus strip hides a chart's section by its hidden attribute; say so here rather than leaning on
+   the browser's own rule alone, so a later display rule on a section cannot quietly show a hidden one */
+.console .control__graph .graph__section[hidden] { display: none; }
+.console .graph__chip {
+  margin: 0; padding: 3px 12px; border-radius: 100px; border: 1px solid rgba(60, 194, 177, 0.3);
+  background: transparent; color: var(--ink-soft); font-size: 0.86rem; cursor: pointer;
+}
+.console .graph__chip:hover { background: rgba(60, 194, 177, 0.1); color: var(--ink); }
+.console .graph__chip[aria-pressed="true"] { background: rgba(60, 194, 177, 0.18); color: var(--ink); border-color: var(--teal); font-weight: 600; }
 /* ---------- the console's Folders tab: the drive's list, its crumbs, the ticked items, the steps ---------- */
 .folders__crumbs { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 #tab-folders .folders__crumbs button { padding: 3px 10px; font-size: 0.88rem; margin: 0; }

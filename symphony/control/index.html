@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610182141">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610182141">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610182141">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610190052">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610190052">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610190052">
 </head>
 <body data-shell="page" class="page-console">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -257,11 +257,12 @@
             <h2 id="h-dependencies" class="console__h">Dependencies</h2>
             <details class="console__help"><summary>What the charts show and read</summary><div>
               <p>Each open epic&rsquo;s tasks and what blocks them, drawn as a chart, with the goals above their epics: the same chart the board writes into STATE.md once the repository&rsquo;s protocol is new enough to draw it, and the Board tab draws that one in place, as long as it is a chart as the board writes it (any other block there is shown as text and never drawn); until then this tab is the only place it is drawn. A task is a sub-issue of the epic on GitHub, and what blocks it is GitHub&rsquo;s own blocked-by relation, both set on the issue&rsquo;s page under Sub-issues and Relationships; a goal is an issue labelled <code>goal</code> whose sub-issues are epics. An arrow runs from the issue that blocks to the issue it blocks, dotted once the blocker is closed; a node&rsquo;s shade is its state (white with a green edge todo, yellow claimed, blue in review, red blocked, grey closed, and white with a dark edge for an issue in none of those states), and an epic&rsquo;s heading counts its closed tasks.</p>
-              <p>Under each chart a table says the same in words. Clicking a node, here or in the Board tab, or pressing Centre its row, opens the Tasks tab and centres that task&rsquo;s row there where the task tables hold it, as the assistant&rsquo;s focus does, and opens no other page; where they do not (a closed task, a blocker from outside, a row the filter hides) this tab says why, and the message line under the console says the same either way. To draw it the page reads, as you, whenever it reads the issues and whether or not this tab is open, the sub-issues of each open issue labelled <code>epic</code> or <code>goal</code> and the issues blocking each of an epic&rsquo;s sub-issues, at most sixty reads a draw and none once GitHub says the token has fewer than a hundred calls left this hour, and writes nothing; it draws again whenever the issues are read again (Refresh). The chart is drawn in this browser by a copy of Mermaid the site carries, loaded only when there is a chart to draw.</p>
+              <p>Where there is more than one chart, a strip of chips above them lets you show one epic at a time, or the zoomed-out goals chart, or All; the one you last chose is kept in this browser, for this repository. Under each chart a table says the same in words. Clicking a node, here or in the Board tab, or pressing Centre its row, opens the Tasks tab and centres that task&rsquo;s row there where the task tables hold it, as the assistant&rsquo;s focus does, and opens no other page; where they do not (a closed task, a blocker from outside, a row the filter hides) this tab says why, and the message line under the console says the same either way. To draw it the page reads, as you, whenever it reads the issues and whether or not this tab is open, the sub-issues of each open issue labelled <code>epic</code> or <code>goal</code> and the issues blocking each of an epic&rsquo;s sub-issues, at most sixty reads a draw and none once GitHub says the token has fewer than a hundred calls left this hour, and writes nothing; it draws again whenever the issues are read again (Refresh). The chart is drawn in this browser by a copy of Mermaid the site carries, loaded only when there is a chart to draw.</p>
             </div></details>
           </div>
           <p id="cp-graph-state" class="admin__lead">Nothing to draw yet: no repository is chosen.</p>
           <p id="cp-graph-said" class="admin__lead"></p>
+          <div id="cp-graph-focus" class="graph__focus" role="group" aria-label="Focus one epic or goal" hidden></div>
           <div class="console__scroll"><div id="cp-graph" class="control__graph"></div></div>
         </section>
 
@@ -612,8 +613,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610182141"></script>
+<script src="/assets/js/main.js?v=202610190052"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610190003"></script>
+<script src="/assets/js/symphony-panel.js?v=202610190052"></script>
 </body>
 </html>
