@@ -7865,8 +7865,12 @@
     else add(repoLine, typeof book.repository === 'string' ? book.repository : 'no repository named');
     add(side, repoLine);
     if (made === 'public' || made === 'internal') {
-      add(side, add(el('p', 'tok__state tok__state--warn'), (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files: make it private here, or on GitHub under ',
-        link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).'));
+      // a person GitHub says does not administer it is pointed at neither the button nor the
+      // settings page, which GitHub shows only to an administrator
+      var opened = (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files';
+      add(side, nb.admin[book.repository] !== false ? add(el('p', 'tok__state tok__state--warn'), opened + ': make it private here, or on GitHub under ',
+        link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).')
+        : el('p', 'tok__state tok__state--warn', opened + ', so it should be private.'));
       var priv = el('button', 'console__primary', nbPrivateBusy() === owner + '/' + book.repository ? 'Making it private...' : 'Make private');
       priv.type = 'button';
       priv.id = 'nb-private';
@@ -7899,18 +7903,26 @@
     });
     add(side, list);
   }
-  // a notebook's repository made private, as the person, once they confirm what GitHub says the
-  // change costs. SymphonyBoard's Administration is what lets it, and GitHub lets only an
+  // a notebook's repository made private, as the person, once they confirm what the change costs:
+  // what GitHub's own question says, and, for a public repository, what GitHub's plans give a public
+  // repository alone. SymphonyBoard's Administration is what lets it, and GitHub lets only an
   // administrator of the repository do it (an organization may keep it to its owners); one change at
   // a time, and the answer, not the press, says what the repository is now. A sign-out leaves the
   // change's refusal unanswered (call), so the lock goes with the sign-in, as the write's does, and an
   // answer that comes after one frees no lock a later change holds
   var nbPrivating = '', nbPrivatingEnds = 0, nbPrivateId = 0;
   function nbPrivateBusy() { if (nbPrivating && nbPrivatingEnds !== ends) nbPrivating = ''; return nbPrivating; }
+  // GitHub Free enforces rulesets and branch protection only on a public repository, and runs code
+  // scanning, secret scanning and push protection on a private one only with GitHub Code Security or
+  // Secret Protection, which only an organization on a paid plan buys; an internal repository is an
+  // enterprise's, whose plan enforces both on a private one, and GitHub runs those products on an
+  // internal repository on the same terms as on a private one, so it loses none of them
   function nbPrivateWords(full, was) {
     return 'Make ' + full + ' private? Only the people given access to it will see it. GitHub erases its stars and watchers'
-      + (was === 'public' ? ', leaves its forks public and detaches them, and unpublishes its GitHub Pages site on a free plan' : ' and its forks become private, those of people without access removed')
-      + '. The repository\'s files and history stay as they are.';
+      + (was === 'public' ? ', leaves its forks public and detaches them, and unpublishes its GitHub Pages site on a free plan, where its rulesets and branch protection also stop being enforced.'
+        + ' Its code scanning stops unless its owner has GitHub Code Security, and its secret scanning and push protection unless its owner has GitHub Secret Protection'
+        : ' and its forks become private, those of people without access removed')
+      + '. The repository\'s files and history themselves stay as they are.';
   }
   function makeNotebookPrivate(name, button) {
     var owner = nb.repo.split('/')[0], full = owner + '/' + name, era = nb.era, was = nb.made[name];
@@ -7923,8 +7935,10 @@
     button.disabled = true;
     button.textContent = 'Making it private...';
     say('Making ' + full + ' private...');
+    var answered = false;
     gh('PATCH', '/repos/' + full, { visibility: 'private' }).then(function (r) {
       var now = nbVisibility(r.data);
+      answered = true;
       if (era === nb.era) nb.made[name] = now === 'private' ? 'yes' : now;
       say(now === 'private' ? full + ' is private now: only the people given access to it see it.' : 'GitHub answered, but ' + full + ' is still ' + now + '.', now !== 'private');
     }, function (e) {
@@ -7934,7 +7948,12 @@
         + ', and an organization may keep the change to its owners.' : ''), true);
     }).then(function () {
       if (nbPrivateId === mine) nbPrivating = '';
-      if (era === nb.era) drawNotebooks();
+      // a Refresh, another repository in the bar or a sign-in again moved the tab on meanwhile, and
+      // what it read of the repository since may predate the change: where it still shows a catalog
+      // of the same owner, whose notebooks may name this repository, it is read again, as a write's
+      // repository is; otherwise the tab is drawn again, so no button the lock held stays held
+      if (answered && era !== nb.era && nb.repo && nb.repo.split('/')[0] === owner) nbReread(nb.repo);
+      else drawNotebooks();
     });
   }
   // a slug from a title, as notebook.py takes one: lowercase letters, digits and dashes, up to forty,
