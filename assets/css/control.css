@@ -82,7 +82,7 @@
 /* the filter's words above the tables and the actions under the answer: nothing, and no gap, until there is something to say */
 .control #cp-as-filter:empty, .control #cp-as-actions:empty { display: none; }
 
-/* ---------- the Dependencies tab: a chart per epic, at its own width, scrolling sideways where it is wide, and its table ---------- */
+/* ---------- the Dependencies tab: a card per epic, its chart at its own width, scrolling sideways where it is wide, and its list ---------- */
 .control__chart { overflow-x: auto; margin: 8px 0 10px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
 .control__chart:empty { display: none; }
 .control__chart svg { display: block; margin: 0 auto; }
@@ -92,27 +92,177 @@
 .control__graph table { font-size: 0.88rem; min-width: 40em; }
 .control__graph th:first-child, .control__graph td:first-child, .control__graph td.admin__act { white-space: nowrap; }
 .control #cp-graph-said:empty { display: none; }
-/* in the deck, the Dependencies tab and the Board tab: Mermaid's default drawing has dark edges and
-   arrowheads (#333333) that vanish on the deck's dark ground, so a chart keeps the site's light card
-   behind it, with dark words for the box's own lines (drawing, or why it could not draw); the two
-   lines between the tab's head and its charts sit tight, as the Runs tab's note does */
-.console .control__chart { background: #FBFAF4; color: #1A1C18; }
-.console #cp-graph-state, .console #cp-graph-said { margin: 0; }
-.console .control__graph .graph__section:first-child > h3:first-child { margin-top: 2px; }
-/* the focus strip: chips to show one epic's chart at a time, or a zoomed-out goals chart, or All; it
-   keeps the console rail's own look, a pill tinted teal when it is the one shown, and is there only
-   where there are two charts or more */
-#cp-graph-focus { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+/* in the deck, the Dependencies tab and the Board tab: a chart sits on a ground of its own, a shade
+   off the deck's, with a faint grid of dots, and its words (drawing, or why it could not draw) read
+   light on it; Mermaid draws in the deck's colours (symphony-panel.js, GRAPH_THEME), its arrows a
+   grey that shows on this ground */
+.console .control__chart { background-color: #0F1916; color: #DCE6E1; }
+.console .control__chart { background-image: radial-gradient(rgba(233, 230, 218, 0.07) 1px, transparent 1.4px); background-size: 18px 18px; border-color: rgba(233, 230, 218, 0.09); border-radius: 12px; padding: 18px 12px; margin: 12px 0 8px; }
+/* the colours of the states, set once for the nodes, the key, the pills and the tiles' bars: each
+   state's edge, bright enough to read at 3 to 1 or more on the chart's ground, and a dark tint of it,
+   but in review's, which is lit, and open's, a pale grey edge */
+:root {
+  --st-todo: #3FB950; --st-todo-tint: #10261B;
+  --st-claimed: #E3B341; --st-claimed-tint: #2A2412;
+  --st-review: #58A6FF; --st-review-tint: #22466F;
+  --st-blocked: #F85149; --st-blocked-tint: #451C20;
+  --st-closed: #6F7D78; --st-closed-tint: #151B1A;
+  --st-open: #C2CCC8; --st-open-tint: #16221F;
+}
+/* a node is shaded by its state, the class the board gives it: dark, with the state's colour at its
+   edge and a tint of it inside. Hue alone would leave states alike to a reader who does not tell red
+   from green or blue from green, or on a screen of greys, so no two differ by hue alone: blocked has
+   a thick edge, claimed a dotted one, closed a grey, dashed one and its words struck through, in
+   review a fill lit well above to do's, and open, an issue in none of those states, a thin pale edge
+   far lighter than to do's green; to do keeps the plain edge. Mermaid writes the board's own light
+   colours as rules under each chart's id, so these name the two boxes that hold charts by theirs to
+   come after them; symphony-panel.js (graphRestyle) takes the same colours off the nodes' own
+   elements */
+:is(#cp-graph, #cp-board) .control__chart .node > rect.label-container { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1px !important; transition: filter 0.15s; }
+:is(#cp-graph, #cp-board) .control__chart .node:is(.todo, .claimed, .review, .blocked, .closed) > rect.label-container { stroke-width: 1.5px !important; }
+:is(#cp-graph, #cp-board) .control__chart .node :is(span, p) { color: #E4ECE8 !important; }
+:is(#cp-graph, #cp-board) .control__chart .node.todo > rect.label-container { fill: var(--st-todo-tint) !important; stroke: var(--st-todo) !important; }
+:is(#cp-graph, #cp-board) .control__chart .node.claimed > rect.label-container { fill: var(--st-claimed-tint) !important; stroke: var(--st-claimed) !important; stroke-width: 2.5px !important; stroke-dasharray: 0.5 5; stroke-linecap: round; }
+:is(#cp-graph, #cp-board) .control__chart .node.review > rect.label-container { fill: var(--st-review-tint) !important; stroke: var(--st-review) !important; }
+:is(#cp-graph, #cp-board) .control__chart .node.blocked > rect.label-container { fill: var(--st-blocked-tint) !important; stroke: var(--st-blocked) !important; stroke-width: 3px !important; }
+:is(#cp-graph, #cp-board) .control__chart .node.closed > rect.label-container { fill: var(--st-closed-tint) !important; stroke: var(--st-closed) !important; stroke-dasharray: 4 3; }
+:is(#cp-graph, #cp-board) .control__chart .node.closed :is(span, p) { color: #8A9893 !important; text-decoration: line-through; }
+:is(#cp-graph, #cp-board) .control__chart .node:hover > rect.label-container { stroke-width: 2.5px !important; filter: brightness(1.3); }
+:is(#cp-graph, #cp-board) .control__chart .node:is(.claimed, .blocked):hover > rect.label-container { stroke-width: 3.5px !important; }
+:is(#cp-graph, #cp-board) .control__chart .edgePaths path { stroke: #8A9E97 !important; }
+:is(#cp-graph, #cp-board) .control__chart marker path { fill: #8A9E97 !important; stroke: #8A9E97 !important; }
+/* the tab's line of what was drawn is the quieter one, a warning keeping its own colour */
+.console #cp-graph-state, .console #cp-graph-said { margin: 0; max-width: none; }
+.console #cp-graph-state:not(.admin__warn) { font-size: 0.88rem; color: var(--ink-soft); }
+/* the tiles: All, Goals and one per epic, each saying what its chart is, how far it has got, its
+   title and a bar of its issues by state, the one shown edged in the deck's teal; one compact row
+   that scrolls sideways where the tiles run past its end, its ends fading where more lie past them
+   (symphony-panel.js, graphStripEdges), so the strip never takes the chart's height however many
+   epics there are; there only where there are two charts or more */
+#cp-graph-focus { position: relative; flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 250px); gap: 8px; margin: 0 0 6px; padding: 2px 2px 6px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.22) transparent; }
 #cp-graph-focus[hidden] { display: none; }
+#cp-graph-focus[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+#cp-graph-focus[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); }
+#cp-graph-focus[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); }
+.console .graph__tile {
+  margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind foot" "title title" "bar bar";
+  align-items: baseline; gap: 3px 10px; padding: 8px 12px 10px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--paper-card); color: var(--ink); text-align: left; font-weight: 400; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.12s var(--ease);
+}
+.console .graph__tile:hover { border-color: rgba(60, 194, 177, 0.55); background: rgba(60, 194, 177, 0.06); color: var(--ink); transform: translateY(-1px); }
+.console .graph__tile[aria-pressed="true"] { border-color: var(--teal); background: rgba(60, 194, 177, 0.1); box-shadow: inset 0 0 0 1px var(--teal); }
+.console .graph__tile:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: -3px; }
+.graph__tkind { grid-area: kind; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph__tile[aria-pressed="true"] .graph__tkind { color: var(--teal); }
+.graph__ttitle { grid-area: title; font-size: 0.9rem; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph__tbar { grid-area: bar; align-self: center; margin-top: 4px; display: flex; gap: 2px; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(233, 230, 218, 0.14); }
+.graph__seg { display: block; height: 100%; background: var(--edge); }
+.graph__tfoot { grid-area: foot; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+/* the key: a swatch per state drawn as its nodes are, edge and all, and the three arrows, in two
+   sets, so a narrow window moves a whole set to the next line rather than splitting the two */
+.graph__key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 28px; margin: 0 0 4px; font-size: 0.8rem; color: var(--ink-soft); }
+.graph__key[hidden] { display: none; }
+.graph__keyset { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.graph__swatch, .graph__arrow { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.graph__swatch::before { content: ""; box-sizing: border-box; width: 18px; height: 12px; border-radius: 4px; border: 1.5px solid var(--edge); background: var(--tint); }
+.graph__swatch--todo, .graph__pill--todo, .graph__seg--todo { --edge: var(--st-todo); --tint: var(--st-todo-tint); }
+.graph__swatch--claimed, .graph__pill--claimed, .graph__seg--claimed { --edge: var(--st-claimed); --tint: var(--st-claimed-tint); }
+.graph__swatch--review, .graph__pill--review, .graph__seg--review { --edge: var(--st-review); --tint: var(--st-review-tint); }
+.graph__swatch--blocked, .graph__pill--blocked, .graph__seg--blocked { --edge: var(--st-blocked); --tint: var(--st-blocked-tint); }
+.graph__swatch--closed, .graph__pill--closed, .graph__seg--closed { --edge: var(--st-closed); --tint: var(--st-closed-tint); }
+.graph__swatch--open, .graph__pill--plain, .graph__seg--plain { --edge: var(--st-open); --tint: var(--st-open-tint); }
+.graph__swatch--claimed::before { border: 2px dotted var(--edge); }
+.graph__swatch--blocked::before { border-width: 3px; }
+.graph__swatch--closed::before { border-style: dashed; }
+.graph__swatch--open::before { border-width: 1px; }
+.graph__arrow svg { width: 26px; height: 10px; flex: none; }
+.graph__arrow line { stroke: #8A9E97; stroke-width: 1.5; }
+.graph__arrow path { fill: #8A9E97; }
+.graph__arrow--done line { stroke-dasharray: 2 2; }
+.graph__arrow--goal line { stroke-width: 3.5; }
+/* a card per chart: its heading, its tools (Fit, and Previous and Next) at the top right, under them
+   a bar of the epic's closed tasks and a pill per state, the chart, and the list folded under it.
+   The tools keep that one place on every card however long its heading or however many its pills,
+   so a button pressed again and again stays under the mouse from card to card */
+.console .control__graph .graph__section { margin: 0 0 14px; padding: 14px 16px 8px; border: 1px solid var(--line-soft, rgba(233, 230, 218, 0.07)); border-radius: 14px; background: var(--paper-card); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); }
+.graph__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; }
+.console .graph__head h3 { grid-column: 1; grid-row: 1; margin: 0; font-size: 1.05rem; font-weight: 600; }
+.graph__tools { grid-column: 2; grid-row: 1; align-self: start; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+/* nothing to hold (All, a chart that fits its card): no row of its own */
+.graph__tools:not(:has(.graph__fit:not([hidden]), .graph__step)), #cp-graph.graph--all .graph__tools:not(:has(.graph__fit:not([hidden]))) { display: none; }
+.graph__meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.graph__progress { display: flex; align-items: center; gap: 8px; }
+.graph__bar { width: 120px; height: 6px; border-radius: 99px; background: rgba(233, 230, 218, 0.18); overflow: hidden; }
+.graph__bar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--teal-deep), var(--teal-bright)); }
+.graph__done { font-size: 0.8rem; color: var(--ink-soft); white-space: nowrap; }
+.graph__pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.graph__pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 99px; font-size: 0.78rem; color: var(--ink-soft); background: rgba(233, 230, 218, 0.04); border: 1px solid var(--line-soft, rgba(233, 230, 218, 0.07)); white-space: nowrap; }
+.graph__pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--edge); }
+.graph__pill b { color: var(--ink); font-weight: 600; }
+/* an epic's sub-issues in another repository, which its chart does not draw, and the blockers from
+   outside it, which are no task of it: pills of no state, dashed */
+.graph__pill--outside, .graph__pill--elsewhere { border-style: dashed; border-color: rgba(233, 230, 218, 0.22); background: none; }
+.graph__pill--outside::before, .graph__pill--elsewhere::before { display: none; }
+.console .graph__list { margin: 0 0 4px; }
+.console .graph__list > summary { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 8px; font-size: 0.84rem; color: var(--ink-soft); cursor: pointer; list-style: none; }
+.console .graph__list > summary::-webkit-details-marker { display: none; }
+/* the triangle is drawn, not read: the second content gives it no words for a screen reader */
+.console .graph__list > summary::before { content: "\25B8"; content: "\25B8" / ""; transition: transform 0.15s; }
+.console .graph__list[open] > summary::before { transform: rotate(90deg); }
+.console .graph__list > summary:hover { color: var(--ink); background: rgba(233, 230, 218, 0.05); }
+.console .graph__list > summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.console .graph__list .table-scroll { margin: 6px 0 8px; }
+/* Previous and Next on a card, with its place among the charts; not in All, which shows every card */
+.graph__step { display: inline-flex; align-items: center; gap: 4px; }
+.console button.graph__stepbtn {
+  margin: 0; padding: 0 0 2px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--line); background: transparent; color: var(--ink-soft); font-size: 1.25rem; line-height: 1;
+}
+.console button.graph__stepbtn:hover:not(:disabled) { color: var(--teal); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); }
+.console button.graph__stepbtn:disabled { opacity: 0.35; cursor: default; }
+.graph__pos { min-width: 3.4em; text-align: center; font-size: 0.78rem; color: var(--ink-soft); white-space: nowrap; }
+#cp-graph.graph--all .graph__step { display: none; }
+/* Fit: the whole chart at the card's width, and pressed again at its own size */
+.console button.graph__fit { margin: 0; padding: 2px 11px; border-radius: 99px; border: 1px solid var(--line); background: transparent; color: var(--ink-soft); font-size: 0.78rem; font-weight: 400; }
+.console button.graph__fit:hover { color: var(--teal); border-color: var(--teal); }
+.console button.graph__fit[aria-pressed="true"] { color: var(--teal); border-color: var(--teal); background: rgba(60, 194, 177, 0.12); }
+.console button.graph__fit[hidden] { display: none; }
+.console .control__chart--fit svg { min-width: 0 !important; max-width: 100% !important; height: auto; }
+/* a chart is dragged with the mouse, as a map is; its nodes keep the pointer of a button */
+:is(#cp-graph, #cp-board) .control__chart:has(svg) { cursor: grab; }
+:is(#cp-graph, #cp-board) .control__chart--panning, :is(#cp-graph, #cp-board) .control__chart--panning * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+/* the chart a person chooses fades in, so the change reads as a move rather than a jump */
+@keyframes graph-enter { from { opacity: 0; } to { opacity: 1; } }
+.console .graph__section--enter { animation: graph-enter 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .console .graph__section--enter { animation: none; }
+  .console .graph__tile { transition: none; }
+  .console .graph__tile:hover { transform: none; }
+}
 /* the focus strip hides a chart's section by its hidden attribute; say so here rather than leaning on
    the browser's own rule alone, so a later display rule on a section cannot quietly show a hidden one */
 .console .control__graph .graph__section[hidden] { display: none; }
-.console .graph__chip {
-  margin: 0; padding: 3px 12px; border-radius: 100px; border: 1px solid rgba(60, 194, 177, 0.3);
-  background: transparent; color: var(--ink-soft); font-size: 0.86rem; cursor: pointer;
+@media (max-width: 640px) {
+  /* a phone's tiles are narrower, the next one showing at the edge, and snap under a finger; each
+     stacks its words, so its title has two lines */
+  #cp-graph-focus { grid-auto-columns: minmax(150px, 46%); scroll-snap-type: x proximity; }
+  .console .graph__tile { scroll-snap-align: start; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kind" "title" "bar" "foot"; gap: 4px; }
+  .graph__ttitle { white-space: normal; min-height: 2.7em; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .graph__tfoot { text-align: left; }
+  /* a phone's card head is one column: its tools first, at the top of every card, then its heading
+     and its pills */
+  .graph__head { grid-template-columns: minmax(0, 1fr); }
+  .graph__tools { grid-column: 1; grid-row: auto; order: -1; justify-self: end; }
+  .console .graph__head h3 { grid-row: auto; }
+  .graph__meta { grid-column: 1; }
+  .graph__key { gap: 6px 16px; }
+  /* a phone's card is a section between rules, with no frame of its own, so the chart inside it
+     keeps the width four nested frames would take */
+  .console .control__graph .graph__section { padding: 12px 0 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
+  .graph__bar { width: 90px; }
+  .console .control__chart { padding: 14px 8px; }
 }
-.console .graph__chip:hover { background: rgba(60, 194, 177, 0.1); color: var(--ink); }
-.console .graph__chip[aria-pressed="true"] { background: rgba(60, 194, 177, 0.18); color: var(--ink); border-color: var(--teal); font-weight: 600; }
 /* ---------- the console's Folders tab: the drive's list, its crumbs, the ticked items, the steps ---------- */
 .folders__crumbs { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 #tab-folders .folders__crumbs button { padding: 3px 10px; font-size: 0.88rem; margin: 0; }
@@ -283,6 +433,8 @@ body[data-shell] main > .console.section, .console.section {
 .console__title { font-family: var(--font-display); font-weight: 500; font-size: 1.15rem; margin: 0; white-space: nowrap; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .console .console__full { flex: 0 0 auto; margin: 0; padding: 3px 7px; font-size: 0.74rem; display: inline-flex; align-items: center; gap: 4px; }
 .console .console__full span:first-child { font-size: 1.05rem; line-height: 1; }
+/* where the browser has no full screen for a page (an iPhone's), symphony-panel.js hides the button */
+.console .console__full[hidden] { display: none; }
 /* the word stays for a screen reader; the side column is too narrow for it beside the title */
 .console__fullword { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -398,7 +550,8 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 @media (max-width: 900px), (max-height: 520px) {
   .console__askrow { flex-wrap: wrap; }
   .console__askbox, .console .console__askrow #cp-as-state { flex-basis: 100%; }
-  .console__askdrawer { position: fixed; top: 72px; bottom: auto; max-height: 55vh; }
+  /* fixed to the screen here, so it keeps inside the notch on either side (the safe areas, at the end) */
+  .console__askdrawer { position: fixed; top: 72px; bottom: auto; max-height: 55vh; left: calc(8px + env(safe-area-inset-left, 0px)); right: calc(8px + env(safe-area-inset-right, 0px)); }
 }
 
 /* the repository's whole name, wrapped, with the select laid over it, so a press opens the
@@ -515,11 +668,18 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console .admin__box + .admin__box { margin-top: 10px; }
 .console__help--inline > summary { display: inline-block; }
 
-/* the Tokens tab's tiles: square buttons like the Command tab's, filling a row from the left, the
-   dashed + Add Token tile last; the X sits in the tile's top right corner */
-.toks { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 176px)); gap: 10px; margin: 0 0 14px; }
+/* the Tokens tab's tiles (and the Notebooks tab's): cards like the Command tab's buttons, the
+   dashed + Add Token tile last; the X sits in the tile's top right corner. Their width follows the
+   window, from about 104 px on a phone to 184 px on a large screen, and every row is filled, so a
+   phone shows three to a row and a wide screen eight or more (the owner, 2026-10-19: "should scale
+   to the screen size so multiple fit on the page"); a tile is as tall as its words, the tallest of
+   its row, never a square with an empty middle */
+.toks {
+  --tok-min: clamp(104px, 7vw + 56px, 184px);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--tok-min)), 1fr)); gap: 10px; margin: 0 0 14px;
+}
 .toks__note { grid-column: 1 / -1; }
-.tok { position: relative; aspect-ratio: 1 / 1; min-width: 0; }
+.tok { position: relative; min-width: 0; min-height: 124px; }
 .console button.tok__open {
   margin: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px;
   padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); text-align: left; overflow: hidden;
@@ -528,7 +688,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console button.tok__open:hover { transform: translateY(-1px); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); color: var(--ink); }
 .console button.tok__open:active { transform: translateY(1px); }
 .console button.tok__open > * { flex-shrink: 0; }
-.tok__icon { display: grid; place-items: center; width: 26px; height: 26px; margin-bottom: auto; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-weight: 600; }
+.tok__icon { display: grid; place-items: center; width: 26px; height: 26px; margin-bottom: 8px; border-radius: 50%; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-weight: 600; }
 .tok__name { font-weight: 600; font-size: 0.95rem; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tok__meta, .tok__state { font-size: 0.74rem; line-height: 1.3; color: var(--ink-faint); max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .tok__use ~ .tok__state { -webkit-line-clamp: 1; }
@@ -1066,6 +1226,95 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   .console #cp-runs td.cell--outcome { display: block; order: 1; flex: 0 0 100%; height: 0; padding: 0; margin: 0; visibility: hidden; }
   .console #cp-runs td.cell--event, .console #cp-runs td.cell--branch, .console #cp-runs td.cell--who { order: 2; }
   .console #cp-runs td.cell--event { margin-left: 30px; }
-  /* the tiles two to a row, filling it */
-  .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  /* the tiles three to a row on a phone held upright, filling it, closer together */
+  .toks { --tok-min: 96px; gap: 8px; }
+  /* a notebook's card carries a title and a summary, which three to a row would cut to a word */
+  #nb-tiles { --tok-min: 140px; }
+  .console button.tok__open { padding: 10px; }
+  /* the gear and the X close up so a tile a third of a phone's width keeps its number beside them */
+  .console button.tok__x, .console button.tok__gear { top: 4px; right: 4px; width: 28px; height: 28px; }
+  .console button.tok__gear { right: 32px; }
+  /* the Command tab's readouts three to a row and its buttons two, the icon over the name and the
+     note cut to two lines, so a phone shows them all on one screen as a laptop does */
+  .deck__readouts { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+  .console button.readout { padding: 6px 9px; }
+  .readout__n { font-size: 1.15rem; }
+  .readout__l { white-space: normal; font-size: 0.66rem; letter-spacing: 0.04em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .deck__launch { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px; }
+  .console button.launch { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; row-gap: 4px; padding: 9px 10px; }
+  .launch__icon { grid-row: auto; justify-self: start; width: 28px; height: 28px; font-size: 0.9rem; }
+  .launch__note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
+
+/* The page's viewport covers the whole screen (viewport-fit=cover, which tools/build_site.py writes
+   for the Home Screen app), so on a phone the page runs under the rounded corners, the notch or the
+   island and the home bar: in the installed app, and in Safari's own tab too once the phone is held
+   sideways, where Safari would otherwise have kept the whole page inside the safe areas. Every part
+   of the page that reaches the screen's edge therefore keeps its words inside the insets itself,
+   while its ground still runs to the edge; on a computer every inset is 0 and nothing moves. */
+
+/* the deck: its content inside the notch on either side */
+body[data-shell] main > .console.section, .console.section {
+  padding-left: calc(14px + env(safe-area-inset-left, 0px));
+  padding-right: calc(14px + env(safe-area-inset-right, 0px));
+}
+/* the deck's foot is the screen's only in the desktop layout, where the deck fills the window (an
+   iPad's, say); in the phone layout the page scrolls on past the deck, and the status line, which
+   sticks to the screen's foot there, pads itself */
+@media (min-width: 901px) and (min-height: 521px) {
+  body[data-shell] main > .console.section, .console.section { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 900px), (max-height: 520px) {
+  .console__status { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* the site's header: its bar runs to the screen's edges, and its brand, its links and its menu
+   button keep inside the insets, by the bar's own padding (site.css, by the window's width: 32px,
+   20px from 901 to 1060, 16px to 900) plus the inset. The menu's drawer hangs from the bar, whose
+   backdrop-filter makes it the drawer's containing block, so the drawer runs to the edges too and
+   pads its links the same way. */
+body.page-console #nav {
+  --nav-side: 32px;
+  padding-left: calc(var(--nav-side) + env(safe-area-inset-left, 0px));
+  padding-right: calc(var(--nav-side) + env(safe-area-inset-right, 0px));
+}
+@media (min-width: 901px) and (max-width: 1060px) { body.page-console #nav { --nav-side: 20px; } }
+@media (max-width: 900px) {
+  body.page-console #nav { --nav-side: 16px; }
+  body.page-console .nav__links {
+    padding-left: calc(var(--nav-side) + env(safe-area-inset-left, 0px));
+    padding-right: calc(var(--nav-side) + env(safe-area-inset-right, 0px));
+  }
+}
+/* A large phone held sideways is wider than 900px, but inside its insets the header's one row, about
+   845px, does not fit, so there the header keeps the drawer a narrower phone has: style.css's and
+   site.css's drawer rules again, for a screen no more than 520px tall with no pointer that hovers. A
+   short window on a computer, whose pointer hovers, keeps the row. main.js opens and closes the
+   drawer at any width. */
+@media (min-width: 901px) and (max-height: 520px) and (hover: none) {
+  body.page-console .nav__links {
+    position: fixed; top: var(--nav-h); left: 0; right: 0;
+    flex-direction: column; align-items: flex-start; gap: 4px;
+    background: var(--paper-card); border-bottom: 1px solid var(--line);
+    padding: 16px calc(var(--nav-side) + env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) calc(var(--nav-side) + env(safe-area-inset-left, 0px));
+    transform: translateY(-130%);
+    max-height: calc(100dvh - var(--nav-h)); overflow-y: auto; overscroll-behavior: contain;
+    visibility: hidden;
+    transition: transform .36s var(--ease), visibility 0s linear .36s;
+  }
+  body.page-console .nav__links.is-open { transform: translateY(0); visibility: visible; box-shadow: 0 18px 34px rgba(26, 28, 24, 0.16); transition: transform .36s var(--ease); }
+  body.page-console .nav__links a { padding: 12px 0; width: 100%; font-size: 1.05rem; border-bottom: 1px solid var(--line-soft); }
+  body.page-console .nav__links a:not(.nav__cta)::after { display: none; }
+  body.page-console #nav .nav__links a[aria-current]:not(.nav__cta) { color: var(--teal); font-weight: 600; }
+  body.page-console .nav__links a.nav__cta { width: auto; align-self: flex-start; padding: 11px 22px; margin-top: 14px; border-bottom: 0; }
+  body.page-console .nav__toggle { display: flex; }
+}
+
+/* the section strip, the breadcrumb and the footer: their own side padding (site.css: 32px, 16px to
+   720) or the inset and 16px, whichever is more */
+body.page-console { --band-side: 32px; }
+@media (max-width: 720px) { body.page-console { --band-side: 16px; } }
+body.page-console .subnav__in, body.page-console .crumbs, body.page-console .footer {
+  padding-left: max(var(--band-side), calc(env(safe-area-inset-left, 0px) + 16px));
+  padding-right: max(var(--band-side), calc(env(safe-area-inset-right, 0px) + 16px));
 }
