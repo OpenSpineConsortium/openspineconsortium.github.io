@@ -4713,7 +4713,7 @@
   // Your token, for someone who is not an owner of the organization: one token per person in the
   // pool, lent to the repositories they choose (the owner's choice of 2026-10-19). Only the Token
   // run may read or change the pool for them, so each press is a short run with no sign-in.
-  var yourLent = null;
+  var yourLent = null, yourBusy = '';
   function yourTokenBox() {
     var box = el('div', 'toks__note');
     var line = el('p', 'admin__lead');
@@ -4723,13 +4723,15 @@
       if (!window.confirm('Delete your Claude token from ' + tk.place.owner + '\'s pool? Every repository it is lent to loses it at once.')) return;
       manageToken('delete', '', line, list);
     });
+    where.disabled = gone.disabled = yourBusy;
     add(box, el('h3', 'console__boxh', 'Your token'), add(el('p', 'admin__bar'), where, ' ', gone), line, list);
-    if (yourLent) drawLent(yourLent, line, list);
+    if (yourBusy) line.textContent = yourBusy;
+    else if (yourLent) drawLent(yourLent, line, list);
     return box;
   }
   function drawLent(found, line, list) {
-    yourLent = found;
     clear(list);
+    if (found.failed) { line.textContent = found.failed; return; }
     if (!found.ids.length) { line.textContent = found.deleted ? 'Your token is deleted.' : 'Your token (slot ' + found.lent + ') is lent to no repository.'; return; }
     if (found.ids[0] === 'all') { line.textContent = 'Your token (slot ' + found.lent + ') is on in every repository of ' + tk.place.owner + ', which an owner set.'; return; }
     line.textContent = 'Your token (slot ' + found.lent + ') is lent to:';
@@ -4737,13 +4739,19 @@
       var row = el('p', 'admin__bar');
       var name = el('span', '', 'repository ' + id);
       gh('GET', '/repositories/' + id).then(function (r) { name.textContent = r.data.full_name; }, function () { name.textContent = 'a repository you cannot see (' + id + ')'; });
-      add(row, name, ' ', btn('Take back', true, function () { manageToken('revoke', id, line, list); }));
+      var back = btn('Take back', true, function () { manageToken('revoke', id, line, list); });
+      back.disabled = yourBusy;
+      add(row, name, ' ', back);
       add(list, row);
     });
   }
   function manageToken(action, target, line, list) {
+    // one run at a time, since each opens its own issue and nothing else stops a second
+    if (yourBusy) return;
+    yourBusy = action === 'list' ? 'Asking the Token run where your token is lent...' : action === 'revoke' ? 'Taking your token back...' : 'Deleting your token...';
+    drawTiles();
     var repo = tk.repo, issue = 0;
-    line.textContent = action === 'list' ? 'Asking the Token run where your token is lent...' : action === 'revoke' ? 'Taking your token back...' : 'Deleting your token...';
+    function done() { yourBusy = ''; if (action !== 'list') readTokenPlace(repo, reading); else drawTiles(); }
     gh('POST', '/repos/' + repo + '/issues', { title: 'Your Claude token: ' + action,
       body: 'The control panel\'s Tokens page opened this issue for one run of the workflow Token (.github/workflows/token.yml) on your own token in the pool. The page closes it when the run answers.' }).then(function (r) {
       issue = r.data.number;
@@ -4752,15 +4760,17 @@
       return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
         { ref: r.data.default_branch || 'main', inputs: { issue: String(issue), store: 'manage', manage: action, target: String(target || '') } });
     }).then(function () {
-      return followRun(repo, issue, null, { step: list }, function () { return false; });
+      return followRun(repo, issue, null, { step: el('div') }, function () { return false; });
     }).then(function (found) {
       closeRunIssue(repo, issue);
       found.deleted = action === 'delete';
       if (found.deleted) found.ids = [];
-      drawLent(found, line, list);
+      yourLent = found;
+      done();
     }).catch(function (e) {
       if (issue) closeRunIssue(repo, issue, true);
-      line.textContent = 'That did not work: ' + e.message;
+      yourLent = { lent: '', ids: [], failed: 'That did not work: ' + e.message };
+      done();
     });
   }
   function closeRunIssue(repo, issue, failed) {
