@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610191025">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610191025">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610191025">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610191144">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610191144">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610191144">
 </head>
 <body data-shell="page" class="page-console">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -208,7 +208,7 @@
             <h2 id="h-board" class="console__h">Board</h2>
             <p class="console__lead"><span id="cp-board-when"></span></p>
             <details class="console__help"><summary>What this is</summary><div>
-              <p>The file STATE.md on the branch <code>board</code>, as the board workflow last wrote it: the claims, the open pull requests, the overlaps, the queue, the issues given to workers and the blockers, and, once the repository&rsquo;s protocol draws them, the dependency charts, which this tab draws in place. Rewrite the board from the Command tab to have it read again.</p>
+              <p>The file STATE.md on the branch <code>board</code>, as the board workflow last wrote it: the claims, the open pull requests, the overlaps, the queue, the issues given to workers and the blockers, and, once the repository&rsquo;s protocol draws them, the dependency charts, which this tab draws in place, each node coloured and edged by its state as the Dependencies tab&rsquo;s key shows. Rewrite the board from the Command tab to have it read again.</p>
             </div></details>
           </div>
           <div class="console__scroll"><div class="admin__box control__board" id="cp-board"></div></div>
@@ -257,13 +257,17 @@
           <div class="console__head">
             <h2 id="h-dependencies" class="console__h">Dependencies</h2>
             <details class="console__help"><summary>What the charts show and read</summary><div>
-              <p>Each open epic&rsquo;s tasks and what blocks them, drawn as a chart, with the goals above their epics: the same chart the board writes into STATE.md once the repository&rsquo;s protocol is new enough to draw it, and the Board tab draws that one in place, as long as it is a chart as the board writes it (any other block there is shown as text and never drawn); until then this tab is the only place it is drawn. A task is a sub-issue of the epic on GitHub, and what blocks it is GitHub&rsquo;s own blocked-by relation, both set on the issue&rsquo;s page under Sub-issues and Relationships; a goal is an issue labelled <code>goal</code> whose sub-issues are epics. An arrow runs from the issue that blocks to the issue it blocks, dotted once the blocker is closed; a node&rsquo;s shade is its state (white with a green edge todo, yellow claimed, blue in review, red blocked, grey closed, and white with a dark edge for an issue in none of those states), and an epic&rsquo;s heading counts its closed tasks.</p>
-              <p>Where there is more than one chart, a strip of chips above them lets you show one epic at a time, or the zoomed-out goals chart, or All; the one you last chose is kept in this browser, for this repository. Under each chart a table says the same in words. Clicking a node, here or in the Board tab, or pressing Centre its row, opens the Tasks tab and centres that task&rsquo;s row there where the task tables hold it, as the assistant&rsquo;s focus does, and opens no other page; where they do not (a closed task, a blocker from outside, a row the filter hides) this tab says why, and the message line under the console says the same either way. To draw it the page reads, as you, whenever it reads the issues and whether or not this tab is open, the sub-issues of each open issue labelled <code>epic</code> or <code>goal</code> and the issues blocking each of an epic&rsquo;s sub-issues, at most sixty reads a draw and none once GitHub says the token has fewer than a hundred calls left this hour, and writes nothing; it draws again whenever the issues are read again (Refresh). The chart is drawn in this browser by a copy of Mermaid the site carries, loaded only when there is a chart to draw.</p>
+              <p>Each open epic&rsquo;s tasks and what blocks them, drawn as a chart, with the goals above their epics: the same chart the board writes into STATE.md once the repository&rsquo;s protocol is new enough to draw it, and the Board tab draws that one in place, as long as it is a chart as the board writes it (any other block there is shown as text and never drawn); until then this tab is the only place it is drawn. A task is a sub-issue of the epic on GitHub, and what blocks it is GitHub&rsquo;s own blocked-by relation, both set on the issue&rsquo;s page under Sub-issues and Relationships; a goal is an issue labelled <code>goal</code> whose sub-issues are epics. An arrow runs from the issue that blocks to the issue it blocks, dotted once the blocker is closed, and a thick one from a goal to each of its epics; a node&rsquo;s colour and edge are its state (green to do, amber and dotted claimed, blue on a lit fill in review, red and thick blocked, grey, dashed and struck through closed, and a thin pale edge open, an issue in none of those states), so no two states differ by colour alone, as the key above the charts shows, and an epic&rsquo;s card counts its closed tasks with a bar and its tasks by state, its sub-issues in another repository, which the bar counts and the chart does not draw, and the blockers from outside the epic each counted apart.</p>
+              <p>Where there is more than one chart, a tile for each above them, All, Goals and every epic, with a bar of its issues by state, shows one chart at a time, or every one for All; an epic&rsquo;s tile says how many of its tasks are closed, the Goals tile how many issues its chart holds and All how many charts there are. The tiles are one row, which scrolls sideways, by the mouse&rsquo;s wheel too, where they run past its end; the left and right arrow keys, Home and End move from tile to tile, Previous and Next at the top of a card step to the chart beside it, and the one you last chose is kept in this browser, for this repository. A chart wider than its card is dragged with the mouse like a map, or drawn whole at the card&rsquo;s width with Fit and pressed again for its own size. Under each chart its list says the same in words, folded until you open it, and open by itself where the chart cannot be drawn. Clicking a node, here or in the Board tab, or pressing Centre its row, opens the Tasks tab and centres that task&rsquo;s row there where the task tables hold it, as the assistant&rsquo;s focus does, and opens no other page; where they do not (a closed task, a blocker from outside, a row the filter hides) this tab says why, and the message line under the console says the same either way. To draw it the page reads, as you, whenever it reads the issues and whether or not this tab is open, the sub-issues of each open issue labelled <code>epic</code> or <code>goal</code> and the issues blocking each of an epic&rsquo;s sub-issues, at most sixty reads a draw and none once GitHub says the token has fewer than a hundred calls left this hour, and writes nothing; it draws again whenever the issues are read again (Refresh). The chart is drawn in this browser by a copy of Mermaid the site carries, loaded only when there is a chart to draw.</p>
             </div></details>
           </div>
           <p id="cp-graph-state" class="admin__lead">Nothing to draw yet: no repository is chosen.</p>
           <p id="cp-graph-said" class="admin__lead"></p>
-          <div id="cp-graph-focus" class="graph__focus" role="group" aria-label="Focus one epic or goal" hidden></div>
+          <div id="cp-graph-focus" class="graph__focus" role="group" aria-label="Show one chart: All, the goals or an epic" hidden></div>
+          <div id="cp-graph-key" class="graph__key" role="group" aria-label="Key to the charts" hidden>
+            <span class="graph__keyset"><span class="graph__swatch graph__swatch--todo">To do</span><span class="graph__swatch graph__swatch--claimed">Claimed</span><span class="graph__swatch graph__swatch--review">In review</span><span class="graph__swatch graph__swatch--blocked">Blocked</span><span class="graph__swatch graph__swatch--closed">Closed</span><span class="graph__swatch graph__swatch--open">Open</span></span>
+            <span class="graph__keyset"><span class="graph__arrow"><svg viewBox="0 0 26 10" aria-hidden="true" focusable="false"><line x1="1" y1="5" x2="19" y2="5"/><path d="M18 1 L25 5 L18 9 Z"/></svg>blocks</span><span class="graph__arrow graph__arrow--done"><svg viewBox="0 0 26 10" aria-hidden="true" focusable="false"><line x1="1" y1="5" x2="19" y2="5"/><path d="M18 1 L25 5 L18 9 Z"/></svg>blocked, now closed</span><span class="graph__arrow graph__arrow--goal"><svg viewBox="0 0 26 10" aria-hidden="true" focusable="false"><line x1="1" y1="5" x2="19" y2="5"/><path d="M18 1 L25 5 L18 9 Z"/></svg>goal to its epic</span></span>
+          </div>
           <div class="console__scroll"><div id="cp-graph" class="control__graph"></div></div>
         </section>
 
@@ -631,8 +635,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610191025"></script>
+<script src="/assets/js/main.js?v=202610191144"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610191025"></script>
+<script src="/assets/js/symphony-panel.js?v=202610191144"></script>
 </body>
 </html>
