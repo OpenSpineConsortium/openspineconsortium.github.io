@@ -28,9 +28,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610191025">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610191025">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610191025">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610191117">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610191117">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610191117">
 </head>
 <body data-shell="page" class="page-console">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -434,7 +434,7 @@
             <h2 id="h-notebooks" class="console__h">Notebooks</h2>
             <details class="console__help"><summary>What a notebook is and where these come from</summary><div>
               <p>A notebook groups a few of your OneDrive&rsquo;s files as one context, as NotebookLM does: the files stay where they are, a file may sit in several notebooks, and each notebook is a private repository of its own in which Claude works in the background, keeping its research, its drafts and its references beside what it reads and writing its edits to a file back as tracked changes you accept or reject in Word. Nothing a notebook does can move or lose a file.</p>
-              <p>The cards come from the proposal the drive organizer writes, <code>notebooks.json</code> beside <code>catalog.json</code> on the chosen repository&rsquo;s branch <code>drive-catalog</code>, read here as you; a public repository holds none, and neither does an internal one, which every member of its enterprise can read, since a notebook names a person&rsquo;s files. Each card shows the notebook&rsquo;s title, its repository, how many files it holds and their size, their kinds, most common first, and when the newest of them last changed, and says whether its repository is made yet. Click a card for the notebook&rsquo;s summary and its files, each with its kind, its last change and a link to it on OneDrive.</p>
+              <p>The cards come from the proposal the drive organizer writes, <code>notebooks.json</code> beside <code>catalog.json</code> on the chosen repository&rsquo;s branch <code>drive-catalog</code>, read here as you; a public repository holds none, and neither does an internal one, which every member of its enterprise can read, since a notebook names a person&rsquo;s files. Each card shows the notebook&rsquo;s title, its repository, how many files it holds and their size, their kinds, most common first, and when the newest of them last changed, and says whether its repository is made yet, and whether it is public or internal. Click a card for the notebook&rsquo;s summary and its files, each with its kind, its last change and a link to it on OneDrive; where its repository is public or internal and you administer it, Make private there makes it private on GitHub as you, after a confirmation that says what GitHub erases with the change (its stars and watchers) and what becomes of its forks.</p>
               <p>+ proposes a new notebook: a title, a summary, the name of its repository and the files ticked from the catalog; a card&rsquo;s gear changes one, and its &times; takes one out of the proposal, leaving the files on the drive. Each of those writes <code>notebooks.json</code> on the branch <code>drive-catalog</code> as you, with the files no notebook holds listed as left out and whatever else the organizer wrote kept, over the version the cards were drawn from, so a change the organizer made since is never written over: the tab reads the file again and you press again. Taking out the last notebook deletes the file, and whatever else the organizer wrote in it goes too. The repository itself is made from the proposal by the notebook skill in a Claude session, as the template&rsquo;s <code>tools/notebook.py</code> lays it out; the card says &ldquo;not found&rdquo; until it exists or while this sign-in cannot reach it, and warns when it is public or internal.</p>
             </div></details>
           </div>
@@ -631,8 +631,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610191025"></script>
+<script src="/assets/js/main.js?v=202610191117"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610191025"></script>
+<script src="/assets/js/symphony-panel.js?v=202610191117"></script>
 </body>
 </html>
