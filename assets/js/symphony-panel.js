@@ -7622,10 +7622,19 @@
   // card open in the side panel; whether each repository a notebook names exists, is public or is
   // not found
   var nb = { repo: '', era: 0, data: null, known: null, sha: null, catalogSha: null, note: '', problems: [], side: '', made: Object.create(null) };
-  // the repository a write of notebooks.json is on its way to: kept apart from nb, which a Refresh
-  // or another repository clears, so a second write never starts beside the first
-  var nbWriting = '';
+  // the repository a write of notebooks.json is on its way to, and the sign-in it went out under:
+  // kept apart from nb, which a Refresh or another repository clears, so a second write never starts
+  // beside the first; a sign-out leaves the write's answer unanswered (call), so the lock goes with it
+  var nbWriting = '', nbWritingEnds = 0;
+  function nbBusy() { if (nbWriting && nbWritingEnds !== ends) nbWriting = ''; return nbWriting; }
   function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.sha = null; nb.catalogSha = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); }
+  // private, internal (which every member of its enterprise may read) or public, by GitHub's word
+  function nbVisibility(meta) {
+    if (isPlain(meta) && (meta.visibility === 'private' || meta.visibility === 'internal' || meta.visibility === 'public')) return meta.visibility;
+    return isPlain(meta) && meta.private === true ? 'private' : 'public';
+  }
+  // a repository a notebook names that is there, whoever may read it
+  function nbFound(name) { var made = nb.made[name]; return made === 'yes' || made === 'public' || made === 'internal'; }
   function nbParsed(text) { try { var v = JSON.parse(text); return isPlain(v) ? v : null; } catch (e) { return null; } }
   // the catalog's files by path, as notebook.py reads them
   function nbKnown(made) {
@@ -7693,7 +7702,7 @@
     if (!repo) nb.note = 'No repository is chosen: choose one in the bar.';
     else if (!token) nb.note = 'Sign in to read the notebooks of ' + repo + '.';
     else if (!state.meta) nb.note = repo + ' could not be read, so whether it is private is not known and its notebooks are not read. Press Refresh to try again.';
-    else if (isPublic(state.meta)) nb.note = repo + ' is public. A notebook names a person\'s files, so a proposal lives only on a private repository\'s branch ' + CATALOG_BRANCH + '.';
+    else if (nbVisibility(state.meta) !== 'private') nb.note = repo + (nbVisibility(state.meta) === 'internal' ? ' is internal: every member of its enterprise can read it' : ' is public') + '. A notebook names a person\'s files, so a proposal lives only on a private repository\'s branch ' + CATALOG_BRANCH + '.';
     drawNotebooks();
     if (nb.note) return;
     Promise.all([nbRead(repo, NOTEBOOKS_FILE), nbRead(repo, CATALOG_FILE)]).then(function (got) {
@@ -7721,7 +7730,7 @@
     names.reduce(function (done, name) {
       return done.then(function () {
         if (era !== nb.era) return;
-        return gh('GET', '/repos/' + owner + '/' + name).then(function (r) { return isPublic(r.data) ? 'public' : 'yes'; }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
+        return gh('GET', '/repos/' + owner + '/' + name).then(function (r) { var v = nbVisibility(r.data); return v === 'private' ? 'yes' : v; }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
           .then(function (word) { if (era === nb.era) nb.made[name] = word; });
       });
     }, Promise.resolve()).then(function () { if (era === nb.era && names.length) drawNotebooks(); });
@@ -7760,6 +7769,7 @@
   function nbMadeWords(name) {
     var made = nb.made[name];
     return made === 'yes' ? ['tok__state tok__state--go', 'Repository made'] : made === 'public' ? ['tok__state tok__state--warn', 'Repository is public']
+      : made === 'internal' ? ['tok__state tok__state--warn', 'Repository is internal']
       : made === 'no' ? ['tok__state tok__state--warn', 'Repository not found'] : made === 'unread' ? ['tok__state', 'Repository not read'] : null;
   }
   function nbCanWrite() { return !!(token && nb.data && nb.known && !nb.problems.length); }
@@ -7840,10 +7850,10 @@
     var sum = nbSummary(book), owner = nb.repo.split('/')[0], made = nb.made[book.repository];
     add(side, close, el('h3', 'console__boxh', nbTitle(book)));
     var repoLine = el('p', 'tok__owner');
-    if (made === 'yes' || made === 'public') add(repoLine, link('https://github.com/' + owner + '/' + book.repository, owner + '/' + book.repository));
+    if (nbFound(book.repository)) add(repoLine, link('https://github.com/' + owner + '/' + book.repository, owner + '/' + book.repository));
     else add(repoLine, typeof book.repository === 'string' ? book.repository : 'no repository named');
     add(side, repoLine);
-    if (made === 'public') add(side, add(el('p', 'tok__state tok__state--warn'), 'The repository is public, and a notebook names a person\'s files: make it private on GitHub, under ',
+    if (made === 'public' || made === 'internal') add(side, add(el('p', 'tok__state tok__state--warn'), (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files: make it private on GitHub, under ',
       link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).'));
     else if (made) add(side, el('p', 'tok__state ' + (made === 'yes' ? 'tok__state--go' : made === 'no' ? 'tok__state--warn' : ''),
       made === 'yes' ? 'The repository is made.' : made === 'no' ? 'The repository is not made yet, or this sign-in cannot reach it' + (signedInByApp() ? ' (SymphonyBoard reaches only the repositories it is installed on)' : '') + ': the notebook skill makes it from this proposal.' : 'Whether the repository is made could not be read.'));
@@ -7883,7 +7893,7 @@
     var d = $('nb-dialog');
     if (!d) return;
     if (!nbCanWrite()) { say('The notebooks are still being read; press again in a moment.'); return; }
-    if (nbWriting) { say('A change to ' + NOTEBOOKS_FILE + ' on ' + nbWriting + ' is on its way; press again once it has landed.'); return; }
+    if (nbBusy()) { say('A change to ' + NOTEBOOKS_FILE + ' on ' + nbWriting + ' is on its way; press again once it has landed.'); return; }
     var book = nbBook(slug);
     if (slug && !book) return;
     if (!book && (nb.data.notebooks || []).length >= NOTEBOOKS_MAX) { say('A proposal holds at most ' + NOTEBOOKS_MAX + ' notebooks: take one out first.', true); return; }
@@ -7981,13 +7991,13 @@
   function removeNotebook(slug, button) {
     var book = nbBook(slug);
     if (!book || !nbCanWrite()) return;
-    if (nbWriting) { say('A change to ' + NOTEBOOKS_FILE + ' on ' + nbWriting + ' is on its way; press again once it has landed.'); return; }
+    if (nbBusy()) { say('A change to ' + NOTEBOOKS_FILE + ' on ' + nbWriting + ' is on its way; press again once it has landed.'); return; }
     var others = (nb.data.notebooks || []).filter(function (b) { return b !== book; });
     var elsewhere = Object.create(null);
     others.forEach(function (b) { (isPlain(b) && Array.isArray(b.files) ? b.files : []).forEach(function (p) { elsewhere[p] = true; }); });
     var files = Array.isArray(book.files) ? book.files : [];
     var alone = files.filter(function (p) { return !elsewhere[p]; }).length;
-    if (!window.confirm('Take ' + nbTitle(book) + ' out of the proposal? Its ' + plural(files.length, 'file') + ' stay on the drive' + (alone ? ', and ' + (alone === 1 ? 'one of them is' : alone + ' of them are') + ' then in no notebook' : '') + '.' + (nb.made[book.repository] === 'yes' ? ' The repository ' + book.repository + ' stays as it is.' : ''))) return;
+    if (!window.confirm('Take ' + nbTitle(book) + ' out of the proposal? Its ' + plural(files.length, 'file') + ' stay on the drive' + (alone ? ', and ' + (alone === 1 ? 'one of them is' : alone + ' of them are') + ' then in no notebook' : '') + '.' + (nbFound(book.repository) ? ' The repository ' + book.repository + ' stays as it is.' : '') + (others.length ? '' : ' It is the last notebook, so ' + NOTEBOOKS_FILE + ' is deleted from ' + CATALOG_BRANCH + ', with whatever else the organizer wrote in it.'))) return;
     button.disabled = true;
     nbWrite(others, 'Take the notebook ' + slug + ' out of the proposal', 'Took ' + nbTitle(book) + ' out of ' + NOTEBOOKS_FILE + ' on ' + nb.repo + '. Its files stay on the drive.');
   }
@@ -8003,7 +8013,7 @@
   // proposal keeps whatever else the organizer wrote beside the notebooks, and is checked against the
   // catalog first, which is asked once more, since a notebook drawn from a catalog the organizer has
   // since rewritten could name a path it no longer lists; a proposal with no notebook left is no
-  // proposal, and the file goes, as notebook.py takes none
+  // proposal, and the file goes, as notebook.py takes none, and what else it held goes with it
   function nbWrite(books, message, done) {
     var repo = nb.repo, era = nb.era, account = shownLogin, sha = nb.sha, catalogSha = nb.catalogSha;
     var data = Object.assign({}, nb.data, { notebooks: books });
@@ -8012,36 +8022,53 @@
     if (wrong.length) { say(NOTEBOOKS_FILE + ' was not written, since it would not hold together with the catalog: ' + wrong.join('; ') + '.', true); return; }
     var path = '/repos/' + repo + '/contents/' + NOTEBOOKS_FILE;
     nbWriting = repo;
+    nbWritingEnds = ends;
     say('Writing ' + NOTEBOOKS_FILE + ' on ' + repo + '...');
+    // GitHub's refusal of the write itself, not of the read before it
+    function wrote(e) { if (e && typeof e === 'object') e.wrote = true; throw e; }
     function changed(name) { var e = new Error(name + ' on ' + CATALOG_BRANCH + ' changed'); e.changed = name; return e; }
     gh('GET', '/repos/' + repo + '/contents/' + CATALOG_FILE + '?ref=' + encodeURIComponent(CATALOG_BRANCH) + '&at=' + Date.now(), undefined, OBJECT).then(function (r) {
       if (!r.data || r.data.sha !== catalogSha) throw changed(CATALOG_FILE);
     }, function (e) { if (e.status === 404) throw changed(CATALOG_FILE); throw e; }).then(function () {
-      if (!books.length) return sha ? gh('DELETE', path, { message: message, sha: sha, branch: CATALOG_BRANCH }, undefined, false, account) : { data: null };
+      if (!books.length) return sha ? gh('DELETE', path, { message: message, sha: sha, branch: CATALOG_BRANCH }, undefined, false, account).catch(wrote) : { data: null };
       var put = { message: message, content: utf8Base64(JSON.stringify(data, null, 2) + '\n'), branch: CATALOG_BRANCH };
       if (sha) put.sha = sha;
-      return gh('PUT', path, put, undefined, false, account);
+      return gh('PUT', path, put, undefined, false, account).catch(wrote);
     }).then(function (r) {
       nbWriting = '';
       // the page went to another repository or was refreshed meanwhile: the write still says how it
       // went, and the same repository is read again, since what it drew may predate the write
       if (era !== nb.era) { say(done); if (nb.repo === repo) nbReread(repo); return; }
-      nb.data = data;
+      nb.data = books.length ? data : { notebooks: [], left_out: Object.keys(nb.known) };
       nb.sha = books.length && r && r.data && isPlain(r.data.content) && typeof r.data.content.sha === 'string' ? r.data.content.sha : null;
       if (nb.side && !nbBook(nb.side)) nb.side = '';
       drawNotebooks();
       say(done);
       askMade(repo, era);
     }).catch(function (e) {
-      nbWriting = '';
-      // a sha the file no longer has is 409; a file made where there was none, written with no sha, 422
-      var moved = e.changed || e.status === 409 || e.status === 422;
-      if (moved) say((e.changed || NOTEBOOKS_FILE) + ' on ' + repo + '\'s ' + CATALOG_BRANCH + ' changed since the cards were drawn, so nothing was written; it is read again: look it over and press again.', true);
-      else say(NOTEBOOKS_FILE + ' on ' + repo + ' was not written: ' + e.message + (e.status === 403 || e.status === 404 ? ' Writing it needs write access to ' + repo + (signedInByApp() ? ' and Contents: read and write on SymphonyBoard.' : ', with Contents: read and write on the token.') : ''), true);
-      if (era !== nb.era) { if (moved && nb.repo === repo) nbReread(repo); return; }
-      if (moved) loadNotebooks(repo); else drawNotebooks();
+      // GitHub answers a write with 409 for a sha the file no longer has, 422 for a file made where
+      // there was none, written with no sha, and 404 for a delete of a file already gone; but 409 for
+      // a rule that covers the branch too, and 404 where the sign-in may not write: only the file's
+      // sha read now, unlike the one sent, says the organizer changed it
+      var ask = !e.changed && e.wrote && (e.status === 409 || e.status === 422 || e.status === 404);
+      (ask ? nbShaNow(repo).then(function (now) { return now !== sha; }, function () { return false; }) : Promise.resolve(!!e.changed)).then(function (moved) {
+        nbWriting = '';
+        // the repository is read again where it is still the one shown or the page's own era
+        var again = era === nb.era || nb.repo === repo;
+        if (moved) say((e.changed || NOTEBOOKS_FILE) + ' on ' + repo + '\'s ' + CATALOG_BRANCH + ' changed since the cards were drawn, so nothing was written' + (again ? '; it is read again: look it over and press again.' : '.'), true);
+        else say(NOTEBOOKS_FILE + ' on ' + repo + ' was not written: ' + e.message + (e.wrote && (e.status === 404 || e.status === 403 && !nbRateLimited(e)) ? ' Writing it needs write access to ' + repo + (signedInByApp() ? ' and Contents: read and write on SymphonyBoard.' : ', with Contents: read and write on the token.') : ''), true);
+        if (era !== nb.era) { if (moved && nb.repo === repo) nbReread(repo); return; }
+        if (moved) loadNotebooks(repo); else drawNotebooks();
+      });
     });
   }
+  // the sha notebooks.json has on drive-catalog now, null where there is none
+  function nbShaNow(repo) {
+    return gh('GET', '/repos/' + repo + '/contents/' + NOTEBOOKS_FILE + '?ref=' + encodeURIComponent(CATALOG_BRANCH) + '&at=' + Date.now(), undefined, OBJECT)
+      .then(function (r) { return isPlain(r.data) && typeof r.data.sha === 'string' ? r.data.sha : null; }, function (e) { if (e.status === 404) return null; throw e; });
+  }
+  // GitHub's rate limit, which it gives as a 429 or as a 403 that says so (explain)
+  function nbRateLimited(e) { return e.status === 429 || (e.status === 403 && /rate limit|secondary/i.test(e.data && e.data.message ? String(e.data.message) : '')); }
   // the repository read again where the tab shows it, else forgotten, so its next opening reads it
   function nbReread(repo) { if (consoleTab === 'notebooks') loadNotebooks(repo); else nbForget(); }
   function initNotebooksTab() {
