@@ -5541,6 +5541,12 @@
       out.id = s.id || newTokenId();
       var who = owner ? owner.value.trim() : (s.owner || (adding ? shownLogin : ''));
       if (who) out.owner = who;
+      // the Token run's marks stay through a save here: the account id while the token still belongs
+      // to the same login, since a login can pass to someone else, and the word that a token lent
+      // with no say is in the organization's keeping; a save that dropped them would let the run name
+      // repositories to that lender, and refuse them their own token from an issue
+      if (s.uid != null && who && typeof s.owner === 'string' && who.toLowerCase() === s.owner.toLowerCase()) out.uid = s.uid;
+      if (s.keeping) out.keeping = s.keeping;
       return out;
     }
     function check() {
