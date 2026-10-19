@@ -358,6 +358,95 @@
         + '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256';
     }).catch(function (e) { say('The sign-in could not start: ' + e.message, true); offerToken(); });
   }
+  /* ---------- sign-in by code, for the Home Screen app ---------- */
+  // The panel installed as a Home Screen app runs in a window of its own, and a sign-in that leaves
+  // for GitHub's page may come back to the browser rather than into the app, leaving the sign-in's
+  // secret behind in the app's storage. GitHub's device flow signs in without leaving: the sign-in
+  // service asks GitHub for a code, the page shows it, the person types it at github.com/login/device,
+  // and the page asks the service, no faster than GitHub allows, for the token the code earns
+  // (symphony-app's signin/README.md, the device routes). It is the same token, renewed the same way.
+  var DEVICE_PAGE = 'https://github.com/login/device';
+  // the page as a Home Screen app: iOS says so through navigator.standalone, the rest through the
+  // manifest's display mode
+  function inApp() {
+    try { if (window.navigator.standalone === true) return true; } catch (e) { /* not iOS */ }
+    try { return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); } catch (e2) { return false; }
+  }
+  // one sign-in by code at a time: a new press, Cancel or another way in ends the one before, and a
+  // late answer to an ended one is dropped
+  var codeTurn = 0;
+  var codeTimer = null;
+  function endCode() {
+    codeTurn++;
+    if (codeTimer) { clearTimeout(codeTimer); codeTimer = null; }
+    var box = $('cp-code-box');
+    if (box) box.hidden = true;
+    ['cp-signin', 'cp-signin-code'].forEach(function (id) { if ($(id) && signinAvailable()) $(id).disabled = false; });
+  }
+  function showCode(code) {
+    $('cp-code').textContent = code;
+    $('cp-code-box').hidden = false;
+  }
+  var CODE_WORDS = {
+    expired_token: 'The code ran out before it was typed on GitHub; press the button again for a new one.',
+    access_denied: 'GitHub says the sign-in was cancelled on its page; press the button again to start over.',
+    device_flow_disabled: 'Sign-in by code is not turned on for SymphonyBoard yet (the App\'s owner ticks "Enable Device Flow" in its settings); use a token below meanwhile.',
+    no_such_route: 'The sign-in service does not offer sign-in by code yet; use a token below meanwhile.'
+  };
+  // asks for the token until the person has typed the code, GitHub refuses, or the code runs out; a
+  // moment the service or GitHub cannot be reached is asked again at the same pace
+  function pollCode(turn, device, every, until) {
+    return new Promise(function (resolve, reject) {
+      function later() { codeTimer = setTimeout(ask, every * 1000); }
+      function ask() {
+        codeTimer = null;
+        if (turn !== codeTurn) { resolve(null); return; }
+        if (Date.now() >= until) { var out = new Error(CODE_WORDS.expired_token); out.code = 'expired_token'; reject(out); return; }
+        exchange('/device/token', { device_code: device }).then(resolve, function (e) {
+          if (turn !== codeTurn) { resolve(null); return; }
+          if (e.code === 'authorization_pending') { later(); return; }
+          if (e.code === 'slow_down') { every = Math.min(Math.max(every + 5, Number(e.interval) || 0), 120); later(); return; }
+          // the service's own limit on one address's calls: it is asked again, more slowly
+          if (e.code === 'too_many_requests') { every = Math.min(every + 5, 120); later(); return; }
+          if (!e.code || e.code === 'github_unreachable') { later(); return; }
+          reject(e);
+        });
+      }
+      later();
+    });
+  }
+  function startCode(onSignedIn) {
+    endCode();
+    var turn = codeTurn;
+    var keep = $('cp-keep') ? $('cp-keep').checked : false;
+    ['cp-signin', 'cp-signin-code'].forEach(function (id) { if ($(id)) $(id).disabled = true; });
+    say('Asking GitHub for a code...');
+    exchange('/device', {}).then(function (got) {
+      if (turn !== codeTurn) return null;
+      var code = typeof got.user_code === 'string' && /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(got.user_code) ? got.user_code : '';
+      if (!code || typeof got.device_code !== 'string' || !got.device_code) throw new Error('The sign-in service answered without a code.');
+      showCode(code);
+      say('Type ' + code + ' on GitHub\'s page; this page signs you in as soon as you have.');
+      var until = Date.now() + Math.min(Math.max(Number(got.expires_in) || 900, 60), 3600) * 1000;
+      var every = Math.min(Math.max(Number(got.interval) || 5, 5), 60);
+      return pollCode(turn, got.device_code, every, until);
+    }).then(function (answer) {
+      if (!answer || turn !== codeTurn) return;
+      if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
+      endCode();
+      // as a pasted token does: a panel a kept sign-in opened meanwhile closes until GitHub names this one
+      showGate();
+      state = emptyState(state.repo);
+      keepOauth(answer, keep);
+      say('');
+      onSignedIn();
+    }).catch(function (e) {
+      if (turn !== codeTurn) return;
+      endCode();
+      say(CODE_WORDS[e.code] || (e.message + ' Press the button again, or use a token below.'), true);
+      offerToken();
+    });
+  }
   // GitHub's own word for a refresh token it will not renew any more (run out, revoked or spent);
   // every other failure, of the service or of GitHub, is of the moment and leaves the sign-in be
   var DEAD_REFRESH = 'bad_refresh_token';
@@ -373,6 +462,8 @@
         if (!r.ok || data.error) {
           var err = new Error('The sign-in service answered ' + r.status + (data.error ? ': ' + data.error : '') + (data.error_description ? ' (' + data.error_description + ')' : '') + '.');
           err.code = String(data.error || '');
+          // GitHub's slow_down names the longer wait it asks for (the device routes)
+          if (typeof data.interval === 'number') err.interval = data.interval;
           throw err;
         }
         return data;
@@ -808,8 +899,10 @@
     var gate = $('cp-gate');
     if (!gate) return;
     var signin = $('cp-signin');
-    if (signin && signinAvailable()) signin.addEventListener('click', startOauth);
-    else if (signin) {
+    if (signin && signinAvailable()) {
+      addCodeWay(signin, onSignedIn);
+      signin.addEventListener('click', function () { if (inApp()) startCode(onSignedIn); else { endCode(); startOauth(); } });
+    } else if (signin) {
       signin.disabled = true;
       if ($('cp-signin-off')) $('cp-signin-off').classList.remove('hidden');
       offerToken();
@@ -839,6 +932,40 @@
       });
     });
     $('cp-token').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('cp-open').click(); });
+  }
+  // The code's box under "Sign in with GitHub": in the Home Screen app that button itself signs in by
+  // code, and a line says so; in a browser a second, quieter button offers the same, for wherever
+  // GitHub's return does not come back to the page
+  function addCodeWay(signin, onSignedIn) {
+    var row = signin.parentNode;
+    var app = inApp();
+    var other = el('button', 'control__codeway quiet', 'Sign in with a code instead');
+    other.type = 'button';
+    other.id = 'cp-signin-code';
+    other.hidden = app;
+    other.addEventListener('click', function () { startCode(onSignedIn); });
+    row.appendChild(document.createTextNode(' '));
+    row.appendChild(other);
+    var open = el('a', 'control__codeopen', 'Copy it and open GitHub');
+    open.id = 'cp-code-open';
+    open.href = DEVICE_PAGE;
+    open.target = '_blank';
+    open.rel = 'noopener noreferrer';
+    open.addEventListener('click', function () {
+      var code = $('cp-code').textContent;
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(function () { /* the code stays on the page to read */ }); } catch (e) { /* the same */ }
+    });
+    var cancel = el('button', 'quiet', 'Cancel');
+    cancel.type = 'button';
+    cancel.id = 'cp-code-cancel';
+    cancel.addEventListener('click', function () { endCode(); say(''); });
+    var code = el('output', 'control__code', '');
+    code.id = 'cp-code';
+    var box = add(el('div', 'control__codebox'), el('p', '', 'Type this code on GitHub\'s page, github.com/login/device, and allow SymphonyBoard:'), code, add(el('div', 'control__codebar'), open, cancel));
+    box.id = 'cp-code-box';
+    box.hidden = true;
+    row.parentNode.insertBefore(box, row.nextSibling);
+    if (app) row.parentNode.insertBefore(el('p', 'admin__lead control__codelead', 'In this app, Sign in with GitHub shows a code to type on GitHub\'s page instead of leaving the app; come back once you have, and the page signs you in.'), box);
   }
   // GitHub is asked about a pasted token before it takes the place of anything, so a token GitHub
   // refuses, or a moment GitHub cannot be reached, leaves this tab's sign-in and the one the browser

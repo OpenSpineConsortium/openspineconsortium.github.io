@@ -24,6 +24,21 @@
 .control__token > summary:hover { color: var(--teal); }
 .control__token > summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .control__token[open] > summary { margin-bottom: 4px; }
+/* sign-in by code: the code GitHub gives, large and spaced to read off and type, with the link that
+   copies it and opens GitHub's page; the Home Screen app's way in, and a browser's second one */
+.control .control__codeway { margin: 4px 0 12px 8px; }
+.control__codeway[hidden], .control__codebox[hidden] { display: none; }
+.control__codebox { margin: 2px 0 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); }
+.control__codebox > p { margin: 0 0 8px; color: var(--ink-soft); font-size: 0.92rem; }
+.control__code { display: block; font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace); font-size: 2rem; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); margin: 2px 0 12px; user-select: all; -webkit-user-select: all; }
+.control__codebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.control .control__codeopen { display: inline-block; padding: 9px 20px; border-radius: 100px; font-weight: 600; color: var(--paper-card); background: var(--ink); border: 1px solid var(--ink); text-decoration: none; }
+.control .control__codeopen:hover { color: var(--paper-card); background: var(--teal); border-color: var(--teal); }
+.console .control__codeopen, .console .control__codeopen:hover { color: #08110F; }
+.console .control__codeopen { background: var(--teal); border-color: var(--teal); }
+.console .control__codeopen:hover { background: var(--teal-bright); border-color: var(--teal-bright); }
+.control .control__codeopen:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.control__codelead { margin: 0 0 8px; }
 
 /* ---------- the repository line and the summary ---------- */
 .control__pick { margin-top: 8px; }
