@@ -2298,13 +2298,17 @@
   // it, so the tabs out of sight are not taken for all there are (control.css, data-more)
   function railEdges() {
     var rail = $('console') && $('console').querySelector('.console__rail');
-    if (!rail) return;
+    if (rail) markEdges(rail, getComputedStyle(rail).flexDirection === 'row');
+  }
+  // which ends of a box that scrolls sideways have more past them, as data-more, which the
+  // stylesheet fades: the rail on a phone, and the Dependencies tab's strip of tiles
+  function markEdges(box, sideways) {
     var more = '';
-    if (getComputedStyle(rail).flexDirection === 'row' && rail.scrollWidth > rail.clientWidth + 1) {
-      var left = rail.scrollLeft > 1, right = rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 1;
+    if (sideways && box.scrollWidth > box.clientWidth + 1) {
+      var left = box.scrollLeft > 1, right = box.scrollLeft + box.clientWidth < box.scrollWidth - 1;
       more = left && right ? 'both' : (left ? 'left' : (right ? 'right' : ''));
     }
-    if (more) rail.setAttribute('data-more', more); else rail.removeAttribute('data-more');
+    if (more) box.setAttribute('data-more', more); else box.removeAttribute('data-more');
   }
   // the rows of a list, a line that says the list is empty or still reading counting for none
   function consoleRows(id) {
@@ -3935,7 +3939,7 @@
   }
   function graphStripClear() {
     var strip = $('cp-graph-focus');
-    if (strip) { clear(strip); strip.hidden = true; }
+    if (strip) { clear(strip); strip.hidden = true; strip.removeAttribute('data-more'); }
     graphKey(false);
   }
   // the key to the colours and the arrows, shown only while there are charts to read it by
@@ -3971,10 +3975,40 @@
       if (box) box.scrollTop = 0;
     }
   }
-  // on a phone the tiles are one row that scrolls sideways, so the pressed one is brought to its middle
+  // the tiles are one row that scrolls sideways where they run past its end, so the pressed one is
+  // brought to its middle; a strip filled while its tab is hidden, as when the console opens on
+  // another tab and draws there, has no width yet, so this waits for the first time it is laid out
+  // with one, as graphCentreOnShow does, and then brings in the tile still pressed
+  var graphTileWatch = null;
   function graphTileInView(strip, tile) {
-    if (strip.scrollWidth <= strip.clientWidth + 1) return;
-    strip.scrollLeft = Math.max(0, tile.offsetLeft - Math.round((strip.clientWidth - tile.offsetWidth) / 2));
+    if (graphTileWatch) { graphTileWatch.disconnect(); graphTileWatch = null; }
+    if (!strip.clientWidth) {
+      if (typeof ResizeObserver !== 'function') return;
+      var watch = graphTileWatch = new ResizeObserver(function () {
+        if (!strip.clientWidth) return;
+        watch.disconnect();
+        if (graphTileWatch === watch) graphTileWatch = null;
+        if (tile.isConnected && tile.getAttribute('aria-pressed') === 'true') graphTileInView(strip, tile);
+      });
+      watch.observe(strip);
+      return;
+    }
+    if (strip.scrollWidth > strip.clientWidth + 1) strip.scrollLeft = Math.max(0, tile.offsetLeft - Math.round((strip.clientWidth - tile.offsetWidth) / 2));
+    graphStripEdges();
+  }
+  // the strip's ends fade where more tiles lie past them, as the rail's do on a phone
+  function graphStripEdges() {
+    var strip = $('cp-graph-focus');
+    if (strip) markEdges(strip, !strip.hidden);
+  }
+  // a mouse's wheel turns the strip sideways where its tiles run past its end and the deck holds the
+  // window, so a laptop with no sideways wheel reaches every tile; where the page scrolls as a whole
+  // the wheel scrolls the page, as it does anywhere else on it
+  function graphStripWheel(e) {
+    var strip = e.currentTarget;
+    if (e.ctrlKey || pageScrolls() || strip.scrollWidth <= strip.clientWidth + 1 || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    strip.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? strip.clientWidth : 1));
   }
   // the tiles for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
   // was or it is gone, the first chart; a chart is a section the strip shows and hides by its key.
@@ -4032,7 +4066,9 @@
   }
   // Previous and Next on each card, with its place among the charts, so the charts are stepped through
   // one after another from where a person reads, without going back up to the tiles; the button
-  // pressed keeps the keyboard's focus on the card it shows, or its other button at the last chart
+  // pressed keeps the keyboard's focus on the card it shows, or its other button at the last chart.
+  // They stand in the card's row of tools, which keeps one place on every card (control.css), so a
+  // button pressed again and again stays under the mouse from card to card
   function graphStepper(draw, c, prev, next, i, n) {
     var nav = el('div', 'graph__step');
     nav.setAttribute('role', 'group');
@@ -4057,7 +4093,7 @@
       return b;
     }
     add(nav, step('graph__prev', prev, '‹', 'Previous chart'), el('span', 'graph__pos', (i + 1) + ' of ' + n), step('graph__next', next, '›', 'Next chart'));
-    c.section.querySelector('.graph__head').appendChild(nav);
+    c.section.querySelector('.graph__tools').appendChild(nav);
   }
   // the tiles answer the arrow keys as tabs do: Left and Right, Home and End move to a tile and show
   // its chart
@@ -4069,6 +4105,8 @@
     if (at < 0) return;
     e.preventDefault();
     var to = tiles[Math.max(0, Math.min(tiles.length - 1, at + moves[e.key]))];
+    // a key at either end moves nowhere, so it changes nothing: no fade again, no scroll to the top
+    if (to === tiles[at]) return;
     to.focus({ preventScroll: true });
     to.click();
   }
@@ -4126,6 +4164,9 @@
     return graphList(draw, '/repos/' + draw.repo + '/issues/' + number + '/sub_issues?per_page=100').then(function (list) {
       var children = list.filter(function (c) { return isPlain(c) && !('pull_request' in c) && inRepository(c, draw.repo); });
       if (children.length) draw.subIssues[number] = children.map(function (c) { return Number(c.number); });
+      // the sub-issues in another repository, which GitHub's summary on the epic counts and no chart
+      // draws, are counted, so the card's pills can still add up to its bar
+      draw.elsewhere[number] = list.filter(function (c) { return isPlain(c) && !('pull_request' in c); }).length - children.length;
       children.forEach(function (c) { graphRemember(draw, c); });
       if (!isEpic) return;
       return children.reduce(function (p, child) { return p.then(function () { return graphReadBlockers(draw, child); }); }, Promise.resolve());
@@ -4157,7 +4198,7 @@
     // a draw started afresh says nothing yet, so an earlier draw's failure leaves the summary
     s.failed = s.failed.filter(function (f) { return f.indexOf('the dependencies (') !== 0; });
     if (s.ready) summary();
-    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
+    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, elsewhere: {}, blockedBy: {}, others: {}, listed: {} };
     var open = s.issues.filter(function (it) { return !it.pull_request; });
     open.forEach(function (it) { draw.listed[Number(it.number)] = graphIssue(it); });
     var planned = open.filter(function (it) { return graphPlanned(draw.listed[Number(it.number)]) && !owesNoRead(it); })
@@ -4263,8 +4304,10 @@
   var GRAPH_COUNTS = [['todo', 'to do'], ['claimed', 'claimed'], ['review', 'in review'], ['blocked', 'blocked'], ['', 'open'], ['closed', 'closed']];
   // a card's head: its heading, then, for an epic, a bar of its closed tasks, and a pill per state
   // of its own issues, each in the colour its nodes are drawn in, so the card reads before the chart;
-  // an epic's own are its sub-issues, the issues its bar counts, and a blocker from outside it is
-  // counted apart, in a pill of its own, so the pills add up to the bar's total
+  // an epic's own are its sub-issues in this repository, which its chart draws; its sub-issues in
+  // another repository, which GitHub's summary and so the bar count and no chart draws, have a pill
+  // of their own, so the pills add up to the bar's total, and a blocker from outside the epic,
+  // which is none of its tasks, is counted apart, in a last pill
   function graphCounts(draw, chart, own) {
     var counts = {};
     chart.nodes.forEach(function (it) {
@@ -4274,7 +4317,7 @@
     });
     return counts;
   }
-  function graphCardHead(draw, heading, chart, progress, own) {
+  function graphCardHead(draw, heading, chart, progress, own, elsewhere) {
     var head = el('div', 'graph__head');
     add(head, el('h3', '', heading));
     var meta = el('div', 'graph__meta');
@@ -4296,6 +4339,7 @@
     GRAPH_COUNTS.forEach(function (pair) {
       if (counts[pair[0]]) add(pills, add(el('span', 'graph__pill graph__pill--' + (pair[0] || 'plain')), el('b', '', counts[pair[0]]), ' ' + pair[1]));
     });
+    if (elsewhere) add(pills, add(el('span', 'graph__pill graph__pill--elsewhere'), el('b', '', elsewhere), ' in another repository'));
     var outside = own ? chart.nodes.filter(function (it) { return own.indexOf(it.number) < 0; }).length : 0;
     if (outside) add(pills, add(el('span', 'graph__pill graph__pill--outside'), el('b', '', outside), ' from outside the epic'));
     add(meta, pills);
@@ -4306,11 +4350,12 @@
     var progress = tile.progress;
     var sec = el('section', 'graph__section');
     sec.setAttribute('data-focus', key);
-    var head = graphCardHead(draw, heading, chart, progress, tile.own);
+    var head = graphCardHead(draw, heading, chart, progress, tile.own, tile.elsewhere);
     add(sec, head);
     var host = el('div', 'control__chart');
     var fit = graphFitButton(host);
-    add(head.querySelector('.graph__meta'), fit);
+    // Fit, and Previous and Next where there are several charts (graphStepper), share one row
+    add(head, add(el('div', 'graph__tools'), fit));
     add(sec, host);
     var table = el('table', 'control__tasks'), head = el('tr');
     ['Issue', 'Title', 'State', relation, 'Worker'].forEach(function (c) { add(head, el('th', '', c)); });
@@ -4356,7 +4401,7 @@
     }
     var charts = [];
     if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf, 'goals', { kind: 'Goals', title: goals.length === 1 ? 'The goal and its epics' : 'The goals and their epics' }));
-    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, { kind: 'Epic #' + epic.number, title: graphTileTitle(epic), progress: epic.progress, own: draw.subIssues[epic.number] || [] })); });
+    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, { kind: 'Epic #' + epic.number, title: graphTileTitle(epic), progress: epic.progress, own: draw.subIssues[epic.number] || [], elsewhere: draw.elsewhere[epic.number] || 0 })); });
     graphStrip(draw, charts);
     graphKey(true);
     var drew = (goals.length ? [plural(goals.length, 'goal')] : []).concat(epics.length ? [plural(epics.length, 'epic')] : []);
@@ -4473,21 +4518,25 @@
     var watch = new ResizeObserver(function () { if (!chart.host.isConnected) watch.disconnect(); else update(); });
     watch.observe(chart.host);
   }
-  // a chart is moved by dragging it with the mouse, sideways inside its box and up and down the tab, as
-  // a map is; a press that does not move still presses its node, and a drag presses nothing. Touch
-  // scrolls by itself, so only a mouse drags. The drag is followed on the window, so it goes on when
-  // the mouse leaves the chart, and ends wherever the button comes up.
+  // a chart is moved by dragging it with the mouse, sideways inside its box and up and down the tab,
+  // or the page where the page scrolls as a whole (pageScrolls), as a map is; a press that does not
+  // move still presses its node, and a drag presses nothing. Touch scrolls by itself, so only a mouse
+  // drags. The drag is followed on the window, so it goes on when the mouse leaves the chart, and
+  // ends wherever the button comes up, or at the first move made with no button held, where the
+  // release never came: a menu opened on the press takes it (a Mac's Ctrl+click), and so can
+  // another window taking the mouse mid-drag.
   function graphPan(container) {
     var pan = null, panned = false;
     container.addEventListener('pointerdown', function (e) {
       if (e.pointerType !== 'mouse' || e.button !== 0) return;
       var host = e.target && e.target.closest ? e.target.closest('.control__chart') : null;
       if (!host || !host.querySelector('svg')) return;
-      var box = host.closest('.console__scroll');
-      pan = { host: host, box: box, id: e.pointerId, x: e.clientX, y: e.clientY, left: host.scrollLeft, top: box ? box.scrollTop : 0, moved: false };
+      var page = pageScrolls(), box = page ? null : host.closest('.console__scroll');
+      pan = { host: host, box: box, page: page, id: e.pointerId, x: e.clientX, y: e.clientY, left: host.scrollLeft, top: page ? window.pageYOffset : (box ? box.scrollTop : 0), moved: false };
     });
     window.addEventListener('pointermove', function (e) {
       if (!pan || e.pointerId !== pan.id) return;
+      if (!(e.buttons & 1)) { pan.host.classList.remove('control__chart--panning'); pan = null; return; }
       var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
       if (!pan.moved) {
         if (Math.abs(dx) + Math.abs(dy) < 6) return;
@@ -4497,7 +4546,10 @@
       }
       e.preventDefault();
       pan.host.scrollLeft = pan.left - dx;
-      if (pan.box) pan.box.scrollTop = pan.top - dy;
+      // the page is moved at once, not by the smooth scroll the site's stylesheet asks of it, which
+      // would trail behind the mouse
+      if (pan.page) window.scrollTo({ left: window.pageXOffset, top: pan.top - dy, behavior: 'instant' });
+      else if (pan.box) pan.box.scrollTop = pan.top - dy;
     });
     function end(e) {
       if (!pan || e.pointerId !== pan.id) return;
@@ -4615,7 +4667,11 @@
   }
   // a node pressed, in the tab's own charts or in the board's
   function initGraph() {
-    $('cp-graph-focus').addEventListener('keydown', graphStripKeys);
+    var strip = $('cp-graph-focus');
+    strip.addEventListener('keydown', graphStripKeys);
+    strip.addEventListener('wheel', graphStripWheel, { passive: false });
+    strip.addEventListener('scroll', graphStripEdges, { passive: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(graphStripEdges).observe(strip);
     ['cp-graph', 'cp-board'].forEach(function (id) {
       graphPan($(id));
       $(id).addEventListener('click', function (e) {

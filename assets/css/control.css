@@ -99,23 +99,27 @@
 .console .control__chart { background-color: #0F1916; color: #DCE6E1; }
 .console .control__chart { background-image: radial-gradient(rgba(233, 230, 218, 0.07) 1px, transparent 1.4px); background-size: 18px 18px; border-color: rgba(233, 230, 218, 0.09); border-radius: 12px; padding: 18px 12px; margin: 12px 0 8px; }
 /* the colours of the states, set once for the nodes, the key, the pills and the tiles' bars: each
-   state's edge, bright enough to read at 3 to 1 or more on the chart's ground, and a dark tint of it */
+   state's edge, bright enough to read at 3 to 1 or more on the chart's ground, and a dark tint of it,
+   but in review's, which is lit, and open's, a pale grey edge */
 :root {
   --st-todo: #3FB950; --st-todo-tint: #10261B;
   --st-claimed: #E3B341; --st-claimed-tint: #2A2412;
-  --st-review: #58A6FF; --st-review-tint: #112338;
+  --st-review: #58A6FF; --st-review-tint: #22466F;
   --st-blocked: #F85149; --st-blocked-tint: #451C20;
   --st-closed: #6F7D78; --st-closed-tint: #151B1A;
-  --st-open: #8A9E97; --st-open-tint: #16221F;
+  --st-open: #C2CCC8; --st-open-tint: #16221F;
 }
 /* a node is shaded by its state, the class the board gives it: dark, with the state's colour at its
-   edge and a tint of it inside. Hue alone would leave to do, claimed and blocked alike to a reader
-   who does not tell red from green, so each also has an edge of its own: blocked thick, on a tint
-   lighter than the rest, claimed dotted, and closed grey, dashed and struck through. Mermaid writes
-   the board's own light colours as rules under each chart's id, so these name the two boxes that
-   hold charts by theirs to come after them; symphony-panel.js (graphRestyle) takes the same colours
-   off the nodes' own elements */
-:is(#cp-graph, #cp-board) .control__chart .node > rect.label-container { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1.5px !important; transition: filter 0.15s; }
+   edge and a tint of it inside. Hue alone would leave states alike to a reader who does not tell red
+   from green or blue from green, or on a screen of greys, so no two differ by hue alone: blocked has
+   a thick edge, claimed a dotted one, closed a grey, dashed one and its words struck through, in
+   review a fill lit well above to do's, and open, an issue in none of those states, a thin pale edge
+   far lighter than to do's green; to do keeps the plain edge. Mermaid writes the board's own light
+   colours as rules under each chart's id, so these name the two boxes that hold charts by theirs to
+   come after them; symphony-panel.js (graphRestyle) takes the same colours off the nodes' own
+   elements */
+:is(#cp-graph, #cp-board) .control__chart .node > rect.label-container { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1px !important; transition: filter 0.15s; }
+:is(#cp-graph, #cp-board) .control__chart .node:is(.todo, .claimed, .review, .blocked, .closed) > rect.label-container { stroke-width: 1.5px !important; }
 :is(#cp-graph, #cp-board) .control__chart .node :is(span, p) { color: #E4ECE8 !important; }
 :is(#cp-graph, #cp-board) .control__chart .node.todo > rect.label-container { fill: var(--st-todo-tint) !important; stroke: var(--st-todo) !important; }
 :is(#cp-graph, #cp-board) .control__chart .node.claimed > rect.label-container { fill: var(--st-claimed-tint) !important; stroke: var(--st-claimed) !important; stroke-width: 2.5px !important; stroke-dasharray: 0.5 5; stroke-linecap: round; }
@@ -128,30 +132,36 @@
 :is(#cp-graph, #cp-board) .control__chart .edgePaths path { stroke: #8A9E97 !important; }
 :is(#cp-graph, #cp-board) .control__chart marker path { fill: #8A9E97 !important; stroke: #8A9E97 !important; }
 /* the tab's line of what was drawn is the quieter one, a warning keeping its own colour */
-.console #cp-graph-state, .console #cp-graph-said { margin: 0; }
+.console #cp-graph-state, .console #cp-graph-said { margin: 0; max-width: none; }
 .console #cp-graph-state:not(.admin__warn) { font-size: 0.88rem; color: var(--ink-soft); }
-/* the tiles: All, Goals and one per epic, each saying what its chart is, its title, a bar of its
-   issues by state and how far it has got, the one shown edged in the deck's teal; as wide as the
-   window gives, so a row holds several; there only where there are two charts or more */
-#cp-graph-focus { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(150px, 9vw + 70px, 220px)), 1fr)); gap: 8px; margin: 2px 0 10px; }
+/* the tiles: All, Goals and one per epic, each saying what its chart is, how far it has got, its
+   title and a bar of its issues by state, the one shown edged in the deck's teal; one compact row
+   that scrolls sideways where the tiles run past its end, its ends fading where more lie past them
+   (symphony-panel.js, graphStripEdges), so the strip never takes the chart's height however many
+   epics there are; there only where there are two charts or more */
+#cp-graph-focus { position: relative; flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 250px); gap: 8px; margin: 0 0 6px; padding: 2px 2px 6px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.22) transparent; }
 #cp-graph-focus[hidden] { display: none; }
+#cp-graph-focus[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+#cp-graph-focus[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent); }
+#cp-graph-focus[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent); }
 .console .graph__tile {
-  margin: 0; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 10px 12px 11px;
+  margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind foot" "title title" "bar bar";
+  align-items: baseline; gap: 3px 10px; padding: 8px 12px 10px;
   border-radius: 12px; border: 1px solid var(--line); background: var(--paper-card); color: var(--ink); text-align: left; font-weight: 400; cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.12s var(--ease);
 }
 .console .graph__tile:hover { border-color: rgba(60, 194, 177, 0.55); background: rgba(60, 194, 177, 0.06); color: var(--ink); transform: translateY(-1px); }
-.console .graph__tile[aria-pressed="true"] { border-color: var(--teal); background: rgba(60, 194, 177, 0.1); box-shadow: inset 0 0 0 1px var(--teal), 0 6px 18px rgba(0, 0, 0, 0.28); }
-.console .graph__tile:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: 2px; }
-.graph__tkind { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.console .graph__tile[aria-pressed="true"] { border-color: var(--teal); background: rgba(60, 194, 177, 0.1); box-shadow: inset 0 0 0 1px var(--teal); }
+.console .graph__tile:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: -3px; }
+.graph__tkind { grid-area: kind; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .graph__tile[aria-pressed="true"] .graph__tkind { color: var(--teal); }
-.graph__ttitle { min-height: 2.6em; font-size: 0.9rem; font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-.graph__tbar { display: flex; gap: 2px; height: 6px; border-radius: 99px; overflow: hidden; background: rgba(233, 230, 218, 0.14); }
+.graph__ttitle { grid-area: title; font-size: 0.9rem; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph__tbar { grid-area: bar; align-self: center; margin-top: 4px; display: flex; gap: 2px; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(233, 230, 218, 0.14); }
 .graph__seg { display: block; height: 100%; background: var(--edge); }
-.graph__tfoot { font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.graph__tfoot { grid-area: foot; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
 /* the key: a swatch per state drawn as its nodes are, edge and all, and the three arrows, in two
    sets, so a narrow window moves a whole set to the next line rather than splitting the two */
-.graph__key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 28px; margin: 0 0 8px; font-size: 0.8rem; color: var(--ink-soft); }
+.graph__key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 28px; margin: 0 0 4px; font-size: 0.8rem; color: var(--ink-soft); }
 .graph__key[hidden] { display: none; }
 .graph__keyset { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 .graph__swatch, .graph__arrow { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -165,17 +175,23 @@
 .graph__swatch--claimed::before { border: 2px dotted var(--edge); }
 .graph__swatch--blocked::before { border-width: 3px; }
 .graph__swatch--closed::before { border-style: dashed; }
+.graph__swatch--open::before { border-width: 1px; }
 .graph__arrow svg { width: 26px; height: 10px; flex: none; }
 .graph__arrow line { stroke: #8A9E97; stroke-width: 1.5; }
 .graph__arrow path { fill: #8A9E97; }
 .graph__arrow--done line { stroke-dasharray: 2 2; }
 .graph__arrow--goal line { stroke-width: 3.5; }
-/* a card per chart: its heading with a bar of the epic's closed tasks and a pill per state, the
-   chart, and the list folded under it */
+/* a card per chart: its heading, its tools (Fit, and Previous and Next) at the top right, under them
+   a bar of the epic's closed tasks and a pill per state, the chart, and the list folded under it.
+   The tools keep that one place on every card however long its heading or however many its pills,
+   so a button pressed again and again stays under the mouse from card to card */
 .console .control__graph .graph__section { margin: 0 0 14px; padding: 14px 16px 8px; border: 1px solid var(--line-soft, rgba(233, 230, 218, 0.07)); border-radius: 14px; background: var(--paper-card); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); }
-.graph__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
-.console .graph__head h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
-.graph__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.graph__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; }
+.console .graph__head h3 { grid-column: 1; grid-row: 1; margin: 0; font-size: 1.05rem; font-weight: 600; }
+.graph__tools { grid-column: 2; grid-row: 1; align-self: start; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+/* nothing to hold (All, a chart that fits its card): no row of its own */
+.graph__tools:not(:has(.graph__fit:not([hidden]), .graph__step)), #cp-graph.graph--all .graph__tools:not(:has(.graph__fit:not([hidden]))) { display: none; }
+.graph__meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .graph__progress { display: flex; align-items: center; gap: 8px; }
 .graph__bar { width: 120px; height: 6px; border-radius: 99px; background: rgba(233, 230, 218, 0.18); overflow: hidden; }
 .graph__bar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--teal-deep), var(--teal-bright)); }
@@ -184,9 +200,10 @@
 .graph__pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 7px; border-radius: 99px; font-size: 0.78rem; color: var(--ink-soft); background: rgba(233, 230, 218, 0.04); border: 1px solid var(--line-soft, rgba(233, 230, 218, 0.07)); white-space: nowrap; }
 .graph__pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--edge); }
 .graph__pill b { color: var(--ink); font-weight: 600; }
-/* the blockers from outside an epic, which are no task of it: a pill of no state, dashed */
-.graph__pill--outside { border-style: dashed; border-color: rgba(233, 230, 218, 0.22); background: none; }
-.graph__pill--outside::before { display: none; }
+/* an epic's sub-issues in another repository, which its chart does not draw, and the blockers from
+   outside it, which are no task of it: pills of no state, dashed */
+.graph__pill--outside, .graph__pill--elsewhere { border-style: dashed; border-color: rgba(233, 230, 218, 0.22); background: none; }
+.graph__pill--outside::before, .graph__pill--elsewhere::before { display: none; }
 .console .graph__list { margin: 0 0 4px; }
 .console .graph__list > summary { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 6px; border-radius: 8px; font-size: 0.84rem; color: var(--ink-soft); cursor: pointer; list-style: none; }
 .console .graph__list > summary::-webkit-details-marker { display: none; }
@@ -204,7 +221,7 @@
 }
 .console button.graph__stepbtn:hover:not(:disabled) { color: var(--teal); border-color: var(--teal); background: rgba(60, 194, 177, 0.1); }
 .console button.graph__stepbtn:disabled { opacity: 0.35; cursor: default; }
-.graph__pos { min-width: 3.4em; text-align: center; font-size: 0.78rem; color: var(--ink-faint); white-space: nowrap; }
+.graph__pos { min-width: 3.4em; text-align: center; font-size: 0.78rem; color: var(--ink-soft); white-space: nowrap; }
 #cp-graph.graph--all .graph__step { display: none; }
 /* Fit: the whole chart at the card's width, and pressed again at its own size */
 .console button.graph__fit { margin: 0; padding: 2px 11px; border-radius: 99px; border: 1px solid var(--line); background: transparent; color: var(--ink-soft); font-size: 0.78rem; font-weight: 400; }
@@ -227,9 +244,19 @@
    the browser's own rule alone, so a later display rule on a section cannot quietly show a hidden one */
 .console .control__graph .graph__section[hidden] { display: none; }
 @media (max-width: 640px) {
-  /* a phone's tiles are one row that scrolls sideways under a finger, the next one showing at the edge */
-  #cp-graph-focus { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(150px, 46%); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 6px; scrollbar-width: thin; }
-  .console .graph__tile { scroll-snap-align: start; }
+  /* a phone's tiles are narrower, the next one showing at the edge, and snap under a finger; each
+     stacks its words, so its title has two lines */
+  #cp-graph-focus { grid-auto-columns: minmax(150px, 46%); scroll-snap-type: x proximity; }
+  .console .graph__tile { scroll-snap-align: start; grid-template-columns: minmax(0, 1fr); grid-template-areas: "kind" "title" "bar" "foot"; gap: 4px; }
+  .graph__ttitle { white-space: normal; min-height: 2.7em; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .graph__tfoot { text-align: left; }
+  /* a phone's card head is one column: its tools first, at the top of every card, then its heading
+     and its pills */
+  .graph__head { grid-template-columns: minmax(0, 1fr); }
+  .graph__tools { grid-column: 1; grid-row: auto; order: -1; justify-self: end; }
+  .console .graph__head h3 { grid-row: auto; }
+  .graph__meta { grid-column: 1; }
+  .graph__key { gap: 6px 16px; }
   /* a phone's card is a section between rules, with no frame of its own, so the chart inside it
      keeps the width four nested frames would take */
   .console .control__graph .graph__section { padding: 12px 0 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
