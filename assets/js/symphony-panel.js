@@ -2531,6 +2531,8 @@
     if (!c) return;
     var top = c.getBoundingClientRect().top + (window.pageYOffset || 0);
     c.style.setProperty('--console-h', Math.max(Math.floor(window.innerHeight - top), 0) + 'px');
+    // a foot the person sized is held to what the window now leaves the stage
+    if (layout.foot != null) applyLayout();
     var rail = c.querySelector('.console__rail');
     if (rail) rail.setAttribute('aria-orientation', getComputedStyle(rail).flexDirection === 'row' ? 'horizontal' : 'vertical');
     railEdges();
@@ -2910,6 +2912,128 @@
     window.addEventListener('resize', syncFullScreen);
     syncFullScreen();
   }
+  /* ---------- the site's bar hides itself, as a taskbar set to hide does ---------- */
+  // On the control page the deck takes the whole window and the site's bar comes back over its top
+  // only when it is wanted (the owner, 2026-10-19: "the top nav panel should hide and reappear when
+  // the mouse is over it, like windows does with its taskbar"): when the pointer reaches the window's
+  // top edge, a strip a few pixels tall; while keyboard focus is in the bar or one of its menus is
+  // open; and on a touch screen, which has no pointer to bring to an edge, when the handle at the top
+  // centre is tapped or swiped down. It goes a moment after the pointer leaves it and its menus, so a
+  // pass across it does not flicker, and at once on Escape or a press outside it. control.css slides
+  // it by transform, over the deck rather than pushing it down.
+  var BAR_LEAVE_MS = 600, BAR_TOUCH_MS = 4000, BAR_EDGE_PX = 8;
+  var bar = { over: false, timer: 0, handle: null, lastMove: null };
+  // a pointer that hovers: a mouse or a pen, on a device that has one even where its main pointer is
+  // a finger (a tablet with a mouse), since a phone, which has none, makes up mouse events at its
+  // corner that no finger moved
+  var hoverMedia = window.matchMedia ? window.matchMedia('(any-hover: hover)') : null;
+  function hovering(e) { return e.pointerType !== 'touch' && (!hoverMedia || hoverMedia.matches); }
+  // a pointer with no button held: a grip dragged past the window's top edge sizes its part, and a
+  // text selection or a press run up to the edge selects or cancels, and none of them calls the bar
+  function reachesBar(e) { return hovering(e) && !e.buttons && !barShown(); }
+  function inBar(node) {
+    return !!node && [$('nav'), $('flyouts')].some(function (part) { return part && part.contains(node); });
+  }
+  function barShown() { return document.body.classList.contains('console-bar-shown'); }
+  // the pointer on the bar or on a section's strip it dropped down, focus from the keyboard in either,
+  // or the phone's menu open holds the bar; a button a tap focused does not, or the tap would keep it
+  function barHeld() {
+    var focus = document.activeElement;
+    var keyed = inBar(focus) && focus.matches && focus.matches(':focus-visible');
+    return bar.over || keyed || !!($('navLinks') && $('navLinks').classList.contains('is-open'));
+  }
+  function showBar() {
+    clearTimeout(bar.timer);
+    document.body.classList.add('console-bar-shown');
+    if (bar.handle) bar.handle.setAttribute('aria-expanded', 'true');
+  }
+  // the bar never goes with the focus left in it, where Enter would follow a link nobody sees: a
+  // press on a grip, whose default the grip prevents, moves no focus out of it
+  function hideBar() {
+    if (inBar(document.activeElement)) document.activeElement.blur();
+    clearTimeout(bar.timer);
+    bar.over = false;
+    // the phone's menu hangs from the bar and a section's strip drops from it, so both close as the
+    // bar goes, each through main.js's own handler (the menu's button, the strips' mouseleave)
+    if ($('navLinks') && $('navLinks').classList.contains('is-open') && $('navToggle')) $('navToggle').click();
+    if ($('flyouts') && $('flyouts').querySelector('.is-open')) $('flyouts').dispatchEvent(new Event('mouseleave'));
+    document.body.classList.remove('console-bar-shown');
+    if (bar.handle) bar.handle.setAttribute('aria-expanded', 'false');
+  }
+  function hideBarSoon(ms) {
+    clearTimeout(bar.timer);
+    bar.timer = setTimeout(function () { if (barHeld()) hideBarSoon(ms); else hideBar(); }, ms || BAR_LEAVE_MS);
+  }
+  function initBar() {
+    if (!$('nav')) return;
+    document.body.classList.add('console-bar-auto');
+    // the hot strip along the window's top edge, for a pointer that hovers (control.css shows it): a
+    // move in it brings the bar, where an enter alone would also take the one a browser makes up at
+    // the window's corner as the page loads; a pointer that leaves the window across the top edge,
+    // past the strip between two of its moves, has reached the edge too, unless it was dragging
+    var strip = el('div', 'console__barstrip');
+    strip.setAttribute('aria-hidden', 'true');
+    strip.addEventListener('pointermove', function (e) { if (reachesBar(e)) showBar(); });
+    strip.addEventListener('pointerleave', function (e) { if (hovering(e)) hideBarSoon(); });
+    document.addEventListener('mousemove', function (e) { bar.lastMove = { y: e.clientY, free: !e.buttons }; }, { passive: true });
+    document.addEventListener('mouseout', function (e) {
+      var last = bar.lastMove;
+      if (!e.relatedTarget && e.clientY < BAR_EDGE_PX && last && last.free && last.y < 120 && reachesBar(e)) { showBar(); hideBarSoon(); }
+    });
+    // the handle, for a touch screen: a tap shows the bar, as a swipe down from it does
+    var handle = bar.handle = el('button', 'console__barhandle');
+    handle.type = 'button';
+    handle.setAttribute('aria-label', 'Show the site\'s menu');
+    handle.setAttribute('aria-controls', 'nav');
+    handle.setAttribute('aria-expanded', 'false');
+    var swipe = null;
+    function showForTouch() { showBar(); hideBarSoon(BAR_TOUCH_MS); }
+    handle.addEventListener('pointerdown', function (e) { swipe = { y: e.clientY, done: false }; });
+    handle.addEventListener('pointermove', function (e) {
+      if (swipe && !swipe.done && e.clientY - swipe.y > 12) { swipe.done = true; showForTouch(); }
+    });
+    handle.addEventListener('click', function () {
+      var swiped = swipe && swipe.done;
+      swipe = null;
+      if (!swiped) { if (barShown()) hideBar(); else showForTouch(); }
+    });
+    add(document.body, strip, handle);
+    [$('nav'), $('flyouts')].forEach(function (part) {
+      if (!part) return;
+      part.addEventListener('pointerenter', function (e) { if (hovering(e)) { bar.over = true; if (barShown()) showBar(); } });
+      part.addEventListener('pointerleave', function (e) { if (hovering(e)) { bar.over = false; if (barShown()) hideBarSoon(); } });
+      // a touch in the bar starts its wait again, so it stays while it is used
+      part.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' && barShown()) hideBarSoon(BAR_TOUCH_MS); });
+    });
+    document.addEventListener('focusin', function (e) { if (inBar(e.target)) showBar(); });
+    document.addEventListener('focusout', function (e) { if (inBar(e.target) && !inBar(e.relatedTarget)) hideBarSoon(); });
+    // a press outside the bar sends it away at once, and Escape does too, each with the focus. One
+    // Escape does one thing: where the keyboard is in the bar it is the bar's, before anything else
+    // hears it, so the Dependencies tab's help stays open under it; elsewhere it is the bar's only
+    // where nothing the key was pressed in took it first, as a chart's focus, the tab's key or its
+    // help does, so the window hears it last
+    document.addEventListener('pointerdown', function (e) {
+      if (barShown() && !inBar(e.target) && e.target !== handle) hideBar();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !barShown() || !inBar(e.target)) return;
+      e.preventDefault();
+      hideBar();
+    }, true);
+    window.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !barShown() || e.defaultPrevented) return;
+      hideBar();
+    });
+  }
+  // the window's top a page held to it keeps clear (the Dependencies tab on a phone, graphPhoneFit):
+  // on this page the site's bar hides itself and comes back over the deck, never pushing it down,
+  // so only the Home Screen app's top inset, which the body's padding keeps, is left clear; a bar
+  // that stands in the page keeps its own height
+  function barRoom() {
+    if (document.body.classList.contains('console-bar-auto')) return parseFloat(getComputedStyle(document.body).paddingTop) || 0;
+    var nav = $('nav');
+    return nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+  }
   // the worker's tiles set the select each group names; a select set any other way lights its tile
   function initTiles() {
     Array.prototype.forEach.call(document.querySelectorAll('.wtiles[data-for]'), function (group) {
@@ -2940,8 +3064,43 @@
     col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
     tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
     nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } },
-    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } }
+    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } },
+    // the foot: the message line and the task boxes of long work, with Clear and the buttons beside
+    // them; its bounds are measured each time, since they follow the window (footBounds)
+    foot: { prop: '--foot-h', min: 24, max: 1600, axis: 'y', sign: -1, measure: function () { return $('console').querySelector('.console__status').offsetHeight; }, bounds: footBounds }
   };
+  // what a sized foot may be now: never less than one line of message with its buttons, and never so
+  // tall that the stage keeps less than STAGE_MIN of the window. On a computer that is what the deck
+  // holds above the foot beside the Ask Claude bar; on a phone, whose page scrolls under a foot that
+  // sticks to the window's bottom, it is the rest of the window. In the foot's own pixels, which
+  // the text size scales.
+  var STAGE_MIN = 180;
+  function footBounds() {
+    var p = LAYOUT_PARTS.foot, c = $('console'), st = c && c.querySelector('.console__status');
+    if (!st || !$('msg') || !$('cp-msg-close')) return p;
+    var cs = getComputedStyle(c), ss = getComputedStyle(st), gap = parseFloat(cs.rowGap) || 0;
+    var line = parseFloat(getComputedStyle($('msg')).minHeight) || 30;
+    var buttons = Math.max($('cp-msg-close').offsetHeight, c.querySelector('.console__me').offsetHeight);
+    var pad = parseFloat(ss.paddingTop) + parseFloat(ss.paddingBottom);
+    var stacked = cs.overflow !== 'hidden';
+    var min = Math.ceil(pad + (stacked ? line + (parseFloat(ss.rowGap) || 0) + buttons : Math.max(line, buttons)));
+    // while the Dependencies tab is shown it needs more than the stage's least, and the foot leaves
+    // it that: its own least on a computer, and on a phone that and the rail above it (graphNeed)
+    var least = Math.max(STAGE_MIN, graphNeed());
+    var room = window.innerHeight - least;
+    if (!stacked) {
+      var ask = $('cp-askbar'), asked = ask && ask.getClientRects().length ? ask.getBoundingClientRect().height + gap : 0;
+      room = c.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - gap - asked - least;
+    }
+    min = Math.max(p.min, min);
+    return { min: min, max: Math.min(p.max, Math.max(min, Math.floor(room / scaleOf(st)))) };
+  }
+  // how much the text size scales a part: its size on screen over its size in its own pixels (the
+  // phone's rules leave the deck unscaled whatever text size the desktop saved)
+  function scaleOf(node) {
+    var w = node.offsetWidth;
+    return w ? node.getBoundingClientRect().width / w : zoomOf();
+  }
   var ZOOM_STEPS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.7];
   var layout = {};
   function readLayout() {
@@ -2967,14 +3126,31 @@
     var c = $('console');
     if (!c) return;
     Object.keys(LAYOUT_PARTS).forEach(function (k) {
-      if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, layout[k] + 'px');
+      if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, sizeWithin(LAYOUT_PARTS[k], layout[k]) + 'px');
       else c.style.removeProperty(LAYOUT_PARTS[k].prop);
     });
+    // the foot is as tall as its message, up to its cap, until the person sizes it; sized, it is that
+    // tall whatever it holds, and what is taller scrolls inside the message (control.css)
+    c.classList.toggle('console--foot', layout.foot != null);
     // the answer keeps its usual cap until the person sizes it, and may then take the stage
     if (layout.drawer != null) c.style.setProperty('--drawer-max', 'calc(100% - 16px)');
     else c.style.removeProperty('--drawer-max');
     c.style.setProperty('--console-zoom', String(zoomOf()));
     if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
+    sayGrips();
+  }
+  // each grip says its part's size and the bounds it is held to, as a separator that takes the focus
+  // must, so a screen reader tells what the arrow keys did; a grip the script draws later says it
+  // when it takes the focus (initLayout)
+  function sayGrips() {
+    Array.prototype.forEach.call($('console').querySelectorAll('[data-split][role="separator"]'), function (grip) {
+      var p = LAYOUT_PARTS[grip.getAttribute('data-split')];
+      if (!p || !grip.getClientRects().length) return;
+      var b = p.bounds ? p.bounds() : p;
+      grip.setAttribute('aria-valuemin', String(b.min));
+      grip.setAttribute('aria-valuemax', String(b.max));
+      grip.setAttribute('aria-valuenow', String(Math.min(b.max, Math.max(b.min, Math.round(p.measure(grip))))));
+    });
   }
   // a grip made by the script, for a part the script draws (a token's panel, Claude's answer)
   function splitGrip(part, what) {
@@ -2986,9 +3162,13 @@
     g.tabIndex = 0;
     return g;
   }
+  // a size held to a part's bounds: its fixed ones, or those it measures now
+  function sizeWithin(p, px) {
+    var b = p.bounds ? p.bounds() : p;
+    return Math.round(Math.min(b.max, Math.max(b.min, px)));
+  }
   function setPart(part, px) {
-    var p = LAYOUT_PARTS[part];
-    layout[part] = Math.round(Math.min(p.max, Math.max(p.min, px)));
+    layout[part] = sizeWithin(LAYOUT_PARTS[part], px);
     applyLayout();
   }
   function stepZoom(step) {
@@ -3001,8 +3181,13 @@
   }
   function initLayout() {
     var c = $('console');
+    // the foot's grip lies along its top edge, so the stage above it gives up what the foot takes
+    var foot = c.querySelector('.console__status');
+    if (foot) foot.insertBefore(splitGrip('foot', 'the messages'), foot.firstChild);
     layout = readLayout();
     applyLayout();
+    // the Ask Claude bar grows as an answer is waited for, which leaves a sized foot less room
+    if ($('cp-askbar') && typeof ResizeObserver === 'function') new ResizeObserver(function () { if (layout.foot != null) applyLayout(); }).observe($('cp-askbar'));
     if ($('cp-zoom-down')) $('cp-zoom-down').addEventListener('click', function () { stepZoom(-1); });
     if ($('cp-zoom-up')) $('cp-zoom-up').addEventListener('click', function () { stepZoom(1); });
     if ($('cp-zoom-reset')) $('cp-zoom-reset').addEventListener('click', function () { stepZoom(0 - ZOOM_STEPS.indexOf(zoomOf()) + 3); });
@@ -3015,10 +3200,23 @@
       e.preventDefault();
       var start = p.measure(grip), from = p.axis === 'x' ? e.clientX : e.clientY;
       // the pointer moves in the window's pixels; the part is sized in the zoomed console's
-      var scale = zoomOf();
+      var scale = scaleOf(grip);
       grip.setPointerCapture(e.pointerId);
       document.body.classList.add('console-dragging', 'console-dragging--' + p.axis);
-      function move(ev) { setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale); }
+      // where the page scrolls (a phone's), a foot not resting on the window's bottom, the page
+      // scrolled past the deck's end, grows down from a top that stays put; the window is scrolled by
+      // what the grip fell behind the size it took, so the grip stays under the finger, at once, since
+      // the site's smooth scrolling would land after the next move had measured
+      var top0 = grip.getBoundingClientRect().top;
+      function follow() {
+        if (p.axis !== 'y' || getComputedStyle(c).overflow === 'hidden') return;
+        var behind = grip.getBoundingClientRect().top - (top0 + p.sign * (layout[part] - start) * scale);
+        if (Math.abs(behind) > 0.5) window.scrollBy({ top: behind, behavior: 'instant' });
+      }
+      function move(ev) {
+        setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale);
+        follow();
+      }
       // the grip may be drawn again mid-drag (the Tokens tab redraws its panel as readings land), so
       // a lost capture ends the drag as a release does
       var done = false;
@@ -3044,6 +3242,7 @@
       applyLayout();
       saveLayout();
     });
+    c.addEventListener('focusin', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-split')) sayGrips(); });
     // the arrow keys move a focused grip, so the sizes are set without a mouse too
     c.addEventListener('keydown', function (e) {
       var grip = e.target && e.target.getAttribute ? e.target : null;
@@ -3061,6 +3260,7 @@
     var c = $('console');
     if (!c) return;
     initFlash();
+    initBar();
     initFullScreen();
     initTiles();
     initLayout();
@@ -4642,30 +4842,62 @@
   // On a phone the page scrolls as a whole and the deck has no height of its own (the console's
   // phone layout), so while this tab is shown the page is held still (graph--held on the document,
   // control.css: no scroll, no bounce, and no gesture of the browser's own on the tab), the window
-  // put where the rail of tabs stands under the site's header, so the person can always leave for
+  // put where the rail of tabs stands at the window's top, so the person can always leave for
   // another tab, and the tab takes the screen's height left above the foot that sticks to the
-  // screen's bottom: the whole tab in front of the person and nothing a finger can scroll. A screen
-  // too short to spare the site's header, a phone held sideways, gives the header's room and a
-  // line of the foot's to the tab too (control.css). Opening the tab and turning the phone bring the
-  // window back there; any other tab lets the page go. Elsewhere the deck holds the window and the
-  // tab simply fills its stage.
+  // screen's bottom: the whole tab in front of the person and nothing a finger can scroll. The
+  // site's bar takes none of it: it hides itself on this page and comes back over the deck when its
+  // handle is tapped or swiped down (initBar, barRoom), held sideways as upright. A screen too short
+  // to spare more, a phone held sideways, gives a line of a foot nobody sized to the tab too
+  // (control.css); a foot the person sized keeps its size, held to what leaves the tab its least
+  // (footBounds, graphNeed). Opening the tab and turning the phone bring the window back there;
+  // any other tab lets the page go. Elsewhere the deck holds the window and the tab simply fills
+  // its stage.
   var GRAPH_PHONE_MIN = 160;
   function graphPhoneFit(bring) {
     var tab = $('tab-dependencies');
     if (!tab) return;
-    var phone = pageScrolls(), shown = !tab.hidden && tab.getClientRects().length > 0;
+    var phone = pageScrolls(), shown = graphTabShown(tab);
     document.documentElement.classList.toggle('graph--held', phone && shown);
+    // a foot the person sized is held to what leaves the tab its least while the tab is shown, and
+    // given its own size back once another tab is (footBounds)
+    if (shown !== graphWasShown) {
+      graphWasShown = shown;
+      if (layout.foot != null) applyLayout();
+    }
     if (!phone) { tab.style.height = ''; return; }
     if (!shown) return;
-    var rail = document.querySelector('.console__rail') || tab, stage = tab.closest('.console__stage');
-    var nav = $('nav'), foot = document.querySelector('.console__status');
-    var navH = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+    var foot = document.querySelector('.console__status');
     var footH = foot && getComputedStyle(foot).position === 'sticky' ? foot.getBoundingClientRect().height : 0;
+    var h = Math.floor(window.innerHeight - footH - graphHeldAround(tab));
+    tab.style.height = Math.max(h, GRAPH_PHONE_MIN) + 'px';
+    var rail = document.querySelector('.console__rail') || tab;
+    if (bring) window.scrollTo({ left: 0, top: Math.max(0, rail.getBoundingClientRect().top + window.pageYOffset - barRoom()), behavior: 'instant' });
+  }
+  // what the held tab needs of the window besides its own height: the top kept clear (barRoom), the
+  // rail of tabs and the gap under it, and the stage's padding under the tab, with a few pixels over
+  function graphHeldAround(tab) {
+    var rail = document.querySelector('.console__rail') || tab, stage = tab.closest('.console__stage');
     var lead = tab.getBoundingClientRect().top - rail.getBoundingClientRect().top;
     var below = stage ? parseFloat(getComputedStyle(stage).paddingBottom) + parseFloat(getComputedStyle(stage).borderBottomWidth) : 0;
-    var h = Math.floor(window.innerHeight - navH - footH - lead - below - 6);
-    tab.style.height = Math.max(h, GRAPH_PHONE_MIN) + 'px';
-    if (bring) window.scrollTo({ left: 0, top: Math.max(0, rail.getBoundingClientRect().top + window.pageYOffset - navH), behavior: 'instant' });
+    return barRoom() + lead + below + 6;
+  }
+  function graphTabShown(tab) { return !!tab && !tab.hidden && tab.getClientRects().length > 0; }
+  var graphWasShown = false;
+  // The least of its own pixels the tab keeps while it is shown, which a foot the person sized leaves
+  // it (footBounds): its head, the tiles and a card's tools take about 120, and the stage the rest,
+  // where a chart is still drawn whole beside or under the tools that float over its corner, never a
+  // sliver too thin to fit it. What the window must keep for it: on a computer the console's stage,
+  // the tab scaled by the text size and the stage's own padding round it; on a phone, whose page the
+  // tab holds, the window's height above the foot, the rail above the tab too (graphHeldAround).
+  // Nothing while another tab is shown.
+  var GRAPH_LEAST = 280;
+  function graphNeed() {
+    var tab = $('tab-dependencies');
+    if (!graphTabShown(tab)) return 0;
+    if (pageScrolls()) return Math.ceil(graphHeldAround(tab)) + GRAPH_LEAST;
+    var stage = tab.closest('.console__stage');
+    var around = stage ? stage.getBoundingClientRect().height - tab.getBoundingClientRect().height : 0;
+    return Math.ceil(GRAPH_LEAST * scaleOf(tab) + Math.max(0, around));
   }
   // the issue a number names: the open list first, then what the reads brought (a closed sub-issue,
   // a blocker from outside the epic), else a bare one, so a node is drawn for every number an edge names

@@ -171,9 +171,10 @@
 /* The tab lays itself out to the deck's height and nothing in it scrolls (the owner, 2026-10-19: "I
    literally never in any case want to scroll"): the head, the tiles, the key and a card's head take
    what they need, and the chart's stage takes the rest. On a phone, where the page scrolls as a
-   whole, symphony-panel.js (graphPhoneFit) gives the tab the screen's height left under the header
-   and above the foot. The box the other tabs scroll is held still here. The buttons are sized from
-   the screen: a little larger on a large one, and never under a finger's width on a touch screen. */
+   whole, symphony-panel.js (graphPhoneFit) gives the tab the screen's height left under the rail
+   of tabs and above the foot. The box the other tabs scroll is held still here. The buttons are
+   sized from the screen: a little larger on a large one, and never under a finger's width on a
+   touch screen. */
 #tab-dependencies, #cp-board { --gbtn: clamp(28px, 1.6vmin + 20px, 38px); }
 @media (pointer: coarse) { #tab-dependencies, #cp-board { --gbtn: clamp(32px, 1.6vmin + 24px, 42px); } }
 /* no touch on the tab moves the page or zooms it: a pinch anywhere on a card is the stage's, a
@@ -182,21 +183,26 @@
 /* On a phone the page itself scrolls (the deck's phone layout), so while this tab is shown
    symphony-panel.js (graphPhoneFit) holds it: graph--held on the document stops the page scrolling
    under a finger, the wheel or a fling's run past the end, and brings the tab back to the window
-   whenever the window changes size or turns. Held sideways, a phone has under 400 pixels of height,
-   and the site's header would take a sixth of them: it gives way while the tab is shown, as it does
-   in full screen, and comes back with any other tab of the rail, which stays at the window's top */
+   whenever the window changes size or turns. The site's header takes none of the screen, held
+   either way: on this page it hides itself and comes back over the deck from its handle at the
+   top centre (the bar's rules above), so its handle brings it here as on every other tab. Held
+   sideways, a phone has under 400 pixels of height, and a foot nobody sized keeps to one row */
 /* the body's overflow, not the document's: the body's is the window's while the document's is
    visible, and hidden on the document would make the body a box of its own, which the foot's sticky
    place would then follow down the page instead of the window */
-html.graph--held { overscroll-behavior: none; }
+/* the held page is placed by the script alone: the browser's scroll anchoring, which keeps a node
+   it picked in place as the layout round it changes, would carry the rail a few pixels off the
+   window's top as the tab lays itself out again after a turn */
+html.graph--held { overscroll-behavior: none; overflow-anchor: none; }
 html.graph--held body { overflow: hidden; }
 @media (max-height: 520px) {
-  html.graph--held body.page-console #nav, html.graph--held body.page-console #flyouts { display: none !important; }
-  /* the foot keeps to one row: the panel's line beside who is signed in, each cut to its row */
-  html.graph--held .console__status { flex-wrap: nowrap; }
-  html.graph--held .console .console__status #msg { flex: 1 1 0; max-height: 2.4em; }
-  html.graph--held .console__me { flex: 0 1 auto; flex-wrap: nowrap; max-width: 55%; }
-  html.graph--held .console__me small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* a foot nobody sized keeps to one row: the panel's line beside who is signed in, each cut to its
+     row; a foot the person sized keeps its size and its two rows, the message over the buttons, as
+     on every other tab, held to what leaves the tab its least (symphony-panel.js, footBounds) */
+  html.graph--held .console:not(.console--foot) > .console__status { flex-wrap: nowrap; }
+  html.graph--held .console:not(.console--foot) > .console__status #msg { flex: 1 1 0; max-height: 2.4em; }
+  html.graph--held .console:not(.console--foot) > .console__status .console__me { flex: 0 1 auto; flex-wrap: nowrap; max-width: 55%; }
+  html.graph--held .console:not(.console--foot) > .console__status .console__me small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 #tab-dependencies > .console__scroll { overflow: hidden; display: flex; flex-direction: column; }
 #cp-graph { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -666,6 +672,51 @@ body[data-shell] main > .console.section, .console.section {
    the console takes the whole screen; symphony-panel.js sets console-full on the body */
 body.console-full #nav, body.console-full #flyouts, body.console-full .crumbs-band { display: none !important; }
 body.console-full[data-shell] { padding-top: 0 !important; }
+/* the site's bar hides itself on this page, as a taskbar set to hide does (symphony-panel.js,
+   initBar sets console-bar-auto on the body, and console-bar-shown while the bar is wanted): the
+   deck starts at the window's top, inside the Home Screen app's safe area, and the bar slides back
+   over the deck's top rather than pushing it down. The pointer brings it at the window's top edge
+   (the hot strip), a touch screen by the handle at the top centre. */
+body.console-bar-auto[data-shell] { padding-top: env(safe-area-inset-top, 0px); }
+/* the page marks the body before its first paint (the control page's template), so until the script
+   has measured the window (fitConsole) the deck is already as tall as the window under the top inset,
+   and nothing moves or slides as the script loads */
+@media (min-width: 901px) and (min-height: 521px) {
+  body.console-bar-auto[data-shell] main > .console.section { height: var(--console-h, calc(100dvh - env(safe-area-inset-top, 0px))); }
+}
+/* over the dark deck the bar's usual see-through ground would show the deck's words through it */
+body.console-bar-auto #nav { background: rgba(241, 238, 227, 0.97); transition: transform 0.24s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease); box-shadow: 0 10px 26px -12px rgba(0, 0, 0, 0.55); }
+body.console-bar-auto:not(.console-bar-shown) #nav { transform: translateY(calc(-100% - 32px)); }
+/* where no pointer hovers, the section's strip stands in the page under the bar (site.css); here it
+   rides with the bar, fixed under it */
+html:not(.nav-hover) body.console-bar-auto #flyouts { position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 99; transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1); }
+html:not(.nav-hover) body.console-bar-auto #flyouts .subnav { background: #FBFAF4; }
+html:not(.nav-hover) body.console-bar-auto:not(.console-bar-shown) #flyouts { transform: translateY(calc(-100% - var(--nav-h) - 32px)); }
+/* where one hovers, a strip dropped from a tab goes with the bar, though main.js closes it a moment later */
+html.nav-hover body.console-bar-auto:not(.console-bar-shown) .subnav--fly.is-open { opacity: 0; visibility: hidden; transform: translateY(-8px); }
+.console__barstrip, .console__barhandle { display: none; }
+@media (any-hover: hover) {
+  body.console-bar-auto .console__barstrip { display: block; position: fixed; top: 0; left: 0; right: 0; height: calc(6px + env(safe-area-inset-top, 0px)); z-index: 98; }
+}
+/* the handle: a small tab in the site's colours at the top centre, above the deck's own top padding
+   and the title row's middle, where nothing is pressed; all of it is the tab a person sees, a thumb's
+   to press, so a tap meant for what the phone's page scrolls under it is never taken by an unseen
+   margin; a laptop with a touch screen gets it too, since a finger brings no pointer to the edge */
+@media (hover: none), (any-pointer: coarse) {
+  body.console-bar-auto .console__barhandle {
+    display: block; position: fixed; z-index: 98; top: env(safe-area-inset-top, 0px); left: 50%; width: 56px; height: 20px; margin: 0 0 0 -28px;
+    padding: 0; border: 0; border-radius: 0; background: transparent; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .console__barhandle::before { content: ""; position: absolute; inset: 0; border-radius: 0 0 10px 10px; background: #F1EEE3; box-shadow: inset 0 -2px 0 #0E5F58, 0 2px 8px rgba(0, 0, 0, 0.45); }
+  /* a short line across the tab, as on a sheet a finger pulls down */
+  .console__barhandle::after { content: ""; position: absolute; left: 18px; right: 18px; top: 8px; height: 3px; border-radius: 2px; background: rgba(14, 95, 88, 0.5); }
+  .console__barhandle:focus-visible { outline: none; }
+  .console__barhandle:focus-visible::before { outline: 2px solid #3CC2B1; outline-offset: 2px; }
+}
+body.console-full .console__barstrip, body.console-full .console__barhandle { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  body.console-bar-auto #nav, html:not(.nav-hover) body.console-bar-auto #flyouts { transition: none; }
+}
 /* the select says the repository by itself; its label stays for a screen reader */
 .console__id label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console__rail { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-x: hidden; overflow-y: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: rgba(233, 230, 218, 0.25) transparent; }
@@ -1209,6 +1260,44 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console__split--tkside, .console__split--nbside { top: 0; bottom: 0; left: -9px; width: 12px; }
 .console__split--drawer { left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; }
 .console__split--drawer::after { top: 50%; bottom: auto; left: 8px; right: 8px; width: auto; height: 2px; margin: -1px 0 0; }
+/* the foot's grip lies across the gap above the status line, the deck's 8 px, which no text size
+   scales, and the Ask Claude bar's bottom padding above it, 6 px of the bar's own, which the text size
+   scales as it scales the foot: about 14 px to take at any text size, over none of the foot's buttons
+   and none of the bar's box; a short bar in the gap's middle shows it is there to take, since the foot
+   is sized like the parts beside it (the owner, 2026-10-19: "i cant resize the message board panel") */
+.console__split--foot { left: 0; right: 0; top: calc(-8px / var(--console-zoom, 1) - 6px); height: calc(8px / var(--console-zoom, 1) + 6px); cursor: row-resize; }
+.console__split--foot::after { top: calc(4px + 4px / var(--console-zoom, 1)); bottom: auto; left: calc(50% - 22px); width: 44px; height: 4px; margin: 0; background: rgba(233, 230, 218, 0.3); }
+/* a foot the person sized (symphony-panel.js, LAYOUT_PARTS.foot) is that tall whatever it holds: the
+   message fills it and what is taller scrolls inside the message, as before; Clear and the buttons
+   stand at its top */
+.console.console--foot > .console__status { height: var(--foot-h); align-items: flex-start; }
+.console.console--foot > .console__status #msg { align-self: stretch; max-height: none; }
+@media (max-width: 900px), (max-height: 520px) {
+  /* on a phone the message takes the first row, all the foot leaves it, and Clear and the buttons
+     the second; the grip is a thumb's, its bar wider, in a top padding the foot keeps for it */
+  .console.console--foot > .console__status { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: center; }
+  .console.console--foot > .console__status #msg { grid-column: 1 / -1; }
+  .console__status { padding-top: 14px; }
+  .console__status:has(#msg:empty)::before { top: 14px; }
+  .console__split--foot { top: -8px; height: 26px; }
+  .console__split--foot::after { top: 13px; left: calc(50% - 28px); width: 56px; height: 5px; margin-top: 0; }
+  /* only the grip's middle is taken, a thumb's width about its bar, so the rest of the foot's top
+     edge, where a thumb rests to scroll the page, scrolls it as before */
+  .console__split--foot { left: calc(50% - 60px); right: auto; width: 120px; }
+  /* the deck fills the window at least, its foot padding below it, so on a short tab the foot rests
+     on the window's bottom as on a long one and its grip follows a finger; where the page is
+     scrolled past the deck's end, the script keeps the grip under the finger (initLayout) */
+  body[data-shell] main > .console.section, .console.section { min-height: calc(var(--console-h, calc(100dvh - env(safe-area-inset-top, 0px))) + 12px + env(safe-area-inset-bottom, 0px)); }
+}
+/* a finger takes the foot's grip on a tablet as on a phone: where the main pointer is coarse the
+   foot keeps a top padding that the grip reaches down into, a thumb's height in all, with the
+   phone's wider bar; the empty foot's placeholder moves down with the words that padding moves */
+@media (pointer: coarse) and (min-width: 901px) and (min-height: 521px) {
+  .console__status { padding-top: 10px; }
+  .console__status:has(#msg:empty)::before { top: 16px; }
+  .console__split--foot { height: calc(8px / var(--console-zoom, 1) + 16px); }
+  .console__split--foot::after { left: calc(50% - 28px); width: 56px; height: 5px; }
+}
 /* a task list's heading carries a grip on its right edge that sizes every list at once */
 .console .console__kanban > h3 { position: relative; }
 .console .console__kanban > h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
