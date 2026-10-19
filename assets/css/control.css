@@ -109,9 +109,13 @@
 /* its words while it draws, or where it could not, in the middle of the box */
 .control__chart:not(:has(svg)) { display: grid; place-items: center; min-height: 120px; padding: 12px; text-align: center; }
 .control__chart > svg { position: absolute; left: 0; top: 0; display: block; margin: 0; max-width: none; transform-origin: 0 0; }
-.control__chart > svg.stage__glide { transition: transform 0.22s ease-out; }
+/* a stage's picture glides to a place the buttons or the keys chose, and follows a finger at once */
+.stage__glide { transition: transform 0.22s ease-out; }
 .control__chart g.node { cursor: pointer; }
-.control__chart:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: -3px; }
+.control__chart:focus-visible, .graph__list:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: -3px; }
+/* a stage a finger pressed takes the focus for its keys, but draws no ring for it: the ring says
+   where the keys go, which a person on a touch screen did not ask about */
+:is(.control__chart, .graph__list).stage--touched:focus-visible { outline: none; }
 .control__chart:has(svg) { cursor: grab; }
 .control__chart--panning, .control__chart--panning * { cursor: grabbing !important; }
 .control__graph th:first-child, .control__graph td:first-child, .control__graph td.admin__act { white-space: nowrap; }
@@ -172,7 +176,28 @@
    the screen: a little larger on a large one, and never under a finger's width on a touch screen. */
 #tab-dependencies, #cp-board { --gbtn: clamp(28px, 1.6vmin + 20px, 38px); }
 @media (pointer: coarse) { #tab-dependencies, #cp-board { --gbtn: clamp(32px, 1.6vmin + 24px, 42px); } }
-#tab-dependencies { position: relative; }
+/* no touch on the tab moves the page or zooms it: a pinch anywhere on a card is the stage's, a
+   swipe on the tiles turns their page, and nothing else here moves under a finger */
+#tab-dependencies { position: relative; touch-action: none; }
+/* On a phone the page itself scrolls (the deck's phone layout), so while this tab is shown
+   symphony-panel.js (graphPhoneFit) holds it: graph--held on the document stops the page scrolling
+   under a finger, the wheel or a fling's run past the end, and brings the tab back to the window
+   whenever the window changes size or turns. Held sideways, a phone has under 400 pixels of height,
+   and the site's header would take a sixth of them: it gives way while the tab is shown, as it does
+   in full screen, and comes back with any other tab of the rail, which stays at the window's top */
+/* the body's overflow, not the document's: the body's is the window's while the document's is
+   visible, and hidden on the document would make the body a box of its own, which the foot's sticky
+   place would then follow down the page instead of the window */
+html.graph--held { overscroll-behavior: none; }
+html.graph--held body { overflow: hidden; }
+@media (max-height: 520px) {
+  html.graph--held body.page-console #nav, html.graph--held body.page-console #flyouts { display: none !important; }
+  /* the foot keeps to one row: the panel's line beside who is signed in, each cut to its row */
+  html.graph--held .console__status { flex-wrap: nowrap; }
+  html.graph--held .console .console__status #msg { flex: 1 1 0; max-height: 2.4em; }
+  html.graph--held .console__me { flex: 0 1 auto; flex-wrap: nowrap; max-width: 55%; }
+  html.graph--held .console__me small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 #tab-dependencies > .console__scroll { overflow: hidden; display: flex; flex-direction: column; }
 #cp-graph { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 #cp-graph > .graph__section { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -186,13 +211,18 @@
 #cp-graph.graph--all .graph__meta, #cp-graph.graph--all .graph__tools, #cp-graph.graph--all .graph__near { display: none; }
 #cp-graph.graph--all .graph__head h3 { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #cp-graph.graph--all > .graph__section:hover { border-color: rgba(60, 194, 177, 0.55); }
+/* where more cards are there than fit at a size worth reading, a page of them at a time, turned by
+   the arrows on the grid's last row or a swipe across a card */
+.graph__allpager { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.graph__allpager[hidden] { display: none; }
+.console .graph__allpager button.graph__page { width: calc(var(--gbtn) * 1.2); height: var(--gbtn); }
 
 /* the tiles: All, Goals and one per epic, each saying what its chart is, how far it has got, its
    title and a bar of its issues by state, the one shown edged in the deck's teal; they share the
    row's width, full or compact, on one row or two, and a page at a time where more are there than
    fit, turned by the arrows at the row's ends (symphony-panel.js, graphStripLayout); never a row
    that scrolls. A swipe across the row is the page's, not the page's scroll */
-#cp-graph-focus { --gpage: calc(var(--gbtn) * 0.85); position: relative; flex: none; display: grid; gap: 6px; margin: 0; padding: 0; overflow: hidden; touch-action: pan-y; }
+#cp-graph-focus { --gpage: calc(var(--gbtn) * 0.85); position: relative; flex: none; display: grid; gap: 6px; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
 #cp-graph-focus[hidden] { display: none; }
 .console .graph__tile {
   margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind foot" "title title" "bar bar";
@@ -258,7 +288,9 @@
    mouse from card to card */
 .console .control__graph .graph__section { margin: 0; padding: 12px 14px; border: 1px solid var(--line-soft, rgba(233, 230, 218, 0.07)); border-radius: 14px; background: var(--paper-card); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); }
 .graph__head { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 16px; }
-.console .graph__head h3 { grid-column: 1; grid-row: 1; margin: 0; min-width: 0; font-size: 1.05rem; font-weight: 600; }
+/* a heading of any length takes two lines at most, the whole of it in its tooltip and for a reader,
+   so a long one never pushes the card's chart down */
+.console .graph__head h3 { grid-column: 1; grid-row: 1; margin: 0; min-width: 0; font-size: 1.05rem; font-weight: 600; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .graph__tools { grid-column: 2; grid-row: 1; align-self: start; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .graph__meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 .graph__progress { display: flex; align-items: center; gap: 8px; }
@@ -289,15 +321,31 @@
 .console button.graph__fit--idle { opacity: 0.55; }
 .graph__pos { min-width: 3.4em; text-align: center; font-size: 0.78rem; color: var(--ink-soft); white-space: nowrap; }
 #cp-graph.graph--all .graph__step { display: none; }
-/* the list in the chart's place: the zoom has nothing to zoom there, and keeps its place unseen */
-.graph__section[data-view="list"] .graph__zoom { visibility: hidden; }
-.graph__list { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
-.graph__list table { width: 100%; transform-origin: 0 0; font-size: 0.86rem; }
+/* the list in the chart's place is a stage of its own (symphony-panel.js, graphListFit): its table
+   laid out at the width that lets its rows read largest, fitted whole, and zoomed and panned by the
+   same buttons, pinch, wheel and keys as the chart, so it never scrolls and is never too small to
+   read for good */
+.graph__list { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.graph__list:has(table) { cursor: grab; }
+.console .graph__list > table { position: absolute; left: 0; top: 0; margin: 0; max-width: none; transform-origin: 0 0; font-size: 0.86rem; }
 .graph__list td { overflow-wrap: anywhere; }
 /* its rows close, so more of them are read at their own size before the list is drawn smaller */
 .console .graph__list :is(th, td) { padding: 4px 10px; vertical-align: middle; }
 .console .graph__list td.admin__act { min-width: 0; }
-.console .graph__list td.admin__act button { margin: 0; padding: 2px 10px; font-size: 0.8rem; }
+.console .graph__list td.admin__act button { margin: 0; min-height: var(--gbtn); padding: 2px 12px; font-size: 0.8rem; }
+/* the list's rows as cards (symphony-panel.js, graphListFit): each its issue and title, then its
+   state, what it waits on and its worker, each named, and its button, the heads kept for a reader,
+   in as many columns as draw them largest; a phone upright has them always (below) */
+.console .graph__list--cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.console .graph__list--cards :is(table, tbody) { display: block; }
+.console .graph__list--cards tbody { column-count: var(--gcols, 1); column-gap: 20px; }
+.console .graph__list--cards tr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+.console .graph__list--cards td { display: block; padding: 0; border: 0; font-size: 0.78rem; color: var(--ink-soft); }
+.console .graph__list--cards td:empty { display: none; }
+.console .graph__list--cards td:first-child { flex: none; font-size: 0.86rem; }
+.console .graph__list--cards td:nth-child(2) { flex: 1 1 calc(100% - 5em); min-width: 0; font-size: 0.86rem; color: var(--ink); overflow-wrap: break-word; }
+.console .graph__list--cards td[data-label]::before { content: attr(data-label) " "; color: var(--ink-faint); }
+.console .graph__list--cards td.admin__act { margin-left: auto; }
 /* a node in focus: its card beside the stage where the deck is wide, under it where it is narrow or
    tall; it shows the whole title, never cut, and the stage gives way to it */
 .graph__near { flex: 0 0 clamp(220px, 30%, 340px); min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid rgba(60, 194, 177, 0.35); border-radius: 12px; background: var(--paper); font-size: 0.88rem; overflow: hidden; }
@@ -308,11 +356,24 @@
 .graph__nearwho { font-size: 0.8rem; color: var(--ink-soft); }
 .graph__neartitle { font-weight: 600; font-size: 0.98rem; line-height: 1.35; overflow-wrap: anywhere; }
 .graph__nearrel { color: var(--ink-soft); font-size: 0.82rem; }
+/* where the card is too short for its title (symphony-panel.js, graphNearFit): the arrows' words,
+   which the picture draws too, kept for a reader and the keyboard, then the title cut at the lines
+   the card holds, the whole of it in its tooltip */
+.graph__near .graph__nearrel--away { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.graph__near .graph__neartitle--cut { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+/* the arrows' words come back while the keyboard is on a neighbour's button in them, in the title's
+   place, which its tooltip and a reader still have */
+.graph__near .graph__nearrel--away:focus-within { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+.graph__near:has(.graph__nearrel--away:focus-within) .graph__neartitle { display: none; }
+/* each neighbour in the arrows' words is a button to it, read as the link it acts as */
+.console button.graph__nearto { display: inline; margin: 0; padding: 0 2px; min-width: 0; border: 0; border-radius: 4px; background: none; color: var(--teal); font: inherit; font-family: var(--font-mono); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.console button.graph__nearto:hover { color: var(--teal-bright); background: rgba(60, 194, 177, 0.1); }
+.console button.graph__nearto:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: 1px; }
 .graph__nearacts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .console .graph__nearacts button { margin: 0; padding: 4px 12px; font-size: 0.84rem; }
 @media (max-width: 760px), (max-aspect-ratio: 1/1) {
   .graph__body { flex-direction: column; }
-  .graph__near { flex: none; padding: 8px 12px; gap: 4px; }
+  .graph__near { flex: none; max-height: 50%; padding: 8px 12px; gap: 4px; }
 }
 /* the Board tab's charts: a stage in the board's own flow, its zoom above it and its focus under it */
 .graph__tools--board { display: flex; justify-content: flex-end; margin: 8px 0 4px; }
@@ -324,7 +385,7 @@
 .console .graph__section--enter, .control__chart > svg.graph__nearsvg { animation: graph-enter 0.18s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   .console .graph__section--enter, .control__chart > svg.graph__nearsvg { animation: none; }
-  .control__chart > svg.stage__glide { transition: none; }
+  .stage__glide { transition: none; }
   .console .graph__tile { transition: none; }
   .console .graph__tile:hover { transform: none; }
 }
@@ -389,21 +450,24 @@
    text size (symphony-panel.js, graphLayout, which sets graph--short): the line of what was drawn is
    cut to one line; the tiles give their titles alone; a card gives the stage its whole height, its
    heading and pills kept for a reader (the selected tile shows its title and its states) and its
-   tools floating over the stage's top left corner, where the stage fits the chart beside or below
-   them; and a focus's card beside the stage has smaller words, its title whole wherever the card
-   has the room for it, and where it has not, as for a very long title at a large text size, the
-   title alone gives way, so its link and Centre its row stay in sight */
+   tools floating over the stage's top left corner, where the stage fits the chart, or the list,
+   beside or below them; and a focus's card beside the stage has smaller words, its title whole
+   wherever the card has the room for it, and where it has not, as for a very long title at a large
+   text size, the arrows' words and then the title give way (graphNearFit), so its state, its link
+   and Centre its row stay in sight; an epic's tile, its kind gone, says its number before its title */
 #tab-dependencies.graph--short #cp-graph-state:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; cursor: pointer; }
 #tab-dependencies.graph--short #cp-graph-focus .graph__tkind { display: none; }
+/* a tile in its full form keeps to two rows, its title beside its count above its bar */
+#tab-dependencies.graph--short #cp-graph-focus[data-form="full"] .graph__tile { grid-template-areas: "title foot" "bar bar"; }
+/* with its kind gone, an epic's tile says its number before its title, as its kind did */
+#tab-dependencies.graph--short #cp-graph-focus .graph__ttitle[data-num]::before { content: attr(data-num) " "; font-family: var(--font-mono); font-weight: 400; color: var(--ink-soft); }
 #tab-dependencies.graph--short #cp-graph-focus .graph__tile { padding-top: 5px; padding-bottom: 6px; }
 #tab-dependencies.graph--short #cp-graph > .graph__section { position: relative; }
 #tab-dependencies.graph--short #cp-graph:not(.graph--all) .graph__head { display: contents; }
 #tab-dependencies.graph--short #cp-graph:not(.graph--all) .graph__head > :is(h3, .graph__meta) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 #tab-dependencies.graph--short #cp-graph:not(.graph--all) .graph__tools { position: absolute; z-index: 3; top: 13px; left: 7px; padding: 3px; border-radius: 99px; background: rgba(15, 25, 22, 0.88); }
-#tab-dependencies.graph--short #cp-graph:not(.graph--all) .graph__section[data-view="list"] .graph__list { margin-top: calc(var(--gbtn) + 12px); }
 #tab-dependencies.graph--short .graph__near { flex-basis: clamp(220px, 40%, 380px); gap: 3px; padding: 6px 10px; font-size: 0.78rem; }
-#tab-dependencies.graph--short .graph__neartitle { font-size: 0.84rem; flex: 0 1 auto; min-height: 0; overflow: hidden; }
-#tab-dependencies.graph--short .graph__nearrel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#tab-dependencies.graph--short .graph__neartitle { font-size: 0.84rem; }
 #tab-dependencies.graph--short .graph__nearacts { flex-wrap: nowrap; gap: 8px; }
 #tab-dependencies.graph--short .graph__nearhead .graph__pill { padding: 0 7px 0 6px; }
 /* a phone held sideways: the tab's head is one row, its line of what was drawn between its name
@@ -412,6 +476,17 @@
   #tab-dependencies .console__head { flex-wrap: nowrap; }
   .console #cp-graph-state { order: 0; flex: 1 1 auto; }
 }
+/* the tab's help opens over the whole tab under its head, never a box that scrolls: its paragraphs
+   side by side or a page at a time, turned by the arrows under them or a swipe, its words smaller
+   only where one paragraph alone would not fit (symphony-panel.js, graphHelpLayout); Escape or the
+   ? again closes it. The head stays a box the fold is placed against, the tab itself */
+#tab-dependencies .console__head { position: static; }
+#tab-dependencies .console__help[open] > div { left: 0; right: 0; bottom: 0; width: auto; max-height: none; overflow: hidden; display: grid; align-items: start; align-content: start; gap: 8px 22px; }
+#tab-dependencies .console__help[open] > div p { margin: 0; }
+#tab-dependencies .console__help[open] > div p[hidden] { display: none; }
+.graph__helppager { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.graph__helppager[hidden] { display: none; }
+.console .graph__helppager button.graph__page { width: calc(var(--gbtn) * 1.2); height: var(--gbtn); }
 /* ---------- the console's Folders tab: the drive's list, its crumbs, the ticked items, the steps ---------- */
 .folders__crumbs { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 #tab-folders .folders__crumbs button { padding: 3px 10px; font-size: 0.88rem; margin: 0; }

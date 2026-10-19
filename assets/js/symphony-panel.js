@@ -4317,25 +4317,99 @@
     b.addEventListener('click', function () { graphStripTurn(step); });
     return b;
   }
-  // a swipe across the row turns its page where there are pages, and the press it ends is no tile's
-  function graphStripSwipe(strip) {
+  // a swipe across a row of pages turns its page where there are pages, and the press it ends is
+  // none of the row's buttons'; the tiles' row and the help's pages take it
+  function graphSwipes(node, turn) {
     var down = null, swiped = false;
-    strip.addEventListener('pointerdown', function (e) { down = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
-    strip.addEventListener('pointerup', function (e) {
+    node.addEventListener('pointerdown', function (e) { down = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
+    node.addEventListener('pointerup', function (e) {
       if (!down || down.id !== e.pointerId) return;
       var dx = e.clientX - down.x, dy = e.clientY - down.y;
       down = null;
       if (Math.abs(dx) < 40 || Math.abs(dx) < 1.3 * Math.abs(dy)) return;
-      swiped = graphStripTurn(dx < 0 ? 1 : -1);
+      swiped = turn(dx < 0 ? 1 : -1);
       if (swiped) setTimeout(function () { swiped = false; }, 0);
     });
-    strip.addEventListener('pointercancel', function () { down = null; });
-    strip.addEventListener('click', function (e) {
+    node.addEventListener('pointercancel', function () { down = null; });
+    node.addEventListener('click', function (e) {
       if (!swiped) return;
       swiped = false;
       e.stopPropagation();
       e.preventDefault();
     }, true);
+  }
+  // The tab's help opens over the tab under its head, never a box that scrolls: its paragraphs side
+  // by side, as many as the tab's width holds at a readable measure, where each fits the room; a
+  // page of them at a time where they do not, turned by the arrows under them or a swipe across
+  // them; and where one paragraph alone is taller than the room, as at the largest text size on a
+  // short screen, its words drawn smaller until it fits. Laid out again whenever the tab changes size.
+  var GRAPH_HELP_COL = 300, GRAPH_HELP_FLOOR = 0.6, graphHelpPage = 0;
+  function graphHelpParts() {
+    var tab = $('tab-dependencies'), help = tab && tab.querySelector('.console__help'), box = help && help.querySelector(':scope > div');
+    return box ? { tab: tab, help: help, box: box, paras: Array.prototype.slice.call(box.querySelectorAll(':scope > p')), pager: box.querySelector('.graph__helppager') } : null;
+  }
+  function graphHelpInit() {
+    var h = graphHelpParts();
+    if (!h) return;
+    var pager = el('div', 'graph__helppager');
+    pager.setAttribute('role', 'group');
+    pager.setAttribute('aria-label', 'Pages of the help');
+    [-1, 1].forEach(function (step) {
+      var b = el('button', 'graph__page', step < 0 ? '\u2039' : '\u203a');
+      b.type = 'button';
+      b.setAttribute('data-step', String(step));
+      b.addEventListener('click', function () { graphHelpTurn(step); });
+      add(pager, b);
+      if (step < 0) add(pager, el('span', 'graph__pos'));
+    });
+    h.box.appendChild(pager);
+    graphSwipes(h.box, graphHelpTurn);
+    h.help.addEventListener('toggle', function () { graphHelpPage = 0; graphHelpLayout(); });
+  }
+  function graphHelpTurn(step) {
+    var h = graphHelpParts();
+    if (!h || !h.help.open || h.pager.hidden) return false;
+    var to = graphHelpPage + step, per = Number(h.box.getAttribute('data-per')) || h.paras.length;
+    if (to < 0 || to >= Math.ceil(h.paras.length / per)) return false;
+    graphHelpPage = to;
+    graphHelpLayout();
+    return true;
+  }
+  function graphHelpLayout() {
+    var h = graphHelpParts();
+    if (!h || !h.help.open) return;
+    var box = h.box, paras = h.paras, n = paras.length, head = h.tab.querySelector('.console__head');
+    box.style.top = (head.offsetTop + head.offsetHeight + 6) + 'px';
+    box.style.fontSize = '';
+    paras.forEach(function (p) { p.hidden = false; });
+    var cs = getComputedStyle(box), px = function (v) { return parseFloat(v) || 0; };
+    // the arrows' row, measured while it is shown, is the room a page of paragraphs gives up to it
+    h.pager.hidden = false;
+    var pagerRoom = h.pager.offsetHeight + px(cs.rowGap);
+    h.pager.hidden = true;
+    var W = box.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight), H = box.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom);
+    if (W <= 0 || H <= 0) return;
+    function tallest() { return Math.max.apply(null, paras.map(function (p) { return p.offsetHeight; })); }
+    var per = 1, room = H;
+    for (var cols = Math.max(1, Math.min(n, Math.floor(W / GRAPH_HELP_COL))); cols >= 1; cols--) {
+      box.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+      room = H - (cols < n ? pagerRoom : 0);
+      per = cols;
+      if (tallest() <= room) break;
+    }
+    var size = px(cs.fontSize);
+    while (per === 1 && tallest() > room && size > px(cs.fontSize) * GRAPH_HELP_FLOOR) { size *= 0.92; box.style.fontSize = size + 'px'; }
+    var pages = Math.ceil(n / per);
+    graphHelpPage = Math.max(0, Math.min(pages - 1, graphHelpPage));
+    box.setAttribute('data-per', String(per));
+    paras.forEach(function (p, i) { p.hidden = Math.floor(i / per) !== graphHelpPage; });
+    h.pager.hidden = pages < 2;
+    h.pager.querySelector('.graph__pos').textContent = (graphHelpPage + 1) + ' of ' + pages;
+    Array.prototype.forEach.call(h.pager.querySelectorAll('button'), function (b) {
+      var to = graphHelpPage + Number(b.getAttribute('data-step'));
+      b.disabled = to < 0 || to >= pages;
+      b.setAttribute('aria-label', (to < graphHelpPage ? 'Earlier' : 'Later') + ' help, page ' + (graphHelpPage + 1) + ' of ' + pages);
+    });
   }
   // the tiles for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
   // was or it is gone, the first chart; a chart is a card the tiles show and hide by its key.
@@ -4373,7 +4447,11 @@
     b.setAttribute('aria-pressed', 'false');
     b.setAttribute('aria-label', c.kind + (c.title ? ': ' + c.title : '') + ', ' + c.foot);
     b.title = c.heading;
-    add(b, el('span', 'graph__tkind', c.kind), el('span', 'graph__ttitle', c.title), graphStateBar(c.counts), el('span', 'graph__tfoot', c.foot));
+    // an epic's number rides with its title, shown before it where the short form gives up the kind
+    // (control.css), so epics whose titles begin alike still tell apart
+    var title = el('span', 'graph__ttitle', c.title), num = /#[0-9]+$/.exec(c.kind || '');
+    if (num) title.setAttribute('data-num', num[0]);
+    add(b, el('span', 'graph__tkind', c.kind), title, graphStateBar(c.counts), el('span', 'graph__tfoot', c.foot));
     b.addEventListener('click', function () { graphSelect(c.key, draw.repo); });
     return b;
   }
@@ -4451,28 +4529,92 @@
     if (first) graphSelect(first.getAttribute('data-focus'), '');
   }
   // All shows every chart at once, each fitted in a cell of its own, in the grid of columns and rows
-  // that draws the smallest of them the largest, by each chart's own size, so a wide goals chart and
-  // a tall epic both read as well as the deck allows; a press on a cell opens its chart
+  // that draws the smallest of them the largest, by each chart's own size in the face it is drawn
+  // largest in, so a wide goals chart and a tall epic both read as well as the deck allows; a press
+  // on a cell opens its chart. No cell is narrower or shorter than its title and a chart can be told
+  // apart in (GRAPH_ALL_MIN_W by GRAPH_ALL_MIN_H of the tab's own pixels): where the deck cannot hold
+  // every cell at that size, as with many epics at a large text size, All shows a page of them at a
+  // time, turned by the arrows under them or a swipe across them, never a grid of cells too small
+  // to say what they are
+  var GRAPH_ALL_MIN_W = 150, GRAPH_ALL_MIN_H = 110, GRAPH_ALL_GAP = 10, graphAllPage = 0;
   function graphAllLayout() {
     var box = $('cp-graph');
     if (!box) return;
-    if (!box.classList.contains('graph--all')) { box.style.gridTemplateColumns = ''; box.style.gridTemplateRows = ''; return; }
-    var cells = Array.prototype.filter.call(box.querySelectorAll('.graph__section'), function (s) { return !s.hidden; });
-    var n = cells.length, W = box.clientWidth, H = box.clientHeight;
+    var pager = $('cp-graph-allpager');
+    if (!box.classList.contains('graph--all')) {
+      box.style.gridTemplateColumns = '';
+      box.style.gridTemplateRows = '';
+      if (pager) pager.parentNode.removeChild(pager);
+      return;
+    }
+    var cells = Array.prototype.slice.call(box.querySelectorAll('.graph__section'));
+    var n = cells.length, W = box.clientWidth, H = box.clientHeight, gap = GRAPH_ALL_GAP;
     if (!n || !W || !H) return;
+    function fits(h) { return Math.max(1, Math.floor((W + gap) / (GRAPH_ALL_MIN_W + gap))) * Math.max(1, Math.floor((h + gap) / (GRAPH_ALL_MIN_H + gap))); }
+    var per = Math.min(n, fits(H));
+    if (per < n) {
+      pager = pager || graphAllPager(box);
+      H -= pager.offsetHeight + gap;
+      per = Math.min(n, fits(H));
+    } else if (pager) { pager.parentNode.removeChild(pager); pager = null; }
+    var pages = Math.ceil(n / per);
+    graphAllPage = Math.max(0, Math.min(pages - 1, graphAllPage));
+    var page = cells.slice(graphAllPage * per, graphAllPage * per + per);
+    cells.forEach(function (sec) { sec.hidden = page.indexOf(sec) < 0; });
+    if (pager) graphAllPagerSay(pager, pages);
     // what a cell keeps from its stage, its title, gap, padding and frame, read off a cell's own
     // parts and not off its size, which may be the grid's last guess; its title grows with the
     // console's text size
-    var gap = 10, aside = graphAllAside(cells[0]);
-    var sizes = cells.map(function (sec) { var st = stageOf(sec.querySelector('.control__chart')); return st && st.w ? st : { w: 400, h: 300 }; });
-    var best = 1, bestScale = -1;
-    for (var cols = 1; cols <= n; cols++) {
-      var rows = Math.ceil(n / cols), cw = (W - gap * (cols - 1)) / cols - aside.w - 2 * STAGE_PAD, ch = (H - gap * (rows - 1)) / rows - aside.h - 2 * STAGE_PAD;
-      var scale = Math.min.apply(null, sizes.map(function (s) { return Math.min(cw / s.w, ch / s.h, 1); }));
+    var aside = graphAllAside(page[0]), m = page.length;
+    var faces = page.map(function (sec) { var st = stageOf(sec.querySelector('.control__chart')); return st && st.faces.length ? st.faces : [{ w: 400, h: 300 }]; });
+    var colsMost = Math.max(1, Math.floor((W + gap) / (GRAPH_ALL_MIN_W + gap))), rowsMost = Math.max(1, Math.floor((H + gap) / (GRAPH_ALL_MIN_H + gap)));
+    var best = Math.min(m, colsMost), bestScale = -1;
+    for (var cols = 1; cols <= Math.min(m, colsMost); cols++) {
+      var rows = Math.ceil(m / cols);
+      if (rows > rowsMost) continue;
+      var cw = (W - gap * (cols - 1)) / cols - aside.w - 2 * STAGE_PAD, ch = (H - gap * (rows - 1)) / rows - aside.h - 2 * STAGE_PAD;
+      var scale = Math.min.apply(null, faces.map(function (fs) { return Math.max.apply(null, fs.map(function (f) { return Math.min(cw / f.w, ch / f.h, 1); })); }));
       if (scale > bestScale + 1e-6) { best = cols; bestScale = scale; }
     }
     box.style.gridTemplateColumns = 'repeat(' + best + ', minmax(0, 1fr))';
-    box.style.gridTemplateRows = 'repeat(' + Math.ceil(n / best) + ', minmax(0, 1fr))';
+    box.style.gridTemplateRows = 'repeat(' + Math.ceil(m / best) + ', minmax(0, 1fr))' + (pager ? ' auto' : '');
+  }
+  // All's pages: an arrow either side of where it stands among them, under the cells
+  function graphAllPager(box) {
+    var pager = el('div', 'graph__allpager');
+    pager.id = 'cp-graph-allpager';
+    pager.setAttribute('role', 'group');
+    pager.setAttribute('aria-label', 'Pages of the charts');
+    [-1, 1].forEach(function (step) {
+      var b = el('button', 'graph__page', step < 0 ? '\u2039' : '\u203a');
+      b.type = 'button';
+      b.setAttribute('data-step', String(step));
+      b.addEventListener('click', function () { graphAllTurn(step, 0); });
+      add(pager, b);
+      if (step < 0) add(pager, el('span', 'graph__pos'));
+    });
+    box.appendChild(pager);
+    return pager;
+  }
+  function graphAllPagerSay(pager, pages) {
+    pager.querySelector('.graph__pos').textContent = 'Page ' + (graphAllPage + 1) + ' of ' + pages;
+    Array.prototype.forEach.call(pager.querySelectorAll('button'), function (b) {
+      var to = graphAllPage + Number(b.getAttribute('data-step'));
+      b.disabled = to < 0 || to >= pages;
+      b.setAttribute('aria-label', (to < graphAllPage ? 'Earlier charts' : 'Later charts') + ', page ' + (graphAllPage + 1) + ' of ' + pages);
+    });
+  }
+  // a page of All's cells turned by its arrows or a swipe across them, which the cells' stages hand
+  // here; sideways only, and nowhere past either end
+  function graphAllTurn(dx, dy) {
+    var pager = $('cp-graph-allpager');
+    if (!pager || Math.abs(dx) < Math.abs(dy) || !dx) return false;
+    var before = graphAllPage, buttons = pager.querySelectorAll('button');
+    var next = buttons[dx > 0 ? 1 : 0];
+    if (next.disabled) return false;
+    graphAllPage += dx > 0 ? 1 : -1;
+    graphAllLayout();
+    return graphAllPage !== before;
   }
   function graphAllAside(sec) {
     var cs = getComputedStyle(sec), head = sec.querySelector('.graph__head'), stage = sec.querySelector('.control__chart');
@@ -4490,32 +4632,40 @@
   var GRAPH_SHORT = 520;
   function graphLayout() {
     var tab = $('tab-dependencies');
+    graphPhoneFit(false);
     if (tab && tab.clientHeight) tab.classList.toggle('graph--short', tab.clientHeight < GRAPH_SHORT);
     graphKeyFold();
     graphStripLayout(true);
     graphAllLayout();
+    graphHelpLayout();
   }
-  // On a phone the page scrolls as a whole and the deck has no height of its own, so the tab takes
-  // the height of the screen left under the site's header and above the foot that sticks to the
-  // screen's bottom, less the rail where the screen is tall enough to keep it in sight too, and
-  // opening the tab brings it there: the whole tab in front of the person, nothing in it to scroll.
-  // Elsewhere the deck holds the window and the tab simply fills its stage.
-  var GRAPH_PHONE_MIN = 200, GRAPH_PHONE_RAIL = 640;
+  // On a phone the page scrolls as a whole and the deck has no height of its own (the console's
+  // phone layout), so while this tab is shown the page is held still (graph--held on the document,
+  // control.css: no scroll, no bounce, and no gesture of the browser's own on the tab), the window
+  // put where the rail of tabs stands under the site's header, so the person can always leave for
+  // another tab, and the tab takes the screen's height left above the foot that sticks to the
+  // screen's bottom: the whole tab in front of the person and nothing a finger can scroll. A screen
+  // too short to spare the site's header, a phone held sideways, gives the header's room and a
+  // line of the foot's to the tab too (control.css). Opening the tab and turning the phone bring the
+  // window back there; any other tab lets the page go. Elsewhere the deck holds the window and the
+  // tab simply fills its stage.
+  var GRAPH_PHONE_MIN = 160;
   function graphPhoneFit(bring) {
     var tab = $('tab-dependencies');
     if (!tab) return;
-    if (!pageScrolls()) { tab.style.height = ''; return; }
-    if (tab.hidden) return;
-    var rail = document.querySelector('.console__rail'), stage = tab.closest('.console__stage');
-    var top = window.innerHeight >= GRAPH_PHONE_RAIL && rail ? rail : (stage || tab);
+    var phone = pageScrolls(), shown = !tab.hidden && tab.getClientRects().length > 0;
+    document.documentElement.classList.toggle('graph--held', phone && shown);
+    if (!phone) { tab.style.height = ''; return; }
+    if (!shown) return;
+    var rail = document.querySelector('.console__rail') || tab, stage = tab.closest('.console__stage');
     var nav = $('nav'), foot = document.querySelector('.console__status');
     var navH = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
     var footH = foot && getComputedStyle(foot).position === 'sticky' ? foot.getBoundingClientRect().height : 0;
-    var lead = tab.getBoundingClientRect().top - top.getBoundingClientRect().top;
+    var lead = tab.getBoundingClientRect().top - rail.getBoundingClientRect().top;
     var below = stage ? parseFloat(getComputedStyle(stage).paddingBottom) + parseFloat(getComputedStyle(stage).borderBottomWidth) : 0;
     var h = Math.floor(window.innerHeight - navH - footH - lead - below - 6);
     tab.style.height = Math.max(h, GRAPH_PHONE_MIN) + 'px';
-    if (bring) window.scrollTo({ left: 0, top: Math.max(0, top.getBoundingClientRect().top + window.pageYOffset - navH), behavior: 'instant' });
+    if (bring) window.scrollTo({ left: 0, top: Math.max(0, rail.getBoundingClientRect().top + window.pageYOffset - navH), behavior: 'instant' });
   }
   // the issue a number names: the open list first, then what the reads brought (a closed sub-issue,
   // a blocker from outside the epic), else a bare one, so a node is drawn for every number an edge names
@@ -4716,7 +4866,10 @@
   }
   function graphCardHead(draw, heading, chart, progress, own, elsewhere) {
     var head = el('div', 'graph__head');
-    add(head, el('h3', '', heading));
+    // a long heading is cut at two lines (control.css), so the stage keeps its room; its whole words
+    // are the tile's, the tooltip's and a reader's
+    var h3 = add(head, el('h3', '', heading)).lastChild;
+    h3.title = heading;
     var meta = el('div', 'graph__meta');
     if (progress && progress[1] > 0) {
       var done = Math.min(progress[0], progress[1]);
@@ -4763,7 +4916,7 @@
     near.hidden = true;
     near.setAttribute('aria-live', 'polite');
     var text = graphChart(draw, chart.nodes, chart.edges);
-    var c = { draw: draw, host: host, near: near, section: sec, heading: heading, text: text, key: key, view: 'chart', focus: null,
+    var c = { draw: draw, host: host, near: near, section: sec, heading: heading, text: text, key: key, view: 'chart', focus: null, turns: true,
       edges: graphEdgesOf(text), kind: tile.kind, title: tile.title, counts: graphCounts(draw, chart, tile.own) };
     // a focus is drawn from the same text the chart is, through the same generator, for the node and
     // the issues one edge away from it, and the edges between them
@@ -4811,22 +4964,38 @@
     add(head, add(el('div', 'graph__tools'), graphViewSwitch(c), graphZoomTools(c)));
     add(box, sec);
     // under All a press anywhere on a card opens its chart, the stage's own press (and Enter) among
-    // them; otherwise a press on a node opens it in focus
+    // them, and a swipe across the cells turns All's page; otherwise a press on a node opens it in
+    // focus. Two fingers anywhere on the card pinch its chart
     function all() { return $('cp-graph').classList.contains('graph--all'); }
+    function open() { if (all()) graphSelect(key, draw.repo); }
     graphStage(c, {
+      area: sec,
       zooms: function () { return !all(); },
       wheel: function () { return true; },
-      go: function (dx, dy) { return graphGo(c, dx, dy); },
-      corner: function () { return graphCorner(c); },
+      go: function (dx, dy) { return all() ? graphAllTurn(dx, dy) : graphGo(c, dx, dy); },
+      corner: function () { return graphCorner(c, host); },
       tap: function (n) {
-        if (all()) graphSelect(key, draw.repo);
+        if (all()) open();
         else if (n != null && n !== c.focus) graphNearOpen(c, n);
       }
     });
-    head.addEventListener('click', function () { if (all()) graphSelect(key, draw.repo); });
+    // the list is a stage of its own, fitted, zoomed and panned as the chart is, and its rows'
+    // buttons and links keep their own presses; a swipe across it whole steps to the chart beside it
+    stageMake(list, {
+      zooms: function () { return !all(); },
+      wheel: function () { return true; },
+      area: sec,
+      go: function (dx, dy) { return all() ? graphAllTurn(dx, dy) : graphStepChart(c, dx, dy); },
+      corner: function () { return graphCorner(c, list); },
+      tap: open,
+      moved: function (st) { if (c.view === 'list' && c.fit) c.fit.classList.toggle('graph__fit--idle', st.whole); }
+    });
+    head.addEventListener('click', open);
     if (typeof ResizeObserver === 'function') {
       var watch = new ResizeObserver(function () { if (!list.isConnected) watch.disconnect(); else if (!list.hidden) graphListFit(c); });
       watch.observe(list);
+      var nearWatch = new ResizeObserver(function () { if (!near.isConnected) nearWatch.disconnect(); else if (!near.hidden) { graphNearRoom(c); graphNearFit(c); } });
+      nearWatch.observe(near);
     }
     c.foot = progress && progress[1] > 0 ? Math.min(progress[0], progress[1]) + ' of ' + progress[1] + ' closed' : plural(chart.nodes.length, 'issue');
     return c;
@@ -4853,16 +5022,41 @@
     c.host.hidden = view !== 'chart';
     c.near.hidden = view !== 'chart' || c.focus == null;
     c.list.hidden = view !== 'list';
-    if (view === 'list') graphListFit(c);
+    if (view === 'list') { var st = stageOf(c.list); if (st) st.whole = true; graphListFit(c); }
+    else if (c.fit && c.stage) c.fit.classList.toggle('graph__fit--idle', c.focus == null && c.stage.whole);
   }
-  // the list fitted to the card as the chart is: drawn at its own size where it fits, and smaller,
-  // whole, where it does not, its words for a reader unchanged
+  // The list laid out at the width that draws it largest whole, and put on its stage, which fits it
+  // The list is laid out as its chart is fitted: as a table at the stage's own width where its rows
+  // fit, and wider where they do not, so its words wrap less and each row takes fewer lines; or, where
+  // that draws them larger, as cards, each row its issue and title over the rest, in as many columns
+  // as the stage's width holds, as a box wider than tall does best with many rows (a phone held
+  // sideways); a phone upright has the cards always (control.css). The table is kept unless the cards
+  // draw the rows a good deal larger, its columns reading more easily; a reader hears the same table
+  // whatever its form or size. A zoom the person made is kept.
+  var GRAPH_LIST_WIDTHS = [1, 1.4, 2, 2.8, 4], GRAPH_LIST_COLUMN = 220, GRAPH_LIST_CARDS = 1.15;
   function graphListFit(c) {
-    var t = c.table, box = c.list;
-    if (!box.clientWidth || !box.clientHeight) return;
-    t.style.transform = '';
-    var k = Math.min(1, box.clientWidth / Math.max(1, t.offsetWidth), box.clientHeight / Math.max(1, t.offsetHeight));
-    t.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+    var box = c.list, t = c.table, st = stageOf(box);
+    if (!st || !box.clientWidth || !box.clientHeight || (st.svg && !st.whole)) return;
+    var W = Math.max(1, box.clientWidth - 2 * STAGE_PAD), H = Math.max(1, box.clientHeight - 2 * STAGE_PAD);
+    function scale(cards, m, cols) {
+      box.classList.toggle('graph__list--cards', cards);
+      t.style.setProperty('--gcols', String(cols));
+      t.style.width = Math.round(W * m) + 'px';
+      return Math.min(1, W / t.offsetWidth, H / t.offsetHeight);
+    }
+    var table = null, cards = null, i, k;
+    for (i = 0; i < GRAPH_LIST_WIDTHS.length; i++) {
+      k = scale(false, GRAPH_LIST_WIDTHS[i], 1);
+      if (!table || k > table.k + 1e-3) table = { cards: false, m: GRAPH_LIST_WIDTHS[i], cols: 1, k: k };
+      if (k >= 1) break;
+    }
+    for (i = 1; table.k < 1 && i <= Math.max(1, Math.floor(W / GRAPH_LIST_COLUMN)); i++) {
+      k = scale(true, 1, i);
+      if (!cards || k > cards.k + 1e-3) cards = { cards: true, m: 1, cols: i, k: k };
+    }
+    var best = cards && cards.k > table.k * GRAPH_LIST_CARDS ? cards : table;
+    scale(best.cards, best.m, best.cols);
+    stageShow(box, [{ svg: t, w: t.offsetWidth, h: t.offsetHeight }], 1);
   }
   // a chart that was not drawn shows its list, so its card still says what it holds, and keeps it
   function graphUndrawn(chart) {
@@ -4963,24 +5157,22 @@
     });
     return mermaidLoad;
   }
-  // one chart drawn under an id of its own, since Mermaid takes any element already carrying the id
-  // it draws under off the page; the picture is put on the chart's stage, which fits it whole
+  // one chart drawn under ids of its own, since Mermaid takes any element already carrying the id it
+  // draws under off the page; a Dependencies chart in both its faces, top to bottom and left to
+  // right, a Board chart in the board's own, since its stage takes the picture's own height on a
+  // board that scrolls; the picture is put on the chart's stage, which fits it whole in the face
+  // drawn larger
   function graphDraw(m, chart) {
-    var id = 'cp-graph-' + (++graphRenders);
-    return m.render(id, chart.text).then(function (r) {
-      chart.host.innerHTML = r.svg;
-      graphRestyle(chart.host);
-      var svg = chart.host.querySelector('svg');
-      if (!svg) return;
-      chart.whole = svg;
-      svg.setAttribute('role', 'img');
-      svg.setAttribute('aria-label', (chart.heading || 'The board\'s chart') + ': a chart of ' + plural(svg.querySelectorAll('g.node').length, 'issue') + '; press a node to see it with its neighbours' + (chart.list ? ', or List for the same in words' : ''));
-      stageShow(chart.host, svg, 1);
-    }, function (e) {
-      // what a failed drawing may leave on the page: the library's own picture of the error, under an id of its own
-      var left = document.getElementById('d' + id);
-      if (left && left.parentNode) left.parentNode.removeChild(left);
-      throw e;
+    return graphRenderFaces(m, chart.text, !!chart.turns).then(function (texts) {
+      var svgs = graphSvgs(texts, function (svg) {
+        return (chart.heading || 'The board\'s chart') + ': a chart of ' + plural(svg.querySelectorAll('g.node').length, 'issue') + '; press a node to see it with its neighbours' + (chart.list ? ', or List for the same in words' : '');
+      }, false);
+      clear(chart.host);
+      if (!svgs.length) return;
+      chart.faces = svgs;
+      chart.whole = svgs[0];
+      chart.host.appendChild(svgs[0]);
+      stageShow(chart.host, svgs, 1);
     });
   }
 
@@ -4996,59 +5188,124 @@
   // whole view to a few times natural size. Once zoomed in, one finger or the mouse drags it, kept
   // within the picture's edges, so it is never lost off the box; at the whole view the same drag is
   // a swipe, which the chart's own hooks turn into a step to the next chart or the next neighbour.
-  // The same functions serve the Dependencies tab's charts and the Board tab's, each stage with hooks
-  // of its own: whether it zooms now, whether the plain wheel zooms it, where a press and a swipe go.
-  var STAGE_PAD = 12, STAGE_MAX = 3, STAGE_NEAR_MAX = 2, STAGE_TAP_MS = 280, STAGE_SLOP = 8;
+  // A picture may come in more than one face, a chart drawn top to bottom and the same drawn left to
+  // right, and the stage shows the face drawn largest in its box, choosing again whenever the box
+  // changes shape while the picture is whole (the owner's "you just have to get better layout
+  // dynamically"): a tall box takes a tall face and a wide one a wide face. The same functions serve
+  // the Dependencies tab's charts and lists and the Board tab's charts, each stage with hooks of its
+  // own: whether it zooms now, whether the plain wheel zooms it, where a press and a swipe go.
+  var STAGE_PAD = 12, STAGE_MAX = 3, STAGE_NEAR_MAX = 2, STAGE_TAP_MS = 280, STAGE_CLICK_MS = 500, STAGE_SLOP = 8, STAGE_TURN = 1.08;
   var stages = new WeakMap();
   function stageOf(host) { return host ? stages.get(host) || null : null; }
+  function stageUnder(node) {
+    for (var n = node; n && n.nodeType === 1; n = n.parentNode) if (stages.has(n)) return stages.get(n);
+    return null;
+  }
   function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   // a stage for a box, its listeners wired once; refitted whenever the box changes size, as when its
-  // tab or card is first shown, a phone is turned or the console's text size changes
+  // tab or card is first shown, a phone is turned or the console's text size changes. hooks.area, a
+  // box round the stage (a chart's card), lets a finger that lands on it join a pinch on the stage
   function stageMake(host, hooks) {
-    var st = { host: host, hooks: hooks, svg: null, w: 0, h: 0, k: 1, x: 0, y: 0, fit: 1, cap: 1, whole: true, pointers: {}, drag: null, pinch: null, lastTap: null, tapTimer: 0, outBy: 1 };
+    var st = { host: host, hooks: hooks, svg: null, faces: [], w: 0, h: 0, k: 1, x: 0, y: 0, fit: 1, cap: 1, floor: 0, whole: true, pointers: {}, drag: null, pinch: null, lastTap: null, lastType: '', tapTimer: 0, outBy: 1 };
     stages.set(host, st);
     host.tabIndex = 0;
     host.addEventListener('pointerdown', function (e) { stageDown(st, e); });
     host.addEventListener('pointermove', function (e) { stageMove(st, e); });
     host.addEventListener('pointerup', function (e) { stageUp(st, e, false); });
     host.addEventListener('pointercancel', function (e) { stageUp(st, e, true); });
-    host.addEventListener('lostpointercapture', function (e) { stageUp(st, e, true); });
+    // only the stage's own capture lost ends a gesture; a button's or a link's, which a finger holds
+    // until the stage takes it at its first move, bubbles here too and means nothing
+    host.addEventListener('lostpointercapture', function (e) { if (e.target === host) stageUp(st, e, true); });
     host.addEventListener('wheel', function (e) { stageWheel(st, e); }, { passive: false });
-    host.addEventListener('keydown', function (e) { stageKeys(st, e); });
-    // a double click is the stage's own zoom, never a selection of the words under it
-    host.addEventListener('dblclick', function (e) { e.preventDefault(); });
+    host.addEventListener('keydown', function (e) { host.classList.remove('stage--touched'); stageKeys(st, e); });
+    // the mark of a finger's press lasts while the stage keeps the keyboard it gave, so the keyboard's
+    // own way back to the stage later draws its ring
+    host.addEventListener('blur', function () { host.classList.remove('stage--touched'); });
+    // a double click is the stage's own zoom, never a selection of the words under it, and the mouse's
+    // is the browser's own, which keeps the system's double-click time
+    host.addEventListener('dblclick', function (e) { e.preventDefault(); stageDouble(st, e); });
     // Safari reports a pinch as a gesture too, which would zoom the whole page
     host.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    // a box whose overflow is hidden can still be scrolled by the browser, to show a button given the
+    // keyboard inside it; the stage moves its picture itself (stageReveal), so the box stays put
+    host.addEventListener('scroll', function () { if (host.scrollLeft || host.scrollTop) { host.scrollLeft = 0; host.scrollTop = 0; } });
+    host.addEventListener('focusin', function (e) { if (e.target !== host) stageReveal(st, e.target); });
+    if (hooks.area) stageArea(st, hooks.area);
     if (typeof ResizeObserver === 'function') {
       var watch = new ResizeObserver(function () { if (!host.isConnected) watch.disconnect(); else stageResized(st); });
       watch.observe(host);
     }
     return st;
   }
-  // a picture put on the stage, the whole chart or a focus, at its natural size from its viewBox,
-  // and fitted whole; cap is the most the fit may enlarge it, 1 for a chart, more for a focus
-  function stageShow(host, svg, cap) {
+  // a face of a picture: the element drawn and its natural size, a drawing's from its viewBox
+  function stageFace(svg) {
+    var vb = svg.viewBox && svg.viewBox.baseVal;
+    return { svg: svg, w: vb && vb.width > 0 ? vb.width : 1, h: vb && vb.height > 0 ? vb.height : 1 };
+  }
+  // A picture put on the stage, the whole chart, a focus or a list, in one face or several, and
+  // fitted whole in the face drawn largest; cap is the most the fit may enlarge it, 1 for a chart,
+  // more for a focus. opts.floor is the least it is drawn at, where fitting it whole would draw it
+  // smaller (a focus is never drawn smaller than its whole chart drew it), and then it opens centred
+  // on the point opts.focal gives, the rest of it a pan or a swipe away
+  function stageShow(host, faces, cap, opts) {
     var st = stageOf(host);
     if (!st) return;
-    var vb = svg.viewBox && svg.viewBox.baseVal;
-    st.svg = svg;
-    st.w = vb && vb.width > 0 ? vb.width : 1;
-    st.h = vb && vb.height > 0 ? vb.height : 1;
+    opts = opts || {};
+    st.faces = (Array.isArray(faces) ? faces : [faces]).map(function (f) { return f.svg ? f : stageFace(f); });
     st.cap = cap;
-    svg.setAttribute('width', String(st.w));
-    svg.setAttribute('height', String(st.h));
-    // the drawing keeps its natural size whatever the stage's width, since the transform alone
-    // scales it: a page style or Mermaid's own max-width shrinking it too would fit it twice
-    svg.style.maxWidth = 'none';
-    svg.style.minWidth = st.w + 'px';
+    st.floor = opts.floor || 0;
+    st.focal = opts.focal || null;
+    st.svg = null;
+    stageSet(st, stagePick(st) || st.faces[0]);
     stageWhole(st, false);
+  }
+  // the face drawn largest in the box as it is now; the one shown is kept unless another is drawn
+  // larger by a margin, so a box near the balance does not turn the picture at every pixel
+  function stagePick(st) {
+    var best = null, bestK = -1, at = null, atK = 0;
+    st.faces.forEach(function (f) {
+      var k = stageFaceScale(st, f);
+      if (k > bestK) { best = f; bestK = k; }
+      if (f.svg === st.svg) { at = f; atK = k; }
+    });
+    return at && bestK <= atK * STAGE_TURN ? at : best;
+  }
+  function stageFaceScale(st, f) {
+    var w = st.w, h = st.h;
+    st.w = f.w;
+    st.h = f.h;
+    var k = stageFitScale(st);
+    st.w = w;
+    st.h = h;
+    return k;
+  }
+  // a face made the one shown: in the box in place of the face of the same picture shown before, or
+  // added to the box; a drawing keeps its natural size whatever the stage's width, since the
+  // transform alone scales it: a page style or Mermaid's own max-width shrinking it too would fit it
+  // twice
+  function stageSet(st, face) {
+    var el = face.svg;
+    if (!el.isConnected) {
+      var shown = st.faces.filter(function (f) { return f.svg !== el && f.svg.parentNode === st.host; })[0];
+      if (shown) st.host.replaceChild(el, shown.svg); else st.host.appendChild(el);
+    }
+    st.svg = el;
+    st.w = face.w;
+    st.h = face.h;
+    if (el instanceof SVGElement) {
+      el.setAttribute('width', String(st.w));
+      el.setAttribute('height', String(st.h));
+      el.style.maxWidth = 'none';
+      el.style.minWidth = st.w + 'px';
+    }
+    if (st.hooks.face) st.hooks.face(el);
   }
   // the box's inner size in its own pixels, which the console's text size (a CSS zoom on the deck)
   // makes differ from the window's
   function stageRoom(st) { return { x: 0, y: 0, w: st.host.clientWidth, h: st.host.clientHeight }; }
   // the part of the box a picture is fitted to: all of it, or, where the card's tools float over its
-  // top left corner (a phone held sideways, control.css), the larger for this picture of the part
-  // below them and the part beside them, so no node is drawn under them
+  // top left corner (a short tab, control.css), the larger for this picture of the part below them
+  // and the part beside them, so no node is drawn under them
   function stageFitRoom(st) {
     var r = stageRoom(st), c = st.hooks.corner ? st.hooks.corner() : null;
     if (!c) return r;
@@ -5060,39 +5317,50 @@
     return Math.min((r.w - 2 * STAGE_PAD) / st.w, (r.h - 2 * STAGE_PAD) / st.h, st.cap);
   }
   function stageFitScale(st) { return stageScaleIn(st, stageFitRoom(st)); }
-  // the whole picture, centred; a box laid out with no size yet, as in a hidden tab, is fitted the
-  // first time it has one
+  // the whole picture, centred; or, where a floor draws it larger than its box, the floor's size
+  // about its focal point, kept within the box's edges; a box laid out with no size yet, as in a
+  // hidden tab, is fitted the first time it has one
   function stageWhole(st, animate) {
     if (!st.svg) return;
     var r = stageFitRoom(st), k = stageScaleIn(st, r);
     if (!k) { st.whole = true; return; }
+    k = Math.max(k, Math.min(st.floor, st.cap));
     st.fit = k;
     st.k = k;
-    st.x = r.x + (r.w - st.w * k) / 2;
-    st.y = r.y + (r.h - st.h * k) / 2;
+    var f = k > stageScaleIn(st, r) + 1e-9 && st.focal ? st.focal(st.svg, st.w, st.h) : null;
+    st.x = f ? r.x + r.w / 2 - f.x * k : r.x + (r.w - st.w * k) / 2;
+    st.y = f ? r.y + r.h / 2 - f.y * k : r.y + (r.h - st.h * k) / 2;
+    if (f) stageClamp(st, false);
     st.whole = true;
     stageApply(st, animate);
   }
+  // a box that changes size takes the face drawn largest in it, if the picture is whole, and is
+  // fitted again; a zoom the person made is kept, its picture within the box, centred where it fits
   function stageResized(st) {
     if (!st.svg) return;
+    if (st.whole) {
+      var face = stagePick(st);
+      if (face && face.svg !== st.svg) { stageSet(st, face); stageWhole(st, false); return; }
+    }
     var k = stageFitScale(st);
     if (!k) return;
-    st.fit = k;
-    if (st.whole || st.k < k) stageWhole(st, false);
-    else { stageClamp(st); stageApply(st, false); }
+    st.fit = Math.max(k, Math.min(st.floor, st.cap));
+    if (st.whole || st.k < st.fit) stageWhole(st, false);
+    else { stageClamp(st, true); stageApply(st, false); }
   }
   // the most a picture is enlarged: a few times its natural size, or its fit where that is more
   function stageMax(st) { return Math.max(st.fit, STAGE_MAX); }
-  // each way, a picture that fits the part of the box it is fitted to is centred there; one that
-  // fits the box, beside the tools over its corner, is kept wholly in it; a larger one keeps its
-  // edges at the box's, so it is never dragged off and lost
-  function stageClamp(st) {
+  // each way, a picture larger than the box keeps its edges at the box's, so it is never dragged off
+  // and lost, and one that fits the box is kept wholly in it, where the pointer zoomed or the finger
+  // left it; centred, as a box that changed size asks, one that fits the part it is fitted to is
+  // centred there
+  function stageClamp(st, centre) {
     var r = stageRoom(st), f = stageFitRoom(st);
-    st.x = stageClampWay(st.x, st.w * st.k, r.w, f.x, f.w);
-    st.y = stageClampWay(st.y, st.h * st.k, r.h, f.y, f.h);
+    st.x = stageClampWay(st.x, st.w * st.k, r.w, f.x, f.w, centre);
+    st.y = stageClampWay(st.y, st.h * st.k, r.h, f.y, f.h, centre);
   }
-  function stageClampWay(at, size, box, from, room) {
-    if (size <= room - 2 * STAGE_PAD) return from + (room - size) / 2;
+  function stageClampWay(at, size, box, from, room, centre) {
+    if (centre && size <= room - 2 * STAGE_PAD) return from + (room - size) / 2;
     if (size <= box - 2 * STAGE_PAD) return Math.max(STAGE_PAD, Math.min(box - STAGE_PAD - size, at));
     return Math.min(STAGE_PAD, Math.max(box - STAGE_PAD - size, at));
   }
@@ -5104,7 +5372,8 @@
     st.svg.style.transform = 'translate(' + st.x + 'px, ' + st.y + 'px) scale(' + st.k + ')';
     if (st.hooks.moved) st.hooks.moved(st);
   }
-  // zoomed by a factor about a point of the box, which stays where it is under the pointer
+  // zoomed by a factor about a point of the box, which stays where it is under the pointer, until
+  // the picture reaches the box's edges
   function stageZoom(st, factor, px, py, animate) {
     if (!st.svg) return;
     var k = Math.max(st.fit, Math.min(stageMax(st), st.k * factor));
@@ -5113,7 +5382,7 @@
     st.k = k;
     st.whole = k <= st.fit * 1.001;
     if (st.whole) stageWhole(st, animate);
-    else { stageClamp(st); stageApply(st, animate); }
+    else { stageClamp(st, false); stageApply(st, animate); }
   }
   // a step in or out from a button or a key, about the box's middle; a step out from a focus drawn
   // whole goes back to the whole chart, as a pinch outward does
@@ -5134,19 +5403,34 @@
     var m = node ? /-flowchart-i([0-9]{1,9})-[0-9]+$/.exec(node.id || '') : null;
     return m ? Number(m[1]) : null;
   }
+  // The stage takes the pointer only once it moves: a press that never moves is the element's under
+  // it, so a list's buttons and links on the stage get their own clicks; the stage reads the press
+  // to know a tap, and captures the pointer at its first move, so a drag that leaves the box goes on.
   function stageDown(st, e) {
     if (!st.svg || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    st.lastType = e.pointerType;
     // the stage takes the keyboard, so + - 0 and the arrows work from where the person pressed: the
     // mouse's press gives it by itself, as a press does, with no ring drawn round the box (control.css
-    // keeps its words from being selected), and a finger's is given it here
-    if (e.pointerType !== 'mouse' && document.activeElement !== st.host) st.host.focus({ preventScroll: true });
-    var p = stagePoint(st, e);
-    st.pointers[e.pointerId] = p;
-    try { st.host.setPointerCapture(e.pointerId); } catch (x) { /* a pointer already gone */ }
+    // keeps its words from being selected), and a finger's is given it here, marked so its ring is
+    // not drawn either, a ring being for the keyboard
+    if (e.pointerType !== 'mouse') {
+      st.host.classList.add('stage--touched');
+      if (document.activeElement !== st.host && !(e.target.closest && e.target.closest('button, a'))) st.host.focus({ preventScroll: true });
+    }
+    st.pointers[e.pointerId] = stagePoint(st, e);
     var ids = Object.keys(st.pointers);
     if (ids.length === 2 && st.hooks.zooms()) { stagePinchStart(st); return; }
     if (ids.length > 1) return;
-    st.drag = { id: e.pointerId, x0: p.x, y0: p.y, sx: st.x, sy: st.y, dx: 0, dy: 0, t: Date.now(), moved: false, node: stageNodeAt(e.target), pan: !st.whole };
+    var p = st.pointers[e.pointerId];
+    st.drag = { id: e.pointerId, type: e.pointerType, x0: p.x, y0: p.y, sx: st.x, sy: st.y, dx: 0, dy: 0, t: Date.now(), moved: false, node: stageNodeAt(e.target),
+      control: !!(e.target.closest && e.target.closest('button, a')), pan: !st.whole };
+    // the stage holds the pointer from the press, so a drag that leaves it at once, over the tools
+    // floating at its corner, is still its own; a press on a button or a link inside it (a row's
+    // Centre its row in the list) is held only once it moves, so a press that stays is that button's
+    if (!st.drag.control) stageCapture(st, e.pointerId);
+  }
+  function stageCapture(st, id) {
+    try { st.host.setPointerCapture(id); } catch (x) { /* a pointer already gone */ }
   }
   function stageMove(st, e) {
     if (!st.pointers[e.pointerId]) return;
@@ -5161,14 +5445,16 @@
     d.dx = p.x - d.x0;
     d.dy = p.y - d.y0;
     if (!d.moved && Math.abs(d.dx) + Math.abs(d.dy) < STAGE_SLOP) return;
+    if (!d.moved) stageCapture(st, e.pointerId);
     d.moved = true;
-    if (!st.hooks.zooms()) return;
+    // the finger left down after a pinch that drew the picture whole moves nothing
+    if (!st.hooks.zooms() || (d.after && !d.pan)) return;
     st.host.classList.add('control__chart--panning');
     // zoomed in, the drag pans; at the whole view the picture follows the finger as a swipe, sideways
     // alone between charts and either way between neighbours
     st.x = d.sx + d.dx;
     st.y = d.sy + (d.pan || st.hooks.near ? d.dy : 0);
-    if (d.pan) stageClamp(st);
+    if (d.pan) stageClamp(st, false);
     stageApply(st, false);
   }
   function stageUp(st, e, cancelled) {
@@ -5177,44 +5463,57 @@
     st.host.classList.remove('control__chart--panning');
     if (st.pinch) {
       if (Object.keys(st.pointers).length < 2) stagePinchEnd(st);
-      st.drag = null;
       return;
     }
     var d = st.drag;
     if (!d || d.id !== e.pointerId) return;
     st.drag = null;
     if (!d.moved) { if (!cancelled) stageTap(st, d); return; }
-    if (d.pan || !st.hooks.zooms()) return;
+    if (d.after) { if (st.whole) stageWhole(st, true); return; }
+    if (d.pan) return;
     // a swipe: far enough, or quick, and more along its way than across it between charts
     var far = Math.max(40, 0.12 * stageRoom(st).w), quick = Date.now() - d.t < 300 && Math.max(Math.abs(d.dx), Math.abs(d.dy)) > 24;
     var sideways = Math.abs(d.dx) > 1.3 * Math.abs(d.dy);
     var swiped = !cancelled && (Math.max(Math.abs(d.dx), Math.abs(d.dy)) > far || quick) && (st.hooks.near || sideways);
-    // the picture is moved the way the finger went, as a map is, so what lay the other way comes in
-    if (swiped && st.hooks.go(-d.dx, st.hooks.near ? -d.dy : 0)) return;
-    stageWhole(st, true);
+    // the picture is moved the way the finger went, as a map is, so what lay the other way comes in;
+    // a stage that does not zoom now (All's cells) keeps its picture still and only steps
+    if (swiped && st.hooks.go && st.hooks.go(-d.dx, st.hooks.near ? -d.dy : 0)) return;
+    if (st.hooks.zooms()) stageWhole(st, true);
   }
-  // a tap presses a node, after a moment in which a second tap makes it a double tap, which zooms in
-  // about that point, or back to the whole view from the most it zooms
+  // A tap presses a node. A finger's waits a moment, in which a second tap near it makes a double
+  // tap, which zooms in about that point, or back to the whole view from the most it zooms; the
+  // mouse's waits for the browser's own double click (stageDouble), whose time is the system's, as
+  // long as the longest a system sets by default; a press on a button or a link is its own.
   function stageTap(st, d) {
     var now = Date.now(), last = st.lastTap;
     if (!st.hooks.zooms()) { if (st.hooks.tap) st.hooks.tap(d.node); return; }
-    if (last && now - last.t < STAGE_TAP_MS && Math.abs(d.x0 - last.x) + Math.abs(d.y0 - last.y) < 30) {
-      clearTimeout(st.tapTimer);
+    if (d.control) return;
+    clearTimeout(st.tapTimer);
+    if (d.type !== 'mouse' && last && now - last.t < STAGE_TAP_MS && Math.abs(d.x0 - last.x) + Math.abs(d.y0 - last.y) < 30) {
       st.lastTap = null;
-      if (st.k >= stageMax(st) * 0.99) stageWhole(st, true);
-      else stageZoom(st, 2, d.x0, d.y0, true);
+      stageZoomAt(st, d.x0, d.y0);
       return;
     }
     st.lastTap = { t: now, x: d.x0, y: d.y0 };
-    clearTimeout(st.tapTimer);
     st.tapTimer = setTimeout(function () {
       st.lastTap = null;
       if (d.node != null && st.hooks.tap) st.hooks.tap(d.node);
-    }, STAGE_TAP_MS);
+    }, d.type === 'mouse' ? STAGE_CLICK_MS : STAGE_TAP_MS);
+  }
+  function stageDouble(st, e) {
+    if (st.lastType !== 'mouse' || !st.svg || !st.hooks.zooms() || (e.target.closest && e.target.closest('button, a'))) return;
+    clearTimeout(st.tapTimer);
+    st.lastTap = null;
+    var p = stagePoint(st, e);
+    stageZoomAt(st, p.x, p.y);
+  }
+  function stageZoomAt(st, x, y) {
+    if (st.k >= stageMax(st) * 0.99) stageWhole(st, true);
+    else stageZoom(st, 2, x, y, true);
   }
   // two fingers: the point of the picture under their middle stays under it as they spread or close
   // and move; past the whole view it gives a little, and comes back on release, or, from a focus,
-  // goes back to the whole chart
+  // goes back to the whole chart; the finger left down when the other lifts carries on as a drag
   function stagePinchPair(st) {
     var ids = Object.keys(st.pointers), a = st.pointers[ids[0]], b = st.pointers[ids[1]];
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) };
@@ -5223,6 +5522,7 @@
     clearTimeout(st.tapTimer);
     st.lastTap = null;
     st.drag = null;
+    Object.keys(st.pointers).forEach(function (id) { stageCapture(st, Number(id)); });
     var q = stagePinchPair(st);
     st.pinch = { d: q.d, k: st.k, cx: (q.x - st.x) / st.k, cy: (q.y - st.y) / st.k };
   }
@@ -5232,7 +5532,7 @@
     st.x = q.x - st.pinch.cx * k;
     st.y = q.y - st.pinch.cy * k;
     st.whole = false;
-    if (k >= st.fit) stageClamp(st);
+    if (k >= st.fit) stageClamp(st, false);
     stageApply(st, false);
   }
   function stagePinchEnd(st) {
@@ -5240,12 +5540,34 @@
     st.pinch = null;
     if (under && st.hooks.out && st.hooks.out()) return;
     if (st.k <= st.fit * 1.001) stageWhole(st, true);
-    else { stageClamp(st); stageApply(st, true); }
+    else { stageClamp(st, false); stageApply(st, true); }
+    var ids = Object.keys(st.pointers);
+    if (ids.length !== 1) return;
+    var p = st.pointers[ids[0]];
+    st.drag = { id: Number(ids[0]), type: 'touch', x0: p.x, y0: p.y, sx: st.x, sy: st.y, dx: 0, dy: 0, t: Date.now(), moved: true, node: null, control: false, pan: !st.whole, after: true };
+  }
+  // a finger on the stage's card joins a pinch on the stage, and one on the stage joins a finger on
+  // the card, so two fingers that land either side of the stage's edge still pinch the chart; the
+  // card's own buttons keep their fingers, and a finger alone on the card does nothing
+  // A finger in the area but on no stage, the card's own words or edge, joins a pinch on the stage
+  // shown there; one on a stage, this one or another in the same card (the list beside the chart),
+  // is that stage's alone, and a stage hidden takes none
+  function stageArea(st, area) {
+    function outside(e) { return e.pointerType === 'touch' && st.host.getClientRects().length > 0 && !stageUnder(e.target); }
+    area.addEventListener('pointerdown', function (e) {
+      if (!outside(e) || !st.svg || (e.target.closest && e.target.closest('button, a, summary'))) return;
+      st.pointers[e.pointerId] = stagePoint(st, e);
+      if (Object.keys(st.pointers).length === 2 && st.hooks.zooms()) stagePinchStart(st);
+    });
+    area.addEventListener('pointermove', function (e) { if (outside(e)) stageMove(st, e); });
+    area.addEventListener('pointerup', function (e) { if (outside(e)) stageUp(st, e, false); });
+    area.addEventListener('pointercancel', function (e) { if (outside(e)) stageUp(st, e, true); });
   }
   // the trackpad's pinch comes as a wheel event with ctrlKey, the mouse's wheel as a plain one; where
   // the stage takes the plain wheel too (the Dependencies tab, where nothing scrolls) both zoom about
   // the pointer, and the page never scrolls instead; a turn outward from a focus drawn whole goes
-  // back to the whole chart once it has gone far enough to be meant
+  // back to the whole chart once it has gone far enough to be meant. A wheel that counts in lines
+  // or pages, as Firefox's mouse does, is counted in pixels first
   function stageWheel(st, e) {
     if (!st.svg || !st.hooks.zooms() || !(e.ctrlKey || st.hooks.wheel())) return;
     e.preventDefault();
@@ -5262,9 +5584,11 @@
   }
   // the keys, once the stage has the keyboard: + and - zoom about its middle and 0 draws it whole;
   // the arrows pan a picture zoomed in, and otherwise go the chart's own way (the next chart, or the
-  // neighbour that way); Escape goes back from a focus
+  // neighbour that way); Escape goes back from a focus. A key held with Ctrl, Alt or the Command key
+  // is the browser's, its own zoom among them
   function stageKeys(st, e) {
     if (e.altKey || e.ctrlKey || e.metaKey || !st.svg) return;
+    if (e.target !== st.host && /^(Enter| |Spacebar)$/.test(e.key)) return;
     var arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     if (!st.hooks.zooms()) {
       if (e.key !== 'Enter' || !st.hooks.tap) return;
@@ -5275,22 +5599,39 @@
     else if (e.key === 'Escape' && st.hooks.out && st.hooks.out()) { /* back to the whole chart */ }
     else if (arrows[e.key]) {
       var a = arrows[e.key];
-      if (!st.whole) { st.x -= a[0] * 60; st.y -= a[1] * 60; st.whole = false; stageClamp(st); stageApply(st, true); }
-      else if (!st.hooks.go(a[0], a[1])) return;
+      if (!st.whole) { st.x -= a[0] * 60; st.y -= a[1] * 60; st.whole = false; stageClamp(st, false); stageApply(st, true); }
+      else if (!st.hooks.go || !st.hooks.go(a[0], a[1])) return;
     } else return;
     e.preventDefault();
+  }
+  // an element given the keyboard inside the stage, a list's button, brought into the box, the
+  // picture moved by as little as shows it whole
+  function stageReveal(st, node) {
+    if (!st.svg || !st.svg.contains(node)) return;
+    var b = st.host.getBoundingClientRect(), r = node.getBoundingClientRect(), f = st.host.offsetWidth ? b.width / st.host.offsetWidth : 1;
+    var l = (r.left - b.left) / f, t = (r.top - b.top) / f, w = r.width / f, h = r.height / f, W = st.host.clientWidth, H = st.host.clientHeight;
+    var dx = l < STAGE_PAD ? STAGE_PAD - l : (l + w > W - STAGE_PAD ? W - STAGE_PAD - l - w : 0);
+    var dy = t < STAGE_PAD ? STAGE_PAD - t : (t + h > H - STAGE_PAD ? H - STAGE_PAD - t - h : 0);
+    if (!dx && !dy) return;
+    st.x += dx;
+    st.y += dy;
+    st.whole = false;
+    stageClamp(st, false);
+    stageApply(st, false);
   }
 
   /* ---------- a node in focus ---------- */
   // A node pressed opens in focus (the owner, 2026-10-19: "if I select a node it will be blown up and
   // only its immediate neighbors will be visible but I can swipe to navigate"): a small chart of its
   // own, drawn through the same chart text and restyle as the whole one, of the node, the issues one
-  // edge away from it either way and the edges between them, fitted to the stage and drawn up to
-  // twice its size, with the node edged in the deck's teal; and beside or under it a card with its
-  // whole title, its state, its worker, a link to it on GitHub and Centre its row, the old press's
-  // job. A press on a neighbour, a swipe or an arrow key moves the focus to the neighbour that way as
-  // drawn; Escape, Whole chart and a pinch outward go back to the whole chart. Each focus drawn is
-  // kept for the chart, so moving back and forth draws nothing again.
+  // edge away from it either way and the edges between them, top to bottom and left to right, the
+  // stage showing the face drawn larger, fitted to the stage and drawn up to twice its size, and
+  // never smaller than the whole chart drew it, with the node edged in the deck's teal; and beside or
+  // under it a card with its state, its worker, a link to it on GitHub and Centre its row, the old
+  // press's job, then its whole title and its arrows in words, each neighbour there a button. A press
+  // on a neighbour, a swipe or an arrow key moves the focus to the neighbour that way as drawn;
+  // Escape, Whole chart and a pinch outward go back to the whole chart. Each focus drawn is kept for
+  // the chart, so moving back and forth draws nothing again.
   var GRAPH_EDGE = /^  i([1-9][0-9]{0,8}) (-->|-\.->|==>) i([1-9][0-9]{0,8})$/;
   function graphEdgesOf(text) {
     return String(text).split('\n').map(function (line) { return GRAPH_EDGE.exec(line); }).filter(Boolean)
@@ -5302,109 +5643,202 @@
     view.edges.forEach(function (e) { if (e.from === n) near[e.to] = true; if (e.to === n) near[e.from] = true; });
     return near;
   }
+  // the same chart drawn left to right: only its first line differs from the board's, and it is
+  // handed to the drawing alone, never compared with the board or written anywhere
+  function graphTurned(text) { return String(text).replace(/^flowchart TD\n/, 'flowchart LR\n'); }
+  // a chart's text drawn in both faces, the top to bottom one first; where the first is drawn with no
+  // size, as a stand-in for the drawing draws it, the second is not asked for
+  function graphRenderFaces(m, text, turn) {
+    var ids = [];
+    function one(t) {
+      var id = 'cp-graph-' + (++graphRenders);
+      ids.push(id);
+      return m.render(id, t).then(function (r) { return r.svg; });
+    }
+    return one(text).then(function (first) {
+      if (!turn || !/viewBox="[-0-9.e]+ [-0-9.e]+ [0-9.e]*[1-9]/.test(first)) return [first];
+      return one(graphTurned(text)).then(function (second) { return [first, second]; });
+    }).catch(function (e) {
+      // what a failed drawing may leave on the page: the library's own picture of the error, under an id of its own
+      ids.forEach(function (id) { var left = document.getElementById('d' + id); if (left && left.parentNode) left.parentNode.removeChild(left); });
+      throw e;
+    });
+  }
+  // the drawn texts made elements, restyled to the console's look, each read as the picture it is
+  function graphSvgs(texts, label, near) {
+    return texts.map(function (text) {
+      var wrap = el('div');
+      wrap.innerHTML = text;
+      var svg = wrap.querySelector('svg');
+      if (!svg) return null;
+      graphRestyle(wrap);
+      if (near) svg.classList.add('graph__nearsvg');
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', label(svg));
+      return svg;
+    }).filter(Boolean);
+  }
   // the hooks every chart's stage shares: a press opens a focus, a step out of a focus closes it,
-  // and the Whole chart button says whether there is anything to go back from
+  // the Whole chart button says whether there is anything to go back from, and the whole chart's face
+  // shown is the one a focus hides and a close shows again
   function graphStage(view, hooks) {
     hooks.tap = hooks.tap || function (n) { if (n != null && n !== view.focus) graphNearOpen(view, n); };
     hooks.out = function () { if (view.focus == null) return false; graphNearClose(view); return true; };
     hooks.moved = function (st) { if (view.fit) view.fit.classList.toggle('graph__fit--idle', view.focus == null && st.whole); };
+    hooks.face = function (svg) { if (!svg.classList.contains('graph__nearsvg')) view.whole = svg; };
     view.stage = stageMake(view.host, hooks);
   }
   // the corner of a card's stage its tools float over, in the stage's own pixels with a little room,
-  // where they float over it, as on a phone held sideways (control.css); else none
-  function graphCorner(view) {
+  // where they float over it, as on a short tab (control.css); else none
+  function graphCorner(view, host) {
     var tools = view.section.querySelector('.graph__tools');
     if (!tools || getComputedStyle(tools).position !== 'absolute') return null;
-    var t = tools.getBoundingClientRect(), h = view.host.getBoundingClientRect(), f = view.host.offsetWidth ? h.width / view.host.offsetWidth : 1;
+    var t = tools.getBoundingClientRect(), h = host.getBoundingClientRect(), f = host.offsetWidth ? h.width / host.offsetWidth : 1;
     if (t.right <= h.left || t.bottom <= h.top || t.left >= h.right || t.top >= h.bottom) return null;
-    return { w: (t.right - h.left) / f - view.host.clientLeft + 4, h: (t.bottom - h.top) / f - view.host.clientTop + 4 };
+    return { w: (t.right - h.left) / f - host.clientLeft + 4, h: (t.bottom - h.top) / f - host.clientTop + 4 };
   }
   function graphNearOpen(view, n) {
     if (!view.whole) return;
     view.want = n;
     view.nearSvg = view.nearSvg || {};
-    var near = graphNeighbours(view, n), id = 'cp-graph-' + (++graphRenders);
+    var near = graphNeighbours(view, n);
     var drawn = view.nearSvg[n] ? Promise.resolve(view.nearSvg[n]) : loadMermaid().then(function (m) {
-      return m.render(id, view.nearText(near));
-    }).then(function (r) { view.nearSvg[n] = r.svg; return r.svg; }, function (e) {
-      var left = document.getElementById('d' + id);
-      if (left && left.parentNode) left.parentNode.removeChild(left);
-      throw e;
-    });
-    return drawn.then(function (svgText) {
+      return graphRenderFaces(m, view.nearText(near), true);
+    }).then(function (texts) { view.nearSvg[n] = texts; return texts; });
+    return drawn.then(function (texts) {
       if (view.want !== n || !view.host.isConnected) return;
-      graphNearShow(view, n, svgText, near);
+      graphNearShow(view, n, texts, near);
     }, function (e) {
       if (view.want !== n) return;
       view.want = null;
       say('#' + n + ' could not be drawn in focus (' + e.message + ').', true);
     });
   }
-  function graphNearShow(view, n, svgText, near) {
-    var old = view.host.querySelector('svg.graph__nearsvg');
-    if (old) old.parentNode.removeChild(old);
-    var wrap = el('div');
-    wrap.innerHTML = svgText;
-    var svg = wrap.querySelector('svg');
-    if (!svg) return;
-    svg.classList.add('graph__nearsvg');
-    graphRestyle(wrap);
-    Array.prototype.forEach.call(svg.querySelectorAll('g.node'), function (g) { if (stageNodeAt(g) === n) g.classList.add('graph__focal'); });
-    svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', '#' + n + ' with ' + plural(Object.keys(near).length - 1, 'neighbour'));
-    view.host.appendChild(svg);
+  // A focus blows its node up (the owner, 2026-10-19: "if I select a node it will be blown up"): it is
+  // drawn at least this much larger than the whole chart drew it, about its node, even where its
+  // neighbours then run past the stage's edges, as a hub's many do; a swipe or an arrow key goes to them
+  var GRAPH_NEAR_GROW = 1.25;
+  function graphNearShow(view, n, texts, near) {
+    var st = view.stage;
+    // the size the whole chart was drawn at, which the focus is drawn larger than; kept from the
+    // whole chart as the focus moves from neighbour to neighbour
+    if (view.focus == null) view.wholeFit = st ? st.fit : 0;
+    Array.prototype.forEach.call(view.host.querySelectorAll(':scope > svg.graph__nearsvg'), function (old) { old.parentNode.removeChild(old); });
+    var svgs = graphSvgs(texts, function () { return '#' + n + ' with ' + plural(Object.keys(near).length - 1, 'neighbour'); }, true);
+    if (!svgs.length) return;
+    svgs.forEach(function (svg) {
+      Array.prototype.forEach.call(svg.querySelectorAll('g.node'), function (g) { if (stageNodeAt(g) === n) g.classList.add('graph__focal'); });
+    });
     view.whole.style.display = 'none';
     view.focus = n;
     view.host.classList.add('control__chart--near');
     // on a phone the tiles and the card's heading give their room to the focus, so the node comes up
     // larger than the whole chart drew it, as the request asks (control.css, graph--near)
     if (view.section) $('tab-dependencies').classList.add('graph--near');
-    if (view.stage) view.stage.hooks.near = true;
+    if (st) st.hooks.near = true;
     graphNearCard(view, n);
-    stageShow(view.host, svg, STAGE_NEAR_MAX);
+    stageShow(view.host, svgs, STAGE_NEAR_MAX, { floor: view.wholeFit * GRAPH_NEAR_GROW, focal: graphFocal });
+  }
+  // the focus's node in its picture's own units, which a focus drawn at its floor is centred on
+  function graphFocal(svg, w, h) {
+    var g = svg.querySelector('g.node.graph__focal'), s = svg.getBoundingClientRect();
+    if (!g || !s.width || !s.height) return null;
+    var r = g.getBoundingClientRect();
+    return { x: (r.left + r.width / 2 - s.left) / s.width * w, y: (r.top + r.height / 2 - s.top) / s.height * h };
   }
   function graphNearClose(view) {
     view.want = null;
     if (view.focus == null) return;
-    var svg = view.host.querySelector('svg.graph__nearsvg');
-    if (svg) svg.parentNode.removeChild(svg);
+    Array.prototype.forEach.call(view.host.querySelectorAll(':scope > svg.graph__nearsvg'), function (svg) { svg.parentNode.removeChild(svg); });
     view.focus = null;
     view.host.classList.remove('control__chart--near');
     if (view.section) $('tab-dependencies').classList.remove('graph--near');
     if (view.stage) view.stage.hooks.near = false;
     view.near.hidden = true;
+    view.near.style.marginTop = '';
     clear(view.near);
     view.whole.style.display = '';
-    stageShow(view.host, view.whole, 1);
+    stageShow(view.host, view.faces || [view.whole], 1);
   }
-  // the words of the edges at a node, as the key names the arrows
+  // the words of the edges at a node, as the key names the arrows, each neighbour named there a
+  // button that moves the focus to it, so every neighbour is a key's reach away, not only the one
+  // nearest each arrow's way
   function graphNearWords(view, n) {
-    var parts = [];
-    function list(edges, end) { return edges.map(function (e) { return '#' + e[end]; }).join(', '); }
+    var p = el('p', 'graph__nearrel'), parts = [];
     var into = view.edges.filter(function (e) { return e.to === n; }), out = view.edges.filter(function (e) { return e.from === n; });
-    var by = into.filter(function (e) { return e.kind === '-->'; }), byClosed = into.filter(function (e) { return e.kind === '-.->'; });
-    var goal = into.filter(function (e) { return e.kind === '==>'; }), epics = out.filter(function (e) { return e.kind === '==>'; });
-    var blocks = out.filter(function (e) { return e.kind !== '==>'; });
-    if (by.length) parts.push('Blocked by ' + list(by, 'from'));
-    if (byClosed.length) parts.push('blocked by ' + list(byClosed, 'from') + ', now closed');
-    if (blocks.length) parts.push('blocks ' + list(blocks, 'to'));
-    if (goal.length) parts.push('an epic of ' + list(goal, 'from'));
-    if (epics.length) parts.push('its epics are ' + list(epics, 'to'));
-    if (!parts.length) return 'No arrow joins it to another issue in this chart.';
-    var text = parts.join('; ') + '.';
-    return text.charAt(0).toUpperCase() + text.slice(1);
+    function part(words, edges, end, after) { if (edges.length) parts.push({ words: words, ns: edges.map(function (e) { return e[end]; }), after: after || '' }); }
+    part('blocked by ', into.filter(function (e) { return e.kind === '-->'; }), 'from');
+    part('blocked by ', into.filter(function (e) { return e.kind === '-.->'; }), 'from', ', now closed');
+    part('blocks ', out.filter(function (e) { return e.kind !== '==>'; }), 'to');
+    part('an epic of ', into.filter(function (e) { return e.kind === '==>'; }), 'from');
+    part('its epics are ', out.filter(function (e) { return e.kind === '==>'; }), 'to');
+    if (!parts.length) { p.textContent = 'No arrow joins it to another issue in this chart.'; return p; }
+    parts.forEach(function (q, i) {
+      add(p, (i ? '; ' : '') + (i ? q.words : q.words.charAt(0).toUpperCase() + q.words.slice(1)));
+      q.ns.forEach(function (m, j) {
+        var b = el('button', 'graph__nearto', '#' + m);
+        b.type = 'button';
+        b.setAttribute('aria-label', 'Show #' + m + ' in focus');
+        b.addEventListener('click', function () { graphNearOpen(view, m); });
+        add(p, j ? ', ' : '', b);
+      });
+      add(p, q.after);
+    });
+    add(p, '.');
+    return p;
   }
+  // the focus's card: its number, state and worker, then its link and Centre its row, which stand
+  // above its title so they stay in sight however long the title is, then its whole title and its
+  // arrows in words
   function graphNearCard(view, n) {
     var it = view.record(n), card = view.near;
     clear(card);
     var head = el('p', 'graph__nearhead');
     add(head, el('b', 'graph__nearnum', '#' + n), el('span', 'graph__pill graph__pill--' + (it.state || 'plain'), GRAPH_STATES[it.state] || 'open'));
     if (it.worker) add(head, el('span', 'graph__nearwho', 'worker ' + it.worker));
-    add(card, head, el('p', 'graph__neartitle', it.title || 'This issue\'s title is not known here.'), el('p', 'graph__nearrel', graphNearWords(view, n)));
     var acts = el('div', 'graph__nearacts');
     add(acts, link(it.url, 'Open #' + n + ' on GitHub'), btn('Centre its row', true, function () { graphFocus(n); }));
-    add(card, acts);
+    add(card, head, acts, el('p', 'graph__neartitle', it.title || 'This issue\'s title is not known here.'), graphNearWords(view, n));
     card.hidden = false;
+    graphNearRoom(view);
+    graphNearFit(view);
+  }
+  // Where the card's tools float over the stage's corner (a short tab), they run on past a stage a
+  // focus has narrowed, over the card beside it, so the card starts under them
+  function graphNearRoom(view) {
+    var card = view.near, tools = view.section && view.section.querySelector('.graph__tools');
+    if (!card || !tools) return;
+    card.style.marginTop = '';
+    if (card.hidden || getComputedStyle(tools).position !== 'absolute') return;
+    var t = tools.getBoundingClientRect(), c = card.getBoundingClientRect(), f = card.offsetWidth ? c.width / card.offsetWidth : 1;
+    if (!c.width || t.right <= c.left || t.left >= c.right || t.bottom <= c.top || t.top >= c.bottom) return;
+    card.style.marginTop = Math.ceil((t.bottom - c.top) / f + 6) + 'px';
+  }
+  // The card's title is shown whole where the card has the room, and where it has not, as for a
+  // very long title at a large text size, it alone gives way: its words smaller, then the arrows'
+  // words, which the picture draws too, kept for a reader and the keyboard but out of sight, then its
+  // words smaller still, and only then cut at the lines the card holds, the whole title kept in its
+  // tooltip and for a reader; the state, the link and Centre its row never give way
+  var GRAPH_NEAR_FLOOR = 0.62;
+  function graphNearFit(view) {
+    var card = view.near, title = card && card.querySelector('.graph__neartitle'), rel = card && card.querySelector('.graph__nearrel');
+    if (!title || card.hidden || !card.clientHeight) return;
+    title.style.fontSize = '';
+    title.style.webkitLineClamp = '';
+    title.classList.remove('graph__neartitle--cut');
+    title.removeAttribute('title');
+    if (rel) rel.classList.remove('graph__nearrel--away');
+    function over() { return card.scrollHeight > card.clientHeight + 1; }
+    var size = parseFloat(getComputedStyle(title).fontSize), floor = size * GRAPH_NEAR_FLOOR;
+    function shrink(to) { while (over() && size > to + 0.01) { size = Math.max(to, size * 0.92); title.style.fontSize = size + 'px'; } }
+    shrink(size * 0.8);
+    if (over() && rel) rel.classList.add('graph__nearrel--away');
+    shrink(floor);
+    if (!over()) return;
+    title.classList.add('graph__neartitle--cut');
+    title.title = title.textContent;
+    var line = parseFloat(getComputedStyle(title).lineHeight) || size * 1.35;
+    title.style.webkitLineClamp = String(Math.max(1, Math.floor((title.clientHeight - (card.scrollHeight - card.clientHeight)) / line)));
   }
   // the neighbour the way asked, as drawn: of those within a wide angle of it, the one closest in
   // angle to the way, and of two alike, the nearer
@@ -5434,31 +5868,38 @@
   // sideways to the chart beside it, as Previous and Next step
   function graphGo(c, dx, dy) {
     if (c.focus != null) return graphNearStep(c, dx, dy);
+    return graphStepChart(c, dx, dy);
+  }
+  function graphStepChart(c, dx, dy) {
     var to = dx > 0 ? c.next : (dx < 0 ? c.prev : null);
     if (!to || Math.abs(dx) < Math.abs(dy)) return false;
     graphSelect(to.key, c.draw.repo);
-    if (to.host) to.host.focus({ preventScroll: true });
+    var shown = to.view === 'list' ? to.list : to.host;
+    if (shown) shown.focus({ preventScroll: true });
     return true;
   }
   // the zoom's buttons, at the top of a card and over the Board tab's charts: out, in, and Whole
-  // chart, which draws the chart whole again, from a zoom or from a focus
+  // chart, which draws the chart whole again, from a zoom or from a focus; a card's list zooms by the
+  // same buttons while it is shown
   function graphZoomTools(view) {
     var g = el('div', 'graph__zoom');
     g.setAttribute('role', 'group');
     g.setAttribute('aria-label', 'Zoom the chart');
+    function shown() { return view.view === 'list' && view.list ? view.list : view.host; }
     var out = el('button', 'graph__zbtn', '\u2212');
     out.type = 'button';
     out.setAttribute('aria-label', 'Zoom out');
-    out.addEventListener('click', function () { stageStep(view.host, 1 / 1.4); });
+    out.addEventListener('click', function () { stageStep(shown(), 1 / 1.4); });
     var inn = el('button', 'graph__zbtn', '+');
     inn.type = 'button';
     inn.setAttribute('aria-label', 'Zoom in');
-    inn.addEventListener('click', function () { stageStep(view.host, 1.4); });
+    inn.addEventListener('click', function () { stageStep(shown(), 1.4); });
     var whole = el('button', 'graph__fit graph__fit--idle', 'Whole chart');
     whole.type = 'button';
     whole.title = 'Draw the whole chart again, fitted to its card';
     whole.addEventListener('click', function () {
-      if (view.focus != null) graphNearClose(view);
+      if (view.view === 'list') { var ls = stageOf(view.list); if (ls) stageWhole(ls, true); }
+      else if (view.focus != null) graphNearClose(view);
       else { var st = stageOf(view.host); if (st) stageWhole(st, true); }
     });
     view.fit = whole;
@@ -5613,7 +6054,7 @@
   function initGraph() {
     var strip = $('cp-graph-focus'), tab = $('tab-dependencies'), keyBtn = $('cp-graph-keybtn');
     strip.addEventListener('keydown', graphStripKeys);
-    graphStripSwipe(strip);
+    graphSwipes(strip, graphStripTurn);
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(graphLayout).observe(tab);
       new ResizeObserver(graphAllLayout).observe($('cp-graph'));
@@ -5621,8 +6062,10 @@
       var foot = document.querySelector('.console__status');
       if (foot) new ResizeObserver(function () { graphPhoneFit(false); }).observe(foot);
     }
-    window.addEventListener('resize', function () { graphPhoneFit(false); });
+    // a phone turned brings the tab back where it is held, the window's old place no longer its
+    window.addEventListener('resize', function () { graphPhoneFit(!tab.hidden); });
     keyBtn.addEventListener('click', function () { graphKeyOpen(keyBtn.getAttribute('aria-expanded') !== 'true'); });
+    graphHelpInit();
     // a phone cuts the line of what was drawn to a line or two (control.css); a press shows it whole
     // and another cuts it again, and a reader hears it whole either way
     $('cp-graph-state').addEventListener('click', function () { this.toggleAttribute('data-open'); });
@@ -5633,9 +6076,21 @@
     tab.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if (keyBtn.getAttribute('aria-expanded') === 'true') { graphKeyOpen(false); keyBtn.focus(); e.preventDefault(); return; }
+      // the help, which covers the tab when open, closes first, the keys back on its ?
+      var help = tab.querySelector('.console__help');
+      if (help && help.open) { help.open = false; help.querySelector('summary').focus(); e.preventDefault(); return; }
       // a focus closed from its card's buttons too, not only from its stage
       var open = graphShown.filter(function (c) { return c.focus != null && !c.section.hidden; })[0];
       if (open) { graphNearClose(open); open.host.focus({ preventScroll: true }); e.preventDefault(); }
+    });
+    // and from wherever else the keyboard is while it is open, as on the page itself after a press
+    // inside it, which gives no element the keyboard
+    document.addEventListener('keydown', function (e) {
+      var help = tab.querySelector('.console__help');
+      if (e.key !== 'Escape' || e.defaultPrevented || tab.hidden || !help || !help.open) return;
+      help.open = false;
+      help.querySelector('summary').focus();
+      e.preventDefault();
     });
     // a phone brings the tab into view when it is opened, or, opened before its charts were drawn,
     // when they first are
