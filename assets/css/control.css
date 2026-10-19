@@ -38,7 +38,11 @@
 .console .control__codeopen { background: var(--teal); border-color: var(--teal); }
 .console .control__codeopen:hover { background: var(--teal-bright); border-color: var(--teal-bright); }
 .control .control__codeopen:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
-.control__codelead { margin: 0 0 8px; }
+/* the warning beside the code, and, where the page's own line is not held in view (the cost page),
+   the line under the box that says how a sign-in by code ended */
+.control__codebox > p.control__codewarn { margin: 12px 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+.control__codesaid[hidden] { display: none; }
+.control .control__codesaid { margin: 2px 0 12px; }
 
 /* ---------- the repository line and the summary ---------- */
 .control__pick { margin-top: 8px; }

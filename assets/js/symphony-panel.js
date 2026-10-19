@@ -18,6 +18,8 @@
    saying why, and the token box is open beneath it. The sign-in uses
    PKCE: the page keeps a secret for each sign-in and sends GitHub its
    hash, so only this page can turn the code GitHub returns into a token.
+   Sign-in by code (GitHub's device flow, for the Home Screen app) is built
+   and switched off by CODE_SIGNIN; while it is off, no page offers it.
 
    What it never does: it never stores anything but the GitHub token (and
    the refresh token that came with it), the names of the repositories
@@ -45,6 +47,14 @@
   // "Sign in with GitHub" can be pressed; emptying either one turns the button off again.
   var SIGNIN_SERVICE = 'https://symphony-signin.openspineconsortium.workers.dev';
   var CLIENT_ID = 'Iv23liTkIRov2FYN83wD';
+  // Sign-in by code (GitHub's device flow, below), built and switched off. While it is false no page
+  // offers a code, and the Home Screen app's Sign in with GitHub leaves for GitHub's page as a
+  // browser's does. It works only with "Enable Device Flow" ticked on SymphonyBoard, and that tick
+  // lets anyone ask GitHub for a SymphonyBoard code and talk a person into typing it, which hands
+  // whoever asked a token that acts as that person; GitHub advises against it outside command lines
+  // and devices with no browser. So it is the owner's switch alone, turned on only if the usual sign-in
+  // does not come back into the installed app (symphony-app's signin/README.md, step 9).
+  var CODE_SIGNIN = false;
   var APP_SLUG = 'symphonyboard';
   var FORM_URL = 'https://github.com/OpenSpineConsortium/symphony-start/issues/new?template=adopt.yml';
   var TOPIC = 'symphony';
@@ -308,6 +318,9 @@
       (keep ? localStorage : sessionStorage).setItem(key, value);
       tokenStored = true;
     } catch (e) { tokenStored = false; /* storage refused: the token lives for this page only */ }
+    // another way in ends a sign-in by code still asking, whose token would otherwise come later and
+    // take this one's place
+    endCode();
     ended = false;
     token = chosen;
     own = [chosen];
@@ -376,7 +389,7 @@
         + '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256';
     }).catch(function (e) { say('The sign-in could not start: ' + e.message, true); offerToken(); });
   }
-  /* ---------- sign-in by code, for the Home Screen app ---------- */
+  /* ---------- sign-in by code, for the Home Screen app, while CODE_SIGNIN is on ---------- */
   // The panel installed as a Home Screen app runs in a window of its own, and a sign-in that leaves
   // for GitHub's page may come back to the browser rather than into the app, leaving the sign-in's
   // secret behind in the app's storage. GitHub's device flow signs in without leaving: the sign-in
@@ -384,26 +397,70 @@
   // and the page asks the service, no faster than GitHub allows, for the token the code earns
   // (symphony-app's signin/README.md, the device routes). It is the same token, renewed the same way.
   var DEVICE_PAGE = 'https://github.com/login/device';
+  function codeWay() { return CODE_SIGNIN && signinAvailable(); }
   // the page as a Home Screen app: iOS says so through navigator.standalone, the rest through the
   // manifest's display mode
   function inApp() {
     try { if (window.navigator.standalone === true) return true; } catch (e) { /* not iOS */ }
     try { return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); } catch (e2) { return false; }
   }
-  // one sign-in by code at a time: a new press, Cancel or another way in ends the one before, and a
-  // late answer to an ended one is dropped
+  // one sign-in by code at a time: a new press, Cancel, another way in or a sign-out ends the one
+  // before, and a late answer to an ended one is dropped, its token revoked
   var codeTurn = 0;
   var codeTimer = null;
+  var codeLive = false;
+  // ends the sign-in by code under way, if any, and says whether one was
   function endCode() {
+    var live = codeLive;
+    codeLive = false;
     codeTurn++;
     if (codeTimer) { clearTimeout(codeTimer); codeTimer = null; }
     var box = $('cp-code-box');
-    if (box) box.hidden = true;
+    if (!box) return live;
+    var focus = document.activeElement;
+    var lost = live && (!focus || focus === document.body || box.contains(focus));
+    box.hidden = true;
+    if ($('cp-code-said')) $('cp-code-said').hidden = true;
     ['cp-signin', 'cp-signin-code'].forEach(function (id) { if ($(id) && signinAvailable()) $(id).disabled = false; });
+    // focus the code took (its button held, or a button of its box now hidden) goes back to the button
+    // that starts a sign-in by code, so a keyboard is never left on nothing
+    var back = $('cp-signin-code') && !$('cp-signin-code').hidden ? $('cp-signin-code') : $('cp-signin');
+    if (lost && back && back.getClientRects().length) back.focus({ preventScroll: true });
+    return live;
+  }
+  // whether the whole of a node shows, under no header or status line held to the window's edge
+  function inSight(node) {
+    var r = node.getBoundingClientRect();
+    var x = r.left + Math.min(r.width / 2, 24);
+    return [r.top + 1, r.bottom - 1].every(function (y) { var at = document.elementFromPoint(x, y); return !!(at && node.contains(at)); });
+  }
+  // on a phone the code's box opens below the fold, behind the status line held to the window's foot,
+  // so it is brought up to the window's middle; where it shows whole already nothing moves
+  function bringIntoSight(node) {
+    if (inSight(node)) return;
+    try { scrollInDeck(node, { block: 'center' }); } catch (e) { /* the code is in the status line too */ }
   }
   function showCode(code) {
     $('cp-code').textContent = code;
-    $('cp-code-box').hidden = false;
+    var box = $('cp-code-box');
+    box.hidden = false;
+    if ($('cp-code-said')) $('cp-code-said').hidden = true;
+    bringIntoSight(box);
+    // the pressed button is held while the code is up, which takes a keyboard's focus from it, so the
+    // focus goes on to the box's first step, unless the person has moved it somewhere meanwhile
+    var focus = document.activeElement;
+    if (!focus || focus === document.body || /^cp-signin/.test(focus.id || '')) $('cp-code-open').focus({ preventScroll: true });
+  }
+  // the code's words go to the page's line; where that line is not held in view, as on the cost page,
+  // where it stands above the sign-in box, they are said in the box's own line too
+  function codeSays(text, warn) {
+    say(text, warn);
+    var line = $('cp-code-said');
+    if (!line || $('console')) return;
+    line.textContent = text;
+    line.className = 'admin__lead control__codesaid' + (warn ? ' admin__warn' : '');
+    line.hidden = !text;
+    if (text) bringIntoSight(line);
   }
   var CODE_WORDS = {
     expired_token: 'The code ran out before it was typed on GitHub; press the button again for a new one.',
@@ -436,9 +493,9 @@
   function startCode(onSignedIn) {
     endCode();
     var turn = codeTurn;
-    var keep = $('cp-keep') ? $('cp-keep').checked : false;
+    codeLive = true;
     ['cp-signin', 'cp-signin-code'].forEach(function (id) { if ($(id)) $(id).disabled = true; });
-    say('Asking GitHub for a code...');
+    codeSays('Asking GitHub for a code...');
     exchange('/device', {}).then(function (got) {
       if (turn !== codeTurn) return null;
       var code = typeof got.user_code === 'string' && /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(got.user_code) ? got.user_code : '';
@@ -449,10 +506,19 @@
       var every = Math.min(Math.max(Number(got.interval) || 5, 5), 60);
       return pollCode(turn, got.device_code, every, until);
     }).then(function (answer) {
-      if (!answer || turn !== codeTurn) return;
+      if (!answer) return;
+      // a token GitHub gave for a code this page has let go of (Cancel, another way in, a sign-out) is
+      // nobody's, so GitHub is asked to revoke it, as storeSignin does for the tokens it replaces
+      if (turn !== codeTurn) {
+        if (answer.access_token) exchange('/revoke', { access_token: answer.access_token }).catch(function () { /* it runs out in eight hours */ });
+        return;
+      }
       if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
+      // the tick as it stands when the token comes: the page never left, and the box beneath the code
+      // could be ticked or unticked while the code was up
+      var keep = $('cp-keep') ? $('cp-keep').checked : false;
       endCode();
-      // as a pasted token does: a panel a kept sign-in opened meanwhile closes until GitHub names this one
+      // as a pasted token does: the panel stays closed until GitHub names this one
       showGate();
       state = emptyState(state.repo);
       keepOauth(answer, keep);
@@ -461,7 +527,7 @@
     }).catch(function (e) {
       if (turn !== codeTurn) return;
       endCode();
-      say(CODE_WORDS[e.code] || (e.message + ' Press the button again, or use a token below.'), true);
+      codeSays(CODE_WORDS[e.code] || (e.message + ' Press the button again, or use a token below.'), true);
       offerToken();
     });
   }
@@ -927,10 +993,11 @@
     var gate = $('cp-gate');
     if (!gate) return;
     var signin = $('cp-signin');
-    if (signin && signinAvailable()) {
+    if (signin && codeWay()) {
       addCodeWay(signin, onSignedIn);
       signin.addEventListener('click', function () { if (inApp()) startCode(onSignedIn); else { endCode(); startOauth(); } });
-    } else if (signin) {
+    } else if (signin && signinAvailable()) signin.addEventListener('click', startOauth);
+    else if (signin) {
       signin.disabled = true;
       if ($('cp-signin-off')) $('cp-signin-off').classList.remove('hidden');
       offerToken();
@@ -962,8 +1029,10 @@
     $('cp-token').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('cp-open').click(); });
   }
   // The code's box under "Sign in with GitHub": in the Home Screen app that button itself signs in by
-  // code, and a line says so; in a browser a second, quieter button offers the same, for wherever
-  // GitHub's return does not come back to the page
+  // code, and the gate's first words say so in place of the redirect's; in a browser a second,
+  // quieter button offers the same, for wherever GitHub's return does not come back to the page. The
+  // box warns beside the code that a code is typed only where and when this page asks: anyone can
+  // start a SymphonyBoard code, and whoever started the one a person types is signed in as them.
   function addCodeWay(signin, onSignedIn) {
     var row = signin.parentNode;
     var app = inApp();
@@ -989,11 +1058,21 @@
     cancel.addEventListener('click', function () { endCode(); say(''); });
     var code = el('output', 'control__code', '');
     code.id = 'cp-code';
-    var box = add(el('div', 'control__codebox'), el('p', '', 'Type this code on GitHub\'s page, github.com/login/device, and allow SymphonyBoard:'), code, add(el('div', 'control__codebar'), open, cancel));
+    var warn = el('p', 'control__codewarn', 'Type a code only there, on github.com/login/device, and only one you started on this page a moment ago. A code someone sends you, by mail, chat or another page, would sign them in as you.');
+    warn.id = 'cp-code-warn';
+    var box = add(el('div', 'control__codebox'), el('p', '', 'Type this code on GitHub\'s page, github.com/login/device, where GitHub names SymphonyBoard and asks whether it may act as you; allow it:'), code, add(el('div', 'control__codebar'), open, cancel), warn);
     box.id = 'cp-code-box';
     box.hidden = true;
     row.parentNode.insertBefore(box, row.nextSibling);
-    if (app) row.parentNode.insertBefore(el('p', 'admin__lead control__codelead', 'In this app, Sign in with GitHub shows a code to type on GitHub\'s page instead of leaving the app; come back once you have, and the page signs you in.'), box);
+    var said = el('p', 'admin__lead control__codesaid', '');
+    said.id = 'cp-code-said';
+    said.hidden = true;
+    row.parentNode.insertBefore(said, box.nextSibling);
+    // the page's own words for the app, which the gate's markup carries beside the redirect's
+    var how = $('cp-signin-how');
+    if (app && how && how.getAttribute('data-in-app')) how.textContent = how.getAttribute('data-in-app');
+    // what the page sends, which names the code's requests only where they can be made
+    if ($('cp-sent-code')) $('cp-sent-code').hidden = false;
   }
   // GitHub is asked about a pasted token before it takes the place of anything, so a token GitHub
   // refuses, or a moment GitHub cannot be reached, leaves this tab's sign-in and the one the browser
@@ -1018,6 +1097,10 @@
     if ($('cp-who')) $('cp-who').textContent = '';
   }
   function showApp() {
+    // the panel opening (a kept sign-in found at load, GitHub's return, a paste) is another way in: a
+    // sign-in by code started meanwhile would go on asking unseen under it, its code and Cancel hidden
+    // with the gate, so it ends here, and its words with it
+    if (endCode()) say('');
     if ($('cp-gate')) $('cp-gate').classList.add('hidden');
     if ($('cp-app')) $('cp-app').classList.remove('hidden');
   }
@@ -1134,6 +1217,8 @@
     var pasted = pastedTokens();
     var dead = signinTokens();
     var listed = repos().length ? ' The repositories you listed stay.' : '';
+    // a sign-in by code still asking would sign the page in again after it was signed out
+    endCode();
     forgetToken();
     dropDrive();
     showGate();
