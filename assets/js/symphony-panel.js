@@ -4295,7 +4295,8 @@
     if (!place.org) return Promise.resolve(place.owner.toLowerCase() === shownLogin.toLowerCase());
     return gh('GET', '/orgs/' + place.owner + '/memberships/' + shownLogin).then(function (r) {
       return !!(r.data && r.data.role === 'admin' && r.data.state === 'active');
-    }, function () { return false; });
+    // unknown, not "no": an owner whose membership GitHub would not show keeps the owner's path
+    }, function () { return null; });
   }
 
   // where the tokens live, which are set and their names and settings, read when the tab opens
@@ -4672,7 +4673,7 @@
   // someone who may write to an organization's repository but is not an owner of the organization,
   // whom GitHub lets write none of its secrets: the Token run stores their token in a free slot of the
   // pool itself, with the App's key, marked as theirs (the owner's choice of 2026-10-18)
-  function intoPool(place) { return !!place && place.org && !tk.admin; }
+  function intoPool(place) { return !!place && place.org && tk.admin === false; }
   function ownerOf(slot) { return (tk.settings[slot] || {}).owner || ''; }
   function canChange(slot) {
     return tk.admin || (!!shownLogin && ownerOf(slot).toLowerCase() === shownLogin.toLowerCase());
