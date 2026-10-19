@@ -2923,12 +2923,14 @@
   // it by transform, over the deck rather than pushing it down.
   var BAR_LEAVE_MS = 600, BAR_TOUCH_MS = 4000, BAR_EDGE_PX = 8;
   var bar = { over: false, timer: 0, handle: null, lastMove: null };
-  // a pointer that hovers: a mouse or a pen on a screen whose main pointer hovers, since a phone's
-  // browser makes up mouse events at its corner that no finger moved
-  var hoverMedia = window.matchMedia ? window.matchMedia('(hover: hover)') : null;
+  // a pointer that hovers: a mouse or a pen, on a device that has one even where its main pointer is
+  // a finger (a tablet with a mouse), since a phone, which has none, makes up mouse events at its
+  // corner that no finger moved
+  var hoverMedia = window.matchMedia ? window.matchMedia('(any-hover: hover)') : null;
   function hovering(e) { return e.pointerType !== 'touch' && (!hoverMedia || hoverMedia.matches); }
-  // a grip dragged past the window's top edge sizes a part and calls no bar
-  function reachesBar(e) { return hovering(e) && !barShown() && !document.body.classList.contains('console-dragging'); }
+  // a pointer with no button held: a grip dragged past the window's top edge sizes its part, and a
+  // text selection or a press run up to the edge selects or cancels, and none of them calls the bar
+  function reachesBar(e) { return hovering(e) && !e.buttons && !barShown(); }
   function inBar(node) {
     return !!node && [$('nav'), $('flyouts')].some(function (part) { return part && part.contains(node); });
   }
@@ -2945,7 +2947,10 @@
     document.body.classList.add('console-bar-shown');
     if (bar.handle) bar.handle.setAttribute('aria-expanded', 'true');
   }
+  // the bar never goes with the focus left in it, where Enter would follow a link nobody sees: a
+  // press on a grip, whose default the grip prevents, moves no focus out of it
   function hideBar() {
+    if (inBar(document.activeElement)) document.activeElement.blur();
     clearTimeout(bar.timer);
     bar.over = false;
     // the phone's menu hangs from the bar and a section's strip drops from it, so both close as the
@@ -3002,13 +3007,12 @@
     });
     document.addEventListener('focusin', function (e) { if (inBar(e.target)) showBar(); });
     document.addEventListener('focusout', function (e) { if (inBar(e.target) && !inBar(e.relatedTarget)) hideBarSoon(); });
-    // a press outside the bar sends it away at once; Escape does too, and takes the focus out of it
+    // a press outside the bar sends it away at once, and Escape does too, each with the focus
     document.addEventListener('pointerdown', function (e) {
       if (barShown() && !inBar(e.target) && e.target !== handle) hideBar();
     }, true);
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape' || !barShown()) return;
-      if (inBar(document.activeElement)) document.activeElement.blur();
       hideBar();
     });
   }
@@ -3112,6 +3116,20 @@
     else c.style.removeProperty('--drawer-max');
     c.style.setProperty('--console-zoom', String(zoomOf()));
     if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
+    sayGrips();
+  }
+  // each grip says its part's size and the bounds it is held to, as a separator that takes the focus
+  // must, so a screen reader tells what the arrow keys did; a grip the script draws later says it
+  // when it takes the focus (initLayout)
+  function sayGrips() {
+    Array.prototype.forEach.call($('console').querySelectorAll('[data-split][role="separator"]'), function (grip) {
+      var p = LAYOUT_PARTS[grip.getAttribute('data-split')];
+      if (!p || !grip.getClientRects().length) return;
+      var b = p.bounds ? p.bounds() : p;
+      grip.setAttribute('aria-valuemin', String(b.min));
+      grip.setAttribute('aria-valuemax', String(b.max));
+      grip.setAttribute('aria-valuenow', String(Math.min(b.max, Math.max(b.min, Math.round(p.measure(grip))))));
+    });
   }
   // a grip made by the script, for a part the script draws (a token's panel, Claude's answer)
   function splitGrip(part, what) {
@@ -3164,7 +3182,20 @@
       var scale = scaleOf(grip);
       grip.setPointerCapture(e.pointerId);
       document.body.classList.add('console-dragging', 'console-dragging--' + p.axis);
-      function move(ev) { setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale); }
+      // where the page scrolls (a phone's), a foot not resting on the window's bottom, the page
+      // scrolled past the deck's end, grows down from a top that stays put; the window is scrolled by
+      // what the grip fell behind the size it took, so the grip stays under the finger, at once, since
+      // the site's smooth scrolling would land after the next move had measured
+      var top0 = grip.getBoundingClientRect().top;
+      function follow() {
+        if (p.axis !== 'y' || getComputedStyle(c).overflow === 'hidden') return;
+        var behind = grip.getBoundingClientRect().top - (top0 + p.sign * (layout[part] - start) * scale);
+        if (Math.abs(behind) > 0.5) window.scrollBy({ top: behind, behavior: 'instant' });
+      }
+      function move(ev) {
+        setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale);
+        follow();
+      }
       // the grip may be drawn again mid-drag (the Tokens tab redraws its panel as readings land), so
       // a lost capture ends the drag as a release does
       var done = false;
@@ -3190,6 +3221,7 @@
       applyLayout();
       saveLayout();
     });
+    c.addEventListener('focusin', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-split')) sayGrips(); });
     // the arrow keys move a focused grip, so the sizes are set without a mouse too
     c.addEventListener('keydown', function (e) {
       var grip = e.target && e.target.getAttribute ? e.target : null;
