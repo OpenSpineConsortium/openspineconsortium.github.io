@@ -2369,13 +2369,18 @@
   // phone, where the page scrolls as a whole, the stage keeps its own through a refresh.
   // Each hold marks the node as its own, so the release of an older hold, a refresh that went stale
   // under a newer one or its own safety timer, lets nothing go once a newer hold has the node. The
-  // height is measured here unless the caller took it first.
+  // height is measured here unless the caller took it first, to the fraction of a pixel: a height
+  // rounded up stands a fraction taller than the box, and on a phone the page under it moves a pixel.
   var holdsMade = 0;
+  function exactHeight(node) {
+    var h = parseFloat(getComputedStyle(node).height);
+    return isFinite(h) ? h : node.offsetHeight;
+  }
   function holdHeight(node, height) {
     if (!node) return function () {};
     var mine = String(++holdsMade);
     node.setAttribute('data-held', mine);
-    var h = height === undefined ? node.offsetHeight : height;
+    var h = height === undefined ? exactHeight(node) : height;
     if (h) node.style.minHeight = h + 'px';
     return function () {
       if (node.getAttribute('data-held') !== mine) return;
@@ -3762,6 +3767,16 @@
   var GRAPH_SPACE_START = /^[ \t\n\v\f\r\x1c-\x1f]+/;
   var mermaidLoad = null;
   var graphRenders = 0;
+  // the typeface Mermaid lays labels out in, the site's own, so a label is measured in the face it shows in
+  var GRAPH_FONT = '"IBM Plex Sans", system-ui, sans-serif';
+  // the colours Mermaid draws with, the console's: a dark ground, nodes a shade lighter, and grey
+  // arrows that show on it; Mermaid's own shadow is a light grey made for a white page, so it is
+  // given a dark one
+  var GRAPH_THEME = {
+    darkMode: true, background: '#0F1916', primaryColor: '#16221F', primaryTextColor: '#E4ECE8', primaryBorderColor: '#5D7069',
+    lineColor: '#8A9E97', textColor: '#E4ECE8', fontFamily: GRAPH_FONT, fontSize: '14px',
+    useGradient: false, dropShadow: 'drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45))'
+  };
 
   function isPlain(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
   // a count as GitHub's summaries give it, or 0 where it is not a whole number of zero or more
@@ -3879,9 +3894,9 @@
     // the height is taken before the earlier hold is let go: a box that hold emptied stands at
     // nothing of its own, so a read begun under a read would hold it at nothing and the tab would
     // shrink while the sub-issues are read
-    var h = box ? box.offsetHeight : 0;
+    var h = box ? exactHeight(box) : 0;
     var tab = $('tab-dependencies');
-    var th = tab ? tab.offsetHeight : 0;
+    var th = tab ? exactHeight(tab) : 0;
     graphHeld();
     graphHeld = function () {};
     if (reading) {
@@ -3903,7 +3918,7 @@
   // docs/research/control-board-graph.md). The charts are the same, drawn the same, from the same
   // reads; the strip only shows one of their sections at a time, with an All chip that shows every
   // one, as the tab did before. It appears only where there are two charts or more, so a repository
-  // with one epic reads as it did; it keeps the console's own chip look (control.css), and which chip
+  // with one epic reads as it did; its tiles are the console's own cards (control.css), and which tile
   // a person last chose is kept per repository in this browser, as the panel's sizes are. It writes
   // nothing of the repository and asks nothing of anyone.
   var KEY_GRAPH_FOCUS = 'symphony_panel_graph_focus';
@@ -3921,19 +3936,34 @@
   function graphStripClear() {
     var strip = $('cp-graph-focus');
     if (strip) { clear(strip); strip.hidden = true; }
+    graphKey(false);
   }
-  // show the chart a chip names, or every chart for All, and press that chip; the sections are the
+  // the key to the colours and the arrows, shown only while there are charts to read it by
+  function graphKey(shown) {
+    var key = $('cp-graph-key');
+    if (key) key.hidden = !shown;
+  }
+  // show the chart a tile names, or every chart for All, and press that tile; the sections are the
   // page's own and read by their data-focus, so the assistant's "show dependencies" can reset to the
   // first without the draw's own list
   function graphSelect(key, repo) {
     var strip = $('cp-graph-focus');
     if (!strip) return;
+    var pressed = null;
     Array.prototype.forEach.call(strip.querySelectorAll('.graph__chip'), function (b) {
-      b.setAttribute('aria-pressed', b.getAttribute('data-focus') === key ? 'true' : 'false');
+      var on = b.getAttribute('data-focus') === key;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) pressed = b;
     });
+    $('cp-graph').classList.toggle('graph--all', key === 'all');
     Array.prototype.forEach.call($('cp-graph').querySelectorAll('.graph__section'), function (sec) {
-      sec.hidden = !(key === 'all' || sec.getAttribute('data-focus') === key);
+      var shown = key === 'all' || sec.getAttribute('data-focus') === key;
+      sec.hidden = !shown;
+      // a person's press fades the chosen chart in, so the change reads as a move rather than a jump
+      sec.classList.remove('graph__section--enter');
+      if (shown && repo) { void sec.offsetWidth; sec.classList.add('graph__section--enter'); }
     });
+    if (pressed) graphTileInView(strip, pressed);
     if (repo) {
       graphFocusSet(repo, key);
       // a person's press shows the chosen chart from its top, not where the last one was scrolled to
@@ -3941,8 +3971,16 @@
       if (box) box.scrollTop = 0;
     }
   }
-  // the chips for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
-  // was or it is gone, the first chart; a chart is a section the strip shows and hides by its key
+  // on a phone the tiles are one row that scrolls sideways, so the pressed one is brought to its middle
+  function graphTileInView(strip, tile) {
+    if (strip.scrollWidth <= strip.clientWidth + 1) return;
+    strip.scrollLeft = Math.max(0, tile.offsetLeft - Math.round((strip.clientWidth - tile.offsetWidth) / 2));
+  }
+  // the tiles for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
+  // was or it is gone, the first chart; a chart is a section the strip shows and hides by its key.
+  // A tile says what its chart is, its title, a bar of its issues by state in the colours they are
+  // drawn in, and how far it has got, so the epics read side by side before one is opened (the
+  // owner, 2026-10-19: "make the epics more intuitive and navigating that page more fluent").
   function graphStrip(draw, charts) {
     var strip = $('cp-graph-focus');
     if (!strip) return;
@@ -3952,18 +3990,87 @@
     var keys = charts.map(function (c) { return c.key; });
     var saved = graphFocusGet(draw.repo);
     var selected = saved === 'all' || keys.indexOf(saved) >= 0 ? saved : charts[0].key;
-    function chip(key, label, title) {
-      var b = el('button', 'graph__chip', label);
-      b.type = 'button';
-      b.setAttribute('data-focus', key);
-      b.setAttribute('aria-pressed', 'false');
-      if (title) b.title = title;
-      b.addEventListener('click', function () { graphSelect(key, draw.repo); });
-      add(strip, b);
-    }
-    chip('all', 'All', 'Show every chart');
-    charts.forEach(function (c) { chip(c.key, c.label, c.heading); });
+    // All's bar is every epic's tasks together; the goals chart's nodes are the epics themselves
+    var tasks = {};
+    charts.forEach(function (c) {
+      if (c.key === 'goals') return;
+      Object.keys(c.counts).forEach(function (k) { tasks[k] = (tasks[k] || 0) + c.counts[k]; });
+    });
+    add(strip, graphTile(draw, { key: 'all', kind: 'All', title: 'Every chart', counts: tasks, foot: plural(charts.length, 'chart'), heading: 'Show every chart' }));
+    charts.forEach(function (c, i) {
+      add(strip, graphTile(draw, c));
+      graphStepper(draw, c, charts[i - 1], charts[i + 1], i, charts.length);
+    });
     graphSelect(selected, '');
+  }
+  function graphTile(draw, c) {
+    var b = el('button', 'graph__chip graph__tile');
+    b.type = 'button';
+    b.setAttribute('data-focus', c.key);
+    b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', c.kind + (c.title ? ': ' + c.title : '') + ', ' + c.foot);
+    b.title = c.heading;
+    add(b, el('span', 'graph__tkind', c.kind), el('span', 'graph__ttitle', c.title), graphStateBar(c.counts), el('span', 'graph__tfoot', c.foot));
+    b.addEventListener('click', function () { graphSelect(c.key, draw.repo); });
+    return b;
+  }
+  // a bar of a chart's issues, one stretch per state in the order work moves through them, as wide as
+  // its share; the tile's words and the card's pills say the same, so the bar is hidden from a reader
+  function graphStateBar(counts) {
+    var bar = el('span', 'graph__tbar');
+    bar.setAttribute('aria-hidden', 'true');
+    var total = 0;
+    GRAPH_COUNTS.forEach(function (pair) { total += counts[pair[0]] || 0; });
+    GRAPH_COUNTS.forEach(function (pair) {
+      var n = counts[pair[0]] || 0;
+      if (!n) return;
+      var seg = el('span', 'graph__seg graph__seg--' + (pair[0] || 'plain'));
+      seg.style.width = (100 * n / total) + '%';
+      add(bar, seg);
+    });
+    return bar;
+  }
+  // Previous and Next on each card, with its place among the charts, so the charts are stepped through
+  // one after another from where a person reads, without going back up to the tiles; the button
+  // pressed keeps the keyboard's focus on the card it shows, or its other button at the last chart
+  function graphStepper(draw, c, prev, next, i, n) {
+    var nav = el('div', 'graph__step');
+    nav.setAttribute('role', 'group');
+    nav.setAttribute('aria-label', 'Step through the charts');
+    function step(cls, to, glyph, words) {
+      var b = el('button', 'graph__stepbtn ' + cls, glyph);
+      b.type = 'button';
+      if (!to) {
+        b.disabled = true;
+        b.setAttribute('aria-label', words);
+        return b;
+      }
+      b.setAttribute('aria-label', words + ': ' + to.heading);
+      b.title = to.heading;
+      b.addEventListener('click', function () {
+        graphSelect(to.key, draw.repo);
+        var same = to.section.querySelector('.graph__step .' + cls);
+        var other = to.section.querySelector('.graph__step .graph__stepbtn:not(:disabled)');
+        var focus = same && !same.disabled ? same : other;
+        if (focus) focus.focus({ preventScroll: true });
+      });
+      return b;
+    }
+    add(nav, step('graph__prev', prev, '‹', 'Previous chart'), el('span', 'graph__pos', (i + 1) + ' of ' + n), step('graph__next', next, '›', 'Next chart'));
+    c.section.querySelector('.graph__head').appendChild(nav);
+  }
+  // the tiles answer the arrow keys as tabs do: Left and Right, Home and End move to a tile and show
+  // its chart
+  function graphStripKeys(e) {
+    var moves = { ArrowLeft: -1, ArrowRight: 1, Home: -1e9, End: 1e9 };
+    if (!(e.key in moves) || e.altKey || e.ctrlKey || e.metaKey) return;
+    var tiles = Array.prototype.slice.call(e.currentTarget.querySelectorAll('.graph__chip'));
+    var at = tiles.indexOf(document.activeElement);
+    if (at < 0) return;
+    e.preventDefault();
+    var to = tiles[Math.max(0, Math.min(tiles.length - 1, at + moves[e.key]))];
+    to.focus({ preventScroll: true });
+    to.click();
   }
   // the assistant's "show dependencies ... at its first chart": the first section shown, so its
   // heading is the one in view, without changing the chip a person chose for next time
@@ -4147,19 +4254,63 @@
   }
   // one chart's heading, its picture (empty until Mermaid draws it) and its table, which says the
   // same in words and stands alone when the picture cannot be drawn
-  // a chip's short label for an epic: its number, a few words of its title and its progress, so the
-  // strip reads at a glance where the heading says it in full
-  function graphChipLabel(epic) {
-    var t = graphFold(epic.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
-    if (t.length > 22) t = t.slice(0, 19).replace(GRAPH_SPACE_END, '') + '...';
-    var p = epic.progress && epic.progress[1] > 0 ? ' ' + epic.progress[0] + '/' + epic.progress[1] : '';
-    return '#' + epic.number + (t ? ' ' + t : '') + p;
+  // a tile's title for an epic: its title folded as the board folds it and its spaces closed up; the
+  // stylesheet cuts it at two lines, where the card's heading says it in full
+  function graphTileTitle(epic) {
+    return graphFold(epic.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
   }
-  function graphSection(draw, box, heading, chart, relation, relationCell, key, label) {
+  // the states a card counts, in the order work moves through them, with the words of its pills
+  var GRAPH_COUNTS = [['todo', 'to do'], ['claimed', 'claimed'], ['review', 'in review'], ['blocked', 'blocked'], ['', 'open'], ['closed', 'closed']];
+  // a card's head: its heading, then, for an epic, a bar of its closed tasks, and a pill per state
+  // of its own issues, each in the colour its nodes are drawn in, so the card reads before the chart;
+  // an epic's own are its sub-issues, the issues its bar counts, and a blocker from outside it is
+  // counted apart, in a pill of its own, so the pills add up to the bar's total
+  function graphCounts(draw, chart, own) {
+    var counts = {};
+    chart.nodes.forEach(function (it) {
+      if (own && own.indexOf(it.number) < 0) return;
+      var c = graphClass(it, draw.claimed);
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    return counts;
+  }
+  function graphCardHead(draw, heading, chart, progress, own) {
+    var head = el('div', 'graph__head');
+    add(head, el('h3', '', heading));
+    var meta = el('div', 'graph__meta');
+    if (progress && progress[1] > 0) {
+      var done = Math.min(progress[0], progress[1]);
+      var bar = el('div', 'graph__bar'), fill = el('span');
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', String(progress[1]));
+      bar.setAttribute('aria-valuenow', String(done));
+      // named for its card, since All shows several, and read as the words beside it say it
+      bar.setAttribute('aria-label', heading + ': tasks closed');
+      bar.setAttribute('aria-valuetext', done + ' of ' + progress[1] + ' closed');
+      fill.style.width = Math.round(100 * done / progress[1]) + '%';
+      add(meta, add(el('div', 'graph__progress'), add(bar, fill), el('span', 'graph__done', done + ' of ' + progress[1] + ' closed')));
+    }
+    var counts = graphCounts(draw, chart, own);
+    var pills = el('div', 'graph__pills');
+    GRAPH_COUNTS.forEach(function (pair) {
+      if (counts[pair[0]]) add(pills, add(el('span', 'graph__pill graph__pill--' + (pair[0] || 'plain')), el('b', '', counts[pair[0]]), ' ' + pair[1]));
+    });
+    var outside = own ? chart.nodes.filter(function (it) { return own.indexOf(it.number) < 0; }).length : 0;
+    if (outside) add(pills, add(el('span', 'graph__pill graph__pill--outside'), el('b', '', outside), ' from outside the epic'));
+    add(meta, pills);
+    add(head, meta);
+    return head;
+  }
+  function graphSection(draw, box, heading, chart, relation, relationCell, key, tile) {
+    var progress = tile.progress;
     var sec = el('section', 'graph__section');
     sec.setAttribute('data-focus', key);
-    add(sec, el('h3', '', heading));
+    var head = graphCardHead(draw, heading, chart, progress, tile.own);
+    add(sec, head);
     var host = el('div', 'control__chart');
+    var fit = graphFitButton(host);
+    add(head.querySelector('.graph__meta'), fit);
     add(sec, host);
     var table = el('table', 'control__tasks'), head = el('tr');
     ['Issue', 'Title', 'State', relation, 'Worker'].forEach(function (c) { add(head, el('th', '', c)); });
@@ -4177,10 +4328,22 @@
       body.appendChild(tr);
     });
     add(table, body);
-    add(sec, add(el('div', 'table-scroll'), table));
+    // the same in words, folded under the picture, and opened by itself where the picture cannot be
+    // drawn (graphUndrawn), since then it is all the card has to say
+    var list = el('details', 'graph__list');
+    var summary = el('summary', '', 'List of ' + plural(chart.nodes.length, 'issue'));
+    // named for its card too, its own words first, since All shows several
+    summary.setAttribute('aria-label', summary.textContent + ': ' + heading);
+    add(list, summary);
+    add(list, add(el('div', 'table-scroll'), table));
+    add(sec, list);
     add(box, sec);
-    return { host: host, heading: heading, text: graphChart(draw, chart.nodes, chart.edges), key: key, label: label };
+    var foot = progress && progress[1] > 0 ? Math.min(progress[0], progress[1]) + ' of ' + progress[1] + ' closed' : plural(chart.nodes.length, 'issue');
+    return { host: host, list: list, fit: fit, section: sec, heading: heading, text: graphChart(draw, chart.nodes, chart.edges), key: key,
+      kind: tile.kind, title: tile.title, foot: foot, counts: graphCounts(draw, chart, tile.own) };
   }
+  // a chart that was not drawn has its list opened, so its card still says what it holds
+  function graphUndrawn(chart) { if (chart.list) chart.list.open = true; }
   function graphRender(draw) {
     var box = $('cp-graph');
     var goals = graphWithSubIssues(draw, 'goal'), epics = graphWithSubIssues(draw, 'epic');
@@ -4192,9 +4355,10 @@
       return;
     }
     var charts = [];
-    if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf, 'goals', 'Goals'));
-    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, graphChipLabel(epic))); });
+    if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf, 'goals', { kind: 'Goals', title: goals.length === 1 ? 'The goal and its epics' : 'The goals and their epics' }));
+    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, { kind: 'Epic #' + epic.number, title: graphTileTitle(epic), progress: epic.progress, own: draw.subIssues[epic.number] || [] })); });
     graphStrip(draw, charts);
+    graphKey(true);
     var drew = (goals.length ? [plural(goals.length, 'goal')] : []).concat(epics.length ? [plural(epics.length, 'epic')] : []);
     var drawn = 'from ' + plural(draw.reads, 'read') + ' of GitHub: ' + drew.join(' and ') + ' with sub-issues';
     graphWords('Drawing ' + drawn + '...');
@@ -4205,19 +4369,33 @@
       return charts.reduce(function (p, chart) {
         return p.then(function () {
           if (!graphLive(draw)) return;
-          return graphDraw(m, chart).catch(function (e) { undrawn.push(chart.heading + ': ' + e.message); });
+          return graphDraw(m, chart).catch(function (e) { graphUndrawn(chart); undrawn.push(chart.heading + ': ' + e.message); });
         });
       }, Promise.resolve()).then(function () { return undrawn; });
     }).then(function (undrawn) {
       if (!graphLive(draw)) return;
       graphHeld();
+      // the key is for charts; where none could be drawn the cards hold their lists alone
+      if (undrawn.length === charts.length) graphKey(false);
       if (!undrawn.length) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the Tasks tab.' + graphCut(draw));
       else graphWords('Drawn ' + (charts.length - undrawn.length) + ' of ' + plural(charts.length, 'chart') + ' ' + drawn + '; ' + plural(undrawn.length, 'chart') + ' could not be drawn (' + undrawn.join('; ') + '), and the table under ' + (undrawn.length === 1 ? 'it' : 'each') + ' says the same.' + graphCut(draw), true);
     }, function (e) {
       if (!graphLive(draw)) return;
       graphHeld();
+      graphKey(false);
+      charts.forEach(graphUndrawn);
       graphWords('The charts could not be drawn (' + e.message + '); the tables say the same ' + drawn + '.', true);
     });
+  }
+  // Mermaid sizes each box by measuring its words, so the face it measures in, the site's, is waited
+  // for first, or a box measured in the fallback face would cut its words short once the site's
+  // arrives; only that face is waited for, and for GRAPH_FONT_WAIT at most, so a font download that
+  // stalls costs the charts a moment and never holds them (a late face changes how a label looks)
+  var GRAPH_FONT_WAIT = 2500;
+  function graphFontReady() {
+    if (!document.fonts || typeof document.fonts.load !== 'function') return Promise.resolve();
+    var waited = new Promise(function (resolve) { setTimeout(resolve, GRAPH_FONT_WAIT); });
+    return Promise.race([document.fonts.load('14px "IBM Plex Sans"'), waited]).then(function () {}, function () {});
   }
   function loadMermaid() {
     if (mermaidLoad) return mermaidLoad;
@@ -4235,8 +4413,14 @@
       // reaches it from the page (graphLabel, boardChartLines); this holds should one ever do.
       m.initialize({ startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true,
         secure: ['secure', 'securityLevel', 'startOnLoad', 'maxTextSize', 'suppressErrorRendering', 'maxEdges',
-          'dompurifyConfig', 'themeCSS', 'themeVariables', 'fontFamily', 'altFontFamily'] });
-      return m;
+          'dompurifyConfig', 'themeCSS', 'themeVariables', 'fontFamily', 'altFontFamily'],
+        // the console's own look: Mermaid's rounded "neo" look in the console's dark colours and the
+        // site's typeface, arrows turning at rounded corners, and room around each label; the shade of a node by its
+        // state is the stylesheet's (graphRestyle), the board's classes naming it
+        look: 'neo', theme: 'base', fontFamily: GRAPH_FONT,
+        themeVariables: GRAPH_THEME,
+        flowchart: { padding: 16, nodeSpacing: 34, rankSpacing: 54, wrappingWidth: 190 } });
+      return graphFontReady().then(function () { return m; });
     }).catch(function (e) {
       // whatever failed, the next draw tries the load again, as the words tell the person Refresh does
       mermaidLoad = null;
@@ -4251,14 +4435,116 @@
     var id = 'cp-graph-' + (++graphRenders);
     return m.render(id, chart.text).then(function (r) {
       chart.host.innerHTML = r.svg;
+      graphRestyle(chart.host);
       var svg = chart.host.querySelector('svg');
       var width = svg && svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal.width : 0;
       if (svg && width > 0) svg.style.minWidth = Math.ceil(width) + 'px';
+      graphCentreOnShow(chart.host);
+      graphFitWatch(chart);
     }, function (e) {
       // what a failed drawing may leave on the page: the library's own picture of the error, under an id of its own
       var left = document.getElementById('d' + id);
       if (left && left.parentNode) left.parentNode.removeChild(left);
       throw e;
+    });
+  }
+  // Fit, on a card whose chart is wider than its box: the whole chart drawn at the card's width,
+  // smaller, and pressed again, at its own size and scrolled sideways; it shows only where the chart is
+  // wider than its box or is fitted already, read again each time the box changes size
+  function graphFitButton(host) {
+    var b = el('button', 'graph__fit', 'Fit');
+    b.type = 'button';
+    b.hidden = true;
+    b.setAttribute('aria-pressed', 'false');
+    b.title = 'Draw the whole chart at the card\'s width';
+    b.addEventListener('click', function () {
+      var on = host.classList.toggle('control__chart--fit');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (!on && host.scrollWidth > host.clientWidth) host.scrollLeft = Math.round((host.scrollWidth - host.clientWidth) / 2);
+    });
+    return b;
+  }
+  function graphFitWatch(chart) {
+    var b = chart.fit;
+    if (!b) return;
+    function update() { b.hidden = !(chart.host.classList.contains('control__chart--fit') || chart.host.scrollWidth > chart.host.clientWidth + 1); }
+    update();
+    if (typeof ResizeObserver !== 'function') return;
+    var watch = new ResizeObserver(function () { if (!chart.host.isConnected) watch.disconnect(); else update(); });
+    watch.observe(chart.host);
+  }
+  // a chart is moved by dragging it with the mouse, sideways inside its box and up and down the tab, as
+  // a map is; a press that does not move still presses its node, and a drag presses nothing. Touch
+  // scrolls by itself, so only a mouse drags. The drag is followed on the window, so it goes on when
+  // the mouse leaves the chart, and ends wherever the button comes up.
+  function graphPan(container) {
+    var pan = null, panned = false;
+    container.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      var host = e.target && e.target.closest ? e.target.closest('.control__chart') : null;
+      if (!host || !host.querySelector('svg')) return;
+      var box = host.closest('.console__scroll');
+      pan = { host: host, box: box, id: e.pointerId, x: e.clientX, y: e.clientY, left: host.scrollLeft, top: box ? box.scrollTop : 0, moved: false };
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (!pan || e.pointerId !== pan.id) return;
+      var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (!pan.moved) {
+        if (Math.abs(dx) + Math.abs(dy) < 6) return;
+        pan.moved = true;
+        pan.host.classList.add('control__chart--panning');
+        if (window.getSelection) window.getSelection().removeAllRanges();
+      }
+      e.preventDefault();
+      pan.host.scrollLeft = pan.left - dx;
+      if (pan.box) pan.box.scrollTop = pan.top - dy;
+    });
+    function end(e) {
+      if (!pan || e.pointerId !== pan.id) return;
+      panned = pan.moved;
+      pan.host.classList.remove('control__chart--panning');
+      pan = null;
+      // the click that ends a drag comes straight after it, and is the drag's, not a press of a node
+      if (panned) setTimeout(function () { panned = false; }, 0);
+    }
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    container.addEventListener('click', function (e) {
+      if (!panned) return;
+      panned = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+  }
+  // a chart wider than its box, as most are on a phone, opens scrolled to its middle, where a tree
+  // of tasks has its trunk, rather than at its left edge; a chart is often drawn in a hidden tab or
+  // card, where it has no width yet, so this waits for the first time it is laid out with one, and
+  // then leaves the scrolling to the person
+  function graphCentreOnShow(host) {
+    function centre() {
+      if (!host.clientWidth) return false;
+      if (host.scrollWidth > host.clientWidth) host.scrollLeft = Math.round((host.scrollWidth - host.clientWidth) / 2);
+      return true;
+    }
+    if (centre() || typeof ResizeObserver !== 'function') return;
+    var watch = new ResizeObserver(function () { if (!host.isConnected || centre()) watch.disconnect(); });
+    watch.observe(host);
+  }
+  // The board's classes paint a node light (a white, yellow, blue, red or grey fill and black words),
+  // which Mermaid writes onto each node's own elements, where no stylesheet reaches; those colours are
+  // taken off the drawn nodes, and nothing else, so the console's stylesheet shades each node by the
+  // class it keeps (control.css), dark with its state's colour at the edge, and the chart's text stays
+  // the board's byte for byte. The node's box gets rounded corners, as the neo look draws them where
+  // it draws its own shapes.
+  function graphRestyle(host) {
+    Array.prototype.forEach.call(host.querySelectorAll('g.node'), function (node) {
+      [node].concat(Array.prototype.slice.call(node.querySelectorAll('[style]'))).forEach(function (part) {
+        ['fill', 'stroke', 'color'].forEach(function (k) { part.style.removeProperty(k); });
+      });
+      Array.prototype.forEach.call(node.querySelectorAll(':scope > rect.label-container'), function (box) {
+        box.setAttribute('rx', '10');
+        box.setAttribute('ry', '10');
+      });
     });
   }
   // a node pressed, or Centre its row: the task's row is centred and marked in the Tasks tab, which
@@ -4289,8 +4575,8 @@
     });
   }
   // a block that is no chart the board writes, shown as the text it is, and never drawn; the host
-  // gives up the chart's class, whose light ground and dark ink are for a drawing, so its words and
-  // its text read in the Board tab's own colours, as any other block of code on the board does
+  // gives up the chart's class, whose dotted ground and frame are for a drawing, so its words and
+  // its text read on the Board tab's own ground, as any other block of code on the board does
   function boardNotChart(host) {
     var text = host.getAttribute('data-chart');
     host.removeAttribute('data-chart');
@@ -4329,7 +4615,9 @@
   }
   // a node pressed, in the tab's own charts or in the board's
   function initGraph() {
+    $('cp-graph-focus').addEventListener('keydown', graphStripKeys);
     ['cp-graph', 'cp-board'].forEach(function (id) {
+      graphPan($(id));
       $(id).addEventListener('click', function (e) {
         var node = e.target && e.target.closest ? e.target.closest('g.node') : null;
         var m = node ? /-flowchart-i([0-9]{1,9})-[0-9]+$/.exec(node.id || '') : null;
