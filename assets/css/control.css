@@ -746,6 +746,23 @@ body.console-full[data-shell] { padding-top: 0 !important; }
    the column comes with the console's phone rules, where the grip that sets the panel's width is hidden, so a
    width kept from a wider window never squeezes the tiles, and the half-width cap stands in for it above them */
 @media (max-width: 900px), (max-height: 520px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; max-width: none; align-self: stretch; } }
+/* the Notebooks tab: the Tokens tab's tiles and side panel in shape; a card's kinds as small
+   chips, the side panel's files one under another, and the dialog's list of the catalog's files */
+#nb-side { width: var(--nbside-w, 320px); }
+.nb__kinds { display: flex; flex-wrap: wrap; gap: 3px; max-width: 100%; max-height: 2.9em; overflow: hidden; }
+.nb__kind { font-size: 0.68rem; line-height: 1.4; padding: 0 6px; border-radius: 8px; background: rgba(60, 194, 177, 0.12); color: var(--teal); white-space: nowrap; }
+.nb__files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
+.nb__file { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: start; font-size: 0.86rem; }
+.nb__file a, .nb__file .nb__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb__file .nb__when { grid-column: 1 / -1; font-size: 0.78rem; color: var(--ink-faint); }
+.nb__pick { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow: auto; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.tkdlg .nb__pick label { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; font-size: 0.88rem; font-weight: 400; }
+.tkdlg .nb__pick label[hidden] { display: none; }
+.tkdlg .nb__pick input { width: auto; flex: none; margin: 0; }
+.tkdlg .nb__pick span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tkdlg__field textarea { width: 100%; min-height: 64px; resize: vertical; }
+/* the Notebooks panel's own width outranks the class's phone width, so it gives way in the same query */
+@media (max-width: 900px), (max-height: 520px) { #nb-side { width: auto; } }
 .tkassign { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .tkassign .admin__bar, .tkassign .tkdlg__fact { flex-basis: 100%; margin: 0; }
 .console .console__note { font-size: .86rem; color: var(--ink-faint); margin: 4px 0 8px; }
@@ -805,7 +822,7 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 .console__split:hover::after, .console__split:focus-visible::after, body.console-dragging .console__split:active::after { background: var(--teal); }
 /* a grip on a part's own edge: a strip inside the edge the part is sized by */
 .console__split--edge { position: absolute; z-index: 3; }
-.console__split--tkside { top: 0; bottom: 0; left: -9px; width: 12px; }
+.console__split--tkside, .console__split--nbside { top: 0; bottom: 0; left: -9px; width: 12px; }
 .console__split--drawer { left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; }
 .console__split--drawer::after { top: 50%; bottom: auto; left: 8px; right: 8px; width: auto; height: 2px; margin: -1px 0 0; }
 /* a task list's heading carries a grip on its right edge that sizes every list at once */
@@ -832,7 +849,7 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 }
 @media (max-width: 900px), (max-height: 520px) {
   .console__body { grid-template-columns: minmax(0, 1fr) !important; }
-  .console__body > .console__split, .console__colgrip, .console__split--tkside, .console__split--drawer { display: none; }
+  .console__body > .console__split, .console__colgrip, .console__split--tkside, .console__split--nbside, .console__split--drawer { display: none; }
 }
 /* who is signed in, the text size and Refresh wrap rather than run past the window's edge */
 /* the status line stays one line on a laptop, the name of who is signed in giving way first; it
