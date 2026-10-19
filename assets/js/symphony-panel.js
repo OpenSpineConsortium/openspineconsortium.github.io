@@ -91,6 +91,24 @@
     return a;
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  // a line's words drawn anew, its addresses as links (rich)
+  function richText(node, text) { clear(node); return rich(node, text); }
+  // words that may name an address: each https address becomes a link that opens it, so a message
+  // that says where to fix something is one press from the fix (Ashley, 2026-10-19); a full stop,
+  // comma or bracket that ends the sentence stays out of the link
+  function rich(node, text) {
+    var words = String(text == null ? '' : text);
+    var at = /https:\/\/[^\s<>"']+/g, from = 0, m;
+    while ((m = at.exec(words))) {
+      var href = m[0].replace(/[.,;:!?)\]]+$/, '');
+      if (m.index > from) node.appendChild(document.createTextNode(words.slice(from, m.index)));
+      node.appendChild(link(href, href));
+      from = m.index + href.length;
+      at.lastIndex = from;
+    }
+    if (from < words.length) node.appendChild(document.createTextNode(words.slice(from)));
+    return node;
+  }
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
   // the page's own line at the deck's foot; a task under way there (msgTask) stays under it, since
   // its work goes on, while a finished one gives way to the new words as any message did
@@ -100,7 +118,7 @@
     Array.prototype.slice.call(m.childNodes).forEach(function (n) {
       if (!(n.classList && n.classList.contains('msgtask') && n.getAttribute('data-state') === 'live')) m.removeChild(n);
     });
-    if (text) m.insertBefore(el('p', 'msg__note', text), m.firstChild);
+    if (text) m.insertBefore(rich(el('p', 'msg__note'), text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
   }
   function stamp(iso) {
@@ -628,16 +646,26 @@
   }
 
   /* ---------- the GitHub client ---------- */
+  // where a refusal at a path is fixed: the page of SymphonyBoard's installation that accepts its
+  // permissions, and the page that installs it, for the account the path names
+  function fixPages(path) {
+    var orgAt = /^\/orgs\/([A-Za-z0-9-]+)/.exec(path || ''), repoAt = /^\/repos\/([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+)/.exec(path || '');
+    var install = 'https://github.com/apps/' + APP_SLUG + '/installations/new';
+    if (orgAt) return { accept: 'https://github.com/organizations/' + orgAt[1] + '/settings/installations', install: install };
+    if (repoAt) return { accept: 'https://github.com/' + repoAt[1] + '/' + repoAt[2] + '/settings/installations', install: install };
+    return { accept: 'https://github.com/settings/installations', install: install };
+  }
   function explain(status, data, path, byApp) {
     var m = data && data.message ? String(data.message) : '';
+    var fix = fixPages(path);
     if (status === 401) return byApp
       ? 'GitHub refused the sign-in\'s token (401): it was revoked or has run out. Press Sign in with GitHub again.'
       : 'GitHub refused the token (401). Paste one that is still valid' + (signinAvailable() ? ', or press Sign in with GitHub.' : '.');
     if (status === 429 || (status === 403 && /rate limit|secondary/i.test(m))) return 'GitHub\'s rate limit for this token is reached (' + status + '). Wait a minute, then press Refresh.';
     if (status === 403) return byApp
-      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on.'
-      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it.';
-    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it (SymphonyBoard is not installed there).' : 'the token does not reach it.');
+      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on. An administrator accepts the App\'s newest permissions at ' + fix.accept + ' (Configure beside SymphonyBoard).'
+      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it; make one at https://github.com/settings/personal-access-tokens/new.';
+    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it, since SymphonyBoard is not installed there; install it at ' + fix.install + '.' : 'the token does not reach it.');
     if (status === 422) return 'GitHub refused the request (422' + (m ? ': ' + m : '') + ').';
     return 'GitHub answered ' + status + (m ? ': ' + m : '') + '.';
   }
@@ -1114,8 +1142,8 @@
     var others = ' Another tab signed in for that tab alone keeps its sign-in until you forget it there or close it.';
     // a classic token is deleted on another page of GitHub's settings than a fine-grained one
     var pages = [];
-    if (pasted.some(function (t) { return /^ghp_/.test(t); })) pages.push('github.com/settings/tokens');
-    if (pasted.some(function (t) { return !/^ghp_/.test(t); })) pages.push('github.com/settings/personal-access-tokens');
+    if (pasted.some(function (t) { return /^ghp_/.test(t); })) pages.push('https://github.com/settings/tokens');
+    if (pasted.some(function (t) { return !/^ghp_/.test(t); })) pages.push('https://github.com/settings/personal-access-tokens');
     var pat = !pasted.length ? '' : pasted.length === 1
       ? ' The personal access token itself stays valid at GitHub until it runs out or you delete it at ' + pages[0] + '.'
       : ' The personal access tokens themselves stay valid at GitHub until they run out or you delete them at ' + pages.join(' and ') + '.';
@@ -1125,7 +1153,7 @@
       Promise.all(dead.map(function (t) { return exchange('/revoke', { access_token: t }); })).then(function () {
         if (era === choices) say(where + ', and the sign-in\'s token is revoked at GitHub.' + others + pat + listed);
       }).catch(function (e) {
-        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
+        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at https://github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
       });
       return;
     }
@@ -1473,7 +1501,7 @@
     }).catch(function (e) {
       if (stale(s)) return;
       failed(s, 'the issues', e);
-      $('cp-other').textContent = 'The issues could not be read: ' + e.message;
+      richText($('cp-other'), 'The issues could not be read: ' + e.message);
       graphReset('Not drawn: the issues could not be read.', true);
       if (s.ready) summary();
     });
@@ -2073,7 +2101,7 @@
         ? plural(count, 'repository', 'repositories') + (signedInByApp() ? ' SymphonyBoard is installed on, ' + plural(groups.length, 'account') : ' this token reaches') + '. Press one to open it.'
         : (signedInByApp() ? 'SymphonyBoard is installed on no repository you can see yet: install it with the button below.' : 'This token reaches no repository; a fine-grained token lists only the repositories it was made for.');
       pickerDraw();
-    }).catch(function (e) { $('rp-state').textContent = 'GitHub did not list them: ' + e.message + ' Type OWNER/NAME above to open one by name.'; });
+    }).catch(function (e) { richText($('rp-state'), 'GitHub did not list them: ' + e.message + ' Type OWNER/NAME above to open one by name.'); });
     setTimeout(function () { $('cp-add-name').focus(); }, 0);
   }
   function pickerMatches(repo, q) {
@@ -2425,13 +2453,17 @@
   // it, so the tabs out of sight are not taken for all there are (control.css, data-more)
   function railEdges() {
     var rail = $('console') && $('console').querySelector('.console__rail');
-    if (!rail) return;
+    if (rail) markEdges(rail, getComputedStyle(rail).flexDirection === 'row');
+  }
+  // which ends of a box that scrolls sideways have more past them, as data-more, which the
+  // stylesheet fades: the rail on a phone, and the Dependencies tab's strip of tiles
+  function markEdges(box, sideways) {
     var more = '';
-    if (getComputedStyle(rail).flexDirection === 'row' && rail.scrollWidth > rail.clientWidth + 1) {
-      var left = rail.scrollLeft > 1, right = rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 1;
+    if (sideways && box.scrollWidth > box.clientWidth + 1) {
+      var left = box.scrollLeft > 1, right = box.scrollLeft + box.clientWidth < box.scrollWidth - 1;
       more = left && right ? 'both' : (left ? 'left' : (right ? 'right' : ''));
     }
-    if (more) rail.setAttribute('data-more', more); else rail.removeAttribute('data-more');
+    if (more) box.setAttribute('data-more', more); else box.removeAttribute('data-more');
   }
   // the rows of a list, a line that says the list is empty or still reading counting for none
   function consoleRows(id) {
@@ -2496,13 +2528,18 @@
   // phone, where the page scrolls as a whole, the stage keeps its own through a refresh.
   // Each hold marks the node as its own, so the release of an older hold, a refresh that went stale
   // under a newer one or its own safety timer, lets nothing go once a newer hold has the node. The
-  // height is measured here unless the caller took it first.
+  // height is measured here unless the caller took it first, to the fraction of a pixel: a height
+  // rounded up stands a fraction taller than the box, and on a phone the page under it moves a pixel.
   var holdsMade = 0;
+  function exactHeight(node) {
+    var h = parseFloat(getComputedStyle(node).height);
+    return isFinite(h) ? h : node.offsetHeight;
+  }
   function holdHeight(node, height) {
     if (!node) return function () {};
     var mine = String(++holdsMade);
     node.setAttribute('data-held', mine);
-    var h = height === undefined ? node.offsetHeight : height;
+    var h = height === undefined ? exactHeight(node) : height;
     if (h) node.style.minHeight = h + 'px';
     return function () {
       if (node.getAttribute('data-held') !== mine) return;
@@ -2566,7 +2603,8 @@
       retitle: function (text) { name.textContent = text; },
       // the latest word on where the work is
       tell: function (text, warn) {
-        line.textContent = text;
+        clear(line);
+        rich(line, text);
         line.className = 'msgtask__line' + (warn ? ' admin__warn' : '');
         task.show();
       },
@@ -2764,6 +2802,10 @@
   }
   function initFullScreen() {
     var b = $('cp-full');
+    // an iPhone gives a page no full screen, only a video, and has no F11 to press either, so where
+    // the browser has neither the standard call nor WebKit's older one the button is not offered
+    var can = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+    if (b && !can) b.hidden = true;
     if (b) b.addEventListener('click', function () {
       var root = document.documentElement;
       if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -3889,6 +3931,16 @@
   var GRAPH_SPACE_START = /^[ \t\n\v\f\r\x1c-\x1f]+/;
   var mermaidLoad = null;
   var graphRenders = 0;
+  // the typeface Mermaid lays labels out in, the site's own, so a label is measured in the face it shows in
+  var GRAPH_FONT = '"IBM Plex Sans", system-ui, sans-serif';
+  // the colours Mermaid draws with, the console's: a dark ground, nodes a shade lighter, and grey
+  // arrows that show on it; Mermaid's own shadow is a light grey made for a white page, so it is
+  // given a dark one
+  var GRAPH_THEME = {
+    darkMode: true, background: '#0F1916', primaryColor: '#16221F', primaryTextColor: '#E4ECE8', primaryBorderColor: '#5D7069',
+    lineColor: '#8A9E97', textColor: '#E4ECE8', fontFamily: GRAPH_FONT, fontSize: '14px',
+    useGradient: false, dropShadow: 'drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45))'
+  };
 
   function isPlain(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
   // a count as GitHub's summaries give it, or 0 where it is not a whole number of zero or more
@@ -4006,9 +4058,9 @@
     // the height is taken before the earlier hold is let go: a box that hold emptied stands at
     // nothing of its own, so a read begun under a read would hold it at nothing and the tab would
     // shrink while the sub-issues are read
-    var h = box ? box.offsetHeight : 0;
+    var h = box ? exactHeight(box) : 0;
     var tab = $('tab-dependencies');
-    var th = tab ? tab.offsetHeight : 0;
+    var th = tab ? exactHeight(tab) : 0;
     graphHeld();
     graphHeld = function () {};
     if (reading) {
@@ -4030,7 +4082,7 @@
   // docs/research/control-board-graph.md). The charts are the same, drawn the same, from the same
   // reads; the strip only shows one of their sections at a time, with an All chip that shows every
   // one, as the tab did before. It appears only where there are two charts or more, so a repository
-  // with one epic reads as it did; it keeps the console's own chip look (control.css), and which chip
+  // with one epic reads as it did; its tiles are the console's own cards (control.css), and which tile
   // a person last chose is kept per repository in this browser, as the panel's sizes are. It writes
   // nothing of the repository and asks nothing of anyone.
   var KEY_GRAPH_FOCUS = 'symphony_panel_graph_focus';
@@ -4047,20 +4099,35 @@
   }
   function graphStripClear() {
     var strip = $('cp-graph-focus');
-    if (strip) { clear(strip); strip.hidden = true; }
+    if (strip) { clear(strip); strip.hidden = true; strip.removeAttribute('data-more'); }
+    graphKey(false);
   }
-  // show the chart a chip names, or every chart for All, and press that chip; the sections are the
+  // the key to the colours and the arrows, shown only while there are charts to read it by
+  function graphKey(shown) {
+    var key = $('cp-graph-key');
+    if (key) key.hidden = !shown;
+  }
+  // show the chart a tile names, or every chart for All, and press that tile; the sections are the
   // page's own and read by their data-focus, so the assistant's "show dependencies" can reset to the
   // first without the draw's own list
   function graphSelect(key, repo) {
     var strip = $('cp-graph-focus');
     if (!strip) return;
+    var pressed = null;
     Array.prototype.forEach.call(strip.querySelectorAll('.graph__chip'), function (b) {
-      b.setAttribute('aria-pressed', b.getAttribute('data-focus') === key ? 'true' : 'false');
+      var on = b.getAttribute('data-focus') === key;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) pressed = b;
     });
+    $('cp-graph').classList.toggle('graph--all', key === 'all');
     Array.prototype.forEach.call($('cp-graph').querySelectorAll('.graph__section'), function (sec) {
-      sec.hidden = !(key === 'all' || sec.getAttribute('data-focus') === key);
+      var shown = key === 'all' || sec.getAttribute('data-focus') === key;
+      sec.hidden = !shown;
+      // a person's press fades the chosen chart in, so the change reads as a move rather than a jump
+      sec.classList.remove('graph__section--enter');
+      if (shown && repo) { void sec.offsetWidth; sec.classList.add('graph__section--enter'); }
     });
+    if (pressed) graphTileInView(strip, pressed);
     if (repo) {
       graphFocusSet(repo, key);
       // a person's press shows the chosen chart from its top, not where the last one was scrolled to
@@ -4068,8 +4135,46 @@
       if (box) box.scrollTop = 0;
     }
   }
-  // the chips for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
-  // was or it is gone, the first chart; a chart is a section the strip shows and hides by its key
+  // the tiles are one row that scrolls sideways where they run past its end, so the pressed one is
+  // brought to its middle; a strip filled while its tab is hidden, as when the console opens on
+  // another tab and draws there, has no width yet, so this waits for the first time it is laid out
+  // with one, as graphCentreOnShow does, and then brings in the tile still pressed
+  var graphTileWatch = null;
+  function graphTileInView(strip, tile) {
+    if (graphTileWatch) { graphTileWatch.disconnect(); graphTileWatch = null; }
+    if (!strip.clientWidth) {
+      if (typeof ResizeObserver !== 'function') return;
+      var watch = graphTileWatch = new ResizeObserver(function () {
+        if (!strip.clientWidth) return;
+        watch.disconnect();
+        if (graphTileWatch === watch) graphTileWatch = null;
+        if (tile.isConnected && tile.getAttribute('aria-pressed') === 'true') graphTileInView(strip, tile);
+      });
+      watch.observe(strip);
+      return;
+    }
+    if (strip.scrollWidth > strip.clientWidth + 1) strip.scrollLeft = Math.max(0, tile.offsetLeft - Math.round((strip.clientWidth - tile.offsetWidth) / 2));
+    graphStripEdges();
+  }
+  // the strip's ends fade where more tiles lie past them, as the rail's do on a phone
+  function graphStripEdges() {
+    var strip = $('cp-graph-focus');
+    if (strip) markEdges(strip, !strip.hidden);
+  }
+  // a mouse's wheel turns the strip sideways where its tiles run past its end and the deck holds the
+  // window, so a laptop with no sideways wheel reaches every tile; where the page scrolls as a whole
+  // the wheel scrolls the page, as it does anywhere else on it
+  function graphStripWheel(e) {
+    var strip = e.currentTarget;
+    if (e.ctrlKey || pageScrolls() || strip.scrollWidth <= strip.clientWidth + 1 || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    strip.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? strip.clientWidth : 1));
+  }
+  // the tiles for a draw's charts: All, then one per chart, the last chosen one pressed or, where none
+  // was or it is gone, the first chart; a chart is a section the strip shows and hides by its key.
+  // A tile says what its chart is, its title, a bar of its issues by state in the colours they are
+  // drawn in, and how far it has got, so the epics read side by side before one is opened (the
+  // owner, 2026-10-19: "make the epics more intuitive and navigating that page more fluent").
   function graphStrip(draw, charts) {
     var strip = $('cp-graph-focus');
     if (!strip) return;
@@ -4079,18 +4184,91 @@
     var keys = charts.map(function (c) { return c.key; });
     var saved = graphFocusGet(draw.repo);
     var selected = saved === 'all' || keys.indexOf(saved) >= 0 ? saved : charts[0].key;
-    function chip(key, label, title) {
-      var b = el('button', 'graph__chip', label);
-      b.type = 'button';
-      b.setAttribute('data-focus', key);
-      b.setAttribute('aria-pressed', 'false');
-      if (title) b.title = title;
-      b.addEventListener('click', function () { graphSelect(key, draw.repo); });
-      add(strip, b);
-    }
-    chip('all', 'All', 'Show every chart');
-    charts.forEach(function (c) { chip(c.key, c.label, c.heading); });
+    // All's bar is every epic's tasks together; the goals chart's nodes are the epics themselves
+    var tasks = {};
+    charts.forEach(function (c) {
+      if (c.key === 'goals') return;
+      Object.keys(c.counts).forEach(function (k) { tasks[k] = (tasks[k] || 0) + c.counts[k]; });
+    });
+    add(strip, graphTile(draw, { key: 'all', kind: 'All', title: 'Every chart', counts: tasks, foot: plural(charts.length, 'chart'), heading: 'Show every chart' }));
+    charts.forEach(function (c, i) {
+      add(strip, graphTile(draw, c));
+      graphStepper(draw, c, charts[i - 1], charts[i + 1], i, charts.length);
+    });
     graphSelect(selected, '');
+  }
+  function graphTile(draw, c) {
+    var b = el('button', 'graph__chip graph__tile');
+    b.type = 'button';
+    b.setAttribute('data-focus', c.key);
+    b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', c.kind + (c.title ? ': ' + c.title : '') + ', ' + c.foot);
+    b.title = c.heading;
+    add(b, el('span', 'graph__tkind', c.kind), el('span', 'graph__ttitle', c.title), graphStateBar(c.counts), el('span', 'graph__tfoot', c.foot));
+    b.addEventListener('click', function () { graphSelect(c.key, draw.repo); });
+    return b;
+  }
+  // a bar of a chart's issues, one stretch per state in the order work moves through them, as wide as
+  // its share; the tile's words and the card's pills say the same, so the bar is hidden from a reader
+  function graphStateBar(counts) {
+    var bar = el('span', 'graph__tbar');
+    bar.setAttribute('aria-hidden', 'true');
+    var total = 0;
+    GRAPH_COUNTS.forEach(function (pair) { total += counts[pair[0]] || 0; });
+    GRAPH_COUNTS.forEach(function (pair) {
+      var n = counts[pair[0]] || 0;
+      if (!n) return;
+      var seg = el('span', 'graph__seg graph__seg--' + (pair[0] || 'plain'));
+      seg.style.width = (100 * n / total) + '%';
+      add(bar, seg);
+    });
+    return bar;
+  }
+  // Previous and Next on each card, with its place among the charts, so the charts are stepped through
+  // one after another from where a person reads, without going back up to the tiles; the button
+  // pressed keeps the keyboard's focus on the card it shows, or its other button at the last chart.
+  // They stand in the card's row of tools, which keeps one place on every card (control.css), so a
+  // button pressed again and again stays under the mouse from card to card
+  function graphStepper(draw, c, prev, next, i, n) {
+    var nav = el('div', 'graph__step');
+    nav.setAttribute('role', 'group');
+    nav.setAttribute('aria-label', 'Step through the charts');
+    function step(cls, to, glyph, words) {
+      var b = el('button', 'graph__stepbtn ' + cls, glyph);
+      b.type = 'button';
+      if (!to) {
+        b.disabled = true;
+        b.setAttribute('aria-label', words);
+        return b;
+      }
+      b.setAttribute('aria-label', words + ': ' + to.heading);
+      b.title = to.heading;
+      b.addEventListener('click', function () {
+        graphSelect(to.key, draw.repo);
+        var same = to.section.querySelector('.graph__step .' + cls);
+        var other = to.section.querySelector('.graph__step .graph__stepbtn:not(:disabled)');
+        var focus = same && !same.disabled ? same : other;
+        if (focus) focus.focus({ preventScroll: true });
+      });
+      return b;
+    }
+    add(nav, step('graph__prev', prev, '‹', 'Previous chart'), el('span', 'graph__pos', (i + 1) + ' of ' + n), step('graph__next', next, '›', 'Next chart'));
+    c.section.querySelector('.graph__tools').appendChild(nav);
+  }
+  // the tiles answer the arrow keys as tabs do: Left and Right, Home and End move to a tile and show
+  // its chart
+  function graphStripKeys(e) {
+    var moves = { ArrowLeft: -1, ArrowRight: 1, Home: -1e9, End: 1e9 };
+    if (!(e.key in moves) || e.altKey || e.ctrlKey || e.metaKey) return;
+    var tiles = Array.prototype.slice.call(e.currentTarget.querySelectorAll('.graph__chip'));
+    var at = tiles.indexOf(document.activeElement);
+    if (at < 0) return;
+    e.preventDefault();
+    var to = tiles[Math.max(0, Math.min(tiles.length - 1, at + moves[e.key]))];
+    // a key at either end moves nowhere, so it changes nothing: no fade again, no scroll to the top
+    if (to === tiles[at]) return;
+    to.focus({ preventScroll: true });
+    to.click();
   }
   // the assistant's "show dependencies ... at its first chart": the first section shown, so its
   // heading is the one in view, without changing the chip a person chose for next time
@@ -4146,6 +4324,9 @@
     return graphList(draw, '/repos/' + draw.repo + '/issues/' + number + '/sub_issues?per_page=100').then(function (list) {
       var children = list.filter(function (c) { return isPlain(c) && !('pull_request' in c) && inRepository(c, draw.repo); });
       if (children.length) draw.subIssues[number] = children.map(function (c) { return Number(c.number); });
+      // the sub-issues in another repository, which GitHub's summary on the epic counts and no chart
+      // draws, are counted, so the card's pills can still add up to its bar
+      draw.elsewhere[number] = list.filter(function (c) { return isPlain(c) && !('pull_request' in c); }).length - children.length;
       children.forEach(function (c) { graphRemember(draw, c); });
       if (!isEpic) return;
       return children.reduce(function (p, child) { return p.then(function () { return graphReadBlockers(draw, child); }); }, Promise.resolve());
@@ -4177,7 +4358,7 @@
     // a draw started afresh says nothing yet, so an earlier draw's failure leaves the summary
     s.failed = s.failed.filter(function (f) { return f.indexOf('the dependencies (') !== 0; });
     if (s.ready) summary();
-    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, blockedBy: {}, others: {}, listed: {} };
+    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, elsewhere: {}, blockedBy: {}, others: {}, listed: {} };
     var open = s.issues.filter(function (it) { return !it.pull_request; });
     open.forEach(function (it) { draw.listed[Number(it.number)] = graphIssue(it); });
     var planned = open.filter(function (it) { return graphPlanned(draw.listed[Number(it.number)]) && !owesNoRead(it); })
@@ -4274,19 +4455,67 @@
   }
   // one chart's heading, its picture (empty until Mermaid draws it) and its table, which says the
   // same in words and stands alone when the picture cannot be drawn
-  // a chip's short label for an epic: its number, a few words of its title and its progress, so the
-  // strip reads at a glance where the heading says it in full
-  function graphChipLabel(epic) {
-    var t = graphFold(epic.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
-    if (t.length > 22) t = t.slice(0, 19).replace(GRAPH_SPACE_END, '') + '...';
-    var p = epic.progress && epic.progress[1] > 0 ? ' ' + epic.progress[0] + '/' + epic.progress[1] : '';
-    return '#' + epic.number + (t ? ' ' + t : '') + p;
+  // a tile's title for an epic: its title folded as the board folds it and its spaces closed up; the
+  // stylesheet cuts it at two lines, where the card's heading says it in full
+  function graphTileTitle(epic) {
+    return graphFold(epic.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
   }
-  function graphSection(draw, box, heading, chart, relation, relationCell, key, label) {
+  // the states a card counts, in the order work moves through them, with the words of its pills
+  var GRAPH_COUNTS = [['todo', 'to do'], ['claimed', 'claimed'], ['review', 'in review'], ['blocked', 'blocked'], ['', 'open'], ['closed', 'closed']];
+  // a card's head: its heading, then, for an epic, a bar of its closed tasks, and a pill per state
+  // of its own issues, each in the colour its nodes are drawn in, so the card reads before the chart;
+  // an epic's own are its sub-issues in this repository, which its chart draws; its sub-issues in
+  // another repository, which GitHub's summary and so the bar count and no chart draws, have a pill
+  // of their own, so the pills add up to the bar's total, and a blocker from outside the epic,
+  // which is none of its tasks, is counted apart, in a last pill
+  function graphCounts(draw, chart, own) {
+    var counts = {};
+    chart.nodes.forEach(function (it) {
+      if (own && own.indexOf(it.number) < 0) return;
+      var c = graphClass(it, draw.claimed);
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    return counts;
+  }
+  function graphCardHead(draw, heading, chart, progress, own, elsewhere) {
+    var head = el('div', 'graph__head');
+    add(head, el('h3', '', heading));
+    var meta = el('div', 'graph__meta');
+    if (progress && progress[1] > 0) {
+      var done = Math.min(progress[0], progress[1]);
+      var bar = el('div', 'graph__bar'), fill = el('span');
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', String(progress[1]));
+      bar.setAttribute('aria-valuenow', String(done));
+      // named for its card, since All shows several, and read as the words beside it say it
+      bar.setAttribute('aria-label', heading + ': tasks closed');
+      bar.setAttribute('aria-valuetext', done + ' of ' + progress[1] + ' closed');
+      fill.style.width = Math.round(100 * done / progress[1]) + '%';
+      add(meta, add(el('div', 'graph__progress'), add(bar, fill), el('span', 'graph__done', done + ' of ' + progress[1] + ' closed')));
+    }
+    var counts = graphCounts(draw, chart, own);
+    var pills = el('div', 'graph__pills');
+    GRAPH_COUNTS.forEach(function (pair) {
+      if (counts[pair[0]]) add(pills, add(el('span', 'graph__pill graph__pill--' + (pair[0] || 'plain')), el('b', '', counts[pair[0]]), ' ' + pair[1]));
+    });
+    if (elsewhere) add(pills, add(el('span', 'graph__pill graph__pill--elsewhere'), el('b', '', elsewhere), ' in another repository'));
+    var outside = own ? chart.nodes.filter(function (it) { return own.indexOf(it.number) < 0; }).length : 0;
+    if (outside) add(pills, add(el('span', 'graph__pill graph__pill--outside'), el('b', '', outside), ' from outside the epic'));
+    add(meta, pills);
+    add(head, meta);
+    return head;
+  }
+  function graphSection(draw, box, heading, chart, relation, relationCell, key, tile) {
+    var progress = tile.progress;
     var sec = el('section', 'graph__section');
     sec.setAttribute('data-focus', key);
-    add(sec, el('h3', '', heading));
+    var head = graphCardHead(draw, heading, chart, progress, tile.own, tile.elsewhere);
+    add(sec, head);
     var host = el('div', 'control__chart');
+    var fit = graphFitButton(host);
+    // Fit, and Previous and Next where there are several charts (graphStepper), share one row
+    add(head, add(el('div', 'graph__tools'), fit));
     add(sec, host);
     var table = el('table', 'control__tasks'), head = el('tr');
     ['Issue', 'Title', 'State', relation, 'Worker'].forEach(function (c) { add(head, el('th', '', c)); });
@@ -4304,10 +4533,22 @@
       body.appendChild(tr);
     });
     add(table, body);
-    add(sec, add(el('div', 'table-scroll'), table));
+    // the same in words, folded under the picture, and opened by itself where the picture cannot be
+    // drawn (graphUndrawn), since then it is all the card has to say
+    var list = el('details', 'graph__list');
+    var summary = el('summary', '', 'List of ' + plural(chart.nodes.length, 'issue'));
+    // named for its card too, its own words first, since All shows several
+    summary.setAttribute('aria-label', summary.textContent + ': ' + heading);
+    add(list, summary);
+    add(list, add(el('div', 'table-scroll'), table));
+    add(sec, list);
     add(box, sec);
-    return { host: host, heading: heading, text: graphChart(draw, chart.nodes, chart.edges), key: key, label: label };
+    var foot = progress && progress[1] > 0 ? Math.min(progress[0], progress[1]) + ' of ' + progress[1] + ' closed' : plural(chart.nodes.length, 'issue');
+    return { host: host, list: list, fit: fit, section: sec, heading: heading, text: graphChart(draw, chart.nodes, chart.edges), key: key,
+      kind: tile.kind, title: tile.title, foot: foot, counts: graphCounts(draw, chart, tile.own) };
   }
+  // a chart that was not drawn has its list opened, so its card still says what it holds
+  function graphUndrawn(chart) { if (chart.list) chart.list.open = true; }
   function graphRender(draw) {
     var box = $('cp-graph');
     var goals = graphWithSubIssues(draw, 'goal'), epics = graphWithSubIssues(draw, 'epic');
@@ -4319,9 +4560,10 @@
       return;
     }
     var charts = [];
-    if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf, 'goals', 'Goals'));
-    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, graphChipLabel(epic))); });
+    if (goals.length) charts.push(graphSection(draw, box, 'Goals', graphGoals(draw, goals), 'Its epics', graphEpicsOf, 'goals', { kind: 'Goals', title: goals.length === 1 ? 'The goal and its epics' : 'The goals and their epics' }));
+    epics.forEach(function (epic) { charts.push(graphSection(draw, box, graphHeading(epic), graphEpic(draw, epic.number), 'Blocked by', graphBlockedBy, 'epic-' + epic.number, { kind: 'Epic #' + epic.number, title: graphTileTitle(epic), progress: epic.progress, own: draw.subIssues[epic.number] || [], elsewhere: draw.elsewhere[epic.number] || 0 })); });
     graphStrip(draw, charts);
+    graphKey(true);
     var drew = (goals.length ? [plural(goals.length, 'goal')] : []).concat(epics.length ? [plural(epics.length, 'epic')] : []);
     var drawn = 'from ' + plural(draw.reads, 'read') + ' of GitHub: ' + drew.join(' and ') + ' with sub-issues';
     graphWords('Drawing ' + drawn + '...');
@@ -4332,19 +4574,33 @@
       return charts.reduce(function (p, chart) {
         return p.then(function () {
           if (!graphLive(draw)) return;
-          return graphDraw(m, chart).catch(function (e) { undrawn.push(chart.heading + ': ' + e.message); });
+          return graphDraw(m, chart).catch(function (e) { graphUndrawn(chart); undrawn.push(chart.heading + ': ' + e.message); });
         });
       }, Promise.resolve()).then(function () { return undrawn; });
     }).then(function (undrawn) {
       if (!graphLive(draw)) return;
       graphHeld();
+      // the key is for charts; where none could be drawn the cards hold their lists alone
+      if (undrawn.length === charts.length) graphKey(false);
       if (!undrawn.length) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the Tasks tab.' + graphCut(draw));
       else graphWords('Drawn ' + (charts.length - undrawn.length) + ' of ' + plural(charts.length, 'chart') + ' ' + drawn + '; ' + plural(undrawn.length, 'chart') + ' could not be drawn (' + undrawn.join('; ') + '), and the table under ' + (undrawn.length === 1 ? 'it' : 'each') + ' says the same.' + graphCut(draw), true);
     }, function (e) {
       if (!graphLive(draw)) return;
       graphHeld();
+      graphKey(false);
+      charts.forEach(graphUndrawn);
       graphWords('The charts could not be drawn (' + e.message + '); the tables say the same ' + drawn + '.', true);
     });
+  }
+  // Mermaid sizes each box by measuring its words, so the face it measures in, the site's, is waited
+  // for first, or a box measured in the fallback face would cut its words short once the site's
+  // arrives; only that face is waited for, and for GRAPH_FONT_WAIT at most, so a font download that
+  // stalls costs the charts a moment and never holds them (a late face changes how a label looks)
+  var GRAPH_FONT_WAIT = 2500;
+  function graphFontReady() {
+    if (!document.fonts || typeof document.fonts.load !== 'function') return Promise.resolve();
+    var waited = new Promise(function (resolve) { setTimeout(resolve, GRAPH_FONT_WAIT); });
+    return Promise.race([document.fonts.load('14px "IBM Plex Sans"'), waited]).then(function () {}, function () {});
   }
   function loadMermaid() {
     if (mermaidLoad) return mermaidLoad;
@@ -4362,8 +4618,14 @@
       // reaches it from the page (graphLabel, boardChartLines); this holds should one ever do.
       m.initialize({ startOnLoad: false, securityLevel: 'strict', suppressErrorRendering: true,
         secure: ['secure', 'securityLevel', 'startOnLoad', 'maxTextSize', 'suppressErrorRendering', 'maxEdges',
-          'dompurifyConfig', 'themeCSS', 'themeVariables', 'fontFamily', 'altFontFamily'] });
-      return m;
+          'dompurifyConfig', 'themeCSS', 'themeVariables', 'fontFamily', 'altFontFamily'],
+        // the console's own look: Mermaid's rounded "neo" look in the console's dark colours and the
+        // site's typeface, arrows turning at rounded corners, and room around each label; the shade of a node by its
+        // state is the stylesheet's (graphRestyle), the board's classes naming it
+        look: 'neo', theme: 'base', fontFamily: GRAPH_FONT,
+        themeVariables: GRAPH_THEME,
+        flowchart: { padding: 16, nodeSpacing: 34, rankSpacing: 54, wrappingWidth: 190 } });
+      return graphFontReady().then(function () { return m; });
     }).catch(function (e) {
       // whatever failed, the next draw tries the load again, as the words tell the person Refresh does
       mermaidLoad = null;
@@ -4378,14 +4640,123 @@
     var id = 'cp-graph-' + (++graphRenders);
     return m.render(id, chart.text).then(function (r) {
       chart.host.innerHTML = r.svg;
+      graphRestyle(chart.host);
       var svg = chart.host.querySelector('svg');
       var width = svg && svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal.width : 0;
       if (svg && width > 0) svg.style.minWidth = Math.ceil(width) + 'px';
+      graphCentreOnShow(chart.host);
+      graphFitWatch(chart);
     }, function (e) {
       // what a failed drawing may leave on the page: the library's own picture of the error, under an id of its own
       var left = document.getElementById('d' + id);
       if (left && left.parentNode) left.parentNode.removeChild(left);
       throw e;
+    });
+  }
+  // Fit, on a card whose chart is wider than its box: the whole chart drawn at the card's width,
+  // smaller, and pressed again, at its own size and scrolled sideways; it shows only where the chart is
+  // wider than its box or is fitted already, read again each time the box changes size
+  function graphFitButton(host) {
+    var b = el('button', 'graph__fit', 'Fit');
+    b.type = 'button';
+    b.hidden = true;
+    b.setAttribute('aria-pressed', 'false');
+    b.title = 'Draw the whole chart at the card\'s width';
+    b.addEventListener('click', function () {
+      var on = host.classList.toggle('control__chart--fit');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (!on && host.scrollWidth > host.clientWidth) host.scrollLeft = Math.round((host.scrollWidth - host.clientWidth) / 2);
+    });
+    return b;
+  }
+  function graphFitWatch(chart) {
+    var b = chart.fit;
+    if (!b) return;
+    function update() { b.hidden = !(chart.host.classList.contains('control__chart--fit') || chart.host.scrollWidth > chart.host.clientWidth + 1); }
+    update();
+    if (typeof ResizeObserver !== 'function') return;
+    var watch = new ResizeObserver(function () { if (!chart.host.isConnected) watch.disconnect(); else update(); });
+    watch.observe(chart.host);
+  }
+  // a chart is moved by dragging it with the mouse, sideways inside its box and up and down the tab,
+  // or the page where the page scrolls as a whole (pageScrolls), as a map is; a press that does not
+  // move still presses its node, and a drag presses nothing. Touch scrolls by itself, so only a mouse
+  // drags. The drag is followed on the window, so it goes on when the mouse leaves the chart, and
+  // ends wherever the button comes up, or at the first move made with no button held, where the
+  // release never came: a menu opened on the press takes it (a Mac's Ctrl+click), and so can
+  // another window taking the mouse mid-drag.
+  function graphPan(container) {
+    var pan = null, panned = false;
+    container.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      var host = e.target && e.target.closest ? e.target.closest('.control__chart') : null;
+      if (!host || !host.querySelector('svg')) return;
+      var page = pageScrolls(), box = page ? null : host.closest('.console__scroll');
+      pan = { host: host, box: box, page: page, id: e.pointerId, x: e.clientX, y: e.clientY, left: host.scrollLeft, top: page ? window.pageYOffset : (box ? box.scrollTop : 0), moved: false };
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (!pan || e.pointerId !== pan.id) return;
+      if (!(e.buttons & 1)) { pan.host.classList.remove('control__chart--panning'); pan = null; return; }
+      var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (!pan.moved) {
+        if (Math.abs(dx) + Math.abs(dy) < 6) return;
+        pan.moved = true;
+        pan.host.classList.add('control__chart--panning');
+        if (window.getSelection) window.getSelection().removeAllRanges();
+      }
+      e.preventDefault();
+      pan.host.scrollLeft = pan.left - dx;
+      // the page is moved at once, not by the smooth scroll the site's stylesheet asks of it, which
+      // would trail behind the mouse
+      if (pan.page) window.scrollTo({ left: window.pageXOffset, top: pan.top - dy, behavior: 'instant' });
+      else if (pan.box) pan.box.scrollTop = pan.top - dy;
+    });
+    function end(e) {
+      if (!pan || e.pointerId !== pan.id) return;
+      panned = pan.moved;
+      pan.host.classList.remove('control__chart--panning');
+      pan = null;
+      // the click that ends a drag comes straight after it, and is the drag's, not a press of a node
+      if (panned) setTimeout(function () { panned = false; }, 0);
+    }
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    container.addEventListener('click', function (e) {
+      if (!panned) return;
+      panned = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
+  }
+  // a chart wider than its box, as most are on a phone, opens scrolled to its middle, where a tree
+  // of tasks has its trunk, rather than at its left edge; a chart is often drawn in a hidden tab or
+  // card, where it has no width yet, so this waits for the first time it is laid out with one, and
+  // then leaves the scrolling to the person
+  function graphCentreOnShow(host) {
+    function centre() {
+      if (!host.clientWidth) return false;
+      if (host.scrollWidth > host.clientWidth) host.scrollLeft = Math.round((host.scrollWidth - host.clientWidth) / 2);
+      return true;
+    }
+    if (centre() || typeof ResizeObserver !== 'function') return;
+    var watch = new ResizeObserver(function () { if (!host.isConnected || centre()) watch.disconnect(); });
+    watch.observe(host);
+  }
+  // The board's classes paint a node light (a white, yellow, blue, red or grey fill and black words),
+  // which Mermaid writes onto each node's own elements, where no stylesheet reaches; those colours are
+  // taken off the drawn nodes, and nothing else, so the console's stylesheet shades each node by the
+  // class it keeps (control.css), dark with its state's colour at the edge, and the chart's text stays
+  // the board's byte for byte. The node's box gets rounded corners, as the neo look draws them where
+  // it draws its own shapes.
+  function graphRestyle(host) {
+    Array.prototype.forEach.call(host.querySelectorAll('g.node'), function (node) {
+      [node].concat(Array.prototype.slice.call(node.querySelectorAll('[style]'))).forEach(function (part) {
+        ['fill', 'stroke', 'color'].forEach(function (k) { part.style.removeProperty(k); });
+      });
+      Array.prototype.forEach.call(node.querySelectorAll(':scope > rect.label-container'), function (box) {
+        box.setAttribute('rx', '10');
+        box.setAttribute('ry', '10');
+      });
     });
   }
   // a node pressed, or Centre its row: the task's row is centred and marked in the Tasks tab, which
@@ -4416,8 +4787,8 @@
     });
   }
   // a block that is no chart the board writes, shown as the text it is, and never drawn; the host
-  // gives up the chart's class, whose light ground and dark ink are for a drawing, so its words and
-  // its text read in the Board tab's own colours, as any other block of code on the board does
+  // gives up the chart's class, whose dotted ground and frame are for a drawing, so its words and
+  // its text read on the Board tab's own ground, as any other block of code on the board does
   function boardNotChart(host) {
     var text = host.getAttribute('data-chart');
     host.removeAttribute('data-chart');
@@ -4456,7 +4827,13 @@
   }
   // a node pressed, in the tab's own charts or in the board's
   function initGraph() {
+    var strip = $('cp-graph-focus');
+    strip.addEventListener('keydown', graphStripKeys);
+    strip.addEventListener('wheel', graphStripWheel, { passive: false });
+    strip.addEventListener('scroll', graphStripEdges, { passive: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(graphStripEdges).observe(strip);
     ['cp-graph', 'cp-board'].forEach(function (id) {
+      graphPan($(id));
       $(id).addEventListener('click', function (e) {
         var node = e.target && e.target.closest ? e.target.closest('g.node') : null;
         var m = node ? /-flowchart-i([0-9]{1,9})-[0-9]+$/.exec(node.id || '') : null;
@@ -4808,8 +5185,9 @@
   // what a 403 or 404 on a slot's secret or variable means, for where the slots live: an organization's
   // pool, or a personal account's repository, which takes the App's repository permissions instead
   function secretsNeeded(place) {
-    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
-    return ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions.';
+    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation at https://github.com/settings/installations (Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
+    var owner = place ? place.owner : '';
+    return ' Writing a slot needs an owner of ' + (owner || 'the organization') + ', and the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation' + (owner ? ' at https://github.com/organizations/' + owner + '/settings/installations' : '') + '. Someone who is not an owner adds their own token with Add Token, which puts it into the pool for them; the owners are listed at ' + (owner ? 'https://github.com/orgs/' + owner + '/people?query=role%3Aowner' : 'the organization\'s People page') + '.';
   }
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
@@ -4950,7 +5328,7 @@
   var RUN_FOR_MS = 15 * 60 * 1000;
   // what claude.ai shows after the sign-in, as tools/token_run.py's CODE_SHAPE takes it
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
-  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
+  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write; an administrator accepts them on the App\'s installation, at https://github.com/settings/installations for a personal account or the organization\'s own installations page, Configure beside SymphonyBoard.';
   var ADOPT_BRANCH = 'symphony/adopt';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
   // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
@@ -4983,7 +5361,7 @@
     var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption' + (tk.place && tk.place.org ? ', and no other repository of ' + tk.place.owner + ' that you may push to and that carries the topic symphony has it.' : '.');
     var reach = gh('GET', '/repos/' + repo).then(function () { return true; }, function (e) { return e.status !== 404; });
     return reach.then(function (reached) {
-      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it.';
+      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it; install it at https://github.com/apps/' + APP_SLUG + '/installations/new, then press Add Token again.';
       return adoptionHint(repo, view, hint);
     });
   }
@@ -4994,7 +5372,7 @@
       add(view.step, add(el('p', 'admin__bar'), link(pr.html_url, 'Open the adoption pull request #' + pr.number)));
       return hint + ' Merge its adoption pull request first, then press Add Token again.';
     }).catch(function () {
-      return hint + ' Merge its adoption pull request first, or adopt it if it never was, then press Add Token again.';
+      return hint + ' Merge its adoption pull request first, or adopt it if it never was, at ' + FORM_URL + ', then press Add Token again.';
     });
   }
 
@@ -5059,7 +5437,7 @@
     drawTiles();
     view.tell('Starting the sign-in on GitHub Actions...');
     refuseCrowd([repo], place).then(function () {
-      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one.');
+      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one (the owners are listed at https://github.com/orgs/' + place.owner + '/people?query=role%3Aowner).');
       // the run itself finds the free slot, since only an owner may read the pool's secrets
       return pooled ? {} : readSecrets(place);
     }).then(unlessStopped).then(function (by) {
@@ -5143,6 +5521,18 @@
       if (home !== repo) delete tokenHomes[place.owner + '/' + shownLogin];
       over();
       clear(view.step);
+      // the pool's secrets refused someone the page could not tell was an owner: they are not one,
+      // so the same press goes on into the pool through the Token run (intoPool), with no error
+      // only before the sign-in's issue is opened: once the person has signed in, a second sign-in
+      // would put a second copy of their token in the pool
+      if (step === 'secrets' && !issue && !pooled && !wanted && place.org && tk.place === place && tk.admin !== true && place.push !== false && (e.status === 403 || e.status === 404)) {
+        tk.admin = false;
+        drawTiles();
+        if (view.stop.parentNode) view.stop.parentNode.removeChild(view.stop);
+        say('GitHub lets only an owner of ' + place.owner + ' read its slots, so your token goes into its pool through the Token run instead, marked as yours.');
+        addByActions(repo, place, button, '', view.task);
+        return;
+      }
       if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
       var hint = Promise.resolve('');
       if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
@@ -5474,9 +5864,10 @@
     }
     if (lendToBusy) { line.textContent = lendToBusy; return box; }
     if (!lendTo) { line.textContent = 'Reading the list...'; return box; }
-    line.textContent = lendToError || (lendTo.length
+    clear(line);
+    rich(line, lendToError || (lendTo.length
       ? 'A token someone lends to ' + place.owner + ' without a say runs in these repositories from the moment it arrives:'
-      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.');
+      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.'));
     lendTo.forEach(function (id) {
       var row = el('p', 'admin__bar');
       var name = el('span', '', repoNames[id] || 'repository ' + id);
@@ -5748,7 +6139,7 @@
       var why = check();
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
-      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
+      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim(), at = tk.place;
       // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
       // sign-in that follows it, as one task
       d.close();
@@ -5763,6 +6154,16 @@
         say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
       }, function (e) {
         tokenAdding = null;
+        // GitHub refused the owner's path to someone the page could not tell was an owner, as when
+        // their membership could not be read: they are not one here, so their token goes into the
+        // pool through the Token run, as for anyone who may write but owns no secret (intoPool)
+        if (adding && at && tk.place === at && at.org && tk.admin !== true && at.push !== false && (e.status === 403 || e.status === 404)) {
+          tk.admin = false;
+          drawTiles();
+          say('GitHub lets only an owner of ' + at.owner + ' write its slots directly, so your token goes into its pool through the Token run instead, marked as yours, in the next free slot; an owner of ' + at.owner + ' sets its model and where it runs.');
+          addByActions(tk.repo, tk.place, $('tk-tile-add') || save, '', task);
+          return;
+        }
         var words = 'The settings of ' + tileName(wanted) + ' could not be saved: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : '');
         if (task) task.end(words, true); else say(words, true);
       });
@@ -5814,7 +6215,7 @@
     if (barred && tk.place.org) {
       var ask = btn('Ask to join ' + tk.repo, true, function () {
         ask.disabled = true;
-        requestAccess(tk.repo, function (t, failed) { problem.textContent = t; if (failed) ask.disabled = false; });
+        requestAccess(tk.repo, function (t, failed) { richText(problem, t); if (failed) ask.disabled = false; });
       });
       add(bar, ' ', ask);
     }
@@ -6163,7 +6564,7 @@
       $('lb-lead').textContent = tokenRows.length
         ? 'Issues the tokens of ' + place.owner + ' worked, by the label token:<id> a worker\'s run puts on them; closed counts those closed as done.'
         : 'No token of ' + place.owner + ' has an id yet: a token gets one when it is added, or when its settings are saved on the Tokens tab.';
-    }).catch(function (e) { if (leadersFor === repo) $('lb-lead').textContent = 'The leaderboard could not be read: ' + e.message; });
+    }).catch(function (e) { if (leadersFor === repo) richText($('lb-lead'), 'The leaderboard could not be read: ' + e.message); });
   }
 
   /* ============================================================
@@ -6375,7 +6776,7 @@
       driveConfig = null;
       driveAsked = false;
       showConnectState();
-      $('fd-connect-note').textContent = 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.';
+      richText($('fd-connect-note'), 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.');
     });
   }
   // PKCE as the GitHub sign-in does it, with a state of the drive's own, so that the return is told
@@ -7515,7 +7916,7 @@
       clear(body);
       var refused = e.status === 403 || e.status === 404;
       // someone who may not push here can still ask to join, which an administrator answers on this tab
-      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) $('sh-state').textContent = t; }); }, 5));
+      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) richText($('sh-state'), t); }); }, 5));
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
       $('sh-state').textContent = (refused
         ? 'GitHub shows who has access to ' + repo + ' only to people who may push to it' + (signedInByApp() ? ', through an installation that may read its administration' : ', with a token that may') + '. + Ask to join asks its administrators to let you in.'
@@ -7598,8 +7999,8 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      said.textContent = e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      richText(said, e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message);
+      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
     });
   }
   function shareRemove(p, button) {
@@ -7614,7 +8015,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
     });
   }
   // A request to join is an issue whose first line is ACCESS_MARK, opened by the person asking, which
@@ -7650,7 +8051,7 @@
         });
       });
     }).catch(function (e) {
-      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly.' : 'Asking did not work: ' + e.message), true);
+      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly; its owner\'s page is https://github.com/' + repo.split('/')[0] + '.' : 'Asking did not work: ' + e.message), true);
     });
   }
   function shareAskRow(issue) {
@@ -7694,7 +8095,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
+      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message;
       say(invited ? 'Invited ' + login + ', but the request could not be closed: ' + why : why, true);
     });
   }

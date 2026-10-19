@@ -29,6 +29,8 @@ WHAT IT DOES, IN ORDER
         <!-- build:docs-... -->                      the Docs tab's generated parts (THE DOCS SECTION)
         {{version}} {{vscode_version}} and {{<text>_version}} for each versioned text
         ({{license_version}}, {{privacy_version}}, {{vscode_license_version}}, ...)
+    A page whose front matter says app: yes (the control panel) gets the Home Screen app's head
+    lines, APP_HEAD, and a viewport that covers the screen, APP_VIEWPORT.
     The agreements, the privacy statements and the VS Code edition's third-party notices are
     rendered from the two Beethoven repositories' own texts, Symphony for Chrome's privacy
     statement from its repository's and the Symphony GitHub Apps' from the front door's (TEXTS
@@ -45,7 +47,8 @@ WHAT IT DOES, IN ORDER
  6. Writes the moved pages in REDIRECTS (old address -> new address): a two-line page that sends
     the visitor on, with the query and the fragment (an installed build opens
     /ashley/request.html?access_id=...), and a meta refresh for a browser without scripts. It
-    also writes TEXT_COPIES, the plain-text agreements, byte for byte from their sources.
+    also writes TEXT_COPIES, the plain-text agreements, byte for byte from their sources, and
+    APP_MANIFEST, the Home Screen app's manifest, to symphony/control/manifest.webmanifest.
  7. Checks: every page parses and its tags balance; the header is byte-identical on every page
     except the mark on the current tab; the footer is identical everywhere; every internal link and
     asset resolves to a file; every page, hidden or not, is two clicks from the header and footer
@@ -54,7 +57,9 @@ WHAT IT DOES, IN ORDER
     a redirect in REDIRECTS or a file in KEPT_FILES with the same bytes as before (installed
     builds read those by address); /beethoven/services.json names every route both editions read;
     the browser edition is offered only through its Chrome Web Store listing (check_private_listing:
-    no package of it in the site, no link to one, no other browser named on a page).
+    no package of it in the site, no link to one, no other browser named on a page); the Home
+    Screen app's manifest on disk is APP_MANIFEST, and every icon it and the head name is a PNG of
+    the size it says, as tools/app_icons.py draws them (check_app).
     A failed check exits non-zero and says which page and why.
 
 THE BROWSER EDITION IS NOT DOWNLOADED FROM THIS SITE. It is on a Chrome Web Store listing, public
@@ -798,7 +803,45 @@ def check_words(name, source_text, rendered_html, problems):
 # ============================================================
 # BODY FILES
 # ============================================================
-FRONT_KEYS = {"title", "description", "css", "js", "canonical", "body_class", "strip", "breadcrumb", "robots"}
+FRONT_KEYS = {"title", "description", "css", "js", "canonical", "body_class", "strip", "breadcrumb", "robots", "app"}
+
+# The control panel's Home Screen app: the manifest a phone's browser installs the page from, as an
+# app with its own icon that opens full screen, and the head lines that point at it and at Apple's
+# touch icon, which iOS reads in its place. A page asks for them with "app: yes" in its front
+# matter; the manifest is written by the build and the icons are drawn by tools/app_icons.py. The
+# viewport covers the whole screen on such a page (viewport-fit=cover), so the console pads its
+# edges by the phone's safe areas itself (assets/css/control.css); iOS's status bar stays its own
+# light bar above the page (status-bar-style default), since the site's header is light too.
+APP_MANIFEST_PATH = "symphony/control/manifest.webmanifest"
+APP_MANIFEST = {
+    "id": "/symphony/control/",
+    "name": "Symphony control panel",
+    "short_name": "Symphony",
+    "description": "Drive your Symphony repositories as yourself: the board, the tasks, the workers, "
+                   "the Claude tokens and the pull requests.",
+    "start_url": "/symphony/control/",
+    "scope": "/symphony/control/",
+    "display": "standalone",
+    "background_color": "#F1EEE3",
+    "theme_color": "#F1EEE3",
+    "icons": [
+        {"src": "/assets/img/symphony-app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/assets/img/symphony-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/assets/img/symphony-app-maskable-512.png", "sizes": "512x512", "type": "image/png",
+         "purpose": "maskable"},
+    ],
+}
+APP_TOUCH_ICON = ("/assets/img/symphony-app-180.png", 180)
+APP_HEAD = [
+    f'<link rel="manifest" href="/{APP_MANIFEST_PATH}">',
+    f'<link rel="apple-touch-icon" href="{APP_TOUCH_ICON[0]}">',
+    '<meta name="apple-mobile-web-app-title" content="Symphony">',
+    '<meta name="mobile-web-app-capable" content="yes">',
+    '<meta name="apple-mobile-web-app-capable" content="yes">',
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">',
+]
+VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">'
+APP_VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
 
 
 def parse_body(p):
@@ -1276,6 +1319,10 @@ def render_page(n, texts):
         "robots": f'\n<meta name="robots" content="{esc(robots)}">' if robots else "",
         "canonical": esc(meta.get("canonical") or ORIGIN + path), "icon": ICON, "fonts": esc(FONTS),
         "extra_css": css}, "head.html")
+    if meta.get("app", "").lower() == "yes":
+        if VIEWPORT not in head:
+            raise SystemExit("tools/templates/head.html: the viewport line app pages widen is not there")
+        head = head.replace(VIEWPORT, APP_VIEWPORT, 1) + "\n" + "\n".join(APP_HEAD)
     scripts = []
     for j in meta.get("js", "").split(","):
         j = j.strip()
@@ -1616,6 +1663,41 @@ def check_private_listing(parsed, rendered, problems, notes):
 
 
 # ============================================================
+# THE HOME SCREEN APP
+# ============================================================
+def write_app_manifest():
+    """The Home Screen app's manifest, from APP_MANIFEST; written only when it changes."""
+    text = json.dumps(APP_MANIFEST, indent=2) + "\n"
+    return [APP_MANIFEST_PATH] if write(OUT / APP_MANIFEST_PATH, text) else []
+
+
+def png_size(p):
+    """A PNG's width and height from its header, or None where the file is not a PNG."""
+    head = p.read_bytes()[:24]
+    if head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+
+
+def check_app(problems):
+    """The manifest on disk is APP_MANIFEST, and every icon it and the head name is a PNG of its size."""
+    m = OUT / APP_MANIFEST_PATH
+    try:
+        on_disk = json.loads(read(m)) if m.exists() else None
+    except ValueError as e:
+        problems.append(f"{APP_MANIFEST_PATH}: not JSON ({e})")
+        return
+    if on_disk != APP_MANIFEST:
+        problems.append(f"{APP_MANIFEST_PATH}: missing or not what APP_MANIFEST says (build to write it)")
+    wanted = [(i["src"], int(i["sizes"].split("x")[0])) for i in APP_MANIFEST["icons"]] + [APP_TOUCH_ICON]
+    for src, size in wanted:
+        p = OUT / src.lstrip("/")
+        got = png_size(p) if p.exists() else None
+        if got != (size, size):
+            problems.append(f"{src}: wanted a {size}x{size} PNG, found {got or 'none'} (python -X utf8 tools/app_icons.py)")
+
+
+# ============================================================
 # CHECKS
 # ============================================================
 class Page(HTMLParser):
@@ -1937,6 +2019,9 @@ def main():
         for rel in write_legacy():
             if not a.quiet:
                 print(f"wrote  {rel}  (moved page or text copy)")
+        for rel in write_app_manifest():
+            if not a.quiet:
+                print(f"wrote  {rel}  (the Home Screen app's manifest)")
     else:
         written = {out_file(n["path"]): None for n, _ in walk(SITE) if n["kind"] == "page" and body_file(n["path"]).exists()}
 
@@ -1979,6 +2064,7 @@ def main():
         problems.append("beethoven/killlist.json: missing (the extension fetches it)")
     check_services(problems)
     check_legacy(problems)
+    check_app(problems)
 
     parsed = check_site(written, problems, notes, external=a.external)
     check_private_listing(parsed, rendered, problems, notes)
