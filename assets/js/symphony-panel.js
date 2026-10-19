@@ -8175,14 +8175,14 @@
   // read; the note that stands in for the cards; the problems that keep the proposal read-only; the
   // card open in the side panel; whether each repository a notebook names exists, is public or is
   // not found
-  var nb = { repo: '', era: 0, data: null, known: null, sha: null, catalogSha: null, note: '', problems: [], side: '', made: Object.create(null) };
+  var nb = { repo: '', era: 0, data: null, known: null, sha: null, catalogSha: null, note: '', problems: [], side: '', made: Object.create(null), admin: Object.create(null) };
   // the repository a write of notebooks.json is on its way to, the sign-in it went out under and which
   // write it is: kept apart from nb, which a Refresh or another repository clears, so a second write
   // never starts beside the first; a sign-out leaves the write's refusal unanswered (call), so the
   // lock goes with the sign-in, and a write that lands after one frees no lock a later write holds
   var nbWriting = '', nbWritingEnds = 0, nbWriteId = 0;
   function nbBusy() { if (nbWriting && nbWritingEnds !== ends) nbWriting = ''; return nbWriting; }
-  function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.sha = null; nb.catalogSha = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); }
+  function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.sha = null; nb.catalogSha = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); nb.admin = Object.create(null); }
   // private, internal (which every member of its enterprise may read) or public, by GitHub's word
   function nbVisibility(meta) {
     if (isPlain(meta) && (meta.visibility === 'private' || meta.visibility === 'internal' || meta.visibility === 'public')) return meta.visibility;
@@ -8285,7 +8285,11 @@
     names.reduce(function (done, name) {
       return done.then(function () {
         if (era !== nb.era) return;
-        return gh('GET', '/repos/' + owner + '/' + name).then(function (r) { var v = nbVisibility(r.data); return v === 'private' ? 'yes' : v; }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
+        return gh('GET', '/repos/' + owner + '/' + name).then(function (r) {
+          // whether the person may change its visibility, where GitHub says
+          if (isPlain(r.data) && isPlain(r.data.permissions) && typeof r.data.permissions.admin === 'boolean' && era === nb.era) nb.admin[name] = r.data.permissions.admin;
+          var v = nbVisibility(r.data); return v === 'private' ? 'yes' : v;
+        }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
           .then(function (word) { if (era === nb.era) nb.made[name] = word; });
       });
     }, Promise.resolve()).then(function () { if (era === nb.era && names.length) drawNotebooks(); });
@@ -8408,8 +8412,21 @@
     if (nbFound(book.repository)) add(repoLine, link('https://github.com/' + owner + '/' + book.repository, owner + '/' + book.repository));
     else add(repoLine, typeof book.repository === 'string' ? book.repository : 'no repository named');
     add(side, repoLine);
-    if (made === 'public' || made === 'internal') add(side, add(el('p', 'tok__state tok__state--warn'), (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files: make it private on GitHub, under ',
-      link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).'));
+    if (made === 'public' || made === 'internal') {
+      // a person GitHub says does not administer it is pointed at neither the button nor the
+      // settings page, which GitHub shows only to an administrator
+      var opened = (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files';
+      add(side, nb.admin[book.repository] !== false ? add(el('p', 'tok__state tok__state--warn'), opened + ': make it private here, or on GitHub under ',
+        link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).')
+        : el('p', 'tok__state tok__state--warn', opened + ', so it should be private.'));
+      var priv = el('button', 'console__primary', nbPrivateBusy() === owner + '/' + book.repository ? 'Making it private...' : 'Make private');
+      priv.type = 'button';
+      priv.id = 'nb-private';
+      priv.disabled = !!nbPrivateBusy();
+      priv.addEventListener('click', function () { makeNotebookPrivate(book.repository, priv); });
+      if (nb.admin[book.repository] === false) add(side, el('p', 'tkdlg__fact tkdlg__faint', 'Only an administrator of ' + owner + '/' + book.repository + ' may change its visibility, and GitHub says you are not one: ask one to make it private.'));
+      else add(side, add(el('p', 'admin__bar'), priv));
+    }
     else if (made) add(side, el('p', 'tok__state ' + (made === 'yes' ? 'tok__state--go' : made === 'no' ? 'tok__state--warn' : ''),
       made === 'yes' ? 'The repository is made.' : made === 'no' ? 'The repository is not made yet, or this sign-in cannot reach it' + (signedInByApp() ? ' (SymphonyBoard reaches only the repositories it is installed on)' : '') + ': the notebook skill makes it from this proposal.' : 'Whether the repository is made could not be read.'));
     if (typeof book.summary === 'string' && book.summary.trim()) add(side, el('p', 'tkdlg__fact', book.summary));
@@ -8433,6 +8450,59 @@
       add(list, add(el('li', 'nb__file'), el('span', 'nb__name', String(p)), el('span', 'nb__kind', 'not in the catalog')));
     });
     add(side, list);
+  }
+  // a notebook's repository made private, as the person, once they confirm what the change costs:
+  // what GitHub's own question says, and, for a public repository, what GitHub's plans give a public
+  // repository alone. SymphonyBoard's Administration is what lets it, and GitHub lets only an
+  // administrator of the repository do it (an organization may keep it to its owners); one change at
+  // a time, and the answer, not the press, says what the repository is now. A sign-out leaves the
+  // change's refusal unanswered (call), so the lock goes with the sign-in, as the write's does, and an
+  // answer that comes after one frees no lock a later change holds
+  var nbPrivating = '', nbPrivatingEnds = 0, nbPrivateId = 0;
+  function nbPrivateBusy() { if (nbPrivating && nbPrivatingEnds !== ends) nbPrivating = ''; return nbPrivating; }
+  // GitHub Free enforces rulesets and branch protection only on a public repository, and runs code
+  // scanning, secret scanning and push protection on a private one only with GitHub Code Security or
+  // Secret Protection, which only an organization on a paid plan buys; an internal repository is an
+  // enterprise's, whose plan enforces both on a private one, and GitHub runs those products on an
+  // internal repository on the same terms as on a private one, so it loses none of them
+  function nbPrivateWords(full, was) {
+    return 'Make ' + full + ' private? Only the people given access to it will see it. GitHub erases its stars and watchers'
+      + (was === 'public' ? ', leaves its forks public and detaches them, and unpublishes its GitHub Pages site on a free plan, where its rulesets and branch protection also stop being enforced.'
+        + ' Its code scanning stops unless its owner has GitHub Code Security, and its secret scanning and push protection unless its owner has GitHub Secret Protection'
+        : ' and its forks become private, those of people without access removed')
+      + '. The repository\'s files and history themselves stay as they are.';
+  }
+  function makeNotebookPrivate(name, button) {
+    var owner = nb.repo.split('/')[0], full = owner + '/' + name, era = nb.era, was = nb.made[name];
+    if (was !== 'public' && was !== 'internal') return;
+    if (nbPrivateBusy()) { say(nbPrivating + ' is being made private; press again once GitHub has answered.'); return; }
+    if (!window.confirm(nbPrivateWords(full, was))) return;
+    var mine = ++nbPrivateId;
+    nbPrivating = full;
+    nbPrivatingEnds = ends;
+    button.disabled = true;
+    button.textContent = 'Making it private...';
+    say('Making ' + full + ' private...');
+    var answered = false;
+    gh('PATCH', '/repos/' + full, { visibility: 'private' }).then(function (r) {
+      var now = nbVisibility(r.data);
+      answered = true;
+      if (era === nb.era) nb.made[name] = now === 'private' ? 'yes' : now;
+      say(now === 'private' ? full + ' is private now: only the people given access to it see it.' : 'GitHub answered, but ' + full + ' is still ' + now + '.', now !== 'private');
+    }, function (e) {
+      var access = e.status === 404 || e.status === 422 || (e.status === 403 && !nbRateLimited(e));
+      say('GitHub did not make ' + full + ' private: ' + e.message + (access ? ' Only an administrator of ' + full + ' may change its visibility'
+        + (signedInByApp() ? ', with SymphonyBoard installed on it and its Administration permission accepted' : ', with Administration: read and write on the token')
+        + ', and an organization may keep the change to its owners.' : ''), true);
+    }).then(function () {
+      if (nbPrivateId === mine) nbPrivating = '';
+      // a Refresh, another repository in the bar or a sign-in again moved the tab on meanwhile, and
+      // what it read of the repository since may predate the change: where it still shows a catalog
+      // of the same owner, whose notebooks may name this repository, it is read again, as a write's
+      // repository is; otherwise the tab is drawn again, so no button the lock held stays held
+      if (answered && era !== nb.era && nb.repo && nb.repo.split('/')[0] === owner) nbReread(nb.repo);
+      else drawNotebooks();
+    });
   }
   // a slug from a title, as notebook.py takes one: lowercase letters, digits and dashes, up to forty,
   // made unique among the proposal's with a number
