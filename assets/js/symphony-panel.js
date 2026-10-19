@@ -4394,7 +4394,7 @@
   // where the tokens live, which are set and their names and settings, read when the tab opens
   function readTokenPlace(repo, asked) {
     var place = null, secrets = null;
-    if (tk.repo !== repo) { yourLent = null; lendTo = null; lendToFor = ''; tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
+    if (tk.repo !== repo) { yourLent = null; lendTo = null; lendToFor = ''; lendToError = ''; lendToBusy = ''; tk = { repo: repo, place: null, secrets: null, settings: {}, labels: {}, pool: null, admin: false, side: '' }; drawTiles(); }
     slotPlace(repo).then(function (p) {
       place = p;
       return readSecrets(p).catch(function (e) { return { unread: e }; });
@@ -4925,7 +4925,8 @@
       add(box, yourTokenBox());
     }
     else if (unread) add(box, el('p', 'admin__none toks__note', 'GitHub would not list the secrets' + (tk.secrets && tk.secrets.unread ? ' (' + tk.secrets.unread.message + ')' : '') + ', so the tokens set are not shown.'));
-    if (tk.admin && tk.place.org) add(box, lendToBox());
+    // an owner whose membership GitHub would not show (tk.admin null) keeps the owner's path here too
+    if (tk.admin !== false && tk.place.org) add(box, lendToBox());
     drawSide();
   }
 
@@ -4933,43 +4934,47 @@
   // repository ids an owner keeps here, which the Token run lends each such token to as it comes
   // (the owner's choice of 2026-10-19). Someone who lends with no say never sees this list.
   var LEND_TO_VARIABLE = 'SYMPHONY_LEND_TO';
-  var lendTo = null, lendToFor = '', lendToBusy = '';
+  var lendTo = null, lendToFor = '', lendToBusy = '', lendToError = '', repoNames = {};
   function lendToIds(value) { return String(value || '').split(/[,\s]+/).filter(function (w) { return /^[1-9][0-9]{0,15}$/.test(w); }); }
+  // every call here is made for one place; one that answers after the repository changed is dropped
+  function lendToStale(place) { return place !== tk.place; }
   function lendToBox() {
     var box = el('div', 'toks__note');
     var line = el('p', 'admin__lead');
     var list = el('div');
+    var place = tk.place;
     add(box, el('h3', 'console__boxh', 'Tokens lent with no say run on'), line, list);
     if (lendToFor !== tk.repo) {
       lendToFor = tk.repo;
       lendTo = null;
-      var place = tk.place;
+      lendToError = '';
       readOne(place.base + '/variables/' + LEND_TO_VARIABLE).then(function (have) {
-        if (lendToFor !== tk.repo) return;
+        if (lendToStale(place)) return;
         lendTo = lendToIds(have && have.value);
         drawTiles();
       }, function (e) {
-        if (lendToFor !== tk.repo) return;
-        lendTo = { failed: 'The list could not be read: ' + e.message };
+        if (lendToStale(place)) return;
+        lendTo = [];
+        lendToError = 'The list could not be read: ' + e.message;
         drawTiles();
       });
     }
     if (lendToBusy) { line.textContent = lendToBusy; return box; }
     if (!lendTo) { line.textContent = 'Reading the list...'; return box; }
-    if (lendTo.failed) { line.textContent = lendTo.failed; return box; }
-    line.textContent = lendTo.length
-      ? 'A token someone lends to ' + tk.place.owner + ' without a say runs in these repositories from the moment it arrives:'
-      : 'No repository yet: a token lent to ' + tk.place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.';
+    line.textContent = lendToError || (lendTo.length
+      ? 'A token someone lends to ' + place.owner + ' without a say runs in these repositories from the moment it arrives:'
+      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.');
     lendTo.forEach(function (id) {
       var row = el('p', 'admin__bar');
-      var name = el('span', '', 'repository ' + id);
-      gh('GET', '/repositories/' + id).then(function (r) { name.textContent = r.data.full_name; }, function () { name.textContent = 'a repository that cannot be read (' + id + ')'; });
-      add(row, name, ' ', btn('Take off', true, function () { writeLendTo(lendTo.filter(function (x) { return x !== id; })); }));
+      var name = el('span', '', repoNames[id] || 'repository ' + id);
+      // named once, since every redraw of the tiles draws this box again
+      if (!repoNames[id]) gh('GET', '/repositories/' + id).then(function (r) { repoNames[id] = r.data.full_name; name.textContent = repoNames[id]; }, function () { name.textContent = 'a repository that cannot be read (' + id + ')'; });
+      add(row, name, ' ', btn('Take off', true, function () { writeLendTo(place, lendTo.filter(function (x) { return x !== id; })); }));
       add(list, row);
     });
     var field = el('input');
     field.type = 'text';
-    field.placeholder = tk.place.owner + '/repository';
+    field.placeholder = place.owner + '/repository';
     field.autocomplete = 'off';
     field.setAttribute('aria-label', 'Repository to add');
     var addRepo = btn('+ Add repository', true, function () {
@@ -4978,31 +4983,40 @@
       lendToBusy = 'Reading ' + full + '...';
       drawTiles();
       gh('GET', '/repos/' + full).then(function (r) {
-        if (r.data.owner.login.toLowerCase() !== tk.place.owner.toLowerCase()) throw new Error(full + ' is not a repository of ' + tk.place.owner + ', whose secrets reach only its own.');
+        if (lendToStale(place)) return;
+        if (r.data.owner.login.toLowerCase() !== place.owner.toLowerCase()) throw new Error(full + ' is not a repository of ' + place.owner + ', whose secrets reach only its own.');
         lendToBusy = '';
-        return writeLendTo(union(lendTo, [String(r.data.id)]));
+        return writeLendTo(place, union(lendTo, [String(r.data.id)]));
       }).catch(function (e) {
+        if (lendToStale(place)) return;
         lendToBusy = '';
-        lendTo = { failed: (e.status === 404 ? full + ' could not be read; check its name.' : e.message) + ' Change the repository and come back to read the list again.' };
+        lendToError = e.status === 404 ? full + ' could not be read; check its name.' : e.message;
         drawTiles();
       });
     });
     add(box, add(el('p', 'admin__bar'), field, ' ', addRepo));
     return box;
   }
-  function writeLendTo(ids) {
+  function writeLendTo(place, ids) {
     lendToBusy = 'Saving the list...';
+    lendToError = '';
     drawTiles();
-    var place = tk.place;
+    // the run reads the list with the App's token, so the variable reaches no repository itself;
     // an empty list is the variable gone, since GitHub keeps no empty value
-    var write = ids.length
-      ? writeVariable(place, LEND_TO_VARIABLE, ids.join(','), ids.map(Number))
-      : gh('DELETE', place.base + '/variables/' + LEND_TO_VARIABLE).catch(function (e) { if (e.status !== 404) throw e; });
+    var path = place.base + '/variables/' + LEND_TO_VARIABLE;
+    var write = !ids.length
+      ? gh('DELETE', path).catch(function (e) { if (e.status !== 404) throw e; })
+      : readOne(path).then(function (have) {
+        if (!have) return gh('POST', place.base + '/variables', { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'private' });
+        return gh('PATCH', path, { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'private' });
+      });
     return write.then(function () {
+      if (lendToStale(place)) return;
       lendTo = ids;
     }, function (e) {
-      lendTo = { failed: 'The list could not be saved: ' + e.message + secretsNeeded(place) };
-    }).then(function () { lendToBusy = ''; drawTiles(); });
+      if (lendToStale(place)) return;
+      lendToError = 'The list could not be saved: ' + e.message + secretsNeeded(place);
+    }).then(function () { if (lendToStale(place)) return; lendToBusy = ''; drawTiles(); });
   }
 
   // The side panel: one token's use, each window's reset, the per-model limits, where it is on and
