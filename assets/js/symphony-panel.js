@@ -7622,10 +7622,11 @@
   // card open in the side panel; whether each repository a notebook names exists, is public or is
   // not found
   var nb = { repo: '', era: 0, data: null, known: null, sha: null, catalogSha: null, note: '', problems: [], side: '', made: Object.create(null) };
-  // the repository a write of notebooks.json is on its way to, and the sign-in it went out under:
-  // kept apart from nb, which a Refresh or another repository clears, so a second write never starts
-  // beside the first; a sign-out leaves the write's answer unanswered (call), so the lock goes with it
-  var nbWriting = '', nbWritingEnds = 0;
+  // the repository a write of notebooks.json is on its way to, the sign-in it went out under and which
+  // write it is: kept apart from nb, which a Refresh or another repository clears, so a second write
+  // never starts beside the first; a sign-out leaves the write's refusal unanswered (call), so the
+  // lock goes with the sign-in, and a write that lands after one frees no lock a later write holds
+  var nbWriting = '', nbWritingEnds = 0, nbWriteId = 0;
   function nbBusy() { if (nbWriting && nbWritingEnds !== ends) nbWriting = ''; return nbWriting; }
   function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.sha = null; nb.catalogSha = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); }
   // private, internal (which every member of its enterprise may read) or public, by GitHub's word
@@ -8021,6 +8022,7 @@
     var wrong = books.length ? nbProblems(data, nb.known) : [];
     if (wrong.length) { say(NOTEBOOKS_FILE + ' was not written, since it would not hold together with the catalog: ' + wrong.join('; ') + '.', true); return; }
     var path = '/repos/' + repo + '/contents/' + NOTEBOOKS_FILE;
+    var mine = ++nbWriteId;
     nbWriting = repo;
     nbWritingEnds = ends;
     say('Writing ' + NOTEBOOKS_FILE + ' on ' + repo + '...');
@@ -8035,7 +8037,7 @@
       if (sha) put.sha = sha;
       return gh('PUT', path, put, undefined, false, account).catch(wrote);
     }).then(function (r) {
-      nbWriting = '';
+      if (nbWriteId === mine) nbWriting = '';
       // the page went to another repository or was refreshed meanwhile: the write still says how it
       // went, and the same repository is read again, since what it drew may predate the write
       if (era !== nb.era) { say(done); if (nb.repo === repo) nbReread(repo); return; }
@@ -8052,7 +8054,7 @@
       // sha read now, unlike the one sent, says the organizer changed it
       var ask = !e.changed && e.wrote && (e.status === 409 || e.status === 422 || e.status === 404);
       (ask ? nbShaNow(repo).then(function (now) { return now !== sha; }, function () { return false; }) : Promise.resolve(!!e.changed)).then(function (moved) {
-        nbWriting = '';
+        if (nbWriteId === mine) nbWriting = '';
         // the repository is read again where it is still the one shown or the page's own era
         var again = era === nb.era || nb.repo === repo;
         if (moved) say((e.changed || NOTEBOOKS_FILE) + ' on ' + repo + '\'s ' + CATALOG_BRANCH + ' changed since the cards were drawn, so nothing was written' + (again ? '; it is read again: look it over and press again.' : '.'), true);
