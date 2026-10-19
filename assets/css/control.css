@@ -318,7 +318,9 @@ body.console-full[data-shell] { padding-top: 0 !important; }
    and never covers a control; a long one (the sign-in step of Add a Claude account) scrolls inside
    it, and Clear empties it */
 .console__status { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 0; }
-.console .console__status #msg { flex: 1 1 auto; min-width: 0; min-height: 2.1em; max-height: 26vh; overflow: auto; padding: 5px 12px; font-size: 0.88rem; }
+/* the message takes the room the row leaves (a basis of 0, not its own words), so a long one wraps
+   inside it and never pushes Clear under the text-size buttons */
+.console .console__status #msg { flex: 1 1 0; min-width: 0; min-height: 2.1em; max-height: 26vh; overflow: auto; padding: 5px 12px; font-size: 0.88rem; }
 .console .console__status #msg:empty { display: block; }
 /* the placeholder sits outside the live region, so emptying the line announces nothing */
 .console__status { position: relative; }
@@ -339,7 +341,34 @@ body.console-full[data-shell] { padding-top: 0 !important; }
 @keyframes console-msg-flash { 0%, 25% { background-color: #F4F1E6; color: #0B100F; } 100% { background-color: var(--paper-card); color: var(--ink); } }
 .console .console__status #msg.console__flash { animation: console-msg-flash 1.1s ease-out; }
 @media (prefers-reduced-motion: reduce) { .console .console__status #msg.console__flash { animation-duration: 0.4s; } }
-.console__status:has(#msg:empty) .console__statusx, .console__status:has(#msg input:not(:disabled)) .console__statusx { visibility: hidden; }
+.console__status:has(#msg:empty) .console__statusx { visibility: hidden; }
+
+/* a task under way at the deck's foot (symphony-panel.js, msgTask): its name with a link to where it
+   runs, the latest word on it, the run's steps with their state, the last lines of its log and the
+   step the person takes there; a plain message said meanwhile is a line above it */
+.console .console__status #msg > p.msg__note { display: block; margin: 0; }
+.console .console__status #msg > p.msg__note + .msgtask { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.msgtask + .msgtask { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.msgtask__head { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.msgtask__head strong { color: var(--ink); }
+.msgtask__where:empty { display: none; }
+.msgtask__where a { color: var(--teal); font-size: 0.82rem; }
+.msgtask__line { margin: 2px 0 0; }
+.msgtask__line:empty { display: none; }
+.msgtask[data-state="done"] .msgtask__line { color: var(--go); }
+.msgtask__steps { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 0.8rem; color: var(--ink-soft); }
+.msgtask__steps li::before { content: "\00B7"; display: inline-block; width: 1.1em; color: var(--ink-faint); }
+.msgtask__steps li[data-state="done"]::before { content: "\2713"; color: var(--go); }
+.msgtask__steps li[data-state="running"] { color: var(--ink); }
+.msgtask__steps li[data-state="running"]::before { content: "\25B6"; color: var(--teal); }
+.msgtask__steps li[data-state="failed"] { color: var(--ochre); }
+.msgtask__steps li[data-state="failed"]::before { content: "\2717"; color: var(--ochre); }
+.msgtask__steps li[data-state="skipped"]::before { content: "\2013"; }
+.msgtask__log { margin: 4px 0 0; padding: 4px 8px; max-height: 7.5em; overflow: auto; border-radius: 6px; background: var(--paper-deep); font-family: var(--font-mono); font-size: 0.74rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-soft); }
+.msgtask__step:empty, .msgtask__bar[hidden], .msgtask__steps[hidden], .msgtask__log[hidden] { display: none; }
+.console .console__status #msg .msgtask__step .admin__bar, .console .console__status #msg .msgtask__bar { margin: 4px 0 0; }
+.console .console__status #msg a.msgtask__go { display: inline-block; padding: 5px 14px; border: 1px solid var(--teal); border-radius: 8px; color: var(--teal); font-weight: 600; text-decoration: none; }
+.console .console__status #msg a.msgtask__go:hover { background: rgba(60, 194, 177, 0.12); }
 
 /* inside the Ask Claude bar (the frame draws the bar, symphony-panel.js fills it): the name, the
    question box with its buttons, the state line; the answer's drawer is laid over the foot of the
@@ -468,6 +497,24 @@ body.console-full[data-shell] { padding-top: 0 !important; }
   .console__askbar { max-height: 40vh; }
   .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
   .console__me { max-width: none; }
+  /* the page never pans sideways: the deck is clipped to the window's width (clip, which makes no
+     scroll box, so the status line still sticks to the window's foot, where hidden on html would
+     unstick it), and what is wider than a phone scrolls inside its own box, the rail, a table or
+     a chart; the rail's end fades where more tabs are past it (symphony-panel.js, railEdges) */
+  body[data-shell] main > .console.section, .console.section { overflow-x: clip; max-width: 100%; }
+  .console__rail[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+  .console__rail[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
+  .console__rail[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next */
+  .console .console__status #msg { flex: 1 1 100%; }
+  .console__me { flex: 1 1 auto; justify-content: space-between; }
+  /* a run's card: its name and when it ran on the first line, the rest under them */
+  .console #cp-runs tr { flex-wrap: wrap; gap: 2px 8px; }
+  .console #cp-runs td.cell--name { flex: 1 1 calc(100% - 120px); }
+  .console #cp-runs td.cell--when { flex: 0 0 auto; }
+  .console #cp-runs td.cell--event { margin-left: 30px; }
+  /* the token tiles two to a row */
+  .toks { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
@@ -748,6 +795,12 @@ body.console-full[data-shell] { padding-top: 0 !important; }
    whole deck so its buttons and boxes grow and shrink with the words.
    ============================================================ */
 .console > .console__app, .console > .console__askbar, .console > .console__status { zoom: var(--console-zoom, 1); }
+/* a phone keeps its own text size and pinch: the deck's saved text size, which widens its fixed
+   parts (a tile, a box) past the window, is not applied there, and its buttons are not shown */
+@media (max-width: 900px) {
+  .console > .console__app, .console > .console__askbar, .console > .console__status { zoom: 1; }
+  .console__zoom { display: none; }
+}
 .console__split { position: relative; cursor: col-resize; touch-action: none; outline: none; }
 .console__split::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px; background: transparent; transition: background 0.12s; }
 .console__split:hover::after, .console__split:focus-visible::after, body.console-dragging .console__split:active::after { background: var(--teal); }

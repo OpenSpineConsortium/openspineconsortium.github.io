@@ -92,10 +92,15 @@
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
+  // the page's own line at the deck's foot; a task under way there (msgTask) stays under it, since
+  // its work goes on, while a finished one gives way to the new words as any message did
   function say(text, warn) {
     var m = $('msg');
     if (!m) return;
-    m.textContent = text || '';
+    Array.prototype.slice.call(m.childNodes).forEach(function (n) {
+      if (!(n.classList && n.classList.contains('msgtask') && n.getAttribute('data-state') === 'live')) m.removeChild(n);
+    });
+    if (text) m.insertBefore(el('p', 'msg__note', text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
   }
   function stamp(iso) {
@@ -236,6 +241,8 @@
     state = emptyState(state.repo);
     // a drive connected under this sign-in goes with it, whatever ended it
     dropDrive();
+    // and so does what was under way at the deck's foot, whose calls now go unanswered
+    msgTasksDrop();
   }
   function forgetToken() {
     endHere();
@@ -1482,13 +1489,19 @@
   function dispatchAgents(inputs, label) {
     var s = state;
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
-    say('Starting ' + label + '...');
-    return gh('POST', '/repos/' + s.repo + '/actions/workflows/agents.yml/dispatches', { ref: branch, inputs: inputs }).then(function () {
-      say(label + ' is queued on ' + branch + '; the Runs tab shows it within a minute.');
-      setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
+    // the write goes out for the account the press was made as, since the read before it may name one
+    var account = shownLogin;
+    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1));
+    task.tell('Starting...');
+    return newestRunId(s.repo, 'agents.yml').then(function (after) {
+      return gh('POST', '/repos/' + s.repo + '/actions/workflows/agents.yml/dispatches', { ref: branch, inputs: inputs }, undefined, false, account).then(function () {
+        task.tell('Queued on ' + branch + '; the Runs tab shows it within a minute.');
+        setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
+        return followDispatched(s, 'agents.yml', after, task);
+      });
     }).catch(function (e) {
-      say(e.status === 404 ? 'This repository has no Agents workflow yet (.github/workflows/agents.yml); the template\'s next update brings it.'
-        : e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write on the sign-in or the token.' : ''), true);
+      task.refuse(e.status === 404 ? 'This repository has no Agents workflow yet (.github/workflows/agents.yml); the template\'s next update brings it.'
+        : e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write on the sign-in or the token.' : ''));
     });
   }
   function runAgent(agent, target) {
@@ -1789,7 +1802,8 @@
     $('cp-worker-form-link').href = 'https://github.com/' + name + '/issues/new?template=worker.yml';
     $('cp-task-form-link').href = 'https://github.com/' + name + '/issues/new?template=task.yml';
     $('cp-summary').textContent = 'Reading ' + name + '...';
-    graphReset('Reading the issues of ' + name + '...');
+    var letGo = holdStage();
+    graphReset('Reading the issues of ' + name + '...', false, true);
     try { history.replaceState(null, '', location.pathname + '?repo=' + encodeURIComponent(name) + location.hash); } catch (e) { /* the address stays */ }
     rememberRepo(name);
     fillRepoSelect($('cp-repo'), name);
@@ -1808,10 +1822,12 @@
       if (consoleTab === 'folders' && !drive) maybeCatalog();
       return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
     }).then(function () {
+      letGo();
       if (stale(s)) return;
       s.ready = true;
       summary();
     }).catch(function (e) {
+      letGo();
       if (stale(s)) return;
       failed(s, 'the repository', e);
       s.ready = true;
@@ -2054,6 +2070,9 @@
     if (!t.title || !t.goal) { say('A task needs a title and what is true when it is done.', true); return; }
     var s = state;
     say('Queueing the task...');
+    // the dialog closes at once; what the request says comes to the deck's foot, and the fields keep
+    // their words for another try
+    closeDialog('dlg-task');
     var done = hold('cp-task-queue');
     gh('POST', '/repos/' + s.repo + '/issues', {
       title: /^Task: /.test(t.title) ? t.title : 'Task: ' + t.title,
@@ -2076,6 +2095,7 @@
     if (t.files) extra += '\n\nFiles likely touched:\n' + t.files;
     var s = state;
     say('Sending...');
+    closeDialog('dlg-task');
     var done = hold('cp-task-ask');
     gh('POST', '/repos/' + s.repo + '/issues', { title: t.title.replace(/^@claude\s*/i, '') || 'From the control panel', body: (/@claude/i.test(text) ? '' : '@claude ') + text + extra }).then(function (r) {
       done();
@@ -2117,6 +2137,7 @@
     var runs = $('cp-w-runs').value;
     var lands = $('cp-w-lands').value;
     say('Opening the "Add a worker" issue...');
+    closeDialog('dlg-worker');
     var done = hold('cp-w-add');
     gh('POST', '/repos/' + state.repo + '/issues', {
       title: 'Add a worker: ' + name,
@@ -2163,6 +2184,7 @@
     try { text = workerFileText(w); } catch (e) { say(e.message, true); return; }
     var s = state;
     say('Opening the pull request that changes ' + w.name + '...');
+    closeDialog('dlg-worker');
     var done = hold('cp-w-add');
     proposeFiles(s.repo, 'symphony/worker-' + w.name, 'Change the worker ' + w.name, 'The control panel\'s Workers tab: new settings for the worker ' + w.name + ' (' + workerPath(w) + '). The required check reads the file again before it can merge.', [{ path: workerPath(w), text: text }])
       .then(function (pr) { done(); closeDialog('dlg-worker'); say(proposedWords('Changing ' + w.name, pr)); })
@@ -2198,11 +2220,17 @@
   function dispatch(workflow, label) {
     var s = state;
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
-    say('Starting ' + label + '...');
-    gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', { ref: branch }).then(function () {
-      say(label + ' is queued on ' + branch + '; the runs list shows it within a minute.');
-      setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
-    }).catch(function (e) { say(e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write' + (signedInByApp() ? ', which the sign-in has once SymphonyBoard holds it; a fine-grained token with it starts one now.' : ' on the token.') : ''), true); });
+    // the write goes out for the account the press was made as, since the read before it may name one
+    var account = shownLogin;
+    var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1));
+    task.tell('Starting...');
+    newestRunId(s.repo, workflow).then(function (after) {
+      return gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', { ref: branch }, undefined, false, account).then(function () {
+        task.tell('Queued on ' + branch + '; the runs list shows it within a minute.');
+        setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
+        return followDispatched(s, workflow, after, task);
+      });
+    }).catch(function (e) { task.refuse(e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write' + (signedInByApp() ? ', which the sign-in has once SymphonyBoard holds it; a fine-grained token with it starts one now.' : ' on the token.') : '')); });
   }
 
   /* ---------- the console: its height, its tabs, its readouts ---------- */
@@ -2226,6 +2254,14 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-tab-panel]'), function (p) { p.hidden = p.getAttribute('data-tab-panel') !== name; });
     var changed = consoleTab !== name;
     consoleTab = name;
+    // on a phone the rail scrolls sideways, so the chosen tab is brought into its view, without
+    // moving the window
+    var rail = document.querySelector('.console__rail');
+    if (rail && getComputedStyle(rail).flexDirection === 'row') {
+      var chosen = rail.querySelector('[data-tab="' + name + '"]');
+      if (chosen) rail.scrollLeft = chosen.offsetLeft - Math.max(0, (rail.clientWidth - chosen.offsetWidth) / 2);
+      railEdges();
+    }
     if (location.hash !== '#' + name) {
       try { history.replaceState(null, '', location.pathname + location.search + '#' + name); } catch (e) { /* the address stays */ }
     }
@@ -2251,6 +2287,19 @@
     c.style.setProperty('--console-h', Math.max(Math.floor(window.innerHeight - top), 0) + 'px');
     var rail = c.querySelector('.console__rail');
     if (rail) rail.setAttribute('aria-orientation', getComputedStyle(rail).flexDirection === 'row' ? 'horizontal' : 'vertical');
+    railEdges();
+  }
+  // on a phone the rail is a row that scrolls sideways, and its end fades where more tabs lie past
+  // it, so the tabs out of sight are not taken for all there are (control.css, data-more)
+  function railEdges() {
+    var rail = $('console') && $('console').querySelector('.console__rail');
+    if (!rail) return;
+    var more = '';
+    if (getComputedStyle(rail).flexDirection === 'row' && rail.scrollWidth > rail.clientWidth + 1) {
+      var left = rail.scrollLeft > 1, right = rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 1;
+      more = left && right ? 'both' : (left ? 'left' : (right ? 'right' : ''));
+    }
+    if (more) rail.setAttribute('data-more', more); else rail.removeAttribute('data-more');
   }
   // the rows of a list, a line that says the list is empty or still reading counting for none
   function consoleRows(id) {
@@ -2292,15 +2341,237 @@
     var m = $('msg');
     if (!m || !window.MutationObserver) return;
     var last = '';
-    new MutationObserver(function () {
+    new MutationObserver(function (records) {
       var text = m.textContent;
-      if (!text || text === last) { last = text; return; }
+      // a task's steps and its log change every few seconds, and do not flash
+      var quiet = records.length > 0 && records.every(function (r) {
+        var n = r.target.nodeType === 1 ? r.target : r.target.parentNode;
+        return !!(n && n !== m && n.closest && n.closest('.msgtask__quiet'));
+      });
+      if (!text || text === last || quiet) { last = text; return; }
       last = text;
       m.classList.remove('console__flash');
       void m.offsetWidth;
       m.classList.add('console__flash');
     }).observe(m, { childList: true, characterData: true, subtree: true });
     m.addEventListener('animationend', function () { m.classList.remove('console__flash'); });
+  }
+
+  /* ---------- the view stays where it is while a tab is read again ---------- */
+  // A box emptied while its new rows are on their way (the charts on Refresh, the tiles of the
+  // Tokens tab) shrinks what holds it, and the window, or the tab's own scroll, lands somewhere
+  // else: the view jumps. So a box being read again keeps its height until it is drawn, and on a
+  // phone, where the page scrolls as a whole, the stage keeps its own through a refresh.
+  function holdHeight(node) {
+    var done = false;
+    if (!node) return function () {};
+    var h = node.offsetHeight;
+    if (h) node.style.minHeight = h + 'px';
+    return function () { if (done) return; done = true; node.style.minHeight = ''; };
+  }
+  // the stage through one refresh, where the page and not the deck scrolls; a refresh that never
+  // ends, its calls dropped by a sign-out, lets it go after a while anyway
+  function holdStage() {
+    var c = $('console');
+    if (!c || getComputedStyle(c).overflow === 'hidden') return function () {};
+    var release = holdHeight(c.querySelector('.console__stage'));
+    var timer = setTimeout(release, 20000);
+    return function () { clearTimeout(timer); requestAnimationFrame(release); };
+  }
+
+  /* ---------- a piece of work that takes a while speaks at the deck's foot ---------- */
+  // A workflow started from a button, or the sign-in of Add Token, held a dialog open or said one
+  // line and went quiet. Now the dialog answers and closes at once, and the work speaks on the line
+  // at the deck's foot: its name, where it is, the run's steps as GitHub lists them and the last
+  // lines of a job's log once the job has ended (GitHub gives a log then, not while the job runs),
+  // and the step it needs from the person as links and a box there, so nothing more pops up. A new
+  // word flashes the foot white, as any message does; the steps and the log do not, since they
+  // change every few seconds. Clear hides a task and its work goes on; the button that started it
+  // shows it again, and a message said meanwhile goes above it (say).
+  var msgTasks = [];
+  function msgTask(title) {
+    // a new task takes the place of what was said before it, as a message does; tasks under way stay
+    say('');
+    var box = el('div', 'msgtask');
+    box.setAttribute('data-state', 'live');
+    var head = el('p', 'msgtask__head');
+    var name = el('strong', '', title);
+    var where = el('span', 'msgtask__where');
+    add(head, name, where);
+    var line = el('p', 'msgtask__line');
+    var steps = el('ul', 'msgtask__steps msgtask__quiet');
+    steps.hidden = true;
+    var log = el('pre', 'msgtask__log msgtask__quiet');
+    log.hidden = true;
+    log.setAttribute('aria-live', 'off');
+    var step = el('div', 'msgtask__step');
+    var bar = el('p', 'admin__bar msgtask__bar');
+    bar.hidden = true;
+    add(box, head, line, steps, log, step, bar);
+    var task = {
+      box: box,
+      step: step,
+      live: true,
+      dropped: false,
+      show: function () { var m = $('msg'); if (m && !task.dropped && box.parentNode !== m) add(m, box); },
+      hide: function () { if (box.parentNode) box.parentNode.removeChild(box); },
+      retitle: function (text) { name.textContent = text; },
+      // the latest word on where the work is
+      tell: function (text, warn) {
+        line.textContent = text;
+        line.className = 'msgtask__line' + (warn ? ' admin__warn' : '');
+        task.show();
+      },
+      // a link beside the name: the run on GitHub
+      at: function (href, text) { clear(where); if (href) add(where, link(href, text)); },
+      // the run's steps, each with its state (stepState)
+      steps: function (list) {
+        clear(steps);
+        list.forEach(function (st) { var li = el('li', '', st.name); li.setAttribute('data-state', st.state); add(steps, li); });
+        steps.hidden = !list.length;
+      },
+      // the last lines of the run's log
+      lines: function (list) {
+        log.textContent = list.join('\n');
+        log.hidden = !list.length;
+        log.scrollTop = log.scrollHeight;
+      },
+      button: function (label, onClick) { var b = btn(label, true, onClick); add(bar, b); bar.hidden = false; return b; },
+      // the work is over: its last word is the newest, so a message said meanwhile goes as it would
+      // before any message, and the box stays until Clear or the next message
+      end: function (text, warn) {
+        task.live = false;
+        box.setAttribute('data-state', warn ? 'failed' : 'done');
+        bar.hidden = true;
+        if (text) task.tell(text, warn);
+        var m = $('msg');
+        if (m) Array.prototype.slice.call(m.querySelectorAll(':scope > p.msg__note')).forEach(function (n) { m.removeChild(n); });
+        msgTasks = msgTasks.filter(function (t) { return t !== task; });
+      },
+      // the work never started: the box goes, and the refusal is a plain message, as before a task
+      refuse: function (text) {
+        task.live = false;
+        task.dropped = true;
+        task.hide();
+        msgTasks = msgTasks.filter(function (t) { return t !== task; });
+        say(text, true);
+      }
+    };
+    msgTasks.push(task);
+    task.show();
+    return task;
+  }
+  // a sign-out drops what was under way: its calls go unanswered, and nothing more of it is said
+  function msgTasksDrop() {
+    msgTasks.forEach(function (t) { t.live = false; t.dropped = true; t.hide(); });
+    msgTasks = [];
+  }
+
+  /* ---------- the run a button started, followed from the deck's foot ---------- */
+  // GitHub lists a workflow's runs newest first, so the run a press started is the first listed
+  // whose id is above the newest before the press, the one the signed-in person started where
+  // several are; one that is not listed within two minutes is left to the Runs tab. While it runs,
+  // its jobs' steps are read every few seconds; once a job has ended, the last lines of its log are
+  // read once, with the token alone, as the Explore tab reads one (exLog), and a log the browser
+  // may not read across origins is left out.
+  var RUN_FIND_MS = 5000, RUN_FIND_FOR_MS = 2 * 60 * 1000, RUN_STEPS_MS = 6000, RUN_LOG_LINES = 12;
+  var RUN_LOG_HEADERS = { 'Accept': null, 'X-GitHub-Api-Version': null };
+  var followedRuns = {};
+  function runsOf(repo, workflow, query) {
+    return gh('GET', '/repos/' + repo + '/actions/workflows/' + workflow + '/runs?' + query + '&at=' + Date.now()).then(function (r) {
+      return (r.data && Array.isArray(r.data.workflow_runs) ? r.data.workflow_runs : []).filter(function (run) { return run && typeof run === 'object' && typeof run.id === 'number'; });
+    });
+  }
+  function newestRunId(repo, workflow) {
+    return runsOf(repo, workflow, 'per_page=1').then(function (runs) { return runs.length ? runs[0].id : 0; }, function () { return 0; });
+  }
+  function findRun(repo, workflow, after, over) {
+    var until = Date.now() + RUN_FIND_FOR_MS;
+    return new Promise(function (resolve) {
+      function look() {
+        if (over()) { resolve(null); return; }
+        runsOf(repo, workflow, 'event=workflow_dispatch&per_page=5').then(function (runs) {
+          var fresh = runs.filter(function (run) { return run.id > after && !followedRuns[run.id]; });
+          var mine = fresh.filter(function (run) { return run.actor && run.actor.login === shownLogin; });
+          var run = (mine.length ? mine : fresh)[0];
+          if (run) { resolve(run); return; }
+          if (Date.now() > until) { resolve(null); return; }
+          setTimeout(look, RUN_FIND_MS);
+        }, function () { resolve(null); });
+      }
+      setTimeout(look, 2000);
+    });
+  }
+  function stepState(st) {
+    if (st.status !== 'completed') return st.status === 'in_progress' ? 'running' : 'waiting';
+    if (st.conclusion === 'success') return 'done';
+    if (st.conclusion === 'skipped' || st.conclusion === 'neutral') return 'skipped';
+    return 'failed';
+  }
+  function logTail(repo, jobId) {
+    return gh('GET', '/repos/' + repo + '/actions/jobs/' + encodeURIComponent(jobId) + '/logs', undefined, RUN_LOG_HEADERS, true).then(function (r) {
+      return exLines(typeof r.data === 'string' ? r.data : '').map(function (l) { return l.text; })
+        .filter(function (t) { return t.trim() && !/^##\[(group|endgroup)\]/.test(t); }).slice(-RUN_LOG_LINES);
+    }, function () { return []; });
+  }
+  function durationWords(seconds) {
+    var m = Math.floor(seconds / 60), sec = seconds % 60;
+    return m ? m + ' min ' + sec + ' s' : sec + ' s';
+  }
+  function followRunSteps(repo, run, task, over) {
+    var until = Date.now() + RUN_FOR_MS, read = {}, shown = [];
+    followedRuns[run.id] = true;
+    task.at(exHttps(run.html_url), 'Run #' + String(run.run_number || run.id) + ' on GitHub');
+    return new Promise(function (resolve) {
+      function look() {
+        if (over()) { resolve(null); return; }
+        gh('GET', '/repos/' + repo + '/actions/runs/' + encodeURIComponent(run.id) + '/jobs?per_page=20&at=' + Date.now()).then(function (r) {
+          var jobs = (r.data && Array.isArray(r.data.jobs) ? r.data.jobs : []).filter(isPlain);
+          var steps = [];
+          jobs.forEach(function (job) {
+            (Array.isArray(job.steps) ? job.steps : []).filter(isPlain).forEach(function (st) {
+              steps.push({ name: (jobs.length > 1 ? String(job.name || '') + ': ' : '') + String(st.name || ''), state: stepState(st) });
+            });
+          });
+          task.steps(steps);
+          var ended = jobs.filter(function (j) { return j.status === 'completed' && !read[j.id]; });
+          ended.forEach(function (j) { read[j.id] = true; });
+          return Promise.all(ended.map(function (j) { return logTail(repo, j.id); })).then(function (tails) {
+            tails.forEach(function (t) { shown = shown.concat(t); });
+            if (tails.length) task.lines(shown.slice(-RUN_LOG_LINES));
+            if (over()) { resolve(null); return; }
+            if (jobs.length && jobs.every(function (j) { return j.status === 'completed'; })) {
+              var ends = jobs.map(function (j) { return Date.parse(j.completed_at); }).filter(isFinite);
+              var began = Date.parse(run.run_started_at || run.created_at);
+              resolve({
+                conclusion: jobs.every(function (j) { return j.conclusion === 'success' || j.conclusion === 'skipped'; }) ? 'success' : (jobs.some(function (j) { return j.conclusion === 'cancelled'; }) ? 'cancelled' : 'failure'),
+                seconds: ends.length && isFinite(began) ? Math.max(0, Math.round((Math.max.apply(null, ends) - began) / 1000)) : 0
+              });
+              return;
+            }
+            if (Date.now() > until) { resolve({ conclusion: 'running' }); return; }
+            setTimeout(look, RUN_STEPS_MS);
+          });
+        }, function () { resolve(null); });
+      }
+      look();
+    });
+  }
+  // a run a launch button started: found, followed, and its end said; one that cannot be found or
+  // read leaves the task at its last word
+  function followDispatched(s, workflow, after, task) {
+    var era = ends;
+    function over() { return ends !== era || !task.live; }
+    return findRun(s.repo, workflow, after, over).then(function (run) {
+      if (!run) { task.end(); return; }
+      task.tell('Running; its steps show here as GitHub lists them.');
+      return followRunSteps(s.repo, run, task, over).then(function (out) {
+        if (!out) { task.end(); return; }
+        if (!stale(s)) loadRuns(s);
+        if (out.conclusion === 'running') { task.end('Still running after 15 minutes; the run on GitHub shows the rest.', true); return; }
+        task.end('Finished: ' + out.conclusion + (out.seconds ? ', in ' + durationWords(out.seconds) : '') + '.', out.conclusion !== 'success');
+      });
+    });
   }
   // full screen is the browser's own (F11, or the Fullscreen API from the button): the site's bar
   // is hidden while it holds, and the deck measured again
@@ -2491,16 +2762,17 @@
     initFullScreen();
     initTiles();
     initLayout();
-    // the deck's foot holds the page's message; Clear empties it
-    // Clear leaves a step the person is in the middle of (the code box of Add a Claude account)
+    // the deck's foot holds the page's message; Clear empties it. A task under way there is only
+    // hidden, its work going on, and the button that started it shows it again, the step the person
+    // was in the middle of (the code box of Add Token) kept as it was
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
-      if ($('msg').querySelector('input:not(:disabled)')) return;
       clear($('msg'));
       $('msg').className = 'admin__box';
     });
     fitConsole();
     window.addEventListener('resize', fitConsole);
     window.addEventListener('load', fitConsole);
+    if (c.querySelector('.console__rail')) c.querySelector('.console__rail').addEventListener('scroll', railEdges, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitConsole);
     showTab(location.hash.slice(1));
     window.addEventListener('hashchange', function () {
@@ -3551,8 +3823,14 @@
     p.textContent = text;
     p.className = warn ? 'admin__lead admin__warn' : 'admin__lead';
   }
-  function graphReset(words, warn) {
-    clear($('cp-graph'));
+  // a box emptied to be read again keeps its height until the charts are drawn (graphRender), so the
+  // tab does not shrink under the reader; one emptied for good lets it go
+  var graphHeld = function () {};
+  function graphReset(words, warn, reading) {
+    var box = $('cp-graph');
+    graphHeld();
+    graphHeld = reading ? holdHeight(box) : function () {};
+    clear(box);
     graphStripClear();
     $('cp-graph-said').textContent = '';
     graphWords(words, warn);
@@ -3722,7 +4000,7 @@
       exploreAfterDraw();
       return Promise.resolve();
     }
-    graphReset('Reading the sub-issues of ' + plural(planned.length, 'epic or goal', 'epics and goals') + '...');
+    graphReset('Reading the sub-issues of ' + plural(planned.length, 'epic or goal', 'epics and goals') + '...', false, true);
     return planned.reduce(function (p, parent) { return p.then(function () { return graphReadParent(draw, parent); }); }, Promise.resolve()).then(function () {
       draw.reading = '';
       // the pull requests are read beside the issues, and say which tasks a claim branch holds
@@ -3847,6 +4125,7 @@
     clear(box);
     graphStripClear();
     if (!goals.length && !epics.length) {
+      graphHeld();
       graphWords('Nothing to draw yet: ' + plural(draw.reads, 'read') + ' of GitHub found no sub-issue of an open epic or goal in this repository. ' + GRAPH_START + graphCut(draw));
       return;
     }
@@ -3869,10 +4148,13 @@
       }, Promise.resolve()).then(function () { return undrawn; });
     }).then(function (undrawn) {
       if (!graphLive(draw)) return;
+      graphHeld();
       if (!undrawn.length) graphWords('Drawn ' + drawn + '. A node\'s shade is its state; click one to centre its row in the Tasks tab.' + graphCut(draw));
       else graphWords('Drawn ' + (charts.length - undrawn.length) + ' of ' + plural(charts.length, 'chart') + ' ' + drawn + '; ' + plural(undrawn.length, 'chart') + ' could not be drawn (' + undrawn.join('; ') + '), and the table under ' + (undrawn.length === 1 ? 'it' : 'each') + ' says the same.' + graphCut(draw), true);
     }, function (e) {
-      if (graphLive(draw)) graphWords('The charts could not be drawn (' + e.message + '); the tables say the same ' + drawn + '.', true);
+      if (!graphLive(draw)) return;
+      graphHeld();
+      graphWords('The charts could not be drawn (' + e.message + '); the tables say the same ' + drawn + '.', true);
     });
   }
   function loadMermaid() {
@@ -4481,39 +4763,25 @@
   var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
   var ADOPT_BRANCH = 'symphony/adopt';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
-  // the sign-in under way, one at a time since each opens an issue and starts a run: its dialog,
-  // shown again when Add Token is pressed after the dialog was closed, and how to stop it
+  // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
+  // the deck's foot, shown again when Add Token is pressed after Clear hid it, and how to stop it
   var tokenRun = null;
 
-  // the sign-in in the token's dialog: a line that says where the run is, and the step it needs from
-  // the person, the claude.ai button and the code's box, under it
-  function signInView(title) {
-    var d = $('tk-dialog');
-    var box = el('div', 'tkdlg__form');
-    var line = el('p', 'admin__lead tkdlg__line');
-    line.id = 'tk-line';
-    var step = el('div', 'tkdlg__step');
-    var note = el('p', 'admin__warn tkdlg__line');
-    note.hidden = true;
-    // Close only hides the dialog: the run goes on, and Add Token shows it again
-    var close = btn('Close', true, function () { d.close(); });
-    var stop = btn('Stop this sign-in', true, function () { if (tokenRun && tokenRun.view.stop === stop) tokenRun.stop(); });
+  // the sign-in at the deck's foot (msgTask): a line that says where the run is, the run's steps
+  // under it, and the step it needs from the person, the claude.ai link and the code's box; the
+  // dialog that asked for it has closed already, with its task handed on
+  function signInView(title, given) {
+    var task = given || msgTask(title);
+    if (given) task.retitle(title);
+    var stop = task.button('Stop this sign-in', function () { if (tokenRun && tokenRun.view.stop === stop) tokenRun.stop(); });
     stop.id = 'tk-stop';
-    add(box, el('h3', 'console__boxh', title), note, line, step, add(el('p', 'admin__bar tkdlg__bar'), close, ' ', stop));
-    // shown again with a note when Add Token or Renew asked for something else meanwhile
-    function show(why) {
-      note.hidden = !why;
-      note.textContent = why || '';
-      if (box.parentNode !== d) { clear(d); add(d, box); }
-      if (!d.open) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
-    }
-    show();
     return {
-      tell: function (text, warn) { line.textContent = text; line.className = 'tkdlg__line ' + (warn ? 'admin__warn' : 'admin__lead'); },
-      step: step,
-      close: close,
+      task: task,
+      tell: task.tell,
+      step: task.step,
       stop: stop,
-      show: show
+      // shown again, with a note above it when Add Token or Renew asked for something else meanwhile
+      show: function (why) { task.show(); if (why) say(why, true); }
     };
   }
   // the hint for a repository without the workflow Token: one not adopted yet, or whose adoption pull
@@ -4537,24 +4805,27 @@
     });
   }
 
-  function addByActions(repo, place, button, wanted) {
+  // given: the task the token's dialog opened for the settings it saved first, carried on here
+  function addByActions(repo, place, button, wanted, given) {
     // a sign-in begun before the page signed out waits on calls that never answer, so it is let go
     if (tokenRun && tokenRun.era !== ends) tokenRun = null;
     if (tokenRun) {
-      tokenRun.view.show(tokenRun.repo !== repo || (wanted && wanted !== tokenRun.wanted) ? 'Another sign-in is under way; finish it or stop it first.' : '');
+      var busy = tokenRun.repo !== repo || (wanted && wanted !== tokenRun.wanted) ? 'Another sign-in is under way; finish it or stop it first.' : '';
+      if (given) given.end(busy || 'This sign-in is under way already; it shows below.', !!busy);
+      tokenRun.view.show(given ? '' : busy);
       return;
     }
-    var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets', stopped = false;
+    var issue = 0, slot = '', ids = place.org ? [place.id] : [], key = null, mainMissing = false, step = 'secrets', stopped = false, after = 0;
     var renewing = wanted && tk.secrets && tk.secrets[slotSecret(wanted)];
     var pooled = intoPool(place);
-    var view = signInView((renewing ? 'Renew ' + tileName(wanted) : pooled ? 'Add your token to ' + place.owner + '\'s pool' : 'Add a token') + ' on ' + repo);
+    var view = signInView((renewing ? 'Renew ' + tileName(wanted) : pooled ? 'Add your token to ' + place.owner + '\'s pool' : 'Add a token') + ' on ' + repo, given);
     // a stop frees Add Token at once, whatever call is on its way; the chain ends quietly when it answers
     var run = tokenRun = { view: view, repo: repo, wanted: wanted || '', era: ends, stop: function () {
       stopped = true;
       if (issue) closeRunIssue(repo, issue, true);
       over();
       clear(view.step);
-      view.tell(STOPPED);
+      view.task.end(STOPPED, true);
     } };
     function unlessStopped(value) {
       if (stopped) { var e = new Error(STOPPED); e.stopped = true; throw e; }
@@ -4595,13 +4866,18 @@
     }).then(function (r) {
       issue = r.data.number;
       step = 'dispatch';
-      return gh('GET', '/repos/' + repo);
-    }).then(unlessStopped).then(function (r) {
+      return Promise.all([gh('GET', '/repos/' + repo), newestRunId(repo, TOKEN_WORKFLOW)]);
+    }).then(unlessStopped).then(function (both) {
+      after = both[1];
       return gh('POST', '/repos/' + repo + '/actions/workflows/' + TOKEN_WORKFLOW + '/dispatches',
-        { ref: r.data.default_branch || 'main', inputs: pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id } });
+        { ref: both[0].data.default_branch || 'main', inputs: pooled ? { issue: String(issue), store: 'pool' } : { issue: String(issue), key: key.key, key_id: key.key_id } });
     }).then(function () {
       step = 'run';
-      view.tell('The sign-in is starting; its button appears here in about a minute.');
+      view.tell('The sign-in is starting on GitHub Actions; its link appears here in about a minute.');
+      // the run's steps, and its log once it has ended, show under the words meanwhile; the issue's
+      // comments, below, are what the sign-in goes by
+      function over() { return stopped || !view.task.live; }
+      findRun(repo, TOKEN_WORKFLOW, after, over).then(function (found) { if (found) return followRunSteps(repo, found, view.task, over); }).catch(function () { /* the words stand */ });
       return followRun(repo, issue, pooled ? null : key.key_id, view, function () { return stopped; });
     }).then(unlessStopped).then(function (sealed) {
       if (pooled) return { pooled: sealed.stored };
@@ -4618,13 +4894,11 @@
       closeRunIssue(repo, issue);
       over();
       if (alsoMain && alsoMain.pooled) {
-        view.tell('Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours. An owner of ' + place.owner + ' sets its model and the repositories it runs on.');
-        view.close.textContent = 'Done';
+        view.task.end('Your token is saved in slot ' + alsoMain.pooled + ' of ' + place.owner + '\'s pool, marked as yours. An owner of ' + place.owner + ' sets its model and the repositories it runs on.');
         readTokenPlace(repo, reading);
         return;
       }
-      view.tell(tileName(slot) + ' is saved' + (alsoMain ? ', and as main too, which @claude and the workers read and which was not set yet' : '') + '. Its use shows on its tile after its first run, or press its tile and Read use now.');
-      view.close.textContent = 'Done';
+      view.task.end(tileName(slot) + ' is saved' + (alsoMain ? ', and as main too, which @claude and the workers read and which was not set yet' : '') + '. Its use shows on its tile after its first run, or press its tile and Read use now.');
       readTokenPlace(repo, reading);
     }).catch(function (e) {
       // a stop has closed the issue and said so already
@@ -4637,7 +4911,7 @@
       if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
       else if ((step === 'workflow' || step === 'dispatch' || step === 'issue') && e.status === 403) hint = Promise.resolve(ACTIONS_NEEDED);
       else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(secretsNeeded(place));
-      hint.then(function (text) { view.tell(e.message + text, true); });
+      hint.then(function (text) { view.task.end(e.message + text, true); });
     });
   }
   // the issue's comments from the run, read every three seconds: the link shows the sign-in box, the
@@ -4677,11 +4951,15 @@
       setTimeout(look, RUN_POLL_MS);
     });
   }
+  // the step the person takes, at the deck's foot: the sign-in as a link, which a phone opens as it
+  // opens any, and the code's box beside it
   function drawSignIn(repo, issue, url, view) {
     var m = view.step;
     clear(m);
     view.tell('Sign in as the Claude account this token is for.');
-    var open = btn('Sign in to claude.ai', false, function () { window.open(url, '_blank', 'noopener'); });
+    var open = link(url, 'Sign in to claude.ai');
+    open.className = 'msgtask__go';
+    open.id = 'tk-open';
     var code = el('input');
     code.id = 'tk-code';
     code.type = 'text';
@@ -4697,7 +4975,7 @@
         view.tell('Code sent; the run is making the token, and it is saved here in a few seconds.');
       }, function (e) { send.disabled = false; code.disabled = false; add(m, el('p', 'admin__warn', 'The code could not be sent: ' + e.message)); });
     });
-    add(m, el('p', 'admin__lead', '1. Press Sign in to claude.ai, sign in as the account and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it below and send it.'));
+    add(m, el('p', 'admin__lead', '1. Open Sign in to claude.ai, sign in as the account and press Authorize. 2. Copy the code claude.ai shows. 3. Paste it here and send it.'));
     add(m, add(el('p', 'admin__bar'), open), add(el('p', 'admin__bar tkdlg__code'), code, ' ', send));
   }
   function closeRunIssue(repo, issue, failed) {
@@ -5039,7 +5317,6 @@
       if (owner && owner.value.trim() && !LOGIN.test(owner.value.trim())) return 'Belongs to takes a GitHub login, such as ' + (shownLogin || 'octocat') + '.';
       return '';
     }
-    function fail(e) { problem.hidden = false; problem.textContent = e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''); }
     var bar = el('p', 'admin__bar tkdlg__bar');
     var cancel = btn('Cancel', true, function () { d.close(); });
     var save = el('button', 'console__primary', adding ? 'Save and sign in' : 'Save');
@@ -5053,12 +5330,20 @@
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
       var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
+      // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
+      // sign-in that follows it, as one task
+      d.close();
+      var task = adding ? msgTask('Add ' + tileName(wanted) + ' on ' + tk.repo) : null;
+      if (task) task.tell('Saving the settings of ' + tileName(wanted) + '...');
+      else say('Saving the settings of ' + tileName(wanted) + '...');
       saveTokenSettings(wanted, chosen(), labelText).then(function () {
         drawTiles();
-        if (adding) { addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted); return; }
-        d.close();
+        if (adding) { addByActions(tk.repo, tk.place, $('tk-tile-add') || save, wanted, task); return; }
         say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
-      }, function (e) { save.disabled = false; fail(e); });
+      }, function (e) {
+        var words = 'The settings of ' + tileName(wanted) + ' could not be saved: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : '');
+        if (task) task.end(words, true); else say(words, true);
+      });
     });
     add(bar, cancel, ' ', save);
     if (!adding && tk.place.org) add(form, reachBox(slot));
@@ -5069,13 +5354,15 @@
           var next = chosen();
           next.resumedAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
           delete next.paused;
-          saveTokenSettings(slot, next, tk.labels[slot] || '').then(function () { d.close(); drawTiles(); say(tileName(slot) + ' is back in the pool from the workers\' next run.'); },
-            function (e) { resume.disabled = false; fail(e); });
+          d.close();
+          say('Putting ' + tileName(slot) + ' back in the pool...');
+          saveTokenSettings(slot, next, tk.labels[slot] || '').then(function () { drawTiles(); say(tileName(slot) + ' is back in the pool from the workers\' next run.'); },
+            function (e) { say(tileName(slot) + ' could not be resumed: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : ''), true); });
         });
         resume.id = 'tk-resume';
         add(bar, ' ', resume);
       }
-      var renew = btn('Sign in again to renew', true, function () { addByActions(tk.repo, tk.place, renew, slot); });
+      var renew = btn('Sign in again to renew', true, function () { d.close(); addByActions(tk.repo, tk.place, renew, slot); });
       renew.id = 'tk-renew';
       add(bar, ' ', renew);
     }
@@ -5099,7 +5386,7 @@
     save.type = 'button';
     save.id = 'tk-start';
     save.disabled = !!barred;
-    save.addEventListener('click', function () { save.disabled = true; addByActions(tk.repo, tk.place, $('tk-tile-add') || save, ''); });
+    save.addEventListener('click', function () { save.disabled = true; d.close(); addByActions(tk.repo, tk.place, $('tk-tile-add') || save, ''); });
     add(form, add(el('p', 'admin__bar tkdlg__bar'), btn('Cancel', true, function () { d.close(); }), ' ', save));
     add(d, form);
     if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
