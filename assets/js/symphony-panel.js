@@ -5178,8 +5178,11 @@
     save.addEventListener('click', function () { save.disabled = true; addByActions(tk.repo, tk.place, $('tk-tile-add') || save, ''); });
     var bar = add(el('p', 'admin__bar tkdlg__bar'), btn('Cancel', true, function () { d.close(); }), ' ', save);
     // without write access, asking to join is the way in, answered on the administrators' Share tab
-    if (barred) {
-      var ask = btn('Ask to join ' + tk.repo, true, function () { ask.disabled = true; requestAccess(tk.repo, function (t) { problem.textContent = t; }); });
+    if (barred && tk.place.org) {
+      var ask = btn('Ask to join ' + tk.repo, true, function () {
+        ask.disabled = true;
+        requestAccess(tk.repo, function (t, failed) { problem.textContent = t; if (failed) ask.disabled = false; });
+      });
       add(bar, ' ', ask);
     }
     add(form, bar);
@@ -6860,10 +6863,10 @@
     $('sh-state').textContent = 'Reading who has access to ' + repo + '...';
     var people = ghList('/repos/' + repo + '/collaborators?affiliation=' + (org ? 'direct' : 'all') + '&per_page=100', 2);
     var waiting = ghList('/repos/' + repo + '/invitations?per_page=100', 1).catch(function () { return null; });
-    var asking = accessRequests(repo).catch(function () { return []; });
+    var asking = accessRequests(repo).catch(function () { return null; });
     Promise.all([people, waiting, whoAmI().catch(function () { return ''; }), asking]).then(function (r) {
       if (mine !== shareSeq || state.repo !== repo) return;
-      var list = r[0], invites = r[1], me = r[2], asks = r[3];
+      var list = r[0], invites = r[1], me = r[2], asks = r[3] || [];
       clear(body);
       var owner = state.meta && state.meta.owner;
       if (!org && owner && owner.login && !list.some(function (p) { return p.login === owner.login; })) list.unshift({ login: owner.login, role_name: 'admin' });
@@ -6871,7 +6874,7 @@
       list.forEach(function (p) { add(body, sharePersonRow(p, me, owner)); });
       (invites || []).forEach(function (inv) { add(body, shareInviteRow(inv)); });
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
-      $('sh-state').textContent = (asks.length ? plural(asks.length, 'request') + ' to join, ' : '') + plural(list.length, 'person', 'people') + ' with access' + (org ? ' by name' : '') +
+      $('sh-state').textContent = (r[3] === null ? 'the requests to join could not be read; ' : asks.length ? plural(asks.length, 'request') + ' to join, ' : '') + plural(list.length, 'person', 'people') + ' with access' + (org ? ' by name' : '') +
         (invites ? (invites.length ? ', ' + plural(invites.length, 'invitation') + ' waiting' : ', no invitation waiting') : '; the invitations could not be read') +
         (org ? '. Members of ' + owner.login + ' may reach it through the organization too: see GitHub\'s Collaborators and teams.' : '.');
     }).catch(function (e) {
@@ -6879,7 +6882,7 @@
       clear(body);
       var refused = e.status === 403 || e.status === 404;
       // someone who may not push here can still ask to join, which an administrator answers on this tab
-      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { $('sh-state').textContent = t; }); }, 5));
+      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) $('sh-state').textContent = t; }); }, 5));
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
       $('sh-state').textContent = (refused
         ? 'GitHub shows who has access to ' + repo + ' only to people who may push to it' + (signedInByApp() ? ', through an installation that may read its administration' : ', with a token that may') + '. + Ask to join asks its administrators to let you in.'
@@ -7005,8 +7008,8 @@
     tell('Asking ' + repo + '\'s administrators...');
     return whoAmI().then(function (me) {
       if (!me) throw new Error('Sign in first.');
-      return accessRequests(repo).catch(function () { return []; }).then(function (open) {
-        var mine = open.filter(function (i) { return i.user.login.toLowerCase() === me.toLowerCase(); })[0];
+      return ghList('/repos/' + repo + '/issues?state=open&creator=' + encodeURIComponent(me) + '&per_page=100', 1).catch(function () { return []; }).then(function (open) {
+        var mine = open.filter(isAccessRequest).pop();
         if (mine) { tell('You asked already (issue #' + mine.number + '); an administrator answers it on the Share tab, and GitHub tells you when they do.'); return null; }
         return gh('POST', '/repos/' + repo + '/issues', { title: 'Access request: ' + me,
           body: ACCESS_MARK + '\n' + me + ' asks to join ' + repo + ' as a collaborator. An administrator answers on the control panel\'s Share tab (Invite, or the X to decline), or on GitHub\'s Collaborators and teams page; closing this issue tells ' + me + '.' }).then(function (r) {
@@ -7014,7 +7017,7 @@
         });
       });
     }).catch(function (e) {
-      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly.' : 'Asking did not work: ' + e.message));
+      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly.' : 'Asking did not work: ' + e.message), true);
     });
   }
   function shareAskRow(issue) {
@@ -7041,20 +7044,25 @@
     if (!yes && !window.confirm('Decline ' + login + '\'s request to join ' + repo + '?')) return;
     button.disabled = true;
     say(yes ? 'Inviting ' + login + '...' : 'Declining...');
+    var invited = false, had = false;
     var call = yes
       ? gh('PUT', '/repos/' + repo + '/collaborators/' + encodeURIComponent(login), shareInOrg() ? { permission: 'push' } : undefined)
       : Promise.resolve(null);
-    call.then(function () {
-      var words = yes ? 'Invited: accept at https://github.com/' + repo + '/invitations.' : 'Declined by an administrator of ' + repo + '.';
+    call.then(function (r) {
+      // GitHub answers 204 when they have access already, through the organization or an earlier invitation
+      invited = yes;
+      had = yes && !!r && r.status !== 201;
+      var words = !yes ? 'Declined by an administrator of ' + repo + '.' : had ? 'You have access to ' + repo + ' already.' : 'Invited: accept at https://github.com/' + repo + '/invitations.';
       return gh('POST', '/repos/' + repo + '/issues/' + issue.number + '/comments', { body: words }).catch(function () { return null; }).then(function () {
         return gh('PATCH', '/repos/' + repo + '/issues/' + issue.number, { state: 'closed', state_reason: yes ? 'completed' : 'not_planned' });
       });
     }).then(function () {
-      say(yes ? 'Invited ' + login + ' with ' + (shareInOrg() ? 'Write' : 'collaborator') + ' access.' : login + '\'s request is declined.');
+      say(!yes ? login + '\'s request is declined.' : had ? login + ' has access to ' + repo + ' already; the request is closed.' : 'Invited ' + login + ' with ' + (shareInOrg() ? 'Write' : 'collaborator') + ' access.');
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
+      say(invited ? 'Invited ' + login + ', but the request could not be closed: ' + why : why, true);
     });
   }
   function initShareTab() {
