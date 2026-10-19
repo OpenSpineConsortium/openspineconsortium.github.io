@@ -91,6 +91,22 @@
     return a;
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  // words that may name an address: each https address becomes a link that opens it, so a message
+  // that says where to fix something is one press from the fix (Ashley, 2026-10-19); a full stop,
+  // comma or bracket that ends the sentence stays out of the link
+  function rich(node, text) {
+    var words = String(text == null ? '' : text);
+    var at = /https:\/\/[^\s<>"']+/g, from = 0, m;
+    while ((m = at.exec(words))) {
+      var href = m[0].replace(/[.,;:!?)\]]+$/, '');
+      if (m.index > from) node.appendChild(document.createTextNode(words.slice(from, m.index)));
+      node.appendChild(link(href, href));
+      from = m.index + href.length;
+      at.lastIndex = from;
+    }
+    if (from < words.length) node.appendChild(document.createTextNode(words.slice(from)));
+    return node;
+  }
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
   // the page's own line at the deck's foot; a task under way there (msgTask) stays under it, since
   // its work goes on, while a finished one gives way to the new words as any message did
@@ -100,7 +116,7 @@
     Array.prototype.slice.call(m.childNodes).forEach(function (n) {
       if (!(n.classList && n.classList.contains('msgtask') && n.getAttribute('data-state') === 'live')) m.removeChild(n);
     });
-    if (text) m.insertBefore(el('p', 'msg__note', text), m.firstChild);
+    if (text) m.insertBefore(rich(el('p', 'msg__note'), text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
   }
   function stamp(iso) {
@@ -537,16 +553,26 @@
   }
 
   /* ---------- the GitHub client ---------- */
+  // where a refusal at a path is fixed: the page of SymphonyBoard's installation that accepts its
+  // permissions, and the page that installs it, for the account the path names
+  function fixPages(path) {
+    var orgAt = /^\/orgs\/([A-Za-z0-9-]+)/.exec(path || ''), repoAt = /^\/repos\/([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+)/.exec(path || '');
+    var install = 'https://github.com/apps/' + APP_SLUG + '/installations/new';
+    if (orgAt) return { accept: 'https://github.com/organizations/' + orgAt[1] + '/settings/installations', install: install };
+    if (repoAt) return { accept: 'https://github.com/' + repoAt[1] + '/' + repoAt[2] + '/settings/installations', install: install };
+    return { accept: 'https://github.com/settings/installations', install: install };
+  }
   function explain(status, data, path, byApp) {
     var m = data && data.message ? String(data.message) : '';
+    var fix = fixPages(path);
     if (status === 401) return byApp
       ? 'GitHub refused the sign-in\'s token (401): it was revoked or has run out. Press Sign in with GitHub again.'
       : 'GitHub refused the token (401). Paste one that is still valid' + (signinAvailable() ? ', or press Sign in with GitHub.' : '.');
     if (status === 429 || (status === 403 && /rate limit|secondary/i.test(m))) return 'GitHub\'s rate limit for this token is reached (' + status + '). Wait a minute, then press Refresh.';
     if (status === 403) return byApp
-      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on.'
-      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it.';
-    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it (SymphonyBoard is not installed there).' : 'the token does not reach it.');
+      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on. An administrator accepts the App\'s newest permissions at ' + fix.accept + ' (Configure beside SymphonyBoard).'
+      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it; make one at https://github.com/settings/personal-access-tokens/new.';
+    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it, since SymphonyBoard is not installed there; install it at ' + fix.install + '.' : 'the token does not reach it.');
     if (status === 422) return 'GitHub refused the request (422' + (m ? ': ' + m : '') + ').';
     return 'GitHub answered ' + status + (m ? ': ' + m : '') + '.';
   }
@@ -998,7 +1024,7 @@
       Promise.all(dead.map(function (t) { return exchange('/revoke', { access_token: t }); })).then(function () {
         if (era === choices) say(where + ', and the sign-in\'s token is revoked at GitHub.' + others + pat + listed);
       }).catch(function (e) {
-        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
+        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at https://github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
       });
       return;
     }
@@ -2448,7 +2474,8 @@
       retitle: function (text) { name.textContent = text; },
       // the latest word on where the work is
       tell: function (text, warn) {
-        line.textContent = text;
+        clear(line);
+        rich(line, text);
         line.className = 'msgtask__line' + (warn ? ' admin__warn' : '');
         task.show();
       },
@@ -5029,8 +5056,9 @@
   // what a 403 or 404 on a slot's secret or variable means, for where the slots live: an organization's
   // pool, or a personal account's repository, which takes the App's repository permissions instead
   function secretsNeeded(place) {
-    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
-    return ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions.';
+    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation at https://github.com/settings/installations (Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
+    var owner = place ? place.owner : '';
+    return ' Writing a slot needs an owner of ' + (owner || 'the organization') + ', and the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation' + (owner ? ' at https://github.com/organizations/' + owner + '/settings/installations' : '') + '. Someone who is not an owner adds their own token with Add Token, which puts it into the pool for them; the owners are listed at ' + (owner ? 'https://github.com/orgs/' + owner + '/people?query=role%3Aowner' : 'the organization\'s People page') + '.';
   }
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
@@ -5364,6 +5392,18 @@
       if (home !== repo) delete tokenHomes[place.owner + '/' + shownLogin];
       over();
       clear(view.step);
+      // the pool's secrets refused someone the page could not tell was an owner: they are not one,
+      // so the same press goes on into the pool through the Token run (intoPool), with no error
+      // only before the sign-in's issue is opened: once the person has signed in, a second sign-in
+      // would put a second copy of their token in the pool
+      if (step === 'secrets' && !issue && !pooled && !wanted && place.org && tk.place === place && tk.admin !== true && place.push !== false && (e.status === 403 || e.status === 404)) {
+        tk.admin = false;
+        drawTiles();
+        if (view.stop.parentNode) view.stop.parentNode.removeChild(view.stop);
+        say('GitHub lets only an owner of ' + place.owner + ' read its slots, so your token goes into its pool through the Token run instead, marked as yours.');
+        addByActions(repo, place, button, '', view.task);
+        return;
+      }
       if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
       var hint = Promise.resolve('');
       if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
@@ -5695,9 +5735,10 @@
     }
     if (lendToBusy) { line.textContent = lendToBusy; return box; }
     if (!lendTo) { line.textContent = 'Reading the list...'; return box; }
-    line.textContent = lendToError || (lendTo.length
+    clear(line);
+    rich(line, lendToError || (lendTo.length
       ? 'A token someone lends to ' + place.owner + ' without a say runs in these repositories from the moment it arrives:'
-      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.');
+      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.'));
     lendTo.forEach(function (id) {
       var row = el('p', 'admin__bar');
       var name = el('span', '', repoNames[id] || 'repository ' + id);
@@ -5969,7 +6010,7 @@
       var why = check();
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
-      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
+      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim(), at = tk.place;
       // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
       // sign-in that follows it, as one task
       d.close();
@@ -5984,6 +6025,16 @@
         say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
       }, function (e) {
         tokenAdding = null;
+        // GitHub refused the owner's path to someone the page could not tell was an owner, as when
+        // their membership could not be read: they are not one here, so their token goes into the
+        // pool through the Token run, as for anyone who may write but owns no secret (intoPool)
+        if (adding && at && tk.place === at && at.org && tk.admin !== true && at.push !== false && (e.status === 403 || e.status === 404)) {
+          tk.admin = false;
+          drawTiles();
+          say('GitHub lets only an owner of ' + at.owner + ' write its slots directly, so your token goes into its pool through the Token run instead, marked as yours, in the next free slot; an owner of ' + at.owner + ' sets its model and where it runs.');
+          addByActions(tk.repo, tk.place, $('tk-tile-add') || save, '', task);
+          return;
+        }
         var words = 'The settings of ' + tileName(wanted) + ' could not be saved: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : '');
         if (task) task.end(words, true); else say(words, true);
       });
