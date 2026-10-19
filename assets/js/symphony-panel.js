@@ -18,6 +18,8 @@
    saying why, and the token box is open beneath it. The sign-in uses
    PKCE: the page keeps a secret for each sign-in and sends GitHub its
    hash, so only this page can turn the code GitHub returns into a token.
+   Sign-in by code (GitHub's device flow, for the Home Screen app) is built
+   and switched off by CODE_SIGNIN; while it is off, no page offers it.
 
    What it never does: it never stores anything but the GitHub token (and
    the refresh token that came with it), the names of the repositories
@@ -45,6 +47,14 @@
   // "Sign in with GitHub" can be pressed; emptying either one turns the button off again.
   var SIGNIN_SERVICE = 'https://symphony-signin.openspineconsortium.workers.dev';
   var CLIENT_ID = 'Iv23liTkIRov2FYN83wD';
+  // Sign-in by code (GitHub's device flow, below), built and switched off. While it is false no page
+  // offers a code, and the Home Screen app's Sign in with GitHub leaves for GitHub's page as a
+  // browser's does. It works only with "Enable Device Flow" ticked on SymphonyBoard, and that tick
+  // lets anyone ask GitHub for a SymphonyBoard code and talk a person into typing it, which hands
+  // whoever asked a token that acts as that person; GitHub advises against it outside command lines
+  // and devices with no browser. So it is the owner's switch alone, turned on only if the usual sign-in
+  // does not come back into the installed app (symphony-app's signin/README.md, step 9).
+  var CODE_SIGNIN = false;
   var APP_SLUG = 'symphonyboard';
   var FORM_URL = 'https://github.com/OpenSpineConsortium/symphony-start/issues/new?template=adopt.yml';
   var TOPIC = 'symphony';
@@ -91,6 +101,24 @@
     return a;
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  // a line's words drawn anew, its addresses as links (rich)
+  function richText(node, text) { clear(node); return rich(node, text); }
+  // words that may name an address: each https address becomes a link that opens it, so a message
+  // that says where to fix something is one press from the fix (Ashley, 2026-10-19); a full stop,
+  // comma or bracket that ends the sentence stays out of the link
+  function rich(node, text) {
+    var words = String(text == null ? '' : text);
+    var at = /https:\/\/[^\s<>"']+/g, from = 0, m;
+    while ((m = at.exec(words))) {
+      var href = m[0].replace(/[.,;:!?)\]]+$/, '');
+      if (m.index > from) node.appendChild(document.createTextNode(words.slice(from, m.index)));
+      node.appendChild(link(href, href));
+      from = m.index + href.length;
+      at.lastIndex = from;
+    }
+    if (from < words.length) node.appendChild(document.createTextNode(words.slice(from)));
+    return node;
+  }
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
   // the page's own line at the deck's foot; a task under way there (msgTask) stays under it, since
   // its work goes on, while a finished one gives way to the new words as any message did
@@ -100,7 +128,7 @@
     Array.prototype.slice.call(m.childNodes).forEach(function (n) {
       if (!(n.classList && n.classList.contains('msgtask') && n.getAttribute('data-state') === 'live')) m.removeChild(n);
     });
-    if (text) m.insertBefore(el('p', 'msg__note', text), m.firstChild);
+    if (text) m.insertBefore(rich(el('p', 'msg__note'), text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
   }
   function stamp(iso) {
@@ -290,6 +318,10 @@
       (keep ? localStorage : sessionStorage).setItem(key, value);
       tokenStored = true;
     } catch (e) { tokenStored = false; /* storage refused: the token lives for this page only */ }
+    // another way in ends a sign-in by code still asking, whose token would otherwise come later and
+    // take this one's place; its words go with it, since GitHub's return says nothing of its own and
+    // the panel that opens next finds no code left to clear them for
+    if (endCode()) say('');
     ended = false;
     token = chosen;
     own = [chosen];
@@ -358,6 +390,148 @@
         + '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256';
     }).catch(function (e) { say('The sign-in could not start: ' + e.message, true); offerToken(); });
   }
+  /* ---------- sign-in by code, for the Home Screen app, while CODE_SIGNIN is on ---------- */
+  // The panel installed as a Home Screen app runs in a window of its own, and a sign-in that leaves
+  // for GitHub's page may come back to the browser rather than into the app, leaving the sign-in's
+  // secret behind in the app's storage. GitHub's device flow signs in without leaving: the sign-in
+  // service asks GitHub for a code, the page shows it, the person types it at github.com/login/device,
+  // and the page asks the service, no faster than GitHub allows, for the token the code earns
+  // (symphony-app's signin/README.md, the device routes). It is the same token, renewed the same way.
+  var DEVICE_PAGE = 'https://github.com/login/device';
+  function codeWay() { return CODE_SIGNIN && signinAvailable(); }
+  // the page as a Home Screen app: iOS says so through navigator.standalone, the rest through the
+  // manifest's display mode
+  function inApp() {
+    try { if (window.navigator.standalone === true) return true; } catch (e) { /* not iOS */ }
+    try { return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); } catch (e2) { return false; }
+  }
+  // one sign-in by code at a time: a new press, Cancel, another way in or a sign-out ends the one
+  // before, and a late answer to an ended one is dropped, its token revoked
+  var codeTurn = 0;
+  var codeTimer = null;
+  var codeLive = false;
+  // ends the sign-in by code under way, if any, and says whether one was
+  function endCode() {
+    var live = codeLive;
+    codeLive = false;
+    codeTurn++;
+    if (codeTimer) { clearTimeout(codeTimer); codeTimer = null; }
+    var box = $('cp-code-box');
+    if (!box) return live;
+    var focus = document.activeElement;
+    var lost = live && (!focus || focus === document.body || box.contains(focus));
+    box.hidden = true;
+    if ($('cp-code-said')) $('cp-code-said').hidden = true;
+    ['cp-signin', 'cp-signin-code'].forEach(function (id) { if ($(id) && signinAvailable()) $(id).disabled = false; });
+    // focus the code took (its button held, or a button of its box now hidden) goes back to the button
+    // that starts a sign-in by code, so a keyboard is never left on nothing
+    var back = $('cp-signin-code') && !$('cp-signin-code').hidden ? $('cp-signin-code') : $('cp-signin');
+    if (lost && back && back.getClientRects().length) back.focus({ preventScroll: true });
+    return live;
+  }
+  // whether the whole of a node shows, under no header or status line held to the window's edge
+  function inSight(node) {
+    var r = node.getBoundingClientRect();
+    var x = r.left + Math.min(r.width / 2, 24);
+    return [r.top + 1, r.bottom - 1].every(function (y) { var at = document.elementFromPoint(x, y); return !!(at && node.contains(at)); });
+  }
+  // on a phone the code's box opens below the fold, behind the status line held to the window's foot,
+  // so it is brought up to the window's middle; where it shows whole already nothing moves
+  function bringIntoSight(node) {
+    if (inSight(node)) return;
+    try { scrollInDeck(node, { block: 'center' }); } catch (e) { /* the code is in the status line too */ }
+  }
+  function showCode(code) {
+    $('cp-code').textContent = code;
+    var box = $('cp-code-box');
+    box.hidden = false;
+    if ($('cp-code-said')) $('cp-code-said').hidden = true;
+    bringIntoSight(box);
+    // the pressed button is held while the code is up, which takes a keyboard's focus from it, so the
+    // focus goes on to the box's first step, unless the person has moved it somewhere meanwhile
+    var focus = document.activeElement;
+    if (!focus || focus === document.body || /^cp-signin/.test(focus.id || '')) $('cp-code-open').focus({ preventScroll: true });
+  }
+  // the code's words go to the page's line; where that line is not held in view, as on the cost page,
+  // where it stands above the sign-in box, they are said in the box's own line too
+  function codeSays(text, warn) {
+    say(text, warn);
+    var line = $('cp-code-said');
+    if (!line || $('console')) return;
+    line.textContent = text;
+    line.className = 'admin__lead control__codesaid' + (warn ? ' admin__warn' : '');
+    line.hidden = !text;
+    if (text) bringIntoSight(line);
+  }
+  var CODE_WORDS = {
+    expired_token: 'The code ran out before it was typed on GitHub; press the button again for a new one.',
+    access_denied: 'GitHub says the sign-in was cancelled on its page; press the button again to start over.',
+    device_flow_disabled: 'Sign-in by code is not turned on for SymphonyBoard yet (the App\'s owner ticks "Enable Device Flow" in its settings); use a token below meanwhile.',
+    no_such_route: 'The sign-in service does not offer sign-in by code yet; use a token below meanwhile.'
+  };
+  // asks for the token until the person has typed the code, GitHub refuses, or the code runs out; a
+  // moment the service or GitHub cannot be reached is asked again at the same pace
+  function pollCode(turn, device, every, until) {
+    return new Promise(function (resolve, reject) {
+      function later() { codeTimer = setTimeout(ask, every * 1000); }
+      function ask() {
+        codeTimer = null;
+        if (turn !== codeTurn) { resolve(null); return; }
+        if (Date.now() >= until) { var out = new Error(CODE_WORDS.expired_token); out.code = 'expired_token'; reject(out); return; }
+        exchange('/device/token', { device_code: device }).then(resolve, function (e) {
+          if (turn !== codeTurn) { resolve(null); return; }
+          if (e.code === 'authorization_pending') { later(); return; }
+          if (e.code === 'slow_down') { every = Math.min(Math.max(every + 5, Number(e.interval) || 0), 120); later(); return; }
+          // the service's own limit on one address's calls: it is asked again, more slowly
+          if (e.code === 'too_many_requests') { every = Math.min(every + 5, 120); later(); return; }
+          if (!e.code || e.code === 'github_unreachable') { later(); return; }
+          reject(e);
+        });
+      }
+      later();
+    });
+  }
+  function startCode(onSignedIn) {
+    endCode();
+    var turn = codeTurn;
+    codeLive = true;
+    ['cp-signin', 'cp-signin-code'].forEach(function (id) { if ($(id)) $(id).disabled = true; });
+    codeSays('Asking GitHub for a code...');
+    exchange('/device', {}).then(function (got) {
+      if (turn !== codeTurn) return null;
+      var code = typeof got.user_code === 'string' && /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(got.user_code) ? got.user_code : '';
+      if (!code || typeof got.device_code !== 'string' || !got.device_code) throw new Error('The sign-in service answered without a code.');
+      showCode(code);
+      say('Type ' + code + ' on GitHub\'s page; this page signs you in as soon as you have.');
+      var until = Date.now() + Math.min(Math.max(Number(got.expires_in) || 900, 60), 3600) * 1000;
+      var every = Math.min(Math.max(Number(got.interval) || 5, 5), 60);
+      return pollCode(turn, got.device_code, every, until);
+    }).then(function (answer) {
+      if (!answer) return;
+      // a token GitHub gave for a code this page has let go of (Cancel, another way in, a sign-out) is
+      // nobody's, so GitHub is asked to revoke it, as storeSignin does for the tokens it replaces
+      if (turn !== codeTurn) {
+        if (answer.access_token) exchange('/revoke', { access_token: answer.access_token }).catch(function () { /* it runs out in eight hours */ });
+        return;
+      }
+      if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
+      // the tick as it stands when the token comes: the page never left, and the box beneath the code
+      // could be ticked or unticked while the code was up
+      var keep = $('cp-keep') ? $('cp-keep').checked : false;
+      endCode();
+      // as a pasted token does: the panel stays closed until GitHub names this one
+      showGate();
+      state = emptyState(state.repo);
+      keepOauth(answer, keep);
+      say('');
+      onSignedIn();
+    }).catch(function (e) {
+      if (turn !== codeTurn) return;
+      endCode();
+      codeSays(CODE_WORDS[e.code] || (e.message + ' Press the button again, or use a token below.'), true);
+      offerToken();
+    });
+  }
   // GitHub's own word for a refresh token it will not renew any more (run out, revoked or spent);
   // every other failure, of the service or of GitHub, is of the moment and leaves the sign-in be
   var DEAD_REFRESH = 'bad_refresh_token';
@@ -373,6 +547,8 @@
         if (!r.ok || data.error) {
           var err = new Error('The sign-in service answered ' + r.status + (data.error ? ': ' + data.error : '') + (data.error_description ? ' (' + data.error_description + ')' : '') + '.');
           err.code = String(data.error || '');
+          // GitHub's slow_down names the longer wait it asks for (the device routes)
+          if (typeof data.interval === 'number') err.interval = data.interval;
           throw err;
         }
         return data;
@@ -537,16 +713,26 @@
   }
 
   /* ---------- the GitHub client ---------- */
+  // where a refusal at a path is fixed: the page of SymphonyBoard's installation that accepts its
+  // permissions, and the page that installs it, for the account the path names
+  function fixPages(path) {
+    var orgAt = /^\/orgs\/([A-Za-z0-9-]+)/.exec(path || ''), repoAt = /^\/repos\/([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+)/.exec(path || '');
+    var install = 'https://github.com/apps/' + APP_SLUG + '/installations/new';
+    if (orgAt) return { accept: 'https://github.com/organizations/' + orgAt[1] + '/settings/installations', install: install };
+    if (repoAt) return { accept: 'https://github.com/' + repoAt[1] + '/' + repoAt[2] + '/settings/installations', install: install };
+    return { accept: 'https://github.com/settings/installations', install: install };
+  }
   function explain(status, data, path, byApp) {
     var m = data && data.message ? String(data.message) : '';
+    var fix = fixPages(path);
     if (status === 401) return byApp
       ? 'GitHub refused the sign-in\'s token (401): it was revoked or has run out. Press Sign in with GitHub again.'
       : 'GitHub refused the token (401). Paste one that is still valid' + (signinAvailable() ? ', or press Sign in with GitHub.' : '.');
     if (status === 429 || (status === 403 && /rate limit|secondary/i.test(m))) return 'GitHub\'s rate limit for this token is reached (' + status + '). Wait a minute, then press Refresh.';
     if (status === 403) return byApp
-      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on.'
-      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it.';
-    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it (SymphonyBoard is not installed there).' : 'the token does not reach it.');
+      ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on. An administrator accepts the App\'s newest permissions at ' + fix.accept + ' (Configure beside SymphonyBoard).'
+      : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it; make one at https://github.com/settings/personal-access-tokens/new.';
+    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it, since SymphonyBoard is not installed there; install it at ' + fix.install + '.' : 'the token does not reach it.');
     if (status === 422) return 'GitHub refused the request (422' + (m ? ': ' + m : '') + ').';
     return 'GitHub answered ' + status + (m ? ': ' + m : '') + '.';
   }
@@ -808,7 +994,10 @@
     var gate = $('cp-gate');
     if (!gate) return;
     var signin = $('cp-signin');
-    if (signin && signinAvailable()) signin.addEventListener('click', startOauth);
+    if (signin && codeWay()) {
+      addCodeWay(signin, onSignedIn);
+      signin.addEventListener('click', function () { if (inApp()) startCode(onSignedIn); else { endCode(); startOauth(); } });
+    } else if (signin && signinAvailable()) signin.addEventListener('click', startOauth);
     else if (signin) {
       signin.disabled = true;
       if ($('cp-signin-off')) $('cp-signin-off').classList.remove('hidden');
@@ -840,6 +1029,52 @@
     });
     $('cp-token').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('cp-open').click(); });
   }
+  // The code's box under "Sign in with GitHub": in the Home Screen app that button itself signs in by
+  // code, and the gate's first words say so in place of the redirect's; in a browser a second,
+  // quieter button offers the same, for wherever GitHub's return does not come back to the page. The
+  // box warns beside the code that a code is typed only where and when this page asks: anyone can
+  // start a SymphonyBoard code, and whoever started the one a person types is signed in as them.
+  function addCodeWay(signin, onSignedIn) {
+    var row = signin.parentNode;
+    var app = inApp();
+    var other = el('button', 'control__codeway quiet', 'Sign in with a code instead');
+    other.type = 'button';
+    other.id = 'cp-signin-code';
+    other.hidden = app;
+    other.addEventListener('click', function () { startCode(onSignedIn); });
+    row.appendChild(document.createTextNode(' '));
+    row.appendChild(other);
+    var open = el('a', 'control__codeopen', 'Copy it and open GitHub');
+    open.id = 'cp-code-open';
+    open.href = DEVICE_PAGE;
+    open.target = '_blank';
+    open.rel = 'noopener noreferrer';
+    open.addEventListener('click', function () {
+      var code = $('cp-code').textContent;
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).catch(function () { /* the code stays on the page to read */ }); } catch (e) { /* the same */ }
+    });
+    var cancel = el('button', 'quiet', 'Cancel');
+    cancel.type = 'button';
+    cancel.id = 'cp-code-cancel';
+    cancel.addEventListener('click', function () { endCode(); say(''); });
+    var code = el('output', 'control__code', '');
+    code.id = 'cp-code';
+    var warn = el('p', 'control__codewarn', 'Type a code only there, on github.com/login/device, and only one you started on this page a moment ago. A code someone sends you, by mail, chat or another page, would sign them in as you.');
+    warn.id = 'cp-code-warn';
+    var box = add(el('div', 'control__codebox'), el('p', '', 'Type this code on GitHub\'s page, github.com/login/device, where GitHub names SymphonyBoard and asks whether it may act as you; allow it:'), code, add(el('div', 'control__codebar'), open, cancel), warn);
+    box.id = 'cp-code-box';
+    box.hidden = true;
+    row.parentNode.insertBefore(box, row.nextSibling);
+    var said = el('p', 'admin__lead control__codesaid', '');
+    said.id = 'cp-code-said';
+    said.hidden = true;
+    row.parentNode.insertBefore(said, box.nextSibling);
+    // the page's own words for the app, which the gate's markup carries beside the redirect's
+    var how = $('cp-signin-how');
+    if (app && how && how.getAttribute('data-in-app')) how.textContent = how.getAttribute('data-in-app');
+    // what the page sends, which names the code's requests only where they can be made
+    if ($('cp-sent-code')) $('cp-sent-code').hidden = false;
+  }
   // GitHub is asked about a pasted token before it takes the place of anything, so a token GitHub
   // refuses, or a moment GitHub cannot be reached, leaves this tab's sign-in and the one the browser
   // keeps for its other tabs as they were
@@ -863,6 +1098,10 @@
     if ($('cp-who')) $('cp-who').textContent = '';
   }
   function showApp() {
+    // the panel opening (a kept sign-in found at load, GitHub's return, a paste) is another way in: a
+    // sign-in by code started meanwhile would go on asking unseen under it, its code and Cancel hidden
+    // with the gate, so it ends here, and its words with it
+    if (endCode()) say('');
     if ($('cp-gate')) $('cp-gate').classList.add('hidden');
     if ($('cp-app')) $('cp-app').classList.remove('hidden');
   }
@@ -979,6 +1218,8 @@
     var pasted = pastedTokens();
     var dead = signinTokens();
     var listed = repos().length ? ' The repositories you listed stay.' : '';
+    // a sign-in by code still asking would sign the page in again after it was signed out
+    endCode();
     forgetToken();
     dropDrive();
     showGate();
@@ -987,8 +1228,8 @@
     var others = ' Another tab signed in for that tab alone keeps its sign-in until you forget it there or close it.';
     // a classic token is deleted on another page of GitHub's settings than a fine-grained one
     var pages = [];
-    if (pasted.some(function (t) { return /^ghp_/.test(t); })) pages.push('github.com/settings/tokens');
-    if (pasted.some(function (t) { return !/^ghp_/.test(t); })) pages.push('github.com/settings/personal-access-tokens');
+    if (pasted.some(function (t) { return /^ghp_/.test(t); })) pages.push('https://github.com/settings/tokens');
+    if (pasted.some(function (t) { return !/^ghp_/.test(t); })) pages.push('https://github.com/settings/personal-access-tokens');
     var pat = !pasted.length ? '' : pasted.length === 1
       ? ' The personal access token itself stays valid at GitHub until it runs out or you delete it at ' + pages[0] + '.'
       : ' The personal access tokens themselves stay valid at GitHub until they run out or you delete them at ' + pages.join(' and ') + '.';
@@ -998,7 +1239,7 @@
       Promise.all(dead.map(function (t) { return exchange('/revoke', { access_token: t }); })).then(function () {
         if (era === choices) say(where + ', and the sign-in\'s token is revoked at GitHub.' + others + pat + listed);
       }).catch(function (e) {
-        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
+        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at https://github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
       });
       return;
     }
@@ -1346,7 +1587,7 @@
     }).catch(function (e) {
       if (stale(s)) return;
       failed(s, 'the issues', e);
-      $('cp-other').textContent = 'The issues could not be read: ' + e.message;
+      richText($('cp-other'), 'The issues could not be read: ' + e.message);
       graphReset('Not drawn: the issues could not be read.', true);
       if (s.ready) summary();
     });
@@ -1946,7 +2187,7 @@
         ? plural(count, 'repository', 'repositories') + (signedInByApp() ? ' SymphonyBoard is installed on, ' + plural(groups.length, 'account') : ' this token reaches') + '. Press one to open it.'
         : (signedInByApp() ? 'SymphonyBoard is installed on no repository you can see yet: install it with the button below.' : 'This token reaches no repository; a fine-grained token lists only the repositories it was made for.');
       pickerDraw();
-    }).catch(function (e) { $('rp-state').textContent = 'GitHub did not list them: ' + e.message + ' Type OWNER/NAME above to open one by name.'; });
+    }).catch(function (e) { richText($('rp-state'), 'GitHub did not list them: ' + e.message + ' Type OWNER/NAME above to open one by name.'); });
     setTimeout(function () { $('cp-add-name').focus(); }, 0);
   }
   function pickerMatches(repo, q) {
@@ -2448,7 +2689,8 @@
       retitle: function (text) { name.textContent = text; },
       // the latest word on where the work is
       tell: function (text, warn) {
-        line.textContent = text;
+        clear(line);
+        rich(line, text);
         line.className = 'msgtask__line' + (warn ? ' admin__warn' : '');
         task.show();
       },
@@ -5748,8 +5990,9 @@
   // what a 403 or 404 on a slot's secret or variable means, for where the slots live: an organization's
   // pool, or a personal account's repository, which takes the App's repository permissions instead
   function secretsNeeded(place) {
-    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation (github.com/settings/installations, Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
-    return ' Writing a slot needs you to be an owner of the organization and, signed in with GitHub, the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation; a fine-grained token needs the same two organization permissions.';
+    if (place && !place.org) return ' Writing a slot on a personal account\'s repository needs the SymphonyBoard App\'s repository permissions Secrets and Variables: read and write, accepted on its installation at https://github.com/settings/installations (Configure beside SymphonyBoard, then accept the new permissions); until Variables is accepted the repository takes one token, its main one. A fine-grained token needs the same two repository permissions.';
+    var owner = place ? place.owner : '';
+    return ' Writing a slot needs an owner of ' + (owner || 'the organization') + ', and the SymphonyBoard App\'s organization permissions Secrets and Variables: read and write, accepted on its installation' + (owner ? ' at https://github.com/organizations/' + owner + '/settings/installations' : '') + '. Someone who is not an owner adds their own token with Add Token, which puts it into the pool for them; the owners are listed at ' + (owner ? 'https://github.com/orgs/' + owner + '/people?query=role%3Aowner' : 'the organization\'s People page') + '.';
   }
 
   function slotSecret(slot) { return slot === 'main' ? MAIN_SECRET : SLOT_PREFIX + slot; }
@@ -5890,7 +6133,7 @@
   var RUN_FOR_MS = 15 * 60 * 1000;
   // what claude.ai shows after the sign-in, as tools/token_run.py's CODE_SHAPE takes it
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
-  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write.';
+  var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write; an administrator accepts them on the App\'s installation, at https://github.com/settings/installations for a personal account or the organization\'s own installations page, Configure beside SymphonyBoard.';
   var ADOPT_BRANCH = 'symphony/adopt';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
   // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
@@ -5923,7 +6166,7 @@
     var hint = ' ' + repo + ' has no workflow Token yet (.github/workflows/token.yml), which comes with Symphony\'s adoption' + (tk.place && tk.place.org ? ', and no other repository of ' + tk.place.owner + ' that you may push to and that carries the topic symphony has it.' : '.');
     var reach = gh('GET', '/repos/' + repo).then(function () { return true; }, function (e) { return e.status !== 404; });
     return reach.then(function (reached) {
-      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it.';
+      if (!reached) return ' The sign-in does not reach ' + repo + ': SymphonyBoard is not installed on it; install it at https://github.com/apps/' + APP_SLUG + '/installations/new, then press Add Token again.';
       return adoptionHint(repo, view, hint);
     });
   }
@@ -5934,7 +6177,7 @@
       add(view.step, add(el('p', 'admin__bar'), link(pr.html_url, 'Open the adoption pull request #' + pr.number)));
       return hint + ' Merge its adoption pull request first, then press Add Token again.';
     }).catch(function () {
-      return hint + ' Merge its adoption pull request first, or adopt it if it never was, then press Add Token again.';
+      return hint + ' Merge its adoption pull request first, or adopt it if it never was, at ' + FORM_URL + ', then press Add Token again.';
     });
   }
 
@@ -5999,7 +6242,7 @@
     drawTiles();
     view.tell('Starting the sign-in on GitHub Actions...');
     refuseCrowd([repo], place).then(function () {
-      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one.');
+      if (pooled && wanted) throw new Error('Renewing a token in ' + place.owner + '\'s pool is for an owner of ' + place.owner + '; add a new one with Add Token, and ask an owner to remove the old one (the owners are listed at https://github.com/orgs/' + place.owner + '/people?query=role%3Aowner).');
       // the run itself finds the free slot, since only an owner may read the pool's secrets
       return pooled ? {} : readSecrets(place);
     }).then(unlessStopped).then(function (by) {
@@ -6083,6 +6326,18 @@
       if (home !== repo) delete tokenHomes[place.owner + '/' + shownLogin];
       over();
       clear(view.step);
+      // the pool's secrets refused someone the page could not tell was an owner: they are not one,
+      // so the same press goes on into the pool through the Token run (intoPool), with no error
+      // only before the sign-in's issue is opened: once the person has signed in, a second sign-in
+      // would put a second copy of their token in the pool
+      if (step === 'secrets' && !issue && !pooled && !wanted && place.org && tk.place === place && tk.admin !== true && place.push !== false && (e.status === 403 || e.status === 404)) {
+        tk.admin = false;
+        drawTiles();
+        if (view.stop.parentNode) view.stop.parentNode.removeChild(view.stop);
+        say('GitHub lets only an owner of ' + place.owner + ' read its slots, so your token goes into its pool through the Token run instead, marked as yours.');
+        addByActions(repo, place, button, '', view.task);
+        return;
+      }
       if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
       var hint = Promise.resolve('');
       if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
@@ -6414,9 +6669,10 @@
     }
     if (lendToBusy) { line.textContent = lendToBusy; return box; }
     if (!lendTo) { line.textContent = 'Reading the list...'; return box; }
-    line.textContent = lendToError || (lendTo.length
+    clear(line);
+    rich(line, lendToError || (lendTo.length
       ? 'A token someone lends to ' + place.owner + ' without a say runs in these repositories from the moment it arrives:'
-      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.');
+      : 'No repository yet: a token lent to ' + place.owner + ' without a say waits in its slot until you lend it from its tile, or add a repository here.'));
     lendTo.forEach(function (id) {
       var row = el('p', 'admin__bar');
       var name = el('span', '', repoNames[id] || 'repository ' + id);
@@ -6688,7 +6944,7 @@
       var why = check();
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
-      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
+      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim(), at = tk.place;
       // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
       // sign-in that follows it, as one task
       d.close();
@@ -6703,6 +6959,16 @@
         say('Saved the settings of ' + tileName(wanted) + '; its runs follow them from their next start.');
       }, function (e) {
         tokenAdding = null;
+        // GitHub refused the owner's path to someone the page could not tell was an owner, as when
+        // their membership could not be read: they are not one here, so their token goes into the
+        // pool through the Token run, as for anyone who may write but owns no secret (intoPool)
+        if (adding && at && tk.place === at && at.org && tk.admin !== true && at.push !== false && (e.status === 403 || e.status === 404)) {
+          tk.admin = false;
+          drawTiles();
+          say('GitHub lets only an owner of ' + at.owner + ' write its slots directly, so your token goes into its pool through the Token run instead, marked as yours, in the next free slot; an owner of ' + at.owner + ' sets its model and where it runs.');
+          addByActions(tk.repo, tk.place, $('tk-tile-add') || save, '', task);
+          return;
+        }
         var words = 'The settings of ' + tileName(wanted) + ' could not be saved: ' + e.message + (e.status === 403 || e.status === 404 ? secretsNeeded(tk.place) : '');
         if (task) task.end(words, true); else say(words, true);
       });
@@ -6754,7 +7020,7 @@
     if (barred && tk.place.org) {
       var ask = btn('Ask to join ' + tk.repo, true, function () {
         ask.disabled = true;
-        requestAccess(tk.repo, function (t, failed) { problem.textContent = t; if (failed) ask.disabled = false; });
+        requestAccess(tk.repo, function (t, failed) { richText(problem, t); if (failed) ask.disabled = false; });
       });
       add(bar, ' ', ask);
     }
@@ -7103,7 +7369,7 @@
       $('lb-lead').textContent = tokenRows.length
         ? 'Issues the tokens of ' + place.owner + ' worked, by the label token:<id> a worker\'s run puts on them; closed counts those closed as done.'
         : 'No token of ' + place.owner + ' has an id yet: a token gets one when it is added, or when its settings are saved on the Tokens tab.';
-    }).catch(function (e) { if (leadersFor === repo) $('lb-lead').textContent = 'The leaderboard could not be read: ' + e.message; });
+    }).catch(function (e) { if (leadersFor === repo) richText($('lb-lead'), 'The leaderboard could not be read: ' + e.message); });
   }
 
   /* ============================================================
@@ -7315,7 +7581,7 @@
       driveConfig = null;
       driveAsked = false;
       showConnectState();
-      $('fd-connect-note').textContent = 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.';
+      richText($('fd-connect-note'), 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.');
     });
   }
   // PKCE as the GitHub sign-in does it, with a state of the drive's own, so that the return is told
@@ -8455,7 +8721,7 @@
       clear(body);
       var refused = e.status === 403 || e.status === 404;
       // someone who may not push here can still ask to join, which an administrator answers on this tab
-      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) $('sh-state').textContent = t; }); }, 5));
+      if (refused) add(body, addTileRow('+ Ask to join ' + repo, 'sh-ask', function () { requestAccess(repo, function (t) { if (mine === shareSeq && state.repo === repo) richText($('sh-state'), t); }); }, 5));
       add(body, addTileRow('+ Add people', 'sh-tile', function () { openDialog('dlg-share'); }, 5));
       $('sh-state').textContent = (refused
         ? 'GitHub shows who has access to ' + repo + ' only to people who may push to it' + (signedInByApp() ? ', through an installation that may read its administration' : ', with a token that may') + '. + Ask to join asks its administrators to let you in.'
@@ -8538,8 +8804,8 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      said.textContent = e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      richText(said, e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message);
+      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
     });
   }
   function shareRemove(p, button) {
@@ -8554,7 +8820,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message), true);
+      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
     });
   }
   // A request to join is an issue whose first line is ACCESS_MARK, opened by the person asking, which
@@ -8590,7 +8856,7 @@
         });
       });
     }).catch(function (e) {
-      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly.' : 'Asking did not work: ' + e.message), true);
+      tell((e.status === 403 || e.status === 404 || e.status === 410 ? 'GitHub would not let you open an issue on ' + repo + ', so you cannot ask from here; ask one of its administrators directly; its owner\'s page is https://github.com/' + repo.split('/')[0] + '.' : 'Asking did not work: ' + e.message), true);
     });
   }
   function shareAskRow(issue) {
@@ -8634,7 +8900,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation.' : e.message;
+      var why = e.status === 403 || e.status === 404 ? 'GitHub refused: answering a request needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message;
       say(invited ? 'Invited ' + login + ', but the request could not be closed: ' + why : why, true);
     });
   }
@@ -8694,14 +8960,14 @@
   // read; the note that stands in for the cards; the problems that keep the proposal read-only; the
   // card open in the side panel; whether each repository a notebook names exists, is public or is
   // not found
-  var nb = { repo: '', era: 0, data: null, known: null, sha: null, catalogSha: null, note: '', problems: [], side: '', made: Object.create(null) };
+  var nb = { repo: '', era: 0, data: null, known: null, sha: null, catalogSha: null, note: '', problems: [], side: '', made: Object.create(null), admin: Object.create(null) };
   // the repository a write of notebooks.json is on its way to, the sign-in it went out under and which
   // write it is: kept apart from nb, which a Refresh or another repository clears, so a second write
   // never starts beside the first; a sign-out leaves the write's refusal unanswered (call), so the
   // lock goes with the sign-in, and a write that lands after one frees no lock a later write holds
   var nbWriting = '', nbWritingEnds = 0, nbWriteId = 0;
   function nbBusy() { if (nbWriting && nbWritingEnds !== ends) nbWriting = ''; return nbWriting; }
-  function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.sha = null; nb.catalogSha = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); }
+  function nbForget() { nb.era++; nb.repo = ''; nb.data = null; nb.known = null; nb.sha = null; nb.catalogSha = null; nb.note = ''; nb.problems = []; nb.side = ''; nb.made = Object.create(null); nb.admin = Object.create(null); }
   // private, internal (which every member of its enterprise may read) or public, by GitHub's word
   function nbVisibility(meta) {
     if (isPlain(meta) && (meta.visibility === 'private' || meta.visibility === 'internal' || meta.visibility === 'public')) return meta.visibility;
@@ -8804,7 +9070,11 @@
     names.reduce(function (done, name) {
       return done.then(function () {
         if (era !== nb.era) return;
-        return gh('GET', '/repos/' + owner + '/' + name).then(function (r) { var v = nbVisibility(r.data); return v === 'private' ? 'yes' : v; }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
+        return gh('GET', '/repos/' + owner + '/' + name).then(function (r) {
+          // whether the person may change its visibility, where GitHub says
+          if (isPlain(r.data) && isPlain(r.data.permissions) && typeof r.data.permissions.admin === 'boolean' && era === nb.era) nb.admin[name] = r.data.permissions.admin;
+          var v = nbVisibility(r.data); return v === 'private' ? 'yes' : v;
+        }, function (e) { return e.status === 404 ? 'no' : 'unread'; })
           .then(function (word) { if (era === nb.era) nb.made[name] = word; });
       });
     }, Promise.resolve()).then(function () { if (era === nb.era && names.length) drawNotebooks(); });
@@ -8927,8 +9197,21 @@
     if (nbFound(book.repository)) add(repoLine, link('https://github.com/' + owner + '/' + book.repository, owner + '/' + book.repository));
     else add(repoLine, typeof book.repository === 'string' ? book.repository : 'no repository named');
     add(side, repoLine);
-    if (made === 'public' || made === 'internal') add(side, add(el('p', 'tok__state tok__state--warn'), (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files: make it private on GitHub, under ',
-      link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).'));
+    if (made === 'public' || made === 'internal') {
+      // a person GitHub says does not administer it is pointed at neither the button nor the
+      // settings page, which GitHub shows only to an administrator
+      var opened = (made === 'public' ? 'The repository is public' : 'The repository is internal, which every member of its enterprise can read') + ', and a notebook names a person\'s files';
+      add(side, nb.admin[book.repository] !== false ? add(el('p', 'tok__state tok__state--warn'), opened + ': make it private here, or on GitHub under ',
+        link('https://github.com/' + owner + '/' + book.repository + '/settings', 'its settings'), ' (General, Danger Zone, Change visibility).')
+        : el('p', 'tok__state tok__state--warn', opened + ', so it should be private.'));
+      var priv = el('button', 'console__primary', nbPrivateBusy() === owner + '/' + book.repository ? 'Making it private...' : 'Make private');
+      priv.type = 'button';
+      priv.id = 'nb-private';
+      priv.disabled = !!nbPrivateBusy();
+      priv.addEventListener('click', function () { makeNotebookPrivate(book.repository, priv); });
+      if (nb.admin[book.repository] === false) add(side, el('p', 'tkdlg__fact tkdlg__faint', 'Only an administrator of ' + owner + '/' + book.repository + ' may change its visibility, and GitHub says you are not one: ask one to make it private.'));
+      else add(side, add(el('p', 'admin__bar'), priv));
+    }
     else if (made) add(side, el('p', 'tok__state ' + (made === 'yes' ? 'tok__state--go' : made === 'no' ? 'tok__state--warn' : ''),
       made === 'yes' ? 'The repository is made.' : made === 'no' ? 'The repository is not made yet, or this sign-in cannot reach it' + (signedInByApp() ? ' (SymphonyBoard reaches only the repositories it is installed on)' : '') + ': the notebook skill makes it from this proposal.' : 'Whether the repository is made could not be read.'));
     if (typeof book.summary === 'string' && book.summary.trim()) add(side, el('p', 'tkdlg__fact', book.summary));
@@ -8952,6 +9235,59 @@
       add(list, add(el('li', 'nb__file'), el('span', 'nb__name', String(p)), el('span', 'nb__kind', 'not in the catalog')));
     });
     add(side, list);
+  }
+  // a notebook's repository made private, as the person, once they confirm what the change costs:
+  // what GitHub's own question says, and, for a public repository, what GitHub's plans give a public
+  // repository alone. SymphonyBoard's Administration is what lets it, and GitHub lets only an
+  // administrator of the repository do it (an organization may keep it to its owners); one change at
+  // a time, and the answer, not the press, says what the repository is now. A sign-out leaves the
+  // change's refusal unanswered (call), so the lock goes with the sign-in, as the write's does, and an
+  // answer that comes after one frees no lock a later change holds
+  var nbPrivating = '', nbPrivatingEnds = 0, nbPrivateId = 0;
+  function nbPrivateBusy() { if (nbPrivating && nbPrivatingEnds !== ends) nbPrivating = ''; return nbPrivating; }
+  // GitHub Free enforces rulesets and branch protection only on a public repository, and runs code
+  // scanning, secret scanning and push protection on a private one only with GitHub Code Security or
+  // Secret Protection, which only an organization on a paid plan buys; an internal repository is an
+  // enterprise's, whose plan enforces both on a private one, and GitHub runs those products on an
+  // internal repository on the same terms as on a private one, so it loses none of them
+  function nbPrivateWords(full, was) {
+    return 'Make ' + full + ' private? Only the people given access to it will see it. GitHub erases its stars and watchers'
+      + (was === 'public' ? ', leaves its forks public and detaches them, and unpublishes its GitHub Pages site on a free plan, where its rulesets and branch protection also stop being enforced.'
+        + ' Its code scanning stops unless its owner has GitHub Code Security, and its secret scanning and push protection unless its owner has GitHub Secret Protection'
+        : ' and its forks become private, those of people without access removed')
+      + '. The repository\'s files and history themselves stay as they are.';
+  }
+  function makeNotebookPrivate(name, button) {
+    var owner = nb.repo.split('/')[0], full = owner + '/' + name, era = nb.era, was = nb.made[name];
+    if (was !== 'public' && was !== 'internal') return;
+    if (nbPrivateBusy()) { say(nbPrivating + ' is being made private; press again once GitHub has answered.'); return; }
+    if (!window.confirm(nbPrivateWords(full, was))) return;
+    var mine = ++nbPrivateId;
+    nbPrivating = full;
+    nbPrivatingEnds = ends;
+    button.disabled = true;
+    button.textContent = 'Making it private...';
+    say('Making ' + full + ' private...');
+    var answered = false;
+    gh('PATCH', '/repos/' + full, { visibility: 'private' }).then(function (r) {
+      var now = nbVisibility(r.data);
+      answered = true;
+      if (era === nb.era) nb.made[name] = now === 'private' ? 'yes' : now;
+      say(now === 'private' ? full + ' is private now: only the people given access to it see it.' : 'GitHub answered, but ' + full + ' is still ' + now + '.', now !== 'private');
+    }, function (e) {
+      var access = e.status === 404 || e.status === 422 || (e.status === 403 && !nbRateLimited(e));
+      say('GitHub did not make ' + full + ' private: ' + e.message + (access ? ' Only an administrator of ' + full + ' may change its visibility'
+        + (signedInByApp() ? ', with SymphonyBoard installed on it and its Administration permission accepted' : ', with Administration: read and write on the token')
+        + ', and an organization may keep the change to its owners.' : ''), true);
+    }).then(function () {
+      if (nbPrivateId === mine) nbPrivating = '';
+      // a Refresh, another repository in the bar or a sign-in again moved the tab on meanwhile, and
+      // what it read of the repository since may predate the change: where it still shows a catalog
+      // of the same owner, whose notebooks may name this repository, it is read again, as a write's
+      // repository is; otherwise the tab is drawn again, so no button the lock held stays held
+      if (answered && era !== nb.era && nb.repo && nb.repo.split('/')[0] === owner) nbReread(nb.repo);
+      else drawNotebooks();
+    });
   }
   // a slug from a title, as notebook.py takes one: lowercase letters, digits and dashes, up to forty,
   // made unique among the proposal's with a number
