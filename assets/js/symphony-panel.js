@@ -5336,6 +5336,7 @@
       readOne(place.base + '/variables/' + LEND_TO_VARIABLE).then(function (have) {
         if (lendToStale(place)) return;
         lendTo = lendToIds(have && have.value);
+        if (have && have.visibility !== 'selected') closeLendTo(place);
         drawTiles();
       }, function (e) {
         if (lendToStale(place)) return;
@@ -5382,20 +5383,25 @@
     add(box, add(el('p', 'admin__bar'), field, ' ', addRepo));
     return box;
   }
+  // an older page wrote the list readable by the organization's private repositories' workflows;
+  // an owner who opens the tab closes it to every repository, leaving its value as it is, and a
+  // failure is left for the next save, which closes it too
+  function closeLendTo(place) {
+    gh('PATCH', place.base + '/variables/' + LEND_TO_VARIABLE, { visibility: 'selected', selected_repository_ids: [] }).catch(function () {});
+  }
   function writeLendTo(place, ids) {
     lendToBusy = 'Saving the list...';
     lendToError = '';
     drawTiles();
-    // the run reads the list with the App's token, so it needs no repository's reach; private
-    // visibility still lets the organization's private repositories' workflows read it, which the
-    // statement says; an empty list is the variable gone, since GitHub keeps no empty value
+    // the run reads the list with the App's token, so no repository's workflows need it: it is
+    // written for selected repositories with none selected, which every write sets again, so a
+    // list an older page made readable by the private repositories is closed at its next save;
+    // an empty list is the variable gone, since GitHub keeps no empty value
     var path = place.base + '/variables/' + LEND_TO_VARIABLE;
+    var body = { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'selected', selected_repository_ids: [] };
     var write = !ids.length
       ? gh('DELETE', path).catch(function (e) { if (e.status !== 404) throw e; })
-      : readOne(path).then(function (have) {
-        if (!have) return gh('POST', place.base + '/variables', { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'private' });
-        return gh('PATCH', path, { name: LEND_TO_VARIABLE, value: ids.join(','), visibility: 'private' });
-      });
+      : readOne(path).then(function (have) { return have ? gh('PATCH', path, body) : gh('POST', place.base + '/variables', body); });
     return write.then(function () {
       if (lendToStale(place)) return;
       lendTo = ids;
