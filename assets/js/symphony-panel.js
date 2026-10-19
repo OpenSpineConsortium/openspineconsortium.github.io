@@ -1024,7 +1024,7 @@
       Promise.all(dead.map(function (t) { return exchange('/revoke', { access_token: t }); })).then(function () {
         if (era === choices) say(where + ', and the sign-in\'s token is revoked at GitHub.' + others + pat + listed);
       }).catch(function (e) {
-        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
+        if (era === choices) say(where + ', but GitHub could not be asked to revoke the sign-in\'s token (' + e.message + '). It runs out within eight hours; Revoke beside SymphonyBoard at https://github.com/settings/apps/authorizations ends it now.' + others + pat + listed, true);
       });
       return;
     }
@@ -5394,10 +5394,13 @@
       clear(view.step);
       // the pool's secrets refused someone the page could not tell was an owner: they are not one,
       // so the same press goes on into the pool through the Token run (intoPool), with no error
-      if (step === 'secrets' && !pooled && !wanted && place.org && tk.admin !== true && place.push !== false && (e.status === 403 || e.status === 404)) {
+      // only before the sign-in's issue is opened: once the person has signed in, a second sign-in
+      // would put a second copy of their token in the pool
+      if (step === 'secrets' && !issue && !pooled && !wanted && place.org && tk.place === place && tk.admin !== true && place.push !== false && (e.status === 403 || e.status === 404)) {
         tk.admin = false;
         drawTiles();
-        view.tell('GitHub lets only an owner of ' + place.owner + ' read its slots, so your token goes into its pool through the Token run instead, marked as yours.');
+        if (view.stop.parentNode) view.stop.parentNode.removeChild(view.stop);
+        say('GitHub lets only an owner of ' + place.owner + ' read its slots, so your token goes into its pool through the Token run instead, marked as yours.');
         addByActions(repo, place, button, '', view.task);
         return;
       }
@@ -6007,7 +6010,7 @@
       var why = check();
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
-      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim();
+      var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim(), at = tk.place;
       // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
       // sign-in that follows it, as one task
       d.close();
@@ -6025,10 +6028,10 @@
         // GitHub refused the owner's path to someone the page could not tell was an owner, as when
         // their membership could not be read: they are not one here, so their token goes into the
         // pool through the Token run, as for anyone who may write but owns no secret (intoPool)
-        if (adding && tk.place && tk.place.org && tk.admin !== true && tk.place.push !== false && (e.status === 403 || e.status === 404)) {
+        if (adding && at && tk.place === at && at.org && tk.admin !== true && at.push !== false && (e.status === 403 || e.status === 404)) {
           tk.admin = false;
           drawTiles();
-          task.tell('GitHub lets only an owner of ' + tk.place.owner + ' write its slots directly, so your token goes into its pool through the Token run instead, marked as yours.');
+          say('GitHub lets only an owner of ' + at.owner + ' write its slots directly, so your token goes into its pool through the Token run instead, marked as yours, in the next free slot; an owner of ' + at.owner + ' sets its model and where it runs.');
           addByActions(tk.repo, tk.place, $('tk-tile-add') || save, '', task);
           return;
         }

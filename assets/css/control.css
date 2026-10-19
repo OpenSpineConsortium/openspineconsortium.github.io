@@ -1318,3 +1318,5 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   padding-left: max(var(--band-side), calc(env(safe-area-inset-left, 0px) + 16px));
   padding-right: max(var(--band-side), calc(env(safe-area-inset-right, 0px) + 16px));
 }
+/* a long address in a message wraps instead of pushing the foot sideways */
+#msg a { overflow-wrap: anywhere; color: inherit; text-decoration: underline; }
