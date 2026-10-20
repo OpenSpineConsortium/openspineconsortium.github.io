@@ -9823,6 +9823,7 @@
   function loadFolders() {
     var asked = ++folderReading;
     var repo = foldersRepo();
+    var account = shownLogin;
     letPrefilledGo(repo);
     foldersFor = repo;
     tracked = null;
@@ -9849,6 +9850,7 @@
       if (walkOnly) drawWalk(repo, all[1]);
       else drawTracked(repo, tracked, all[1], all[2]);
       showPublic(all[3]);
+      if (!walkOnly) switchSyncOn(repo, tracked, all[1], all[2], account, asked);
       // what the repository tracks is ticked already, so Connect again needs no second pick
       if (tracked && !pickedOrder.length) {
         trackedItems(tracked).forEach(function (i) { tick({ id: i.id, name: i.name, parentReference: { driveId: i.drive } }, true, repo); });
@@ -10038,6 +10040,18 @@
       if (v && String(v.value).toLowerCase() === 'on') return false;
       var body = { name: SYNC_SWITCH, value: 'on' };
       return (v ? gh('PATCH', path + '/' + SYNC_SWITCH, body, undefined, false, account) : gh('POST', path, body, undefined, false, account)).then(function () { return true; });
+    });
+  }
+  // A repository that tracks a drive already, its workflow, file and secret all there and the
+  // connection not run out, has its half-hourly sync switched on when the tab opens it, as the owner
+  // chose on 2026-10-20, so a drive tracked before Track set the switch syncs without another Track;
+  // said only when it wrote or could not
+  function switchSyncOn(repo, config, secret, workflow, account, asked) {
+    if (workflow !== true || !config || !secret || secret.unread || lapsedOn(config)) return;
+    ensureSyncOn(repo, account).then(function (wrote) {
+      if (wrote && asked === folderReading) none($('fd-tracked'), 'The half-hourly sync was off in ' + repo + ', so the repository variable ' + SYNC_SWITCH + ' is now set to on.');
+    }, function (e) {
+      if (asked === folderReading) none($('fd-tracked'), 'The half-hourly sync is off in ' + repo + ' and the repository variable ' + SYNC_SWITCH + ' could not be set to on (' + e.message + '); Sync now still runs it by hand.');
     });
   }
   // Track on a repository that only walks the drive: the secret alone, no file and no run, since
