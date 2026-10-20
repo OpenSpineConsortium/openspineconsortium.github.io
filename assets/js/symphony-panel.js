@@ -2191,20 +2191,25 @@
     });
     return best ? best.full_name : '';
   }
-  function openUsualRepo() {
-    var asked = token;
+  function openUsualRepo(again) {
+    var asked = token, was = state;
     $('cp-summary').textContent = 'Looking for your repository with Symphony...';
-    function chosenMeanwhile() { return token !== asked || state.repo || chosenRepo() || $('dlg-repos').open; }
-    pickerRead().then(function (groups) {
-      if (!groups || chosenMeanwhile()) return;
-      var name = usualRepo(groups);
-      if (!name) { $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.'; openDialog('dlg-repos'); return; }
-      loadRepo(name);
-      say('Opened ' + name + ', your repository with Symphony pushed most recently. Press + Add repository to open another; this browser opens the one you were on last from now on.');
-    }).catch(function () {
-      if (chosenMeanwhile()) return;
+    // a repository opened, a picker opened or a sign-in changed since the lookup began wins over it
+    function chosenMeanwhile() { return state !== was || chosenRepo() || $('dlg-repos').open || !token; }
+    function none() {
       $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.';
       openDialog('dlg-repos');
+    }
+    pickerRead().then(function (groups) {
+      if (chosenMeanwhile()) return;
+      // the token renewed while GitHub listed them: the lookup is made once more with the new one
+      if (!groups || token !== asked) { if (again) none(); else openUsualRepo(true); return; }
+      var name = usualRepo(groups);
+      if (!name) { none(); return; }
+      loadRepo(name);
+      say('Opened ' + name + ', your repository with Symphony pushed most recently. Press + Add repository to open another.');
+    }).catch(function () {
+      if (!chosenMeanwhile()) none();
     });
   }
   function pickerOpen() {
