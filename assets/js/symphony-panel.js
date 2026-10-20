@@ -10529,11 +10529,35 @@
       return items.length === 1 ? items[0].login : '';
     });
   }
+  // GitHub answers 403 alike whether the person does not administer the repository or the
+  // installation has not accepted Administration, so the page finds out which: the repository's own
+  // answer gives the person's role, and a sign-in through the App reads the installation's permissions
+  function shareInstallationPage(inst) {
+    return inst.account.type === 'Organization'
+      ? 'https://github.com/organizations/' + inst.account.login + '/settings/installations/' + inst.id
+      : 'https://github.com/settings/installations/' + inst.id;
+  }
+  function shareRefused(repo, e, doing) {
+    if (e.status !== 403 && e.status !== 404) return Promise.resolve('GitHub refused ' + doing + ': ' + e.message);
+    var owner = repo.split('/')[0].toLowerCase();
+    var perms = state && state.repo === repo && state.meta ? state.meta.permissions : null;
+    if (perms && perms.admin === false) {
+      return Promise.resolve('GitHub refused ' + doing + ': only an administrator of ' + repo + ' may do it, and you ' + (perms.push ? 'have Write' : 'may not push') + ' there. An administrator does it from their own Share tab.');
+    }
+    if (!signedInByApp()) return Promise.resolve('GitHub refused ' + doing + ': this token needs the repository permission Administration: Read and write on ' + repo + '.');
+    return ghListOf('/user/installations?per_page=100', 'installations', 2).then(function (installs) {
+      var inst = installs.filter(function (i) { return i.account && String(i.account.login).toLowerCase() === owner; })[0];
+      if (!inst) return 'GitHub refused ' + doing + ': SymphonyBoard is not installed where ' + repo + ' is, so the sign-in cannot act on it.';
+      if (!inst.permissions || inst.permissions.administration !== 'write') {
+        return 'GitHub refused ' + doing + ': SymphonyBoard\'s installation has not accepted the Administration permission yet. Accept it once at ' + shareInstallationPage(inst) + ' (Review request, then Accept).';
+      }
+      return 'GitHub refused ' + doing + ' (' + e.status + ') although you administer ' + repo + ' and SymphonyBoard holds Administration there: ' + e.message;
+    }, function () {
+      return 'GitHub refused ' + doing + ' (' + e.status + '): it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.';
+    });
+  }
   function shareInviteFailed(e) {
-    var words = e.status === 403 || e.status === 404
-      ? 'GitHub refused the invitation: only an administrator of ' + shareRepo() + ' may invite people, and the sign-in does it only once SymphonyBoard\'s Administration permission is accepted on its installation (or with a pasted token that has Administration); a collaborator with Write cannot invite.'
-      : 'GitHub refused the invitation: ' + e.message;
-    shareSay(words + ' Open GitHub\'s Add people instead.');
+    return shareRefused(shareRepo(), e, 'the invitation').then(function (words) { shareSay(words + ' Open GitHub\'s Add people instead.'); });
   }
   function shareInvite() {
     if (!shareReady()) return;
@@ -10693,8 +10717,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      richText(said, e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message);
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: changing a role needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
+      return shareRefused(repo, e, 'the role change').then(function (words) { richText(said, words); say(words, true); });
     });
   }
   function shareRemove(p, button) {
@@ -10709,7 +10732,7 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
-      say((e.status === 403 || e.status === 404 ? 'GitHub refused: it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.' : e.message), true);
+      return shareRefused(repo, e, pending ? 'withdrawing the invitation' : 'taking the access away').then(function (words) { say(words, true); });
     });
   }
   // A request to join is an issue whose first line is ACCESS_MARK, opened by the person asking, which
