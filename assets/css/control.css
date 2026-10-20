@@ -505,6 +505,26 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .folders__who { flex: 1 1 auto; margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
 #tab-folders .folders__head button { margin: 0; }
 #tab-folders .folders__browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* the start, as + Add repository draws its own: a dashed tile opening the drives to choose from,
+   and, once one is connected, its cloud beside the words that say whose it is */
+#tab-folders .folders__head button.folders__add { padding: 4px 12px; border-radius: 100px; border: 1px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+#tab-folders .folders__head button.folders__add:hover { border-color: var(--teal); color: var(--teal); }
+#tab-folders .folders__who--on { display: flex; align-items: center; gap: 8px; }
+#tab-folders .folders__who--on::before { content: ""; flex: 0 0 auto; width: 26px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E") center / contain no-repeat; }
+#tab-folders .folders__start { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 8px 0; }
+#tab-folders .folders__addtile { margin: 0; width: 180px; height: 140px; border-radius: 10px; border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 1rem; font-weight: 600; }
+#tab-folders .folders__addtile:hover, #tab-folders .folders__addtile:focus-visible { border-color: var(--teal); color: var(--teal); }
+#tab-folders .folders__startnote { flex: 1 1 240px; margin: 0; align-self: center; color: var(--ink-soft); }
+.clouds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 8px; }
+.clouds .clouds__tile { position: relative; margin: 0; min-height: 120px; padding: 62px 10px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper-card); color: var(--ink); font-size: 0.95rem; font-weight: 600; text-align: center; box-sizing: border-box; }
+.clouds .clouds__tile::before { content: ""; position: absolute; top: 14px; left: 50%; width: 40px; height: 40px; margin-left: -20px; background: center / contain no-repeat; }
+.clouds .clouds__tile--onedrive::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E"); }
+.clouds .clouds__tile--gdrive::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F9D58' d='M8 3h8l7 12h-8z'/%3E%3Cpath fill='%23FFC107' d='M8 3L1 15l4 6 7-12z'/%3E%3Cpath fill='%234285F4' d='M5 21h14l4-6H9z'/%3E%3C/svg%3E"); }
+.clouds .clouds__tile--dropbox::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230061FE' d='M7 3l5 3.2L7 9.4 2 6.2zm10 0l5 3.2-5 3.2-5-3.2zM2 12.6l5-3.2 5 3.2-5 3.2zm15-3.2l5 3.2-5 3.2-5-3.2zM7 17l5-3.2 5 3.2-5 3.2z'/%3E%3C/svg%3E"); }
+.clouds button.clouds__tile:hover:not(:disabled) { border-color: var(--teal); }
+.clouds .clouds__tile--later { color: var(--ink-faint); opacity: 0.7; }
+.clouds .clouds__tile--later::after { content: "Coming later"; display: block; margin-top: 2px; font-size: 0.78rem; font-weight: 400; }
+.folders__new > summary { cursor: pointer; }
 #tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; flex: 1 1 auto; min-height: 240px; }
 /* where the page scrolls (a phone, a short window), the panes keep a height of their own, so a long
    folder scrolls in its list with its heading held and the status bar in reach */
