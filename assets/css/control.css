@@ -1791,3 +1791,131 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 }
 /* a long address in a message wraps instead of pushing the foot sideways */
 #msg a { overflow-wrap: anywhere; color: inherit; text-decoration: underline; }
+
+/* ============================================================
+   The phone's home screen (the owner, 2026-10-20): one thing on the screen at a time. The console
+   is fixed over the whole screen, so the page never scrolls on into the footer; with no tab open
+   (console--home, symphony-panel.js showHome) it shows the repository and the tabs as square
+   buttons about a centimetre across, as an iPhone's home screen, with the Ask Claude bar and the
+   foot; a tab pressed fills the screen under a bar whose back button returns to the buttons, and
+   only the tab scrolls; a dialog fills the screen over the tab, which it leaves as it was. These
+   rules stand last so they win over the phone's earlier ones, where the page scrolled.
+   ============================================================ */
+.console__phonebar { display: none; }
+@media (max-width: 900px), (max-height: 520px) {
+  html:has(body.page-console), body.page-console { overflow: hidden; overscroll-behavior: none; }
+  /* the breadcrumb and the footer would lie unseen under the console and give the page a length it
+     never scrolls; the site's bar, from its handle, still reaches every page */
+  body.page-console .crumbs-band, body.page-console .footer { display: none; }
+  body[data-shell] main > .console.section, .console.section {
+    /* below the Home Screen app's top inset, as the page's own top padding sets the deck elsewhere */
+    position: fixed; inset: env(safe-area-inset-top, 0px) 0 0 0; z-index: 40; height: auto; min-height: 0; overflow: hidden;
+    padding-top: 8px;
+    padding-bottom: 0;
+  }
+  .console__gate { min-height: 0; max-height: 100%; }
+  .console__app { flex: 1 1 auto; min-height: 0; }
+  .console__body { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  /* the foot rests on the screen's bottom, keeping its top padding, where its grip lies, and its own
+     bottom padding off the home bar (above) */
+  .console__status { position: relative; }
+
+  /* the home screen: the repository, then the tabs as a grid of icons with their names under them */
+  .console--home .console__split[data-split="side"] { display: none; }
+  /* the stage takes no room on the home screen, but Claude's answer, which the stage holds and which
+     is fixed to the screen here, still opens over it when it comes */
+  .console--home .console__stage { min-height: 0; height: 0; padding: 0; border: 0; overflow: visible; }
+  .console--home .console__stage > :not(.console__askdrawer) { display: none; }
+  /* the repository and the buttons scroll as one above the Ask Claude bar and the foot, which stay
+     on the screen, so a phone held sideways still reaches every button */
+  .console--home .console__side { min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; border: 0; background: transparent; }
+  .console--home .console__id { border-radius: 10px; border: 1px solid var(--line); background: var(--paper-card); }
+  .console--home .console__rail {
+    display: grid; flex-direction: column; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); align-content: start;
+    flex: 0 0 auto; gap: 16px 4px; padding: 16px 2px 12px; overflow: visible;
+    -webkit-mask-image: none; mask-image: none;
+  }
+  .console.console--home .console__rail button,
+  .console.console--home .console__rail button:hover,
+  .console.console--home .console__rail button[aria-selected="true"] {
+    position: relative; flex-direction: column; justify-content: flex-start; gap: 6px; width: 100%; padding: 0;
+    border: 0; background: transparent; box-shadow: none; color: var(--ink); text-align: center;
+  }
+  .console--home .rail__icon {
+    display: grid; place-items: center; width: 60px; height: 60px; border-radius: 14px;
+    background: linear-gradient(160deg, var(--icon, #2A9C8E), color-mix(in srgb, var(--icon, #2A9C8E) 62%, #000));
+    color: #FFFFFF; font-size: 1.75rem; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  .console--home .console__rail button:active .rail__icon { transform: scale(0.94); }
+  .console--home .console__rail button:focus-visible { outline: none; }
+  .console--home .console__rail button:focus-visible .rail__icon { outline: 2px solid var(--teal-bright); outline-offset: 3px; }
+  .console--home .console__rail button:nth-child(5n+1) { --icon: #2A9C8E; }
+  .console--home .console__rail button:nth-child(5n+2) { --icon: #3D7BD9; }
+  .console--home .console__rail button:nth-child(5n+3) { --icon: #C9772E; }
+  .console--home .console__rail button:nth-child(5n+4) { --icon: #7C5BC7; }
+  .console--home .console__rail button:nth-child(5n+5) { --icon: #2F9E5A; }
+  .console--home .rail__name {
+    flex: 0 0 auto; max-width: 100%; font-size: 0.74rem; line-height: 1.2; white-space: normal; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  /* a count is the red badge on the icon's corner, as a phone shows unread items */
+  .console--home .rail__count {
+    position: absolute; top: -6px; left: calc(50% + 18px); min-width: 22px; padding: 1px 6px; border-radius: 100px;
+    background: #E5484D; color: #FFFFFF; font-size: 0.72rem; font-weight: 600; line-height: 1.5; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+  .console--home .rail__count:empty, .console--home .rail__count[data-zero] { display: none; }
+
+  /* a tab: the side column gives way, the stage fills the screen under the back bar, and only the
+     tab scrolls, its head held where the tab has one */
+  .console:not(.console--home) .console__side, .console:not(.console--home) .console__split[data-split="side"] { display: none; }
+  .console:not(.console--home) .console__stage { padding: 6px 10px 10px; }
+  .console:not(.console--home) .console__phonebar {
+    display: flex; flex: 0 0 auto; align-items: center; gap: 10px; min-width: 0;
+    margin: 0 -4px 6px; padding: 0 0 6px; border-bottom: 1px solid var(--line-soft);
+  }
+  .console button.console__back { flex: 0 0 auto; margin: 0; min-height: 40px; padding: 4px 14px 4px 8px; font-size: 1rem; font-weight: 600; color: var(--teal); border-color: transparent; }
+  .console button.console__back span { font-size: 1.6rem; line-height: 1; margin-right: 2px; vertical-align: -2px; }
+  .console__phonetitle { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .console__panel { overflow-y: auto; overscroll-behavior: contain; }
+  .console__scroll { overflow: auto; }
+  /* one window at a time: the Ask Claude bar and who is signed in stay on the home screen; the foot
+     keeps the page's message under a tab */
+  .console:not(.console--home) > .console__askbar { display: none; }
+  .console:not(.console--home) .console__me { display: none; }
+
+  /* a dialog fills the screen over the tab, the page held still beneath it, and closing it gives
+     the tab back as it was */
+  .tkdlg, .cpdlg, .cpdlg--wide {
+    inset: 0; margin: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border: 0; border-radius: 0;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+    overscroll-behavior: contain;
+  }
+  .tkdlg::backdrop { background: var(--paper-card, #161E1C); }
+  /* Explore, folded wide, took the whole screen over the page on its own; every tab does that here
+     now, so it stays in the stage under the back bar like the others */
+  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]),
+  body.page-console.console-bar-auto .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) { position: static; z-index: auto; padding: 0; background: transparent; }
+  /* and its level fills the tab, folded or not, as it filled the screen, rather than a height of
+     its own made for a page that scrolled */
+  .console #cp-app:not(.hidden) #tab-explore:not([hidden]) .ex__body { flex: 1 1 auto; height: auto; min-height: 0; }
+}
+/* the site bar's handle stands at the top centre over the console where a finger is the pointer, so
+   the screen's first row starts under it */
+@media (max-width: 900px) and (hover: none), (max-width: 900px) and (any-pointer: coarse), (max-height: 520px) and (hover: none), (max-height: 520px) and (any-pointer: coarse) {
+  body.console-bar-auto[data-shell] main > .console.section { padding-top: 24px; }
+  .tkdlg, .cpdlg, .cpdlg--wide { padding-top: calc(28px + env(safe-area-inset-top, 0px)); }
+}
+/* a phone held sideways has little height: under a tab the back bar is a slim row with the site
+   bar's handle over its empty middle, the stage gives up its frame and the foot is one row, so the
+   tab keeps most of the screen */
+@media (max-height: 520px) {
+  body[data-shell] main > .console.section, body.console-bar-auto[data-shell] main > .console.section { padding-top: 4px; }
+  .console:not(.console--home) .console__stage { padding: 2px 4px 4px; border: 0; background: transparent; }
+  .console:not(.console--home) .console__phonebar { margin: 0 0 2px; padding: 0 0 2px; }
+  .console button.console__back { min-height: 30px; padding-top: 1px; padding-bottom: 1px; }
+  /* and a tab's foot is one row, its message beside Clear, sized or not, so the tab keeps its height
+     and the grip takes the foot from the size it rests at (footBounds takes its least from one row) */
+  .console:not(.console--home):not(.console--foot) .console__status #msg { flex: 1 1 0; }
+  .console.console--foot:not(.console--home) > .console__status { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
+  .console.console--foot:not(.console--home) > .console__status #msg { grid-column: 1; }
+}
