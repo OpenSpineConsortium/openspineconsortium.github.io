@@ -509,6 +509,8 @@ html.graph--held body { overflow: hidden; }
    and, once one is connected, its cloud beside the words that say whose it is */
 #tab-folders .folders__head button.folders__add { padding: 4px 12px; border-radius: 100px; border: 1px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
 #tab-folders .folders__head button.folders__add:hover { border-color: var(--teal); color: var(--teal); }
+#tab-folders .folders__head button.folders__forget { padding: 4px 10px; border: 0; background: transparent; color: var(--ink-soft); font-size: 0.82rem; text-decoration: underline; white-space: nowrap; }
+#tab-folders .folders__head button.folders__forget:hover { color: var(--teal); }
 #tab-folders .folders__who--on { display: flex; align-items: center; gap: 8px; }
 #tab-folders .folders__who--on::before { content: ""; flex: 0 0 auto; width: 26px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E") center / contain no-repeat; }
 #tab-folders .folders__start { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 8px 0; }
