@@ -1411,7 +1411,9 @@
   var dialogOpeners = {
     'dlg-worker': function () { workerDialog(null); },
     'dlg-repos': function () { pickerOpen(); },
-    'dlg-share': function () { shareDialogOpen(); }
+    'dlg-share': function () { shareDialogOpen(); },
+    // a read of what the repository tracks that failed is tried again when the steps are opened
+    'dlg-track': function () { var s = $('fd-say'); if (s) clear(s); if (foldersRepo() !== foldersFor) loadFolders(); }
   };
   // the one dialog a card's status and settings are drawn in
   function itemDialog(title) {
@@ -2061,9 +2063,6 @@
     return loadMeta(s).then(function () {
       if (stale(s)) return;
       if (consoleTab === 'notebooks' && consoleOnOpen.notebooks) consoleOnOpen.notebooks();
-      // the saved catalog read needs the repository's meta (private, and no drive connected), which
-      // the folders tab's earlier open could not see; now that meta is in, draw it if the tab is open
-      if (consoleTab === 'folders' && !drive) maybeCatalog();
       return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
     }).then(function () {
       letGo();
@@ -8102,8 +8101,8 @@
   var DRIVE_SECRET = 'SYMPHONY_DRIVE_REFRESH';
   var DRIVE_WORKFLOW = 'drive-sync.yml';
   var DRIVE_BRANCH = 'symphony/drive';
-  // the drive organizer's catalog: catalog.json on the branch drive-catalog, a flat list of the
-  // drive's folders and files whose paths start with this root; read when no drive is connected
+  // the drive organizer's catalog, which the Notebooks tab reads: catalog.json on the branch
+  // drive-catalog, a flat list of the drive's folders and files whose paths start with this root
   var CATALOG_FILE = 'catalog.json';
   var CATALOG_BRANCH = 'drive-catalog';
   var CATALOG_ROOT = 'OneDrive';
@@ -8142,14 +8141,6 @@
   // was last drawn for
   var foldersFor = null;
   var listedFor = null;
-  // the saved catalog a repository's drive-catalog branch holds, read when no drive is connected and
-  // the repository is private; it feeds the same explorer, read-only, with no Track or ticking
-  var catalog = null;
-  var catalogFor = '';
-  var catalogKids = null;
-  var catalogMode = false;
-  var catalogBusy = false;
-  var catalogLoading = 0;
   // The drive's refresh token is sealed in this browser for the repository's public key, as GitHub's
   // own secrets page seals a secret, with the vendored sealed box (tweetnacl and blake2b); the Tokens
   // tab no longer seals anything, so the tab keeps the loader and its two base64 helpers itself
@@ -8240,7 +8231,6 @@
     listedFor = null;
     foldersFor = null;
     pendingPull = Object.create(null);
-    catalogMode = false; catalog = null; catalogFor = ''; catalogBusy = false;
     if (!$('fd-browser')) return;
     clear($('fd-tracked'));
     drawPicked();
@@ -8418,7 +8408,6 @@
   // an item ticked in the drive's list is the person's own; one a repository's file ticked carries
   // that repository's name, so choosing another repository lets it go
   function tick(it, on, from) {
-    if (catalogMode) return;
     var item = itemOf(it);
     if (!item.id) return;
     if (on && !picked[item.id]) { item.from = from || ''; picked[item.id] = item; pickedOrder.push(item.id); }
@@ -8435,6 +8424,8 @@
       list.appendChild(li);
     });
     $('fd-picked-head').textContent = pickedOrder.length ? 'Ticked, ' + plural(pickedOrder.length, 'item') + ':' : 'Nothing ticked yet.';
+    // the head's button says how much is ticked, in every folder, since the list shows one folder
+    $('fd-track-open').textContent = pickedOrder.length ? 'Track in a repository (' + pickedOrder.length + ' ticked)' : 'Track in a repository';
     // the drive's list shows what is ticked, whichever answered first, the drive's or the repository's
     Array.prototype.forEach.call(document.querySelectorAll('#fd-items input[data-id]'), function (box) { box.checked = !!picked[box.getAttribute('data-id')]; });
   }
@@ -8534,7 +8525,7 @@
   function appName(app) { return { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint', 'ms-visio': 'Visio' }[app] || 'its app'; }
   function openItem(it) {
     if (it.folder) { go(crumbs.concat([{ id: String(it.id), name: String(it.name || ''), url: httpsOnly(it.webUrl) }])); return; }
-    if (!catalogMode && officeApp(it)) openInApp(it); else openInBrowser(it);
+    if (officeApp(it)) openInApp(it); else openInBrowser(it);
   }
 
   // a mark for an item's kind, drawn here, so no picture comes from anywhere; its letters are the
@@ -8572,7 +8563,6 @@
     return explorer.cache[id || 'root'];
   }
   function readChildren(id) {
-    if (catalogMode) return Promise.resolve(catalogChildren(id));
     var key = id || 'root', have = cachedRead(id);
     if (have) return have;
     var url = id ? '/me/drive/items/' + encodeURIComponent(id) + '/children' + GRAPH_SELECT : '/me/drive/root/children' + GRAPH_SELECT;
@@ -8586,90 +8576,8 @@
     read.catch(function () { if (d === drive && explorer.cache[key] === read) delete explorer.cache[key]; });
     return read;
   }
-  /* ---------- the saved catalog, drawn in the same explorer when no drive is connected ---------- */
-  // The drive organizer writes catalog.json to the branch drive-catalog of a private repository: a
-  // flat list of the drive's folders and files, their paths starting with CATALOG_ROOT. Read with
-  // the person's GitHub token, it feeds the same explorer, read-only (no Track, no ticking), so a
-  // person sees the whole drive without connecting one. Connecting a drive puts the live drive back.
-  // The catalog may lack a modified date or a web link for some files (treated as unknown, never an
-  // error), and mime is empty, so the kind comes from the name as it does for a live drive.
+  // a path's last name, as the drive organizer's catalog writes paths (the Notebooks tab reads them)
   function catLast(path) { var s = String(path || '').split('/').filter(Boolean); return s.length ? s[s.length - 1] : ''; }
-  function catParent(path, name) {
-    var p = String(path || '');
-    if (name) { var tail = '/' + name; if (p.length >= tail.length && p.slice(-tail.length) === tail) return p.slice(0, -tail.length); }
-    var i = p.lastIndexOf('/');
-    return i >= 0 ? p.slice(0, i) : '';
-  }
-  // the flat lists turned into children by folder id, the explorer root (id '') under the key ''
-  function buildCatalogTree(data) {
-    catalogKids = Object.create(null);
-    var pathId = Object.create(null);
-    pathId[CATALOG_ROOT] = '';
-    var folders = Array.isArray(data.folders) ? data.folders : [];
-    var files = Array.isArray(data.files) ? data.files : [];
-    // each folder path takes a unique node id: its own id where that is free, else a suffixed form,
-    // so two folders sharing an id in a malformed catalog never merge children or make the tree a
-    // cycle (the explorer keys open state and children by this id, and ids drive recursion)
-    var usedId = Object.create(null);
-    folders.forEach(function (f) {
-      if (!f || typeof f.path !== 'string' || f.path === CATALOG_ROOT) return;
-      var base = String(f.id || f.path), fid = base, n = 0;
-      while (Object.prototype.hasOwnProperty.call(usedId, fid) && usedId[fid] !== f.path) fid = base + '#' + (++n);
-      usedId[fid] = f.path;
-      pathId[f.path] = fid;
-    });
-    function kidsOf(id) { return catalogKids[id] || (catalogKids[id] = []); }
-    function parentId(path, name) {
-      var pp = catParent(path, name);
-      if (pp === '' || pp === CATALOG_ROOT) return '';
-      return Object.prototype.hasOwnProperty.call(pathId, pp) ? pathId[pp] : '';
-    }
-    folders.forEach(function (f) {
-      if (!f || typeof f.path !== 'string' || f.path === CATALOG_ROOT) return;
-      kidsOf(parentId(f.path)).push({ id: pathId[f.path], name: catLast(f.path), folder: { childCount: 0 }, lastModifiedDateTime: f.latest ? String(f.latest) : '', webUrl: typeof f.web === 'string' ? f.web : '', parentReference: { driveId: f.drive ? String(f.drive) : '' } });
-    });
-    files.forEach(function (fl) {
-      if (!fl || typeof fl.path !== 'string') return;
-      var nm = typeof fl.name === 'string' && fl.name ? fl.name : catLast(fl.path);
-      kidsOf(parentId(fl.path, nm)).push({ id: String(fl.id || fl.path), name: nm, file: { mimeType: typeof fl.mime === 'string' ? fl.mime : '' }, size: typeof fl.size === 'number' ? fl.size : undefined, lastModifiedDateTime: fl.modified ? String(fl.modified) : '', webUrl: typeof fl.web === 'string' ? fl.web : '', parentReference: { driveId: fl.drive ? String(fl.drive) : '' } });
-    });
-    Object.keys(catalogKids).forEach(function (pid) {
-      catalogKids[pid].forEach(function (it) { if (it.folder) it.folder.childCount = (catalogKids[it.id] || []).length; });
-    });
-  }
-  function catalogChildren(id) { return ((catalogKids && catalogKids[id || '']) || []).slice(); }
-  // read the catalog for the chosen repository, once per repository, and draw it
-  function startCatalog(repo) {
-    var asked = ++catalogLoading;
-    catalogFor = repo;
-    catalog = null; catalogKids = null; catalogMode = false; catalogBusy = true;
-    crumbs = []; explorer.filter = ''; explorer.selected = '';
-    drawBrowser();
-    file(repo, CATALOG_FILE, CATALOG_BRANCH).then(function (text) {
-      // a read is stale if a newer one began, or the chosen repository changed, or a drive connected
-      // while it was in flight: it must not overwrite the view or mislabel another repository's
-      if (asked !== catalogLoading || repo !== foldersRepo() || drive) return;
-      catalogBusy = false;
-      var data = null; try { data = JSON.parse(text); } catch (e) { data = null; }
-      if (!data || typeof data !== 'object' || Array.isArray(data)) { catalog = null; catalogMode = false; drawBrowser(); return; }
-      catalog = data; buildCatalogTree(data); catalogMode = true;
-      crumbs = []; explorer.filter = ''; explorer.selected = '';
-      listFolder();
-    }, function (e) {
-      if (asked !== catalogLoading || repo !== foldersRepo() || drive) return;
-      catalogBusy = false; catalog = null; catalogMode = false;
-      drawBrowser();
-    });
-  }
-  // when no drive is connected: show the chosen private repository's catalog if it has one, reading
-  // it once per repository; a drive, a public repository or no repository shows the connect prompt
-  function maybeCatalog() {
-    var repo = foldersRepo();
-    if (drive) { catalogMode = false; return; }
-    if (!repo || !token || !state.meta || isPublic(state.meta)) { catalogMode = false; catalog = null; catalogFor = ''; drawBrowser(); return; }
-    if (catalogFor === repo) { if (catalog) listFolder(); else drawBrowser(); return; }
-    startCatalog(repo);
-  }
   function resetExplorer() {
     explorer.back = []; explorer.forward = []; explorer.items = []; explorer.selected = ''; explorer.filter = '';
     explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.cacheFor = null;
@@ -8699,20 +8607,9 @@
     var box = $('fd-browser');
     clear(box);
     hideMenu();
-    if (!drive && !catalogMode) {
-      if (catalogBusy && catalogFor === foldersRepo()) { none(box, 'Reading ' + catalogFor + '’s saved catalog…'); return; }
-      var hint = (state.meta && !isPublic(state.meta) && foldersRepo()) ? ' If ' + foldersRepo() + ' has a saved catalog on its ' + CATALOG_BRANCH + ' branch (the drive organizer writes one), it shows here without a drive.' : '';
-      none(box, 'Connect OneDrive first: the list of your files and folders is read as you, in this browser, once the drive is connected.' + hint);
+    if (!drive) {
+      none(box, 'Connect OneDrive first: the list of your files and folders is read as you, in this browser, once the drive is connected.');
       return;
-    }
-    if (catalogMode) {
-      var made = catalog && catalog.made ? String(catalog.made).slice(0, 10) : '';
-      var prov = driveName(catalog && catalog.provider);
-      add(box, el('p', 'admin__lead', 'Showing ' + (catalogFor || foldersRepo()) + '’s saved ' + prov + ' catalog' + (made ? ', read ' + made : '') + ': a read-only list from the ' + CATALOG_BRANCH + ' branch, so nothing is asked of ' + prov + '. Connect OneDrive to browse the live drive and track folders.'));
-      if (catalog && catalog.complete === false) {
-        var why = Array.isArray(catalog.problems) && catalog.problems.length ? ' (' + catalog.problems.slice(0, 3).map(String).join('; ').slice(0, 200) + ')' : '';
-        add(box, el('p', 'admin__none', 'The catalog says it is not complete' + why + ', so some items may be missing.'));
-      }
     }
     var win = el('div', 'fx');
     // the toolbar: Back, Forward, Up, Refresh, the address, the search box and the view
@@ -8771,7 +8668,7 @@
   function listFolder() {
     var asked = ++listing;
     drawBrowser();
-    if (!catalogMode && !heldDrive()) return;
+    if (!heldDrive()) return;
     var here = crumbs.length ? crumbs[crumbs.length - 1] : null;
     readChildren(here ? here.id : '').then(function (items) {
       if (asked !== listing) return;
@@ -8815,7 +8712,6 @@
   function drawStatus(list) {
     var status = $('fd-status');
     if (!status) return;
-    if (catalogMode) { status.textContent = plural(list.length, 'item') + '   From the saved catalog; double-click to open.'; return; }
     var ticked = list.filter(function (it) { return picked[String(it.id || '')]; }).length;
     status.textContent = plural(list.length, 'item') + (ticked ? '   ' + ticked + ' ticked' : '') + '   Double-click to open; right-click for more.';
   }
@@ -8823,7 +8719,6 @@
     var box = el('input');
     box.type = 'checkbox';
     box.setAttribute('data-id', String(it.id || ''));
-    if (catalogMode) { box.disabled = true; box.title = 'Connect OneDrive to track'; box.setAttribute('aria-label', 'Connect OneDrive to track'); return box; }
     box.checked = !!picked[String(it.id || '')];
     box.setAttribute('aria-label', 'Track ' + String(it.name || ''));
     box.addEventListener('change', function () { tick(it, box.checked); drawStatus(sortedItems()); });
@@ -8927,13 +8822,11 @@
     }
     if (it.folder) entry('Open', function () { openItem(it); });
     var app = officeApp(it);
-    if (app && !catalogMode) entry('Open in ' + appName(app), function () { openInApp(it); });
+    if (app) entry('Open in ' + appName(app), function () { openInApp(it); });
     if (!it.folder) entry('Open in the browser', function () { openInBrowser(it); });
     if (it.folder && httpsOnly(it.webUrl)) entry('Open in OneDrive', function () { openInBrowser(it); });
-    if (!catalogMode) {
-      var on = !!picked[String(it.id || '')];
-      entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
-    }
+    var on = !!picked[String(it.id || '')];
+    entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
     document.body.appendChild(menu);
     var w = menu.offsetWidth, h = menu.offsetHeight;
     menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
@@ -9001,14 +8894,14 @@
     clear(box);
     // the workflow is there (true), missing (false), or could not be read (the error)
     if (workflow !== true) {
-      none(box, repo + ' has no .github/workflows/' + DRIVE_WORKFLOW + (workflow === false ? ': it was not made from the template, or from one older than the drive sync, so there is no run to track a drive with. Make one in step 2 (GitHub\'s form for the enterprise\'s members, the front door for anyone else), or bring the workflow in.' : ' that could be read (' + workflow.message + ').'));
+      none(box, repo + ' has no .github/workflows/' + DRIVE_WORKFLOW + (workflow === false ? ': it was not made from the template, or from one older than the drive sync, so there is no run to track a drive with. Make one under Make the repository (GitHub\'s form for the enterprise\'s members, the front door for anyone else), or bring the workflow in.' : ' that could be read (' + workflow.message + ').'));
       if (workflow === false) { $('fd-track').disabled = true; drawPull(box, repo); return; }
     }
     // a sign-in that cannot reach the repository's secrets is told so before Connect, not after it
     var refused = !!(secret && secret.unread && secret.unread.status === 403);
     $('fd-track').disabled = refused;
     if (refused) none(box, secretsRefused(repo));
-    if (!config) { none(box, repo + ' tracks no drive yet' + (refused ? '.' : ': the steps in this tab set one up.')); drawPull(box, repo); return; }
+    if (!config) { none(box, repo + ' tracks no drive yet' + (refused ? '.' : ': the steps below set one up.')); drawPull(box, repo); return; }
     var items = trackedItems(config);
     var p = add(el('p', 'admin__lead'), repo + ' tracks ' + plural(items.length, 'item') + ' of ' + driveName(config.provider) + ' in ', el('code', '', String(config.folder || 'papers') + '/'), ': ');
     items.forEach(function (i, n) { add(p, n ? ', ' : '', el('code', '', String(i.name || i.id))); });
@@ -9081,10 +8974,10 @@
     foldersFor = repo;
     tracked = null;
     clear($('fd-tracked'));
-    $('fd-track-head').textContent = repo ? '3. Track in ' + repo : '3. Track';
+    $('fd-track-head').textContent = repo ? 'Track in ' + repo : 'Track';
     $('fd-public').checked = false;
     $('fd-public-row').hidden = true;
-    if (!repo) { $('fd-track').disabled = true; none($('fd-tracked'), 'No repository is chosen: choose one in the bar, or make one in step 2.'); return; }
+    if (!repo) { $('fd-track').disabled = true; none($('fd-tracked'), 'No repository is chosen: choose one in the bar, or make one under Make the repository.'); return; }
     if (!token) { $('fd-track').disabled = true; none($('fd-tracked'), 'Sign in to read what ' + repo + ' tracks.'); return; }
     none($('fd-tracked'), 'Reading ' + repo + '...');
     Promise.all([
@@ -9112,10 +9005,20 @@
   // listed asked about one by one, since GitHub's list of them leaves out which template made each;
   // every one made from the template, or carrying the topic, joins the list, and the newest is
   // chosen in the bar, which moves the whole console to it
+  // what Track, Find and Sync now answer is said in the Track dialog as well as at the foot, which the
+  // dialog covers while it is open
+  function fdSay(text, warn) {
+    say(text, warn);
+    var s = $('fd-say');
+    if (!s) return;
+    clear(s);
+    if (text) rich(s, text);
+    s.classList.toggle('admin__warn', !!warn);
+  }
   function findRepos() {
     var button = $('fd-reload');
     button.disabled = true;
-    say('Asking GitHub for your newest repositories...');
+    fdSay('Asking GitHub for your newest repositories...');
     ghList('/user/repos?sort=created&direction=desc&per_page=' + NEWEST, 1).then(function (list) {
       var listed = repos();
       var fresh = list.filter(function (r) { return r && typeof r.full_name === 'string' && REPOSITORY.test(r.full_name) && listed.indexOf(r.full_name) < 0; });
@@ -9127,33 +9030,33 @@
       var added = names.filter(Boolean);
       button.disabled = false;
       if (!added.length) {
-        say('None of the ' + NEWEST + ' newest repositories ' + (signedInByApp() ? 'the sign-in' : 'this token') + ' reaches is new to the list and made from the template. ' + (signedInByApp()
+        fdSay('None of the ' + NEWEST + ' newest repositories ' + (signedInByApp() ? 'the sign-in' : 'this token') + ' reaches is new to the list and made from the template. ' + (signedInByApp()
           ? 'Signed in with GitHub, the page reaches only the repositories SymphonyBoard is installed on: add the new one to its installation, at https://github.com/apps/' + APP_SLUG + '/installations/new, then press this again.'
-          : 'A fine-grained token reaches only the repositories it was made for.') + ' One made on GitHub\'s form without the template, which the form gives the enterprise\'s members alone, is neither: set it up through the front door in step 2.' + (repos().length ? ' The bar keeps the one chosen.' : ''));
+          : 'A fine-grained token reaches only the repositories it was made for.') + ' One made on GitHub\'s form without the template, which the form gives the enterprise\'s members alone, is neither: set it up through the front door under Make the repository.' + (repos().length ? ' The bar keeps the one chosen.' : ''));
         return;
       }
       added.forEach(rememberRepo);
-      say('Added to the list: ' + added.join(', ') + '. ' + added[0] + ' is chosen.');
+      fdSay('Added to the list: ' + added.join(', ') + '. ' + added[0] + ' is chosen.');
       loadRepo(added[0]);
-    }).catch(function (e) { button.disabled = false; say(e.message, true); });
+    }).catch(function (e) { button.disabled = false; fdSay(e.message, true); });
   }
   function dispatchSync(repo, branch, account) {
     return gh('POST', '/repos/' + repo + '/actions/workflows/' + DRIVE_WORKFLOW + '/dispatches', { ref: branch }, undefined, false, account);
   }
   // short words for #msg, whose links are the tab's own, drawn in it
   function dispatchWords(repo, e) {
-    if (e.status === 403) return 'The sync could not be started from here (403: no Actions permission); press "Run workflow" at the runs link in this tab.';
+    if (e.status === 403) return 'The sync could not be started from here (403: no Actions permission); press "Run workflow" at the runs link in Track in a repository.';
     if (e.status === 404) return 'The sync could not be started from here (404): ' + repo + ' has no ' + DRIVE_WORKFLOW + ' on its default branch.';
-    return 'The sync could not be started from here (' + e.message + '); press "Run workflow" at the runs link in this tab.';
+    return 'The sync could not be started from here (' + e.message + '); press "Run workflow" at the runs link in Track in a repository.';
   }
   function syncNow(repo, button, lapsed) {
     if (button) button.disabled = true;
-    say('Starting the drive sync of ' + repo + '...');
+    fdSay('Starting the drive sync of ' + repo + '...');
     gh('GET', '/repos/' + repo).then(function (r) { return dispatchSync(repo, r.data.default_branch || 'main'); }).then(function () {
       if (button) button.disabled = false;
-      if (lapsed) say('The drive sync of ' + repo + ' is queued, but it will stop at the token trade: the OneDrive connection ran out on ' + lapsed + '. Press Connect OneDrive, then Track.', true);
-      else say('The drive sync of ' + repo + ' is queued; its summary says what came down and what went up.');
-    }).catch(function (e) { if (button) button.disabled = false; say(dispatchWords(repo, e), true); });
+      if (lapsed) fdSay('The drive sync of ' + repo + ' is queued, but it will stop at the token trade: the OneDrive connection ran out on ' + lapsed + '. Press Connect OneDrive, then Track.', true);
+      else fdSay('The drive sync of ' + repo + ' is queued; its summary says what came down and what went up.');
+    }).catch(function (e) { if (button) button.disabled = false; fdSay(dispatchWords(repo, e), true); });
   }
   // the file on the default branch, or, where that branch takes only pull requests, on a branch of
   // its own with a pull request to merge; the sha travels with a file that is already there, and
@@ -9189,7 +9092,7 @@
         return ghList('/repos/' + repo + '/pulls?state=open&head=' + encodeURIComponent(repo.split('/')[0] + ':' + DRIVE_BRANCH), 1);
       }).then(function (open) {
         if (open.length) return { branch: DRIVE_BRANCH, pull: open[0].html_url };
-        return gh('POST', '/repos/' + repo + '/pulls', { title: message, head: DRIVE_BRANCH, base: branch, body: 'Made from the Folders tab of the control panel: ' + DRIVE_FILE + ' says what the drive sync tracks. Merge it, then press Sync now on the tab: ' + tabLink(repo) }, undefined, false, account)
+        return gh('POST', '/repos/' + repo + '/pulls', { title: message, head: DRIVE_BRANCH, base: branch, body: 'Made from the Folders tab of the control panel: ' + DRIVE_FILE + ' says what the drive sync tracks. Merge it, then press Sync now under Track in a repository on the tab: ' + tabLink(repo) }, undefined, false, account)
           .then(function (r) { return { branch: DRIVE_BRANCH, pull: r.data.html_url }; });
       });
     });
@@ -9199,14 +9102,14 @@
     var repo = foldersRepo();
     var folder = ($('fd-folder').value || '').trim();
     var d = heldDrive();
-    if (!repo) { say('Choose a repository in the bar first (or make one in step 2).', true); return; }
-    if (!d || !d.refresh) { showConnectState(); drawBrowser(); say('Connect OneDrive first (step 1): the drive\'s refresh token is what the repository keeps.', true); return; }
-    if (!pickedOrder.length) { say('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
-    if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { say('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
+    if (!repo) { fdSay('Choose a repository in the bar first (or make one under Make the repository).', true); return; }
+    if (!d || !d.refresh) { showConnectState(); drawBrowser(); fdSay('Connect OneDrive first: the drive\'s refresh token is what the repository keeps.', true); closeDialog('dlg-track'); $('fd-connect').focus(); return; }
+    if (!pickedOrder.length) { fdSay('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
+    if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { fdSay('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
     // an item ticked from what the repository tracked under another Microsoft account is out of
     // this drive's reach, and one item the sync cannot read stops every run
     var foreign = d.id ? pickedOrder.filter(function (id) { var i = picked[id]; return i.drive && i.drive.toLowerCase() !== d.id.toLowerCase(); }) : [];
-    if (foreign.length) { say(plural(foreign.length, 'ticked item is', 'ticked items are') + ' from another OneDrive than the one connected now (' + foreign.map(function (id) { return picked[id].name; }).join(', ') + '): untick them, or Connect OneDrive again as the account that holds them.', true); return; }
+    if (foreign.length) { fdSay(plural(foreign.length, 'ticked item is', 'ticked items are') + ' from another OneDrive than the one connected now (' + foreign.map(function (id) { return picked[id].name; }).join(', ') + '): untick them, or Connect OneDrive again as the account that holds them.', true); return; }
     button.disabled = true;
     // the drive is the account's it was connected under, and every write of the chain goes out for
     // that account, so a token another tab puts in place meanwhile stops the chain
@@ -9214,7 +9117,7 @@
     var refresh = d.refresh;
     var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { var i = picked[id]; return { id: i.id, name: i.name, drive: i.drive }; }), connected: dayOf(new Date()) };
     var branch = '', wrote = null, saved = false;
-    say('Sealing the drive\'s refresh token in this browser and saving ' + DRIVE_SECRET + ' on ' + repo + '...');
+    fdSay('Sealing the drive\'s refresh token in this browser and saving ' + DRIVE_SECRET + ' on ' + repo + '...');
     gh('GET', '/repos/' + repo).then(function (r) {
       branch = r.data.default_branch || 'main';
       // what comes down from the drive is the repository's, so a public one is tracked into only
@@ -9238,12 +9141,12 @@
       return gh('PUT', '/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET, { encrypted_value: sealed, key_id: both[1].data.key_id }, undefined, false, account);
     }).then(function () {
       saved = true;
-      say('The secret is saved; writing ' + DRIVE_FILE + '...');
+      fdSay('The secret is saved; writing ' + DRIVE_FILE + '...');
       return writeDriveFile(repo, branch, config, account);
     }).then(function (w) {
       wrote = w;
       if (w.pull) return null;
-      say('The file is written; starting the first sync...');
+      fdSay('The file is written; starting the first sync...');
       return dispatchSync(repo, branch, account).then(function () { return true; }, function (e) { return e; });
     }).then(function (started) {
       // the drive's tokens are of no more use here: the repository holds the refresh token now
@@ -9253,18 +9156,18 @@
       drawBrowser();
       if (wrote.pull) pendingPull[repo] = wrote.pull; else delete pendingPull[repo];
       var words = repo + ' tracks ' + plural(config.items.length, 'item') + ' of OneDrive in ' + folder + '/, and the drive\'s tokens are dropped from this page. ';
-      if (wrote.pull) words += 'Its default branch takes only pull requests: merge the one linked in this tab, then press Sync now.';
+      if (wrote.pull) words += 'Its default branch takes only pull requests: merge the one linked in Track in a repository, then press Sync now there.';
       else if (started === true) words += 'The first sync is queued.';
       else words += dispatchWords(repo, started);
-      say(words, started !== true && !wrote.pull);
+      fdSay(words, started !== true && !wrote.pull);
       if (foldersRepo() === repo) loadFolders();
     }).catch(function (e) {
       refresh = '';
       button.disabled = false;
-      if (e.plain) say(e.message, true);
-      else if (!saved && e.status === 403) say(secretsRefused(repo), true);
-      else if (!saved) say('The secret could not be saved (' + e.message + '), so nothing else was written. Press Track to try again.', true);
-      else say('The secret ' + DRIVE_SECRET + ' is saved, but ' + DRIVE_FILE + ' could not be written: ' + e.message + ' Until it is, the half-hourly sync runs with the new secret on the drive.json the default branch holds, if any. Press Track to write it again.', true);
+      if (e.plain) fdSay(e.message, true);
+      else if (!saved && e.status === 403) fdSay(secretsRefused(repo), true);
+      else if (!saved) fdSay('The secret could not be saved (' + e.message + '), so nothing else was written. Press Track to try again.', true);
+      else fdSay('The secret ' + DRIVE_SECRET + ' is saved, but ' + DRIVE_FILE + ' could not be written: ' + e.message + ' Until it is, the half-hourly sync runs with the new secret on the drive.json the default branch holds, if any. Press Track to write it again.', true);
     });
   }
 
@@ -9276,8 +9179,8 @@
     showConnectState();
     if (!driveConfig && !driveAsked) wireConnect();
     drawPicked();
-    if (d) { catalogMode = false; if (listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); listFolder(); } }
-    else maybeCatalog();
+    if (d) { if (listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); listFolder(); } }
+    else drawBrowser();
     if (foldersFor !== foldersRepo()) loadFolders();
   }
   // a part of the console: the sign-in, the bar and the repository are the console's, so the tab
@@ -10194,19 +10097,19 @@
   /* ---------- Explore: the project as a map to go into ---------- */
   // The repository at the top, then its goals and epics, each epic's tasks, a task's pull requests
   // (or its claim branch where it has none), the runs on that branch, a run's jobs, a job's steps and,
-  // at the bottom, the lines of a step's log. One level is drawn at a time, its children as tiles:
-  // a click, or scrolling up while pointing at a tile, goes into it; scrolling down, Backspace or a
-  // crumb comes back out. The wheel scrolls a long level to its edge first and only then moves a
-  // level, so a long list still scrolls. Goals, epics and tasks are what the console read already;
+  // at the bottom, the lines of a step's log. One level is drawn at a time, its children as cards on
+  // a stage that zooms and never scrolls (below, drawing): a click goes into a card; zooming out past
+  // the whole level, Backspace, Escape or a crumb comes back out. Goals, epics and tasks are what the
+  // console read already;
   // the levels below a task are read as the person, one read each, only when the person goes into
   // them, kept in the tab's memory for the repository chosen and written nowhere.
   var EXPLORE_KINDS = { repo: 'Repository', goal: 'Goal', epic: 'Epic', group: 'Group', issue: 'Task', pull: 'Pull request', branch: 'Branch', run: 'Run', job: 'Job', step: 'Step', log: 'Log' };
   var EXPLORE_LOG_LINES = 5000;
-  // a wheel event this long after the one before starts a new gesture; only a gesture's first event
-  // moves a level, so a trackpad's glide never carries on into the next level
+  // a wheel event this long after the one before starts a new gesture, and one gesture moves one
+  // level at most, so a trackpad's glide never carries on into the next level
   var EXPLORE_GESTURE_GAP = 250;
   var EXPLORE_LOGS_KEPT = 3;
-  var explore = { s: null, issues: null, pulls: null, draw: null, failed: '', root: null, path: [], wheelLast: 0, era: 0, logs: [] };
+  var explore = { s: null, issues: null, pulls: null, draw: null, failed: '', root: null, path: [], wheelLast: 0, wheelMoved: false, wheeling: false, keying: false, wide: true, era: 0, logs: [] };
 
   // the repository changed: nothing of the last one is kept, its logs included
   function exploreForget() {
@@ -10391,6 +10294,17 @@
   }
 
   /* drawing */
+  // The owner, 2026-10-19: "the explorer looks janky so work on modernizing it and making it take up
+  // most of the panel when using it". A level is drawn as cards on the console's zoom stage
+  // (stageMake), as the Dependencies tab draws its charts, so nothing in the tab scrolls: the whole
+  // level fitted to the box, its cards laid out in the number of columns that draws them largest, and
+  // a level of few cards grown up to EXPLORE_GROW times its size so it fills the box. Pinch, the
+  // wheel, + and - zoom about a point, a drag pans once zoomed in, and zooming out past the whole
+  // level comes out of it, one level for one turn of the wheel. A swipe, or an arrow key while the
+  // stage itself has the keyboard, steps to the level beside this one under the same parent; with a
+  // card in hand the arrows move between the cards. A log is drawn on the same stage at a size to
+  // read, opened on its first error or else at its end, and the wheel moves along it.
+  var EXPLORE_GROW = 1.6, EXPLORE_COLS = 24;
   function exCurrent() { return explore.path[explore.path.length - 1] || null; }
   function exStatus(text) { $('ex-status').textContent = text; }
   function exKids(n) { return Array.isArray(n.children) ? n.children : []; }
@@ -10398,56 +10312,102 @@
     var t = el('button', 'ex__tile ex__tile--' + n.kind + ' ex__s--' + (n.state || 'open'));
     t.type = 'button';
     t.setAttribute('data-ex', String(i));
-    if (exKids(n).length > 8) t.className += ' ex__tile--wide';
-    var top = add(t, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind)).lastChild;
-    if (n.claude) add(top, ' ', el('span', 'ex__claude', 'Claude'));
+    var top = add(t, el('span', 'ex__top')).lastChild;
+    var kind = add(top, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind)).lastChild;
+    if (n.claude) add(kind, ' ', el('span', 'ex__claude', 'Claude'));
+    var pill = add(top, el('span', 'ex__pill', n.state || 'open')).lastChild;
+    pill.setAttribute('aria-hidden', 'true');
     add(t, el('span', 'ex__title', n.title));
     if (n.sub) add(t, el('span', 'ex__sub', n.sub));
+    var foot = add(t, el('span', 'ex__foot')).lastChild;
     var kids = exKids(n);
     if (kids.length) {
-      var dots = add(t, el('span', 'ex__dots')).lastChild;
+      var dots = add(foot, el('span', 'ex__dots')).lastChild;
       kids.slice(0, 40).forEach(function (k) { var d = add(dots, el('span', 'ex__dot ex__s--' + (k.state || 'open'))).lastChild; d.title = k.title; });
       if (kids.length > 40) add(dots, el('span', 'ex__more', '+' + (kids.length - 40)));
-    } else if (n.load && !n.children) add(t, el('span', 'ex__hint', 'Go in to read'));
-    var pill = add(t, el('span', 'ex__pill', n.state || 'open')).lastChild;
-    pill.setAttribute('aria-hidden', 'true');
+      add(foot, el('span', 'ex__count', String(kids.length) + ' inside'));
+    } else if (n.load && !n.children) add(foot, el('span', 'ex__hint', 'Go in to read'));
     t.setAttribute('aria-label', (EXPLORE_KINDS[n.kind] || n.kind) + ': ' + n.title + (n.sub ? ', ' + n.sub : '') + ', ' + (n.state || 'open'));
     return t;
   }
+  // the stage emptied: its picture gone, so the zoom has nothing to move until the next is put there
+  function exClearStage() {
+    var stage = $('ex-stage'), st = stageOf(stage);
+    clear(stage);
+    stage.classList.remove('ex__stage--log');
+    if (st) {
+      st.svg = null; st.faces = []; st.whole = true;
+      // a drag, a pinch or a tap held across a level would move or zoom the next level's picture
+      st.pointers = {}; st.drag = null; st.pinch = null; st.lastTap = null; st.outBy = 1;
+      clearTimeout(st.tapTimer);
+    }
+  }
+  // words in the middle of the stage, in place of a picture
+  function exNote(text) {
+    var box = add($('ex-stage'), el('div', 'ex__note')).lastChild;
+    none(box, text);
+    return box;
+  }
+  // the level's own card above the stage: what it is, its name, its line, and its tools
+  function exHead(n) {
+    var head = $('ex-head');
+    clear(head);
+    head.className = 'ex__head ex__s--' + (n && n.state || 'open');
+    if (!n) return;
+    var words = add(head, el('div', 'ex__words')).lastChild;
+    add(words, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind), el('h3', 'ex__name', n.title));
+    if (n.sub) add(words, el('p', 'ex__sub', n.sub));
+    add(head, el('div', 'ex__acts'));
+  }
+  function exActs() { return $('ex-head').querySelector('.ex__acts'); }
   function exDraw() {
     var stage = $('ex-stage'), n = exCurrent();
-    clear(stage);
+    exClearStage();
     exPath();
     exTree();
+    exHead(n);
     var gh2 = $('ex-github');
     if (n && n.url) { gh2.href = n.url; gh2.hidden = false; } else { gh2.hidden = true; gh2.removeAttribute('href'); }
     $('ex-out').disabled = explore.path.length <= 1;
-    if (!n) { none(stage, 'Nothing to explore yet: no repository is chosen.'); exStatus('Choose a repository in the side column.'); return; }
-    var head = add(stage, el('div', 'ex__head ex__s--' + (n.state || 'open'))).lastChild;
-    add(head, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind), el('h3', 'ex__name', n.title));
-    if (n.sub) add(head, el('p', 'ex__sub', n.sub));
+    if (!n) { exNote('Nothing to explore yet: no repository is chosen.'); exStatus('Choose a repository in the side column.'); return; }
     if (n.kind === 'step' || n.kind === 'log') return exDrawLog(stage, n);
     if (n.failed) {
-      none(stage, n.failed);
-      var again = add(stage, el('button', 'ex__tool', 'Try again')).lastChild;
+      var note = exNote(n.failed);
+      var again = add(note, el('button', 'ex__tool', 'Try again')).lastChild;
       again.type = 'button';
       again.addEventListener('click', function () { n.failed = ''; exGo(explore.path.slice()); });
       exStatus('This level could not be read.');
       return;
     }
-    if (!n.children) { none(stage, 'Reading from GitHub...'); exStatus('Reading...'); return; }
+    if (!n.children) { exNote('Reading from GitHub...'); exStatus('Reading...'); return; }
     var kids = exKids(n);
+    if (n.load) add(exActs(), exAgain('Read again', function () { n.children = null; }));
     if (!kids.length) {
-      none(stage, n.unread || exEmpty(n));
-      if (n.load) add(stage, exAgain('Read this level again', function () { n.children = null; }));
+      exNote(n.unread || exEmpty(n));
       exStatus('Nothing below this level.');
       return;
     }
-    var grid = add(stage, el('div', 'ex__grid')).lastChild;
+    var sheet = add(stage, el('div', 'ex__sheet')).lastChild;
+    var grid = add(sheet, el('div', 'ex__grid')).lastChild;
     kids.forEach(function (k, i) { grid.appendChild(exTile(k, i)); });
-    if (kids.more) add(stage, el('p', 'admin__none', kids.more));
-    if (n.load) add(stage, exAgain('Read this level again', function () { n.children = null; }));
-    exStatus(plural(kids.length, 'item') + '. Click a tile, or scroll up on it, to go in; scroll down or press Backspace to come out.');
+    exFit();
+    exStatus(plural(kids.length, 'item') + (kids.more ? ' (' + kids.more + ')' : '') + '. Click a card to go in; pinch, the wheel or + and - zoom, and zooming out past the whole level comes out of it; swipe for the level beside this one.');
+  }
+  // the cards laid out in the number of columns that draws them largest in the stage, and put on it;
+  // a zoom the person made is kept, as the Dependencies tab keeps one
+  function exFit() {
+    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet:not(.ex__sheet--log)');
+    var grid = sheet && sheet.querySelector('.ex__grid');
+    if (!st || !grid || !stage.clientWidth || !stage.clientHeight || (st.svg === sheet && !st.whole)) return;
+    var W = Math.max(1, stage.clientWidth - 2 * STAGE_PAD), H = Math.max(1, stage.clientHeight - 2 * STAGE_PAD);
+    var n = grid.children.length, best = null;
+    for (var c = 1; c <= Math.min(n, EXPLORE_COLS); c++) {
+      grid.style.setProperty('--ex-cols', String(c));
+      var k = Math.min(W / sheet.offsetWidth, H / sheet.offsetHeight);
+      if (!best || k > best.k + 1e-3) best = { c: c, k: k };
+    }
+    grid.style.setProperty('--ex-cols', String(best.c));
+    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], EXPLORE_GROW);
   }
   // what a run still going shows changes, so a level read below a task can be read again by hand
   function exAgain(words, forget) {
@@ -10464,140 +10424,254 @@
     return 'Nothing here.';
   }
   function exDrawLog(stage, n) {
-    var job = n.job, box = add(stage, el('div', 'ex__log')).lastChild;
-    var link = n.url ? el('a', 'ex__link', 'Open the log on GitHub') : null;
-    if (link) { link.href = n.url; link.target = '_blank'; link.rel = 'noopener'; }
-    none(box, 'Reading the log...');
+    var job = n.job;
+    function gitHub() {
+      if (!n.url) return null;
+      var a = el('a', 'ex__tool ex__link', 'Open the log on GitHub');
+      a.href = n.url; a.target = '_blank'; a.rel = 'noopener';
+      return a;
+    }
+    // the stage pans on a drag, so the lines are copied whole from a button, never selected
+    function copyLog(lines) {
+      var b = btn('Copy the lines', true, function () {
+        var text = lines.map(function (l) { return l.text.replace(/^##\[(group|endgroup|error|warning)\]/, ''); }).join('\n');
+        if (!navigator.clipboard) { exStatus('This browser gives the page no clipboard.'); return; }
+        navigator.clipboard.writeText(text).then(function () { exStatus('Copied ' + plural(lines.length, 'line') + '.'); }, function () { exStatus('The browser refused the clipboard.'); });
+      });
+      b.classList.add('ex__tool');
+      return b;
+    }
+    var box = exNote('Reading the log...');
     exStatus('Reading the log...');
     var era = explore.era;
     exLog(job).then(function (all) {
       if (era !== explore.era || exCurrent() !== n) return;
       var lines = n.kind === 'step' ? exStepLines(all, job, n.step) : all;
-      clear(box);
-      if (!lines.length || (lines.length === 1 && !lines[0].text)) { none(box, 'No line of the log falls in this step.'); if (link) add(box, link); exStatus('An empty step.'); return; }
-      var pre = add(box, el('pre', 'ex__lines')).lastChild;
+      add(exActs(), exAgain('Read again', function () { job.logRead = null; }));
+      if (!lines.length || (lines.length === 1 && !lines[0].text)) { clear(box); none(box, 'No line of the log falls in this step.'); add(box, gitHub()); exStatus('An empty step.'); return; }
+      exClearStage();
+      stage.classList.add('ex__stage--log');
+      var sheet = add(stage, el('div', 'ex__sheet ex__sheet--log')).lastChild;
+      sheet.style.width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
+      var pre = add(sheet, el('pre', 'ex__lines')).lastChild, first = null;
       lines.slice(0, EXPLORE_LOG_LINES).forEach(function (l) {
         var cls = /^##\[group\]/.test(l.text) ? 'ex__group' : /^##\[error\]/.test(l.text) ? 'ex__error' : /^##\[warning\]/.test(l.text) ? 'ex__warning' : '';
         add(pre, el('span', cls ? 'ex__line ' + cls : 'ex__line', l.text.replace(/^##\[(group|endgroup|error|warning)\]/, '')));
+        if (!first && cls === 'ex__error') first = pre.lastChild;
       });
-      if (lines.length > EXPLORE_LOG_LINES) add(box, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
-      if (link) add(box, link);
-      add(box, exAgain('Read the log again', function () { job.logRead = null; }));
-      exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' Backspace comes back out.');
+      if (lines.length > EXPLORE_LOG_LINES) add(sheet, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
+      add(exActs(), copyLog(lines.slice(0, EXPLORE_LOG_LINES)), gitHub());
+      stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
+      exLogAt(stageOf(stage), first);
+      exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' The wheel or a drag moves along it; Backspace comes back out.');
     }).catch(function (e) {
       if (era !== explore.era || exCurrent() !== n) return;
       clear(box);
       none(box, 'The log could not be read: ' + e.message);
-      if (link) add(box, link);
+      add(box, gitHub());
       exStatus('The log could not be read here; GitHub shows it.');
     });
+  }
+  // the box changed size under a log (Panel, a rotation, the window): its lines wrap to the new width
+  // and the reading place is kept
+  function exLogFit() {
+    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet--log');
+    if (!st || !sheet || st.svg !== sheet) return;
+    var width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
+    if (sheet.style.width === width) return;
+    var y = st.y, whole = st.whole;
+    sheet.style.width = width;
+    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
+    if (whole) { exLogAt(st, null); return; }
+    st.k = 1; st.x = STAGE_PAD; st.y = y; st.whole = false;
+    stageClamp(st, false);
+    stageApply(st, false);
+  }
+  // a log taller than its box is drawn at its own size, a size to read, and opened on its first
+  // error, else at its end, where a failed step says why; the rest is a drag or the wheel away
+  function exLogAt(st, line) {
+    if (!st || !st.svg) return;
+    // a log that fits is read from its top, as a page is
+    if (st.fit >= 0.999) { st.y = STAGE_PAD; stageApply(st, false); return; }
+    var r = stageRoom(st), y = line ? line.offsetTop + line.offsetHeight / 2 : st.h;
+    st.k = 1;
+    st.x = STAGE_PAD;
+    st.y = r.h / 2 - y;
+    st.whole = false;
+    stageClamp(st, false);
+    stageApply(st, false);
   }
   function exPath() {
     var nav = $('ex-path');
     clear(nav);
     explore.path.forEach(function (n, i) {
-      if (i) add(nav, el('span', 'ex__sep', '\u203a'));
+      if (i) add(nav, el('span', 'ex__sep', '›'));
       var last = i === explore.path.length - 1;
       var b = add(nav, el(last ? 'span' : 'button', last ? 'ex__here' : 'ex__crumb', n.title)).lastChild;
+      b.title = n.title;
       if (!last) { b.type = 'button'; b.addEventListener('click', function () { exGo(explore.path.slice(0, i + 1)); }); }
       else b.setAttribute('aria-current', 'location');
     });
   }
-  // the outline: every level read so far, open along the path
+  // the outline: every level read so far, open along the path, drawn on a stage of its own so a long
+  // one is zoomed rather than scrolled; it is shown when the person opens it
   function exTree() {
     var box = $('ex-tree');
     clear(box);
+    var st = stageOf(box);
+    if (st) { st.svg = null; st.faces = []; st.whole = true; }
     if (!explore.root) return;
-    (function walk(n, chain, depth, parent) {
+    var list = add(box, el('div', 'ex__treebox')).lastChild;
+    (function walk(n, chain, depth) {
       var on = explore.path.indexOf(n) >= 0;
-      var row = add(parent, el('div', 'ex__node' + (n === exCurrent() ? ' ex__current' : ''))).lastChild;
+      var row = add(list, el('div', 'ex__node' + (n === exCurrent() ? ' ex__current' : ''))).lastChild;
       row.style.paddingLeft = (depth * 12 + 4) + 'px';
       var b = add(row, el('button', 'ex__nodename ex__s--' + (n.state || 'open'), n.title)).lastChild;
       b.type = 'button';
       b.title = n.title;
       if (n === exCurrent()) b.setAttribute('aria-current', 'location');
       b.addEventListener('click', function () { exGo(chain); });
-      if (on) exKids(n).forEach(function (k) { walk(k, chain.concat([k]), depth + 1, parent); });
-    })(explore.root, [explore.root], 0, box);
+      if (on) exKids(n).forEach(function (k) { walk(k, chain.concat([k]), depth + 1); });
+    })(explore.root, [explore.root], 0);
+    exTreeFit();
+  }
+  function exTreeFit() {
+    var box = $('ex-tree'), list = box.querySelector('.ex__treebox');
+    if (!list || box.hidden || !box.clientWidth || !box.clientHeight) return;
+    stageShow(box, [{ svg: list, w: list.offsetWidth, h: list.offsetHeight }], 1);
+  }
+  function exOutline(on) {
+    $('ex-tree').hidden = !on;
+    $('ex-outline').setAttribute('aria-expanded', on ? 'true' : 'false');
+    if (on) exTreeFit();
   }
 
   // going to a level: its children read where they are not yet, then drawn
   // the keys stay with the tab: a person who went in from inside it is left on the new level's
-  // first tile, or on the level itself where it has none
-  function exGo(path, from) {
+  // first card, or on the level itself where it has none; one who stepped sideways from the stage
+  // itself is left on the stage, so the next arrow steps again
+  function exGo(path) {
     var n = path[path.length - 1];
-    var held = $('tab-explore').contains(document.activeElement);
+    var held = $('tab-explore').contains(document.activeElement) ? (document.activeElement === $('ex-stage') ? 'stage' : 'card') : '';
     explore.path = path;
-    exZoom(from);
     exDraw();
     if (n && !n.children && n.load && !n.failed) {
       var era = explore.era;
       if (!n.reading) n.reading = n.load().then(function (kids) { n.children = kids; }).catch(function (e) { n.failed = 'Not read: ' + e.message; }).then(function () { n.reading = null; });
-      n.reading.then(function () { if (era === explore.era && exCurrent() === n) { held = held || document.activeElement === document.body; exDraw(); exFocus(held); } });
+      n.reading.then(function () { if (era === explore.era && exCurrent() === n) { held = held || (document.activeElement === document.body ? 'card' : ''); exDraw(); exFocus(held); } });
     } else exFocus(held);
   }
-  function exIn(i, tile) {
+  function exIn(i) {
     var n = exCurrent(), k = n && exKids(n)[i];
-    if (k) exGo(explore.path.concat([k]), tile);
+    if (k) exGo(explore.path.concat([k]));
   }
   function exOut() { if (explore.path.length > 1) exGo(explore.path.slice(0, -1)); }
   function exFocus(held) {
     if (!held) return;
-    var tile = $('ex-stage').querySelector('.ex__tile');
+    var tile = held === 'card' ? $('ex-stage').querySelector('.ex__tile') : null;
     (tile || $('ex-stage')).focus({ preventScroll: true });
   }
-  // a short growth of the tile into the stage, so the move reads as going in; none for a reader who
-  // asked for less motion
-  function exZoom(tile) {
-    var stage = $('ex-stage');
-    if (!tile || !stage.getBoundingClientRect || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-    // the box is placed in the stage's parent, so both ends are measured from it
-    var a = tile.getBoundingClientRect(), b = stage.getBoundingClientRect(), p = stage.parentNode.getBoundingClientRect();
-    var z = el('div', 'ex__zoom');
-    z.style.left = (a.left - p.left) + 'px';
-    z.style.top = (a.top - p.top) + 'px';
-    z.style.width = a.width + 'px';
-    z.style.height = a.height + 'px';
-    stage.parentNode.appendChild(z);
-    z.getBoundingClientRect();
-    z.style.left = (b.left - p.left) + 'px'; z.style.top = (b.top - p.top) + 'px'; z.style.width = b.width + 'px'; z.style.height = b.height + 'px'; z.style.opacity = '0';
-    setTimeout(function () { if (z.parentNode) z.parentNode.removeChild(z); }, 320);
-  }
-  // Only the first event of a gesture that starts at an edge moves a level: scrolling up from the
-  // top over a tile goes into it, scrolling down from the bottom comes out. A gesture that reaches
-  // the edge partway, or glides on after a move, only scrolls. A pinch (ctrl and the wheel) is the
-  // browser's own zoom.
-  function exWheel(e) {
-    var now = Date.now(), first = now - explore.wheelLast > EXPLORE_GESTURE_GAP;
-    explore.wheelLast = now;
-    if (e.ctrlKey || Math.abs(e.deltaY) < 4) return;
-    var stage = $('ex-stage'), n = exCurrent();
-    if (!n || n.kind === 'step' || n.kind === 'log') return;
-    if (e.deltaY < 0) {
-      var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
-      if (!tile || stage.scrollTop > 0) return;
-      e.preventDefault();
-      if (first) exIn(Number(tile.getAttribute('data-ex')), tile);
-    } else {
-      if (stage.scrollTop + stage.clientHeight < stage.scrollHeight - 2 || explore.path.length <= 1) return;
-      e.preventDefault();
-      if (first) exOut();
+  // the way a swipe or an arrow key goes: from a card in hand, to the card that way; otherwise to
+  // the level beside this one under the same parent, the next for a swipe to the left or the right
+  // arrow, the one before for the other way
+  function exWay(dx, dy) {
+    var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
+    var at = explore.keying ? tiles.indexOf(document.activeElement) : -1;
+    if (at >= 0) {
+      var grid = $('ex-stage').querySelector('.ex__grid');
+      var across = Math.max(1, Number(grid && grid.style.getPropertyValue('--ex-cols')) || 1);
+      var to = Math.max(0, Math.min(tiles.length - 1, at + dx + dy * across));
+      tiles[to].focus();
+      return true;
     }
+    if (!dx || explore.path.length < 2) return false;
+    // a key held down steps to the next level once, never through every level it passes, each a read
+    if (explore.keying && explore.repeat) return true;
+    var kids = exKids(explore.path[explore.path.length - 2]), i = kids.indexOf(exCurrent()), j = i + (dx > 0 ? 1 : -1);
+    if (i < 0 || j < 0 || j >= kids.length) return false;
+    exGo(explore.path.slice(0, -1).concat([kids[j]]));
+    return true;
+  }
+  // zooming out past the whole level comes out of it: from the keys, a pinch or the buttons at once,
+  // and from the wheel once a gesture, so a trackpad's glide never carries on into the next level
+  function exZoomOut() {
+    if (explore.path.length <= 1) return false;
+    if (explore.wheeling) {
+      if (explore.wheelMoved) return true;
+      explore.wheelMoved = true;
+    }
+    exOut();
+    return true;
+  }
+  // a wheel event this long after the one before starts a new gesture; a log's wheel, which no
+  // pinch holds, moves along it as reading does
+  function exWheelBefore(e) {
+    var now = Date.now();
+    if (now - explore.wheelLast > EXPLORE_GESTURE_GAP) explore.wheelMoved = false;
+    explore.wheelLast = now;
+    explore.wheeling = true;
+    var stage = $('ex-stage'), st = stageOf(stage);
+    if (st && !st.svg && explore.path.length > 1 && e.deltaY > 0) {
+      // words in place of a picture: nothing to zoom, so turning the wheel out comes out at once
+      e.preventDefault();
+      exZoomOut();
+      return;
+    }
+    if (e.ctrlKey || !st || !st.svg || !stage.classList.contains('ex__stage--log')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    explore.wheeling = false;
+    st.y -= e.deltaY * (e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? stage.clientHeight : 1));
+    stageClamp(st, false);
+    stageApply(st, false);
   }
   function exKey(e) {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
     var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
     var at = tiles.indexOf(document.activeElement);
     if (e.key === 'Backspace' || e.key === 'Escape') { if (explore.path.length > 1) { e.preventDefault(); exOut(); } return; }
-    // the arrows move between tiles only from a tile or the stage, never from the outline or the trail
-    if (!tiles.length || (at < 0 && e.target !== $('ex-stage'))) return;
-    if (e.key === 'Enter' && at >= 0) { e.preventDefault(); exIn(at, tiles[at]); return; }
-    var across = 1;
-    if (tiles.length > 1) { var top0 = tiles[0].offsetTop; while (across < tiles.length && tiles[across].offsetTop === top0) across++; }
-    var to = { ArrowRight: at + 1, ArrowLeft: at - 1, ArrowDown: at + across, ArrowUp: at - across, Home: 0, End: tiles.length - 1 }[e.key];
+    if (!tiles.length || at < 0) return;
+    if (e.key === 'Enter') { e.preventDefault(); exIn(at); return; }
+    var to = { Home: 0, End: tiles.length - 1 }[e.key];
     if (to === undefined) return;
     e.preventDefault();
-    tiles[Math.max(0, Math.min(tiles.length - 1, at < 0 ? 0 : to))].focus();
+    tiles[to].focus();
+  }
+
+  // While the tab is shown it takes most of the panel (the owner, 2026-10-19: "making it take up most
+  // of the panel when using it"): the side column folds to its icons and the foot to its one line,
+  // and on a phone the tab takes the whole screen (control.css, console--exwide). The Panel button,
+  // or a press on the folded side column or foot, brings them back, and the grips size them as
+  // before; the choice lasts while the page is open and is stored nowhere.
+  function exWide(on) {
+    explore.wide = on;
+    $('console').classList.toggle('console--exwide', on);
+    var b = $('ex-wide');
+    b.setAttribute('aria-pressed', on ? 'false' : 'true');
+    b.title = on ? 'Bring back the side column and the foot' : 'Give Explore the whole panel';
+  }
+  function exUnfold(e) {
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest) return;
+    if (!e.target.closest('.console__side, .console__split[data-split="side"], .console__askbar, .console__status')) return;
+    // the rail's tabs, and what a message offers, keep their own presses; a grip's press only unfolds
+    if (!e.target.closest('[data-split]') && e.target.closest('button, a, input, select, textarea, [role="tab"]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    explore.unfolded = Date.now();
+    exWide(false);
+  }
+  // the second press of a double click that unfolded is no grip's double click, which would forget
+  // the width the person set; a key on a folded grip unfolds as a press does
+  function exUnfoldKeys(e) {
+    if (e.type === 'dblclick') {
+      if (Date.now() - (explore.unfolded || 0) < 600 && e.target.closest && e.target.closest('[data-split]')) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"], .console__split[data-split="foot"]')) return;
+    if (!/^(Arrow|Home|End|Enter| )/.test(e.key)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    exWide(false);
   }
 
   // the tab opened, or the issues were read again while it is open: the tree built afresh from what
@@ -10605,7 +10679,11 @@
   function openExplore() {
     var s = state;
     if (!s.repo) { explore.root = null; explore.path = []; explore.s = s; exDraw(); return; }
-    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) { exDraw(); return; }
+    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) {
+      // nothing changed: the level stays as the person left it, zoom and keyboard alike
+      if (!$('ex-stage').firstChild) exDraw();
+      return;
+    }
     var keys = explore.s && explore.s.repo === s.repo ? explore.path.map(function (n) { return n.key; }) : [];
     var old = explore.s && explore.s.repo === s.repo ? explore.path.slice() : [];
     explore.era++;
@@ -10630,10 +10708,53 @@
     $('ex-out').addEventListener('click', exOut);
     $('ex-stage').addEventListener('click', function (e) {
       var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
-      if (tile) exIn(Number(tile.getAttribute('data-ex')), tile);
+      // a double click's second press lands on the next level's card: it goes one level, not two
+      if (tile && e.detail <= 1) exIn(Number(tile.getAttribute('data-ex')));
     });
-    $('ex-stage').addEventListener('wheel', exWheel, { passive: false });
+    // the stage's own listeners come between these: the wheel's gesture is marked before the zoom
+    // reads it and let go after, and a key is marked as a key while the stage turns it into a way
+    var stage = $('ex-stage');
+    stage.addEventListener('wheel', exWheelBefore, { passive: false });
+    stage.addEventListener('keydown', function (e) {
+      explore.keying = true;
+      explore.repeat = !!e.repeat;
+      // with a card in hand the arrows move between the cards, zoomed in or not
+      var a = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (!a || e.altKey || e.ctrlKey || e.metaKey || !document.activeElement.classList.contains('ex__tile')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      exWay(a[0], a[1]);
+      explore.keying = false;
+    });
+    stageMake(stage, {
+      zooms: function () { return true; },
+      wheel: function () { return true; },
+      go: exWay,
+      out: exZoomOut,
+      tap: function () {}
+    });
+    stage.addEventListener('wheel', function () { explore.wheeling = false; });
+    stage.addEventListener('keydown', function () { explore.keying = false; });
+    stageMake($('ex-tree'), { zooms: function () { return true; }, wheel: function () { return true; } });
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(function () { if (consoleTab === 'explore') { exFit(); exLogFit(); } }).observe(stage);
+      new ResizeObserver(function () { var st = stageOf($('ex-tree')); if (consoleTab === 'explore' && (!st || st.whole)) exTreeFit(); }).observe($('ex-tree'));
+    }
+    $('ex-zoom-in').addEventListener('click', function () { stageStep(stage, 1.4); });
+    $('ex-zoom-out').addEventListener('click', function () { var st = stageOf(stage); if (st && !st.svg) exZoomOut(); else stageStep(stage, 1 / 1.4); });
+    $('ex-zoom-whole').addEventListener('click', function () { var st = stageOf(stage); if (st) stageWhole(st, true); });
+    $('ex-outline').addEventListener('click', function () { exOutline($('ex-tree').hidden); });
+    $('ex-wide').addEventListener('click', function () { exWide(!explore.wide); });
+    $('console').addEventListener('pointerdown', exUnfold, true);
+    $('console').addEventListener('dblclick', exUnfoldKeys, true);
+    $('console').addEventListener('keydown', exUnfoldKeys, true);
     $('tab-explore').addEventListener('keydown', exKey);
+    // folded, the rail shows its icons alone, so each says its name when pointed at
+    Array.prototype.forEach.call(document.querySelectorAll('.console__rail [data-tab]'), function (b) {
+      var name = b.querySelector('.rail__name');
+      if (name && !b.title) b.title = name.textContent;
+    });
+    exWide(true);
     consoleOnOpen.explore = openExplore;
   }
 
