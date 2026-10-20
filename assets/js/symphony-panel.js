@@ -4116,7 +4116,8 @@
     } else if (tab === 'folders') {
       var last = crumbs[crumbs.length - 1];
       var it = explorer.items.filter(function (x) { return String(x.id) === explorer.selected; })[0];
-      if (last) lines.push('The OneDrive folder open is ' + ownQuote(crumbs.map(function (c) { return c.name; }).join('/')) + (last.url ? ' (' + last.url + ')' : '') + '.');
+      if (last && last.search) lines.push('I am looking at the results of a search of my OneDrive for ' + ownQuote(last.search) + '.');
+      else if (last) lines.push('The OneDrive folder open is ' + ownQuote(crumbs.map(function (c) { return c.name; }).join('/')) + (last.url ? ' (' + last.url + ')' : '') + '.');
       if (it) lines.push('The item chosen is ' + ownQuote(it.name) + (httpsOnly(it.webUrl) ? ' (' + httpsOnly(it.webUrl) + ')' : '') + '.');
     } else if (OWN_CLAUDE_TASK_TABS.indexOf(tab) >= 0 && a.s === s && a.focus) {
       lines.push('The task I am on is #' + a.focus + ' (https://github.com/' + s.repo + '/issues/' + a.focus + ').');
@@ -8359,22 +8360,30 @@
       return d.access;
     });
   }
-  function graph(url) {
+  // a call to Graph as the drive's owner: a read (GET, the default), or a write with a JSON body or,
+  // given its type, the bytes of a file; a full address is Graph's next page, and the token goes to
+  // Graph alone
+  function graph(url, method, body, type) {
     return driveAccess().then(function (access) {
-      // a full address is Graph's next page, and the token goes to Graph alone
       var full = url.indexOf(GRAPH + '/') === 0 ? url : GRAPH + url;
-      return fetch(full, { headers: { 'Authorization': 'Bearer ' + access, 'Accept': 'application/json' }, signal: within(30000) }).catch(function () { throw new Error('Microsoft Graph could not be reached.'); });
-    }).then(function (r) {
-      return r.text().then(function (t) {
-        var data = null;
-        try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
-        if (!r.ok) {
-          var m = data && data.error && data.error.message ? ': ' + String(data.error.message).slice(0, 200) : '';
-          if (r.status === 401) throw new Error('Microsoft refused the drive\'s token (401' + m + '); press Connect OneDrive again.');
-          throw new Error('Microsoft Graph answered ' + r.status + m + '.');
-        }
-        return data || {};
-      });
+      var headers = { 'Authorization': 'Bearer ' + access, 'Accept': 'application/json' };
+      var sent;
+      if (body != null) { headers['Content-Type'] = type || 'application/json'; sent = type ? body : JSON.stringify(body); }
+      return fetch(full, { method: method || 'GET', headers: headers, body: sent, signal: within(type ? 600000 : 30000) }).catch(function () { throw new Error('Microsoft Graph could not be reached.'); });
+    }).then(graphAnswer);
+  }
+  function graphAnswer(r) {
+    return r.text().then(function (t) {
+      var data = null;
+      try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
+      if (!r.ok) {
+        var m = data && data.error && data.error.message ? ': ' + String(data.error.message).slice(0, 200) : '';
+        if (r.status === 401) throw new Error('Microsoft refused the drive\'s token (401' + m + '); press Connect OneDrive again.');
+        var e = new Error('Microsoft Graph answered ' + r.status + m + '.');
+        e.status = r.status;
+        throw e;
+      }
+      return data || {};
     });
   }
   // the children of a folder, page after page as Graph gives them; .cut says when more were left
@@ -8431,11 +8440,13 @@
   }
   /* ---------- the drive's list, drawn as a file explorer ---------- */
   // The list reads as Windows' File Explorer does: a folder tree on the left, an address bar with
-  // Back, Forward and Up, the folder's items in Details or Large icons, sorted by a column's
-  // heading, and a status bar. A double click opens a folder, or a Word, Excel or PowerPoint file
-  // in its desktop app through Office's own address scheme, where it is edited in place on the
-  // drive; any other file opens on OneDrive's own page. Nothing here writes to the drive: the
-  // ticks are what Track records, as before.
+  // Back, Forward and Up, a command bar, the folder's items in six views, sorted by a column's
+  // heading, an optional preview pane, and a status bar. A double click opens a folder, or a Word,
+  // Excel or PowerPoint file in its desktop app through Office's own address scheme, where it is
+  // edited in place on the drive; any other file opens on OneDrive's own page. The verbs that write
+  // (New folder, Upload, Rename, Delete, Cut, Copy and Paste, Share) act on the drive through
+  // Graph as its owner, each only on a press of the person's own; the ticks are what Track records,
+  // as before, and are apart from the selection.
   var OFFICE_APPS = {
     'ms-word': ['doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'rtf', 'odt'],
     'ms-excel': ['xls', 'xlsx', 'xlsm', 'xlsb', 'xltx', 'xltm', 'csv', 'ods'],
@@ -8457,7 +8468,16 @@
   // the colour of each kind's mark, Office's own where it has one
   var KIND_COLORS = { folder: '#E8B33D', word: '#2B5797', excel: '#1E7145', powerpoint: '#C4421A', pdf: '#C1272D', image: '#7A4FB3', video: '#B03A7A', audio: '#2E8B8B', archive: '#8A6D3B', code: '#3C6E9E', text: '#6B6B6B', file: '#6B6B6B' };
   var KIND_LETTERS = { word: 'W', excel: 'X', powerpoint: 'P', pdf: 'PDF', image: '', video: '', audio: '', archive: 'ZIP', code: '</>', text: 'TXT', file: '' };
-  var explorer = { view: 'details', sort: 'name', down: false, filter: '', back: [], forward: [], items: [], selected: '', open: Object.create(null), cache: Object.create(null), cacheFor: null };
+  // Explorer's six views, in the order its View menu gives them; the status bar keeps two of them
+  var VIEWS = [['icons', 'Large icons'], ['small', 'Small icons'], ['list', 'List'], ['details', 'Details'], ['tiles', 'Tiles'], ['content', 'Content']];
+  // a file up to this size goes up in one request; a larger one through an upload session, in
+  // pieces that are a multiple of 320 KiB, as Graph requires
+  var UPLOAD_SIMPLE = 4 * 1024 * 1024;
+  var UPLOAD_PIECE = 320 * 1024 * 10;
+  // the characters and names OneDrive refuses in a name, Windows' own rules
+  var BAD_NAME = /["*:<>?\/\\|]/;
+  var RESERVED_NAME = /^(con|prn|aux|nul|com[0-9]|lpt[0-9]|\.lock|desktop\.ini|_vti_)(\..*)?$/i;
+  var explorer = { view: 'details', sort: 'name', down: false, filter: '', back: [], forward: [], items: [], selected: '', sel: Object.create(null), anchor: '', clip: null, preview: false, previews: Object.create(null), thumbs: true, open: Object.create(null), cache: Object.create(null), cacheFor: null };
 
   function extOf(name) {
     var m = /\.([A-Za-z0-9]{1,8})$/.exec(String(name || ''));
@@ -8476,10 +8496,13 @@
     var ext = extOf(it.name);
     return ext ? ext.toUpperCase() + ' file' : 'File';
   }
+  function bytesWord(n) {
+    return n < 1024 ? n + ' B' : n < 1048576 ? Math.max(1, Math.round(n / 1024)).toLocaleString('en-US') + ' KB' : n < 1073741824 ? (n / 1048576).toFixed(1) + ' MB' : (n / 1073741824).toFixed(2) + ' GB';
+  }
   function sizeOf(it) {
     if (it.folder) return typeof it.folder.childCount === 'number' ? plural(it.folder.childCount, 'item') : '';
     if (typeof it.size !== 'number') return '';
-    return it.size < 1024 ? it.size + ' B' : it.size < 1048576 ? Math.max(1, Math.round(it.size / 1024)).toLocaleString('en-US') + ' KB' : (it.size / 1048576).toFixed(1) + ' MB';
+    return bytesWord(it.size);
   }
   function officeApp(it) {
     if (it.folder) return '';
@@ -8505,6 +8528,12 @@
   }
   function plainSegment(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
   function httpsOnly(url) { return typeof url === 'string' && /^https:\/\//.test(url) ? url : ''; }
+  // the folder an item sits in, as a path to read, from the drive's root ("" for the root itself)
+  function folderPath(it) {
+    var ref = it.parentReference || {};
+    if (typeof ref.path !== 'string') return null;
+    return ref.path.replace(/^\/drive(s\/[^\/]+)?\/root:?/, '').split('/').filter(Boolean).map(plainSegment).join('/');
+  }
   function openInBrowser(it) {
     var url = httpsOnly(it.webUrl);
     if (!url) { say('OneDrive gave no address for ' + it.name + '.', true); return; }
@@ -8524,12 +8553,14 @@
   }
   function appName(app) { return { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint', 'ms-visio': 'Visio' }[app] || 'its app'; }
   function openItem(it) {
-    if (it.folder) { go(crumbs.concat([{ id: String(it.id), name: String(it.name || ''), url: httpsOnly(it.webUrl) }])); return; }
+    // a folder found by a search opens on its own, since the folders above it were never walked
+    if (it.folder) { go((searching() ? [] : crumbs).concat([{ id: String(it.id), name: String(it.name || ''), url: httpsOnly(it.webUrl) }])); return; }
     if (officeApp(it)) openInApp(it); else openInBrowser(it);
   }
 
   // a mark for an item's kind, drawn here, so no picture comes from anywhere; its letters are the
-  // stylesheet's, from data-letter, so they are never part of the name's text
+  // stylesheet's, from data-letter, so they are never part of the name's text. Where OneDrive made a
+  // thumbnail and the view is large enough to show one, the thumbnail stands in its place
   var SVG = 'http://www.w3.org/2000/svg';
   function svgEl(tag, attrs) {
     var e = document.createElementNS(SVG, tag);
@@ -8555,19 +8586,50 @@
     if (letter) { mark.setAttribute('data-letter', letter); if (letter.length > 2) mark.classList.add('fx__mark--long'); }
     return mark;
   }
+  function thumbOf(it) {
+    var t = Array.isArray(it.thumbnails) && it.thumbnails[0] && it.thumbnails[0].medium;
+    return t ? httpsOnly(t.url) : '';
+  }
+  function bigIcon(it, size) {
+    var url = !it.folder && thumbOf(it);
+    if (!url) return kindIcon(it, size);
+    var img = el('img', 'fx__thumb');
+    img.src = url;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
+    img.style.setProperty('--s', size + 'px');
+    img.addEventListener('error', function () { img.replaceWith(kindIcon(it, size)); });
+    return img;
+  }
 
-  // what the list holds, read once per folder per connection and kept until Refresh; the tree and
-  // the list share one read of a folder, the one in flight included
-  function cachedRead(id) {
-    if (explorer.cacheFor !== drive) { explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.cacheFor = drive; }
-    return explorer.cache[id || 'root'];
+  // what the list holds, read once per folder per connection and kept until Refresh or a write
+  // changes it; the tree and the list share one read of a folder, the one in flight included
+  function cachedRead(key) {
+    if (explorer.cacheFor !== drive) { explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.previews = Object.create(null); explorer.clip = null; explorer.cacheFor = drive; }
+    return explorer.cache[key];
+  }
+  function listAddress(id) {
+    // thumbnails come with the list where OneDrive will give them; once it refuses, never again
+    var select = GRAPH_SELECT + (explorer.thumbs ? '&$expand=thumbnails($select=medium)' : '');
+    return id ? '/me/drive/items/' + encodeURIComponent(id) + '/children' + select : '/me/drive/root/children' + select;
   }
   function readChildren(id) {
-    var key = id || 'root', have = cachedRead(id);
+    return readList(id || 'root', function () { return listAddress(id); });
+  }
+  // the drive's own search, which looks through every folder, names and words inside the files alike
+  function searchAddress(q) {
+    return '/me/drive/root/search(q=\'' + encodeURIComponent(q.replace(/'/g, '\'\'')) + '\')' + GRAPH_SELECT;
+  }
+  function readList(key, address) {
+    var have = cachedRead(key);
     if (have) return have;
-    var url = id ? '/me/drive/items/' + encodeURIComponent(id) + '/children' + GRAPH_SELECT : '/me/drive/root/children' + GRAPH_SELECT;
     var d = drive;
-    var read = graphChildren(url).then(function (items) {
+    var read = graphChildren(address()).catch(function (e) {
+      if (e.status !== 400 || !explorer.thumbs || key.indexOf('search:') === 0) throw e;
+      explorer.thumbs = false;
+      return graphChildren(address());
+    }).then(function (items) {
       var kept = items.filter(function (it) { return it && typeof it === 'object'; });
       kept.cut = !!items.cut;
       return kept;
@@ -8579,21 +8641,35 @@
   // a path's last name, as the drive organizer's catalog writes paths (the Notebooks tab reads them)
   function catLast(path) { var s = String(path || '').split('/').filter(Boolean); return s.length ? s[s.length - 1] : ''; }
   function resetExplorer() {
-    explorer.back = []; explorer.forward = []; explorer.items = []; explorer.selected = ''; explorer.filter = '';
-    explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.cacheFor = null;
+    explorer.back = []; explorer.forward = []; explorer.items = []; explorer.filter = '';
+    explorer.cache = Object.create(null); explorer.open = Object.create(null); explorer.previews = Object.create(null); explorer.cacheFor = null; explorer.clip = null;
+    selectNone();
   }
+  // where the list is: a folder (its id, '' for the root), or the results of a search of the drive
+  function here() { return crumbs.length ? crumbs[crumbs.length - 1] : null; }
+  function searching() { var h = here(); return !!(h && h.search); }
+  function hereKey() { var h = here(); return !h ? 'root' : h.search ? 'search:' + h.search : h.id; }
+  // the folder new things go into: the one shown, or none while search results are shown
+  function hereFolder() { return searching() ? null : (here() ? here().id : ''); }
+  function hereName() { var h = here(); return h ? h.name : 'OneDrive'; }
   // moving to a folder: the path walked is kept for Back, and Forward is cleared, as Explorer does
   function go(path) {
     explorer.back.push(crumbs.slice());
     explorer.forward = [];
     crumbs = path;
-    explorer.selected = '';
     explorer.filter = '';
+    selectNone();
     listFolder();
   }
-  function goBack() { if (!explorer.back.length) return; explorer.forward.push(crumbs.slice()); crumbs = explorer.back.pop(); explorer.selected = ''; explorer.filter = ''; listFolder(); }
-  function goForward() { if (!explorer.forward.length) return; explorer.back.push(crumbs.slice()); crumbs = explorer.forward.pop(); explorer.selected = ''; explorer.filter = ''; listFolder(); }
+  function goBack() { if (!explorer.back.length) return; explorer.forward.push(crumbs.slice()); crumbs = explorer.back.pop(); explorer.filter = ''; selectNone(); listFolder(); }
+  function goForward() { if (!explorer.forward.length) return; explorer.back.push(crumbs.slice()); crumbs = explorer.forward.pop(); explorer.filter = ''; selectNone(); listFolder(); }
   function goUp() { if (crumbs.length) go(crumbs.slice(0, -1)); }
+  function searchDrive(q) {
+    q = String(q || '').trim();
+    if (!q) return;
+    var base = crumbs.filter(function (c) { return !c.search; });
+    go(base.concat([{ id: '', search: q, name: 'Search results for "' + q + '"' }]));
+  }
 
   function toolButton(label, title, enabled, onClick) {
     var b = btn(label, true, onClick);
@@ -8602,6 +8678,26 @@
     b.setAttribute('aria-label', title);
     b.disabled = !enabled;
     return b;
+  }
+  // the command bar's buttons, each with what it needs to be pressed, set again on every change of
+  // the selection, the clipboard or the folder
+  var COMMANDS = [
+    ['new', 'New folder', 'New folder (Ctrl+Shift+N)', function () { return hereFolder() !== null; }, function () { newFolder(); }],
+    ['upload', 'Upload', 'Upload files into this folder, or drop them on the list', function () { return hereFolder() !== null; }, function () { pickUpload(hereFolder()); }],
+    ['cut', 'Cut', 'Cut (Ctrl+X)', function (n) { return n > 0; }, function () { clip('cut'); }],
+    ['copy', 'Copy', 'Copy (Ctrl+C)', function (n) { return n > 0; }, function () { clip('copy'); }],
+    ['paste', 'Paste', 'Paste (Ctrl+V)', function () { return !!explorer.clip && hereFolder() !== null; }, function () { paste(hereFolder()); }],
+    ['rename', 'Rename', 'Rename (F2)', function (n) { return n === 1; }, function () { startRename(selectedItems()[0]); }],
+    ['share', 'Share', 'Make a sharing link', function (n) { return n === 1; }, function () { shareDialog(selectedItems()[0]); }],
+    ['delete', 'Delete', 'Delete to the recycle bin (Delete)', function (n) { return n > 0; }, function () { askDelete(selectedItems()); }],
+    ['download', 'Download', 'Download the selected files', function (n) { return n > 0 && selectedItems().some(function (it) { return !it.folder; }); }, function () { download(selectedItems()); }],
+    ['props', 'Properties', 'Properties (Alt+Enter)', function (n) { return n > 0; }, function () { properties(selectedItems()); }]
+  ];
+  function drawCommands() {
+    var n = selectedItems().length;
+    COMMANDS.forEach(function (c) { var b = $('fx-cmd-' + c[0]); if (b) b.disabled = !c[3](n); });
+    var p = $('fx-cmd-pane');
+    if (p) p.setAttribute('aria-pressed', String(explorer.preview));
   }
   function drawBrowser() {
     var box = $('fd-browser');
@@ -8612,34 +8708,53 @@
       return;
     }
     var win = el('div', 'fx');
-    // the toolbar: Back, Forward, Up, Refresh, the address, the search box and the view
+    // the toolbar: Back, Forward, Up, Refresh, the address and the search box
     var bar = el('div', 'fx__bar');
     add(bar, toolButton('←', 'Back (Alt+Left)', explorer.back.length > 0, goBack),
       toolButton('→', 'Forward (Alt+Right)', explorer.forward.length > 0, goForward),
       toolButton('↑', 'Up to the folder above (Backspace)', crumbs.length > 0, goUp),
-      toolButton('↻', 'Refresh', true, function () { delete explorer.cache[crumbs.length ? crumbs[crumbs.length - 1].id : 'root']; listFolder(); }));
+      toolButton('↻', 'Refresh (F5)', true, refresh));
     var address = el('nav', 'fx__address folders__crumbs');
     address.setAttribute('aria-label', 'Where you are in the drive');
     add(address, btn('OneDrive', true, function () { if (crumbs.length) go([]); }));
     crumbs.forEach(function (c, i) {
-      add(address, el('span', 'fx__sep', '›'), btn(c.name, true, function () { if (i < crumbs.length - 1) go(crumbs.slice(0, i + 1)); }));
+      var b = btn(c.name, true, function () { if (i < crumbs.length - 1) go(crumbs.slice(0, i + 1)); });
+      if (!c.search) dropTarget(b, c.id);
+      add(address, el('span', 'fx__sep', '›'), b);
     });
     bar.appendChild(address);
     var search = el('input', 'fx__search');
     search.type = 'search';
     search.id = 'fd-search';
-    search.placeholder = 'Search ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'OneDrive');
-    search.setAttribute('aria-label', search.placeholder);
+    search.placeholder = 'Search ' + (searching() ? 'OneDrive' : hereName());
+    search.title = 'Typing narrows this folder; Enter searches all of OneDrive';
+    search.setAttribute('aria-label', search.placeholder + '; Enter searches all of OneDrive');
     search.value = explorer.filter;
     search.addEventListener('input', function () { explorer.filter = search.value; drawItems(); });
-    bar.appendChild(search);
-    var views = el('div', 'fx__views');
-    [['details', 'Details'], ['icons', 'Large icons']].forEach(function (v) {
-      var b = toolButton(v[1], v[1] + ' view', true, function () { explorer.view = v[0]; drawBrowser(); drawItems(); });
-      b.setAttribute('aria-pressed', String(explorer.view === v[0]));
-      views.appendChild(b);
+    search.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); searchDrive(search.value); }
+      else if (ev.key === 'Escape' && search.value) { ev.preventDefault(); search.value = ''; explorer.filter = ''; drawItems(); }
     });
+    bar.appendChild(search);
     win.appendChild(bar);
+    // the command bar, Windows 11's row of verbs under the address
+    var cmds = el('div', 'fx__cmds');
+    cmds.setAttribute('role', 'toolbar');
+    cmds.setAttribute('aria-label', 'Commands');
+    COMMANDS.forEach(function (c, i) {
+      var b = toolButton(c[1], c[2], false, c[4]);
+      b.id = 'fx-cmd-' + c[0];
+      if (i === 2 || i === 5 || i === 8) cmds.appendChild(el('span', 'fx__cmdsep'));
+      cmds.appendChild(b);
+    });
+    cmds.appendChild(el('span', 'fx__cmdsep'));
+    var view = toolButton('View ▾', 'Choose the view', true, function (ev) { var r = ev.currentTarget.getBoundingClientRect(); viewMenu(r.left, r.bottom + 2); });
+    view.id = 'fx-cmd-view';
+    view.setAttribute('aria-haspopup', 'menu');
+    var pane = toolButton('Preview', 'Preview pane (Alt+P)', true, togglePreview);
+    pane.id = 'fx-cmd-pane';
+    add(cmds, view, pane);
+    win.appendChild(cmds);
     var body = el('div', 'fx__body');
     var tree = el('div', 'fx__tree');
     tree.id = 'fd-tree';
@@ -8649,36 +8764,91 @@
     var main = el('div', 'fx__main');
     main.id = 'fd-main';
     main.tabIndex = 0;
-    main.setAttribute('aria-label', 'Items in ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'OneDrive'));
+    main.setAttribute('aria-label', 'Items in ' + hereName());
+    main.setAttribute('aria-multiselectable', 'true');
     main.addEventListener('keydown', onExplorerKey);
-    main.addEventListener('contextmenu', function (ev) { if (ev.target === main) ev.preventDefault(); });
-    none(main, 'Reading ' + (crumbs.length ? crumbs[crumbs.length - 1].name : 'your files') + '...');
+    main.addEventListener('contextmenu', function (ev) { if (ev.target === main || ev.target.classList.contains('fx__grid') || ev.target.classList.contains('admin__none')) { ev.preventDefault(); selectNone(); showMenu(null, ev.clientX, ev.clientY); } });
+    main.addEventListener('click', function (ev) { if (ev.target === main || ev.target.classList.contains('fx__grid')) selectNone(); });
+    if (!searching()) dropTarget(main, hereFolder());
+    none(main, 'Reading ' + (crumbs.length ? hereName() : 'your files') + '...');
     body.appendChild(main);
+    var preview = el('aside', 'fx__preview');
+    preview.id = 'fd-preview';
+    preview.setAttribute('aria-label', 'Preview');
+    preview.hidden = !explorer.preview;
+    body.appendChild(preview);
     win.appendChild(body);
     // the status bar, with the two views at its right as Explorer keeps them
     var foot = el('div', 'fx__foot');
     var status = el('div', 'fx__status');
     status.id = 'fd-status';
     status.setAttribute('aria-live', 'polite');
+    var views = el('div', 'fx__views');
+    [['details', 'Details'], ['icons', 'Large icons']].forEach(function (v) {
+      var b = toolButton(v[1], v[1] + ' view', true, function () { setView(v[0]); });
+      b.setAttribute('aria-pressed', String(explorer.view === v[0]));
+      views.appendChild(b);
+    });
     add(foot, status, views);
     win.appendChild(foot);
     box.appendChild(win);
+    var input = el('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.id = 'fd-upload';
+    input.hidden = true;
+    input.addEventListener('change', function () {
+      var files = Array.prototype.slice.call(input.files || []);
+      var to = input.getAttribute('data-to');
+      input.value = '';
+      if (files.length && to !== null) upload(files, to);
+    });
+    box.appendChild(input);
     drawTree();
+    drawCommands();
+    drawPreview();
+  }
+  function setView(v) {
+    explorer.view = v;
+    Array.prototype.forEach.call(document.querySelectorAll('#tab-folders .fx__views .fx__tool'), function (b) { b.setAttribute('aria-pressed', String(b.textContent === (v === 'details' ? 'Details' : v === 'icons' ? 'Large icons' : ''))); });
+    drawItems();
   }
   function listFolder() {
-    var asked = ++listing;
     drawBrowser();
-    if (!heldDrive()) return;
-    var here = crumbs.length ? crumbs[crumbs.length - 1] : null;
-    readChildren(here ? here.id : '').then(function (items) {
+    return relist();
+  }
+  // the list read again for where it is, without drawing the browser anew; a write's answer ends
+  // here, so the bar, the tree and the focus stay where they were
+  function relist() {
+    var asked = ++listing;
+    if (!heldDrive()) return Promise.resolve();
+    var h = here();
+    var read = h && h.search ? readList(hereKey(), function () { return searchAddress(h.search); }) : readChildren(h ? h.id : '');
+    return read.then(function (items) {
       if (asked !== listing) return;
       explorer.items = items;
+      // what is selected and no longer here is let go
+      Object.keys(explorer.sel).forEach(function (id) { if (!items.some(function (it) { return String(it.id) === id; })) delete explorer.sel[id]; });
+      if (explorer.selected && !explorer.sel[explorer.selected]) explorer.selected = '';
       drawItems();
     }).catch(function (e) {
       if (asked !== listing) return;
       var main = $('fd-main');
       if (main) { clear(main); none(main, 'The list could not be read: ' + e.message); }
     });
+  }
+  // a folder's list read again after a write changed it, and the list shown read again where it
+  // is that folder or the results of a search; the tree is drawn again for a folder's change
+  function changed(keys) {
+    keys.forEach(function (k) { delete explorer.cache[k === '' || k == null ? 'root' : k]; });
+    Object.keys(explorer.cache).forEach(function (k) { if (k.indexOf('search:') === 0) delete explorer.cache[k]; });
+    drawTree();
+    return relist();
+  }
+  function refresh() {
+    delete explorer.cache[hereKey()];
+    explorer.previews = Object.create(null);
+    return listFolder();
   }
   function sortedItems() {
     var q = explorer.filter.trim().toLowerCase();
@@ -8688,6 +8858,7 @@
       if (key === 'changed') return it.lastModifiedDateTime || '';
       if (key === 'type') return kindName(it).toLowerCase();
       if (key === 'size') return it.folder ? (it.folder.childCount || 0) : (it.size || 0);
+      if (key === 'where') return String(folderPath(it) || '').toLowerCase();
       return String(it.name || '').toLowerCase();
     }
     return list.sort(function (a, b) {
@@ -8702,18 +8873,26 @@
     if (!main) return;
     clear(main);
     var list = sortedItems();
-    if (explorer.view === 'icons') main.appendChild(iconGrid(list)); else main.appendChild(detailsTable(list));
-    if (!explorer.items.length) none(main, 'This folder is empty.');
+    if (explorer.view === 'details') main.appendChild(detailsTable(list));
+    else if (explorer.view === 'icons') main.appendChild(iconGrid(list));
+    else main.appendChild(itemFlow(list, explorer.view));
+    if (!explorer.items.length) none(main, searching() ? 'Nothing in OneDrive matches "' + here().search + '".' : 'This folder is empty.');
     else if (!list.length) none(main, 'Nothing here matches "' + explorer.filter + '".');
-    if (explorer.items.cut) none(main, 'More than ' + (GRAPH_PAGES * 200) + ' items are here; only the first are listed. Tick the folder itself to track them all.');
+    if (explorer.items.cut) none(main, 'More than ' + (GRAPH_PAGES * 200) + ' items are here; only the first are listed.' + (searching() ? ' Search for something narrower.' : ' Tick the folder itself to track them all.'));
     drawStatus(list);
     drawPicked();
+    drawCommands();
+    drawPreview();
   }
   function drawStatus(list) {
     var status = $('fd-status');
     if (!status) return;
     var ticked = list.filter(function (it) { return picked[String(it.id || '')]; }).length;
-    status.textContent = plural(list.length, 'item') + (ticked ? '   ' + ticked + ' ticked' : '') + '   Double-click to open; right-click for more.';
+    var chosen = selectedItems(), bytes = 0;
+    chosen.forEach(function (it) { if (!it.folder && typeof it.size === 'number') bytes += it.size; });
+    var sel = chosen.length ? '   ' + chosen.length + ' selected' + (bytes ? '  ' + bytesWord(bytes) : '') : '';
+    var clipped = explorer.clip ? '   ' + plural(explorer.clip.items.length, 'item') + ' to ' + (explorer.clip.mode === 'cut' ? 'move' : 'copy') : '';
+    status.textContent = plural(list.length, 'item') + sel + (ticked ? '   ' + ticked + ' ticked' : '') + clipped + '   Double-click to open; right-click for more.';
   }
   function tickBox(it) {
     var box = el('input');
@@ -8726,12 +8905,37 @@
     return box;
   }
   function wire(node, it) {
-    node.setAttribute('data-item', String(it.id || ''));
-    node.addEventListener('click', function (ev) { if (ev.target.tagName !== 'INPUT') select(it.id); });
+    var id = String(it.id || '');
+    node.setAttribute('data-item', id);
+    node.setAttribute('aria-selected', String(!!explorer.sel[id]));
+    node.addEventListener('click', function (ev) {
+      if (ev.target.tagName === 'INPUT') return;
+      if (ev.shiftKey) selectRange(id, ev.ctrlKey || ev.metaKey);
+      else if (ev.ctrlKey || ev.metaKey) selectToggle(id);
+      else select(id);
+    });
     node.addEventListener('dblclick', function (ev) { if (ev.target.tagName !== 'INPUT') openItem(it); });
-    node.addEventListener('contextmenu', function (ev) { ev.preventDefault(); select(it.id); showMenu(it, ev.clientX, ev.clientY); });
-    if (explorer.selected === String(it.id)) node.classList.add('fx__selected');
+    node.addEventListener('contextmenu', function (ev) {
+      ev.preventDefault();
+      if (!explorer.sel[id]) select(id); else explorer.selected = id;
+      showMenu(it, ev.clientX, ev.clientY);
+    });
+    // an item is dragged onto a folder to move it there, the selection with it
+    node.draggable = true;
+    node.addEventListener('dragstart', function (ev) {
+      if (!explorer.sel[id]) select(id);
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData(DRAG_TYPE, Object.keys(explorer.sel).join('\n'));
+    });
+    if (it.folder) dropTarget(node, id);
+    if (explorer.sel[id]) node.classList.add('fx__selected');
+    if (explorer.clip && explorer.clip.mode === 'cut' && explorer.clip.items.some(function (c) { return c.id === id; })) node.classList.add('fx__cutitem');
     return node;
+  }
+  function nameEl(it, cls) {
+    var n = el(it.folder ? 'strong' : 'span', cls || '', String(it.name || ''));
+    n.setAttribute('data-name', '');
+    return n;
   }
   function detailsTable(list) {
     var scroll = el('div', 'table-scroll');
@@ -8739,7 +8943,9 @@
     table.id = 'fd-items';
     var tr = el('tr');
     add(tr, el('th', 'fx__tickh', ''));
-    [['name', 'Name'], ['changed', 'Date modified'], ['type', 'Type'], ['size', 'Size']].forEach(function (h) {
+    var cols = [['name', 'Name'], ['changed', 'Date modified'], ['type', 'Type'], ['size', 'Size']];
+    if (searching()) cols.push(['where', 'Folder']);
+    cols.forEach(function (h) {
       var th = el('th');
       var b = btn(h[1] + (explorer.sort === h[0] ? (explorer.down ? ' ▾' : ' ▴') : ''), true, function () {
         explorer.down = explorer.sort === h[0] ? !explorer.down : false;
@@ -8755,10 +8961,11 @@
     list.forEach(function (it) {
       var row = el('tr');
       add(row, add(el('td'), tickBox(it)));
-      add(row, add(el('td', 'fx__name'), add(el('span', 'fx__namewrap'), kindIcon(it, 18), el(it.folder ? 'strong' : 'span', '', String(it.name || '')))));
+      add(row, add(el('td', 'fx__name'), add(el('span', 'fx__namewrap'), kindIcon(it, 18), nameEl(it))));
       add(row, it.lastModifiedDateTime ? add(el('td'), timeEl(it.lastModifiedDateTime)) : el('td', '', ''));
       add(row, el('td', '', kindName(it)));
       add(row, el('td', 'fx__size', sizeOf(it)));
+      if (searching()) { var p = folderPath(it); add(row, el('td', 'fx__where', p === null ? '' : p ? 'OneDrive/' + p : 'OneDrive')); }
       body.appendChild(wire(row, it));
     });
     table.appendChild(body);
@@ -8770,71 +8977,157 @@
     list.forEach(function (it) {
       var tile = el('div', 'fx__tile');
       tile.title = String(it.name || '') + '\n' + kindName(it) + (sizeOf(it) ? ', ' + sizeOf(it) : '');
-      add(tile, tickBox(it), kindIcon(it, 56), el('span', 'fx__label', String(it.name || '')));
+      add(tile, tickBox(it), bigIcon(it, 56), nameEl(it, 'fx__label'));
       grid.appendChild(wire(tile, it));
     });
     return grid;
   }
-  function select(id) {
-    explorer.selected = String(id || '');
-    Array.prototype.forEach.call(document.querySelectorAll('#fd-main [data-item]'), function (n) {
-      n.classList.toggle('fx__selected', n.getAttribute('data-item') === explorer.selected);
+  // Small icons, List, Tiles and Content: one item each, laid out by the stylesheet for the view
+  function itemFlow(list, view) {
+    var flow = el('div', 'fx__flow fx__flow--' + view);
+    flow.id = 'fd-items';
+    list.forEach(function (it) {
+      var item = el('div', 'fx__it');
+      item.title = String(it.name || '') + '\n' + kindName(it) + (sizeOf(it) ? ', ' + sizeOf(it) : '');
+      var size = view === 'tiles' ? 48 : view === 'content' ? 40 : 18;
+      var text = el('span', 'fx__ittext');
+      add(text, nameEl(it, 'fx__itname'));
+      if (view === 'tiles') add(text, el('span', 'fx__itsub', kindName(it)), el('span', 'fx__itsub', sizeOf(it)));
+      if (view === 'content') {
+        var where = searching() ? folderPath(it) : null;
+        add(text, el('span', 'fx__itsub', kindName(it) + (where !== null ? '  in OneDrive' + (where ? '/' + where : '') : '')));
+        var side = el('span', 'fx__itside');
+        if (it.lastModifiedDateTime) add(side, add(el('span', 'fx__itsub'), 'Modified ', timeEl(it.lastModifiedDateTime)));
+        if (sizeOf(it)) add(side, el('span', 'fx__itsub', 'Size ' + sizeOf(it)));
+        add(item, tickBox(it), size > 18 ? bigIcon(it, size) : kindIcon(it, size), text, side);
+      } else {
+        add(item, tickBox(it), size > 18 ? bigIcon(it, size) : kindIcon(it, size), text);
+      }
+      flow.appendChild(wire(item, it));
     });
+    return flow;
+  }
+
+  /* ---------- the selection: a click, Ctrl and Shift, as Explorer selects ---------- */
+  function selectNone() { explorer.sel = Object.create(null); explorer.selected = ''; explorer.anchor = ''; markSelection(); }
+  function select(id) {
+    id = String(id || '');
+    explorer.sel = Object.create(null);
+    if (id) explorer.sel[id] = true;
+    explorer.selected = id;
+    explorer.anchor = id;
+    markSelection();
+  }
+  function selectToggle(id) {
+    if (explorer.sel[id]) delete explorer.sel[id]; else explorer.sel[id] = true;
+    explorer.selected = id;
+    explorer.anchor = id;
+    markSelection();
+  }
+  // from the anchor to this item, in the order shown; with Ctrl the range adds to what is selected
+  function selectRange(id, keep) {
+    var list = sortedItems().map(function (it) { return String(it.id); });
+    var a = list.indexOf(explorer.anchor), b = list.indexOf(id);
+    if (a < 0) { select(id); return; }
+    if (!keep) explorer.sel = Object.create(null);
+    for (var i = Math.min(a, b); i <= Math.max(a, b); i++) explorer.sel[list[i]] = true;
+    explorer.selected = id;
+    markSelection();
+  }
+  function selectAll() {
+    explorer.sel = Object.create(null);
+    sortedItems().forEach(function (it) { explorer.sel[String(it.id)] = true; });
+    markSelection();
+  }
+  function selectedItems() { return sortedItems().filter(function (it) { return explorer.sel[String(it.id)]; }); }
+  function markSelection() {
+    Array.prototype.forEach.call(document.querySelectorAll('#fd-main [data-item]'), function (n) {
+      var on = !!explorer.sel[n.getAttribute('data-item')];
+      n.classList.toggle('fx__selected', on);
+      n.setAttribute('aria-selected', String(on));
+    });
+    drawStatus(sortedItems());
+    drawCommands();
+    drawPreview();
   }
   function onExplorerKey(ev) {
     var list = sortedItems();
     var at = list.findIndex(function (it) { return String(it.id) === explorer.selected; });
+    var ctrl = ev.ctrlKey || ev.metaKey, k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
     var step = explorer.view === 'icons' ? Math.max(1, Math.floor(($('fd-main').clientWidth || 600) / 112)) : 1;
     if (ev.altKey && ev.key === 'ArrowLeft') { ev.preventDefault(); goBack(); return; }
     if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); goForward(); return; }
+    if (ev.altKey && k === 'p') { ev.preventDefault(); togglePreview(); return; }
     if (ev.target.tagName === 'INPUT' && ev.key !== 'Enter') return;
+    var chosen = selectedItems();
+    if (ctrl && ev.shiftKey && k === 'n') { ev.preventDefault(); newFolder(); return; }
+    if (ctrl && k === 'a') { ev.preventDefault(); selectAll(); return; }
+    if (ctrl && k === 'x') { ev.preventDefault(); clip('cut'); return; }
+    if (ctrl && k === 'c') { ev.preventDefault(); clip('copy'); return; }
+    if (ctrl && k === 'v') { ev.preventDefault(); if (hereFolder() !== null) paste(hereFolder()); return; }
+    if (ctrl && k === 'f' || ev.key === 'F3') { ev.preventDefault(); var s = $('fd-search'); if (s) s.focus(); return; }
+    if (ev.key === 'F5') { ev.preventDefault(); refresh(); return; }
+    if (ev.key === 'F2') { ev.preventDefault(); if (chosen.length === 1) startRename(chosen[0]); return; }
+    if (ev.key === 'Delete') { ev.preventDefault(); if (chosen.length) askDelete(chosen); return; }
+    if (ev.altKey && ev.key === 'Enter') { ev.preventDefault(); if (chosen.length) properties(chosen); return; }
+    if (ev.key === 'Escape') { if (explorer.clip) { ev.preventDefault(); explorer.clip = null; drawItems(); } else if (chosen.length) { ev.preventDefault(); selectNone(); } return; }
     var next = -1;
     if (ev.key === 'ArrowDown') next = at + step;
     else if (ev.key === 'ArrowUp') next = at < 0 ? 0 : at - step;
-    else if (ev.key === 'ArrowRight' && explorer.view === 'icons') next = at + 1;
-    else if (ev.key === 'ArrowLeft' && explorer.view === 'icons') next = at - 1;
+    else if (ev.key === 'ArrowRight' && explorer.view !== 'details') next = at + 1;
+    else if (ev.key === 'ArrowLeft' && explorer.view !== 'details') next = at - 1;
     else if (ev.key === 'Home') next = 0;
     else if (ev.key === 'End') next = list.length - 1;
     else if (ev.key === 'Enter' && at >= 0) { ev.preventDefault(); openItem(list[at]); return; }
     else if (ev.key === ' ' && at >= 0) { ev.preventDefault(); var it = list[at]; tick(it, !picked[String(it.id)]); drawStatus(list); return; }
     else if (ev.key === 'Backspace') { ev.preventDefault(); goUp(); return; }
-    else if (ev.key === 'ContextMenu' && at >= 0) { ev.preventDefault(); var n = document.querySelector('#fd-main [data-item="' + CSS.escape(explorer.selected) + '"]'); var r = n ? n.getBoundingClientRect() : { left: 0, bottom: 0 }; showMenu(list[at], r.left + 20, r.bottom); return; }
+    else if (ev.key === 'ContextMenu' || (ev.shiftKey && ev.key === 'F10')) {
+      ev.preventDefault();
+      var n = at >= 0 ? document.querySelector('#fd-main [data-item="' + CSS.escape(explorer.selected) + '"]') : null;
+      var r = n ? n.getBoundingClientRect() : $('fd-main').getBoundingClientRect();
+      showMenu(at >= 0 ? list[at] : null, r.left + 20, n ? r.bottom : r.top + 20);
+      return;
+    }
     else return;
     ev.preventDefault();
     if (!list.length) return;
     next = Math.max(0, Math.min(list.length - 1, next));
-    select(list[next].id);
+    var id = String(list[next].id);
+    if (ev.shiftKey) selectRange(id, ctrl);
+    else if (ctrl) { explorer.selected = id; markSelection(); markFocus(); }
+    else select(id);
     var node = document.querySelector('#fd-main [data-item="' + CSS.escape(explorer.selected) + '"]');
     if (node) node.scrollIntoView({ block: 'nearest' });
   }
+  // with Ctrl held the arrows move the focus without changing the selection, as Explorer does
+  function markFocus() {
+    Array.prototype.forEach.call(document.querySelectorAll('#fd-main [data-item]'), function (n) { n.classList.toggle('fx__focus', n.getAttribute('data-item') === explorer.selected); });
+  }
 
-  // the menu a right click opens on an item, Explorer's few verbs that fit a drive read here
+  /* ---------- the menus: an item's, the list's own and the View menu ---------- */
   function hideMenu() { var m = $('fd-menu'); if (m) m.remove(); }
-  function showMenu(it, x, y) {
+  function menuAt(x, y, fill) {
     hideMenu();
     var menu = el('div', 'fx__menu');
     menu.id = 'fd-menu';
     menu.setAttribute('role', 'menu');
-    function entry(label, act) {
+    function entry(label, act, enabled) {
       var b = btn(label, true, function () { hideMenu(); act(); });
       b.setAttribute('role', 'menuitem');
+      if (enabled === false) b.disabled = true;
       menu.appendChild(b);
     }
-    if (it.folder) entry('Open', function () { openItem(it); });
-    var app = officeApp(it);
-    if (app) entry('Open in ' + appName(app), function () { openInApp(it); });
-    if (!it.folder) entry('Open in the browser', function () { openInBrowser(it); });
-    if (it.folder && httpsOnly(it.webUrl)) entry('Open in OneDrive', function () { openInBrowser(it); });
-    var on = !!picked[String(it.id || '')];
-    entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
+    function line() { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(el('hr', 'fx__menusep')); }
+    fill(entry, line);
+    if (menu.lastChild && menu.lastChild.tagName === 'HR') menu.removeChild(menu.lastChild);
     document.body.appendChild(menu);
     var w = menu.offsetWidth, h = menu.offsetHeight;
     menu.style.left = Math.max(4, Math.min(x, window.innerWidth - w - 4)) + 'px';
     menu.style.top = Math.max(4, Math.min(y, window.innerHeight - h - 4)) + 'px';
-    var first = menu.querySelector('button');
+    var first = menu.querySelector('button:not(:disabled)');
     if (first) first.focus();
     menu.addEventListener('keydown', function (ev) {
-      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement);
+      var items = Array.prototype.slice.call(menu.querySelectorAll('button:not(:disabled)')), i = items.indexOf(document.activeElement);
       if (ev.key === 'Escape') { ev.preventDefault(); hideMenu(); var main = $('fd-main'); if (main) main.focus(); }
       else if (ev.key === 'ArrowDown') { ev.preventDefault(); items[(i + 1) % items.length].focus(); }
       else if (ev.key === 'ArrowUp') { ev.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
@@ -8842,6 +9135,459 @@
     setTimeout(function () {
       document.addEventListener('mousedown', function away(ev) { if (!menu.contains(ev.target)) { hideMenu(); document.removeEventListener('mousedown', away); } });
     }, 0);
+  }
+  // an item's menu acts on the selection the item is in; the list's own, on the folder shown
+  function showMenu(it, x, y) {
+    menuAt(x, y, function (entry, line) {
+      if (!it) {
+        var into = hereFolder();
+        entry('New folder', newFolder, into !== null);
+        entry('Upload files', function () { pickUpload(into); }, into !== null);
+        entry('Paste', function () { paste(into); }, !!explorer.clip && into !== null);
+        line();
+        entry('Select all', selectAll);
+        entry('Refresh', refresh);
+        return;
+      }
+      var chosen = selectedItems(), one = chosen.length <= 1;
+      if (it.folder) entry('Open', function () { openItem(it); });
+      var app = officeApp(it);
+      if (one && app) entry('Open in ' + appName(app), function () { openInApp(it); });
+      if (one && !it.folder) entry('Open in the browser', function () { openInBrowser(it); });
+      if (one && it.folder && httpsOnly(it.webUrl)) entry('Open in OneDrive', function () { openInBrowser(it); });
+      line();
+      if (chosen.some(function (c) { return !c.folder; })) entry('Download', function () { download(chosen); });
+      entry('Cut', function () { clip('cut'); });
+      entry('Copy', function () { clip('copy'); });
+      if (one && it.folder) entry('Paste into this folder', function () { paste(String(it.id)); }, !!explorer.clip);
+      line();
+      if (one) entry('Share', function () { shareDialog(it); });
+      if (one) entry('Rename', function () { startRename(it); });
+      entry('Delete', function () { askDelete(chosen); });
+      line();
+      var on = !!picked[String(it.id || '')];
+      if (one) entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
+      entry('Properties', function () { properties(chosen); });
+    });
+  }
+  function viewMenu(x, y) {
+    menuAt(x, y, function (entry) {
+      VIEWS.forEach(function (v) { entry((explorer.view === v[0] ? '✓ ' : '   ') + v[1], function () { setView(v[0]); }); });
+    });
+  }
+
+  /* ---------- the verbs that write to the drive, each on the person's own press ---------- */
+  // a folder by its id for Graph's addresses: '' is the drive's root
+  function itemAddress(id) { return id ? '/me/drive/items/' + encodeURIComponent(id) : '/me/drive/root'; }
+  // the root's own id, which Graph's moves and copies name a folder by, read once per connection
+  function folderId(id) {
+    if (id) return Promise.resolve(id);
+    var d = drive;
+    if (d.rootId) return Promise.resolve(d.rootId);
+    return graph('/me/drive/root?$select=id').then(function (r) {
+      if (typeof r.id !== 'string' || !r.id) throw new Error('Microsoft Graph gave no id for the drive\'s root.');
+      d.rootId = r.id;
+      return r.id;
+    });
+  }
+  function nameProblem(name, was) {
+    if (!name) return 'A name cannot be empty.';
+    if (name.length > 255) return 'A name can be at most 255 characters.';
+    if (BAD_NAME.test(name)) return 'A name cannot hold any of " * : < > ? / \\ |';
+    if (RESERVED_NAME.test(name)) return name + ' is a name OneDrive keeps for itself.';
+    if (/[. ]$/.test(name) || /^ /.test(name)) return 'A name cannot begin with a space or end with a space or a full stop.';
+    var taken = explorer.items.some(function (it) { return String(it.id) !== was && String(it.name || '').toLowerCase() === name.toLowerCase(); });
+    return taken ? 'Something named ' + name + ' is already in this folder.' : '';
+  }
+  function newFolder() {
+    var into = hereFolder();
+    if (into === null) return;
+    var name = 'New folder', n = 2;
+    while (explorer.items.some(function (it) { return String(it.name || '').toLowerCase() === name.toLowerCase(); })) name = 'New folder (' + (n++) + ')';
+    say('Making ' + name + '...');
+    graph(itemAddress(into) + '/children', 'POST', { name: name, folder: {}, '@microsoft.graph.conflictBehavior': 'rename' }).then(function (made) {
+      say('Made ' + (made.name || name) + '.');
+      return changed([into]).then(function () {
+        var it = explorer.items.filter(function (x) { return String(x.id) === String(made.id); })[0];
+        if (it) { select(it.id); startRename(it); }
+      });
+    }).catch(function (e) { say('The folder could not be made: ' + e.message, true); });
+  }
+  // the name edited where it is drawn, as F2 does in Explorer: Enter or leaving it renames, Escape
+  // keeps the name; a file's name is chosen up to its extension
+  function startRename(it) {
+    if (!it) return;
+    var node = document.querySelector('#fd-main [data-item="' + CSS.escape(String(it.id)) + '"] [data-name]');
+    if (!node) return;
+    var was = String(it.name || '');
+    var box = el('input', 'fx__rename');
+    box.type = 'text';
+    box.value = was;
+    box.setAttribute('aria-label', 'New name for ' + was);
+    node.replaceWith(box);
+    var dot = it.folder ? -1 : was.lastIndexOf('.');
+    box.focus();
+    box.setSelectionRange(0, dot > 0 ? dot : was.length);
+    var done = false;
+    function end(keep) {
+      if (done) return;
+      done = true;
+      var name = box.value.trim();
+      if (keep || name === was) { drawItems(); focusMain(); return; }
+      var problem = nameProblem(name, String(it.id));
+      if (problem) { say(problem, true); drawItems(); focusMain(); return; }
+      say('Renaming ' + was + ' to ' + name + '...');
+      graph(itemAddress(String(it.id)), 'PATCH', { name: name }).then(function () {
+        say('Renamed ' + was + ' to ' + name + '.');
+        if (picked[String(it.id)]) picked[String(it.id)].name = name;
+        return changed([hereFolder(), String(it.id)]);
+      }).then(focusMain).catch(function (e) { say(was + ' could not be renamed: ' + conflictWord(e, name), true); drawItems(); });
+    }
+    box.addEventListener('keydown', function (ev) {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') { ev.preventDefault(); end(false); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); end(true); }
+    });
+    box.addEventListener('click', function (ev) { ev.stopPropagation(); });
+    box.addEventListener('dblclick', function (ev) { ev.stopPropagation(); });
+    box.addEventListener('blur', function () { end(false); });
+  }
+  function focusMain() { var m = $('fd-main'); if (m) m.focus(); }
+  function conflictWord(e, name) { return e.status === 409 ? 'something named ' + name + ' is already there.' : e.message; }
+  // Delete asks first in the page, never in a browser box, and says where the items go
+  function askDelete(items) {
+    if (!items.length) return;
+    var form = itemDialog(items.length === 1 ? 'Delete ' + items[0].name : 'Delete ' + plural(items.length, 'item'));
+    add(form, el('p', 'admin__lead', (items.length === 1 ? 'This moves ' + items[0].name : 'This moves ' + plural(items.length, 'item')) + ' to OneDrive\'s recycle bin, where you can restore ' + (items.length === 1 ? 'it' : 'them') + ' from OneDrive\'s own page: for 30 days on a personal OneDrive, 93 on a work or school one.'));
+    var bar = el('p', 'admin__bar');
+    var go = btn('Delete', false, function () { closeDialog('dlg-item'); remove(items); });
+    go.id = 'fx-delete-go';
+    add(bar, go, ' ', btn('Cancel', true, function () { closeDialog('dlg-item'); focusMain(); }));
+    form.appendChild(bar);
+    go.focus();
+  }
+  function remove(items) {
+    var gone = 0, failed = [];
+    say('Deleting ' + plural(items.length, 'item') + '...');
+    return items.reduce(function (p, it) {
+      return p.then(function () {
+        return graph(itemAddress(String(it.id)), 'DELETE').then(function () {
+          gone++;
+          if (picked[String(it.id)]) tick(it, false);
+        }, function (e) { failed.push(it.name + ' (' + e.message + ')'); });
+      });
+    }, Promise.resolve()).then(function () {
+      say((gone ? 'Moved ' + plural(gone, 'item') + ' to the recycle bin.' : '') + (failed.length ? ' Not deleted: ' + failed.join('; ') : ''), failed.length > 0);
+      selectNone();
+      return changed([hereFolder()].concat(items.filter(function (it) { return it.folder; }).map(function (it) { return String(it.id); })));
+    });
+  }
+  // Cut and Copy keep the items in the page's memory until Paste; Escape forgets a cut
+  function clip(mode) {
+    var items = selectedItems();
+    if (!items.length) return;
+    explorer.clip = { mode: mode, items: items.map(function (it) { return { id: String(it.id), name: String(it.name || ''), from: hereFolder(), folder: !!it.folder }; }) };
+    say((mode === 'cut' ? 'Cut ' : 'Copied ') + plural(items.length, 'item') + ': open a folder and press Paste (Ctrl+V).');
+    drawItems();
+  }
+  function paste(into) {
+    var c = explorer.clip;
+    if (!c || into === null || into === undefined) return;
+    if (c.mode === 'cut') return move(c.items, into).then(function () { explorer.clip = null; drawItems(); });
+    var done = 0, failed = [];
+    say('Copying ' + plural(c.items.length, 'item') + '...');
+    return folderId(into).then(function (target) {
+      return c.items.reduce(function (p, it) {
+        return p.then(function () {
+          return graph(itemAddress(it.id) + '/copy?@microsoft.graph.conflictBehavior=rename', 'POST', { parentReference: { driveId: drive.id || undefined, id: target } }).then(function () { done++; }, function (e) { failed.push(it.name + ' (' + e.message + ')'); });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      // OneDrive copies in the background; the copies show once it has made them
+      say((done ? 'OneDrive is copying ' + plural(done, 'item') + '; ' + (done === 1 ? 'it shows' : 'they show') + ' here when it is done (Refresh).' : '') + (failed.length ? ' Not copied: ' + failed.join('; ') : ''), failed.length > 0);
+      setTimeout(function () { changed([into]); }, 2500);
+    }, function (e) { say('Nothing was copied: ' + e.message, true); });
+  }
+  function move(items, into) {
+    var moved = 0, failed = [], from = [];
+    return folderId(into).then(function (target) {
+      return items.reduce(function (p, it) {
+        return p.then(function () {
+          if (it.id === into || it.id === target) { failed.push(it.name + ' (a folder cannot go into itself)'); return; }
+          if (it.from === into) return;
+          return graph(itemAddress(it.id), 'PATCH', { parentReference: { id: target } }).then(function () { moved++; from.push(it.from); }, function (e) { failed.push(it.name + ' (' + conflictWord(e, it.name) + ')'); });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      if (moved || failed.length) say((moved ? 'Moved ' + plural(moved, 'item') + '.' : '') + (failed.length ? ' Not moved: ' + failed.join('; ') : ''), failed.length > 0);
+      selectNone();
+      return changed(from.concat([into]));
+    }, function (e) { say('Nothing was moved: ' + e.message, true); });
+  }
+  // dragging: files from the computer upload into the folder they are dropped on; items of the
+  // list move into it
+  var DRAG_TYPE = 'application/x-symphony-drive-items';
+  function dropTarget(node, folder) {
+    node.addEventListener('dragover', function (ev) {
+      var types = Array.prototype.slice.call(ev.dataTransfer.types || []);
+      if (types.indexOf('Files') < 0 && types.indexOf(DRAG_TYPE) < 0) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.dataTransfer.dropEffect = types.indexOf('Files') >= 0 ? 'copy' : 'move';
+      node.classList.add('fx__drop');
+    });
+    node.addEventListener('dragleave', function () { node.classList.remove('fx__drop'); });
+    node.addEventListener('drop', function (ev) {
+      node.classList.remove('fx__drop');
+      var ids = ev.dataTransfer.getData(DRAG_TYPE);
+      var files = Array.prototype.slice.call(ev.dataTransfer.files || []);
+      if (!ids && !files.length) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (ids) {
+        var items = sortedItems().filter(function (it) { return ids.split('\n').indexOf(String(it.id)) >= 0; });
+        if (items.length) move(items.map(function (it) { return { id: String(it.id), name: String(it.name || ''), from: hereFolder(), folder: !!it.folder }; }), folder);
+        return;
+      }
+      // a dropped folder comes as an entry the browser cannot read as a file
+      var entries = Array.prototype.slice.call(ev.dataTransfer.items || []).map(function (i) { return i.webkitGetAsEntry ? i.webkitGetAsEntry() : null; });
+      var dirs = entries.filter(function (e) { return e && e.isDirectory; }).map(function (e) { return e.name; });
+      if (dirs.length) say('Folders are not uploaded here (' + dirs.join(', ') + '): make the folder with New folder and drop the files inside it, or use OneDrive\'s own page.', true);
+      var plain = files.filter(function (f) { return dirs.indexOf(f.name) < 0; });
+      if (plain.length) upload(plain, folder);
+    });
+  }
+  function pickUpload(into) {
+    var input = $('fd-upload');
+    if (!input || into === null) return;
+    input.setAttribute('data-to', into);
+    input.click();
+  }
+  // Upload asks, as Explorer does, what to do with a name already in the folder: replace it,
+  // keep both (OneDrive numbers the new one) or skip it
+  function upload(files, into) {
+    return readChildren(into).then(function (there) {
+      var names = there.map(function (it) { return String(it.name || '').toLowerCase(); });
+      var clash = files.filter(function (f) { return names.indexOf(f.name.toLowerCase()) >= 0; });
+      if (!clash.length) return sendFiles(files, into, 'fail');
+      var form = itemDialog(plural(clash.length, 'name') + ' already there');
+      add(form, el('p', 'admin__lead', 'The folder already holds ' + clash.map(function (f) { return f.name; }).join(', ') + '.'));
+      var bar = el('p', 'admin__bar');
+      function choose(how) { closeDialog('dlg-item'); sendFiles(how === 'skip' ? files.filter(function (f) { return clash.indexOf(f) < 0; }) : files, into, how === 'skip' ? 'fail' : how); }
+      var r = btn('Replace', false, function () { choose('replace'); });
+      r.id = 'fx-up-replace';
+      var k = btn('Keep both', true, function () { choose('rename'); });
+      k.id = 'fx-up-both';
+      var s = btn('Skip these', true, function () { choose('skip'); });
+      s.id = 'fx-up-skip';
+      add(bar, r, ' ', k, ' ', s);
+      form.appendChild(bar);
+    }, function (e) { say('The folder could not be read to upload into it: ' + e.message, true); });
+  }
+  function sendFiles(files, into, how) {
+    if (!files.length) { say('Nothing was uploaded.'); return Promise.resolve(); }
+    var sent = 0, failed = [];
+    return files.reduce(function (p, f, i) {
+      return p.then(function () {
+        say('Uploading ' + f.name + ' (' + (i + 1) + ' of ' + files.length + ', ' + bytesWord(f.size) + ')...');
+        return sendFile(f, into, how).then(function () { sent++; }, function (e) { failed.push(f.name + ' (' + conflictWord(e, f.name) + ')'); });
+      });
+    }, Promise.resolve()).then(function () {
+      say((sent ? 'Uploaded ' + plural(sent, 'file') + '.' : '') + (failed.length ? ' Not uploaded: ' + failed.join('; ') : ''), failed.length > 0);
+      return changed([into]);
+    });
+  }
+  function sendFile(f, into, how) {
+    var path = itemAddress(into) + ':/' + encodeURIComponent(f.name) + ':';
+    if (f.size <= UPLOAD_SIMPLE) return graph(path + '/content?@microsoft.graph.conflictBehavior=' + how, 'PUT', f, f.type || 'application/octet-stream');
+    return graph(path + '/createUploadSession', 'POST', { item: { '@microsoft.graph.conflictBehavior': how } }).then(function (s) {
+      var url = httpsOnly(s.uploadUrl);
+      if (!url) throw new Error('Microsoft gave no address to upload to.');
+      return sendPieces(f, url, 0);
+    });
+  }
+  // an upload session's address carries its own right to write, so the drive's token is never sent
+  // there, as Microsoft's documentation says
+  function sendPieces(f, url, from) {
+    var to = Math.min(f.size, from + UPLOAD_PIECE);
+    return fetch(url, { method: 'PUT', headers: { 'Content-Range': 'bytes ' + from + '-' + (to - 1) + '/' + f.size }, body: f.slice(from, to), signal: within(600000) }).catch(function () { throw new Error('the upload was cut off'); }).then(graphAnswer).then(function () {
+      say('Uploading ' + f.name + ': ' + Math.round(to * 100 / f.size) + '%...');
+      return to < f.size ? sendPieces(f, url, to) : null;
+    });
+  }
+  // Download hands the browser the address OneDrive makes for one download of the file, which
+  // carries its own short-lived right to read, so no token goes with it; a folder has none
+  function download(items) {
+    var files = items.filter(function (it) { return !it.folder; });
+    if (files.length < items.length) say('A folder downloads from OneDrive\'s own page, as a zip: right-click it and choose Open in OneDrive.', !files.length);
+    return files.reduce(function (p, it, i) {
+      return p.then(function () {
+        return graph(itemAddress(String(it.id)) + '?$select=id,name,@microsoft.graph.downloadUrl').then(function (r) {
+          var url = httpsOnly(r['@microsoft.graph.downloadUrl']);
+          if (!url) throw new Error('OneDrive gave no download address for ' + it.name + '.');
+          var a = el('a');
+          a.href = url;
+          a.download = String(it.name || '');
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          if (i < files.length - 1) return new Promise(function (r) { setTimeout(r, 400); });
+        }).catch(function (e) { say(it.name + ' could not be downloaded: ' + e.message, true); });
+      });
+    }, Promise.resolve());
+  }
+  // Share makes a link of the kind chosen in the page, never before Create link is pressed
+  function shareDialog(it) {
+    if (!it) return;
+    var work = drive && drive.type && drive.type !== 'personal';
+    var form = itemDialog('Share ' + it.name);
+    add(form, el('p', 'admin__lead', 'A link to ' + it.name + ', made by OneDrive. Who can open it, and what they can do:'));
+    function choice(name, options) {
+      var row = el('p', 'admin__row fx__share');
+      options.forEach(function (o, i) {
+        var label = el('label');
+        var r = el('input');
+        r.type = 'radio';
+        r.name = name;
+        r.value = o[0];
+        r.checked = i === 0;
+        add(row, add(label, r, ' ' + o[1]));
+      });
+      form.appendChild(row);
+    }
+    choice('fx-share-scope', work ? [['organization', 'People in your organization'], ['anonymous', 'Anyone with the link']] : [['anonymous', 'Anyone with the link']]);
+    choice('fx-share-type', [['view', 'Can view'], ['edit', 'Can edit']]);
+    var out = el('p', 'admin__lead fx__shareout');
+    out.id = 'fx-share-out';
+    var bar = el('p', 'admin__bar');
+    var make = btn('Create link', false, function () {
+      var scope = form.querySelector('input[name="fx-share-scope"]:checked').value;
+      var type = form.querySelector('input[name="fx-share-type"]:checked').value;
+      make.disabled = true;
+      clear(out);
+      out.textContent = 'Making the link...';
+      graph(itemAddress(String(it.id)) + '/createLink', 'POST', { type: type, scope: scope }).then(function (r) {
+        var url = httpsOnly(r.link && r.link.webUrl);
+        if (!url) throw new Error('OneDrive gave no link.');
+        clear(out);
+        var box = el('input', 'fx__sharelink');
+        box.type = 'text';
+        box.readOnly = true;
+        box.value = url;
+        box.setAttribute('aria-label', 'The link');
+        var copy = btn('Copy the link', true, function () {
+          var written = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(url) : Promise.reject(new Error('no clipboard'));
+          written.then(function () { copy.textContent = 'Copied'; }, function () { box.select(); copy.textContent = 'Press Ctrl+C to copy'; });
+        });
+        add(out, box, ' ', copy);
+        box.select();
+      }).catch(function (e) { make.disabled = false; clear(out); out.textContent = 'The link could not be made: ' + e.message; });
+    });
+    make.id = 'fx-share-make';
+    add(bar, make);
+    add(form, bar, out);
+  }
+  // Properties: what the list already holds, and for one item what Graph says of it besides
+  function properties(items) {
+    if (!items.length) return;
+    if (items.length > 1) {
+      var bytes = 0, folders = 0;
+      items.forEach(function (it) { if (it.folder) folders++; else if (typeof it.size === 'number') bytes += it.size; });
+      var f = itemDialog(plural(items.length, 'item') + ' Properties');
+      add(f, fact('Selected:', plural(items.length - folders, 'file') + ', ' + plural(folders, 'folder')), fact('Size of the files:', bytesWord(bytes) + ' (' + bytes.toLocaleString('en-US') + ' bytes)'), fact('Location:', locationOf(items[0])));
+      return;
+    }
+    var it = items[0];
+    var form = itemDialog(it.name + ' Properties');
+    var box = el('div', 'fx__props');
+    box.id = 'fx-props';
+    add(box, el('p', 'admin__none', 'Reading...'));
+    form.appendChild(box);
+    graph(itemAddress(String(it.id)) + '?$select=id,name,size,file,folder,parentReference,createdDateTime,lastModifiedDateTime,createdBy,lastModifiedBy,webUrl,shared').then(function (p) {
+      clear(box);
+      function by(x) { return x && x.user && x.user.displayName ? String(x.user.displayName) : ''; }
+      add(box, fact('Type:', kindName(p)), fact('Location:', locationOf(p)));
+      if (typeof p.size === 'number') add(box, fact(p.folder ? 'Size of what it holds:' : 'Size:', bytesWord(p.size) + ' (' + p.size.toLocaleString('en-US') + ' bytes)'));
+      if (p.folder && typeof p.folder.childCount === 'number') add(box, fact('Contains:', plural(p.folder.childCount, 'item')));
+      if (p.createdDateTime) add(box, fact('Created:', stamp(p.createdDateTime) + (by(p.createdBy) ? ' by ' + by(p.createdBy) : '')));
+      if (p.lastModifiedDateTime) add(box, fact('Modified:', stamp(p.lastModifiedDateTime) + (by(p.lastModifiedBy) ? ' by ' + by(p.lastModifiedBy) : '')));
+      add(box, fact('Shared:', p.shared ? 'Yes' : 'No'));
+      if (httpsOnly(p.webUrl)) add(box, add(el('p', 'admin__bar'), link(httpsOnly(p.webUrl), 'Open in OneDrive')));
+    }).catch(function (e) { clear(box); none(box, 'Its properties could not be read: ' + e.message); });
+  }
+  function locationOf(it) {
+    var p = folderPath(it);
+    if (p !== null) return p ? 'OneDrive/' + p : 'OneDrive';
+    return searching() ? 'OneDrive' : ['OneDrive'].concat(crumbs.map(function (c) { return c.name; })).join('/');
+  }
+
+  /* ---------- the preview pane, shown or hidden as Alt+P does in Explorer ---------- */
+  function togglePreview() {
+    explorer.preview = !explorer.preview;
+    var p = $('fd-preview');
+    if (p) p.hidden = !explorer.preview;
+    drawCommands();
+    drawPreview();
+  }
+  var previewTimer = 0;
+  function drawPreview() {
+    var pane = $('fd-preview');
+    if (!pane || !explorer.preview) return;
+    clearTimeout(previewTimer);
+    var chosen = selectedItems();
+    if (chosen.length !== 1) { clear(pane); none(pane, chosen.length ? plural(chosen.length, 'item') + ' selected.' : 'Select a file to preview it.'); pane.removeAttribute('data-for'); return; }
+    var it = chosen[0], id = String(it.id);
+    if (pane.getAttribute('data-for') === id) return;
+    pane.setAttribute('data-for', id);
+    clear(pane);
+    add(pane, add(el('div', 'fx__pvhead'), kindIcon(it, 32), add(el('div'), el('strong', '', String(it.name || '')), el('div', 'fx__itsub', kindName(it) + (sizeOf(it) ? ', ' + sizeOf(it) : '')))));
+    var body = el('div', 'fx__pvbody');
+    pane.appendChild(body);
+    if (it.folder) { none(body, sizeOf(it) ? 'This folder holds ' + sizeOf(it) + '.' : 'A folder.'); return; }
+    none(body, 'Making the preview...');
+    // a short wait, so arrowing through a list asks for no preview of what is only passed over
+    previewTimer = setTimeout(function () {
+      previewOf(it).then(function (p) {
+        if (pane.getAttribute('data-for') !== id) return;
+        clear(body);
+        if (p.frame) {
+          var f = el('iframe', 'fx__pvframe');
+          f.src = p.frame;
+          f.title = 'Preview of ' + it.name;
+          f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups');
+          f.referrerPolicy = 'no-referrer';
+          body.appendChild(f);
+        } else if (p.image) {
+          var img = el('img', 'fx__pvimg');
+          img.src = p.image;
+          img.alt = 'Preview of ' + it.name;
+          img.referrerPolicy = 'no-referrer';
+          body.appendChild(img);
+        } else none(body, 'No preview is available for this file.');
+      });
+    }, 300);
+  }
+  // Graph's preview page for the file where it makes one, else its largest thumbnail; kept for the
+  // sitting so going back to a file asks nothing again
+  function previewOf(it) {
+    var id = String(it.id);
+    if (explorer.previews[id]) return explorer.previews[id];
+    var image = kindKey(it) === 'image';
+    var ask = image ? Promise.reject(new Error('an image shows its thumbnail')) : graph(itemAddress(id) + '/preview', 'POST', {});
+    var p = ask.then(function (r) {
+      var url = httpsOnly(r.getUrl);
+      if (!url) throw new Error('no preview page');
+      return { frame: url };
+    }).catch(function () {
+      return graph(itemAddress(id) + '/thumbnails?$select=large').then(function (r) {
+        var t = Array.isArray(r.value) && r.value[0] && r.value[0].large;
+        var url = t ? httpsOnly(t.url) : '';
+        return url ? { image: url } : {};
+      }).catch(function () { return {}; });
+    });
+    explorer.previews[id] = p;
+    return p;
   }
 
   // the folder tree: the drive's folders, each opened a level at a time, the path shown open
@@ -8858,18 +9604,19 @@
     row.setAttribute('role', 'treeitem');
     row.style.paddingLeft = (4 + depth * 14) + 'px';
     var key = folder.id || 'root';
-    var here = crumbs.length ? crumbs[crumbs.length - 1].id : '';
+    var at = here() && !here().search ? here().id : searching() ? null : '';
     var onPath = folder.id === '' || crumbs.some(function (c) { return c.id === folder.id; });
     var open = explorer.open[key] !== undefined ? explorer.open[key] : onPath;
     var twisty = btn(open ? '▾' : '▸', true, function (ev) { ev.stopPropagation(); explorer.open[key] = !open; drawTree(); });
     twisty.className = 'fx__twisty';
     twisty.setAttribute('aria-label', (open ? 'Close ' : 'Open ') + folder.name);
-    var name = btn('', true, function () { if (folder.id !== here) go(path); });
+    var name = btn('', true, function () { if (folder.id !== at) go(path); });
     name.className = 'fx__nodename';
     add(name, kindIcon({ folder: {} }, 16), el('span', '', folder.name));
-    if (folder.id === here) { row.classList.add('fx__current'); row.setAttribute('aria-current', 'true'); }
+    if (folder.id === at) { row.classList.add('fx__current'); row.setAttribute('aria-current', 'true'); }
     row.setAttribute('aria-expanded', String(open));
     add(row, twisty, name);
+    dropTarget(row, folder.id);
     wrap.appendChild(row);
     if (!open) return wrap;
     var kids = el('div', 'fx__kids');
