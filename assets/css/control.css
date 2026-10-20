@@ -835,9 +835,6 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
    inside it and never pushes Clear under the text-size buttons */
 .console .console__status #msg { flex: 1 1 0; min-width: 0; min-height: 2.1em; max-height: 26vh; overflow: auto; padding: 5px 12px; font-size: 0.88rem; }
 .console .console__status #msg:empty { display: block; }
-/* the placeholder sits outside the live region, so emptying the line announces nothing */
-.console__status { position: relative; }
-.console__status:has(#msg:empty)::before { content: "Messages from the panel show here."; position: absolute; left: 15px; top: 6px; font-size: 0.88rem; color: var(--ink-faint); pointer-events: none; }
 /* a step with controls (the sign-in of Add a Claude account) keeps them on one line where they fit */
 .console .console__status #msg > p { display: inline-block; vertical-align: middle; margin: 2px 12px 2px 0; }
 .console .console__status #msg .admin__bar { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -1645,18 +1642,15 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 }
 
 /* Explore takes most of the panel while it is shown (symphony-panel.js, exWide): the side column
-   folds to its rail of icons, the repository's box with it, the Ask Claude bar folds away and the
-   foot keeps one line of message and Clear; a press on either brings them back. */
+   folds to its rail of icons, the repository's box and who is signed in with it; a press on it
+   brings them back. */
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__body { grid-template-columns: 58px 10px minmax(0, 1fr); }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__id { display: none; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__side { cursor: e-resize; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail button { justify-content: center; padding-left: 0; padding-right: 0; cursor: pointer; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail :is(.rail__name, .rail__count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__split[data-split="side"] { cursor: e-resize; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__askbar { display: none; }
-.console.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status { height: auto; cursor: n-resize; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status .console__me { display: none; }
-.console.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status #msg { max-height: 2.1em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__me { display: none; }
 #tab-explore .ex__wideword { font-size: 0.85rem; }
 /* a phone: the tab is the stage, the zoom's buttons give way to a pinch and a double tap, and,
    folded, the tab takes the whole screen over the page, which is held still beneath it */
@@ -1920,4 +1914,68 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console:not(.console--home):not(.console--foot) .console__status #msg { flex: 1 1 0; }
   .console.console--foot:not(.console--home) > .console__status { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
   .console.console--foot:not(.console--home) > .console__status #msg { grid-column: 1; }
+}
+
+/* ============================================================
+   Claude floats at the top right, and the page's message is a note over the bottom of the screen
+   (the owner, 2026-10-20: the Ask Claude bar and the message line ate the screen, so they are gone
+   on every layout). The button (#cp-claude) opens the Claude dialog, or Add Token where no Claude
+   token is set (symphony-panel.js, pressClaude); the tabs' heads and the phone's top rows leave it
+   room. The note shows only while the page has something to say, Clear emptying it. Who is signed
+   in, the text size, Refresh and Forget the token sit under the tabs in the side column. These
+   rules stand last so they win over the foot's and the bar's older ones.
+   ============================================================ */
+.console > .console__claude {
+  position: fixed; z-index: 45; top: calc(env(safe-area-inset-top, 0px) + 16px); right: calc(env(safe-area-inset-right, 0px) + 26px);
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 0; padding: 0;
+  border: 1px solid rgba(60, 194, 177, 0.6); border-radius: 100px; background: var(--paper-card); color: var(--ink);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45); cursor: pointer;
+}
+.console > .console__claude:focus, .console > .console__claude:active { background: var(--paper-card); color: var(--ink); }
+.console > .console__claude:hover, .console > .console__claude:focus-visible { border-color: var(--teal-bright, #3CC2B1); color: var(--teal-bright, #3CC2B1); }
+.console > .console__claude[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+.console__claudeicon { color: var(--teal); font-size: 1.3rem; line-height: 1; }
+/* the word is for a screen reader; the button's tooltip says it on screen */
+.console__claudeword { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.console:has(#cp-app.hidden) > .console__claude { display: none; }
+/* the tabs' heads end short of it, so their "What this is" is never under it */
+.console__panel > .console__head { padding-right: 52px; }
+.console #tab-command .deck__readouts, .console #tab-tokens > :first-child { margin-right: 52px; }
+
+.console > .console__status {
+  position: fixed; z-index: 44; left: 50%; right: auto; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
+  width: min(760px, calc(100% - 24px)); height: auto; max-height: 45vh; margin: 0; padding: 8px; display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--paper-card); box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+}
+.console > .console__status:has(#msg:empty) { display: none; }
+.console > .console__status #msg { flex: 1 1 0; min-width: 0; min-height: 0; max-height: calc(45vh - 18px); overflow: auto; border: 0; }
+.console > .console__status .console__statusx { visibility: visible; }
+
+.console__side > .console__me { flex: 0 0 auto; max-width: none; flex-wrap: wrap; justify-content: flex-start; padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+.console__side > .console__me small { flex: 1 1 100%; text-align: left; -webkit-line-clamp: 3; }
+
+/* the dialog: the box, then the line saying what Claude can do, then the answer under them */
+.claudedlg { width: min(760px, calc(100% - 32px)); }
+.claudedlg .console__askbar { max-height: none; overflow: visible; border: 0; padding: 0; background: transparent; }
+.claudedlg .console__askbar:empty { display: none; }
+.claudedlg .console__askname { display: none; }
+.claudedlg .console__askrow { flex-wrap: wrap; }
+.claudedlg .console__askbox, .claudedlg .console__askrow #cp-as-state { flex-basis: 100%; }
+.console .claudedlg .console__askrow #cp-as-state { max-height: none; }
+.console .claudedlg .console__askdrawer, .claudedlg .console__askdrawer { position: static; inset: auto; margin-top: 12px; max-height: 55vh; height: auto; box-shadow: none; }
+.claudedlg .console__split--drawer { display: none; }
+
+@media (max-width: 900px), (max-height: 520px) {
+  .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 16px); right: calc(env(safe-area-inset-right, 0px) + 20px); }
+  .console--home .console__titlerow, .console:not(.console--home) .console__phonebar { padding-right: 48px; }
+  .console__panel > .console__head { padding-right: 0; }
+  .console #tab-command .deck__readouts, .console #tab-tokens > :first-child { margin-right: 0; }
+  .console__side > .console__me { flex-wrap: wrap; justify-content: space-between; border-top: 0; padding: 4px 2px 12px; }
+  .claudedlg { width: 100%; }
+}
+@media (max-width: 900px) and (hover: none), (max-width: 900px) and (any-pointer: coarse), (max-height: 520px) and (hover: none), (max-height: 520px) and (any-pointer: coarse) {
+  body.console-bar-auto .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 32px); }
+}
+@media (max-height: 520px) {
+  body.console-bar-auto .console > .console__claude, .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 10px); width: 32px; height: 32px; }
 }

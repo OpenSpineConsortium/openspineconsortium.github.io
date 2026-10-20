@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610201623">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610201623">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610201623">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610201741">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610201741">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610201741">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610201623">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610201741">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -176,6 +176,14 @@
           <button type="button" role="tab" data-tab="notebooks" id="rail-notebooks" aria-controls="tab-notebooks"><span class="rail__icon" aria-hidden="true">&#9636;</span><span class="rail__name">Notebooks</span></button>
           <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
         </div>
+        <!-- who is signed in, the text size, Refresh and Forget the token: under the tabs, since the
+             foot that held them is gone -->
+        <div class="console__me">
+          <small id="cp-who"></small>
+          <p class="console__mebuttons console__zoom" role="group" aria-label="Text size"><button id="cp-zoom-down" type="button" class="quiet" title="Smaller text and buttons">A&minus;</button><button id="cp-zoom-reset" type="button" class="quiet" title="Back to the usual size">100%</button><button id="cp-zoom-up" type="button" class="quiet" title="Larger text and buttons">A+</button></p>
+          <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
+            <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
+        </div>
       </div>
       <div class="console__split" data-split="side" role="separator" aria-orientation="vertical" aria-label="Drag to size the side column; double-click to reset" tabindex="0"></div>
 
@@ -212,7 +220,7 @@
               <button id="cp-run-ci" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#10003;</span><span class="launch__name">Run the checks</span><span class="launch__note">The required check, on the default branch</span></button>
               <button id="cp-run-metrics" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#8721;</span><span class="launch__name">Run the metrics now</span><span class="launch__note">Writes the branch metrics</span></button>
               <button type="button" class="launch launch--plan" data-goto="tasks" data-open="dlg-task"><span class="launch__icon" aria-hidden="true">&#43;</span><span class="launch__name">Add a task</span><span class="launch__note">For the workers, or for @claude now</span></button>
-              <button type="button" class="launch launch--plan" data-focus="cp-as-q"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">The bar at the foot, on every tab</span></button>
+              <button type="button" class="launch launch--plan" data-focus="cp-as-q"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">The Claude button at the top right, on every tab</span></button>
               <button type="button" class="launch launch--plan" data-goto="tokens"><span class="launch__icon" aria-hidden="true">&#9919;</span><span class="launch__name">Tokens</span><span class="launch__note">Your Claude tokens, their use and settings</span></button>
               <button type="button" class="launch launch--plan" data-open="dlg-repos"><span class="launch__icon" aria-hidden="true">&#8853;</span><span class="launch__name">Add a repository</span><span class="launch__note">Put one on the list, or set Symphony up on it</span></button>
             </div>
@@ -308,7 +316,7 @@
             <nav id="ex-path" class="ex__path" aria-label="Where you are"></nav>
             <span class="ex__zoom" role="group" aria-label="Zoom"><button type="button" id="ex-zoom-out" class="ex__tool ex__icon" title="Zoom out (-); past the whole level, come out of it" aria-label="Zoom out">&minus;</button><button type="button" id="ex-zoom-whole" class="ex__tool" title="The whole level (0)">Whole</button><button type="button" id="ex-zoom-in" class="ex__tool ex__icon" title="Zoom in (+)" aria-label="Zoom in">+</button></span>
             <a id="ex-github" class="ex__tool ex__link" href="#" target="_blank" rel="noopener" hidden>Open on GitHub</a>
-            <button type="button" id="ex-wide" class="ex__tool ex__wide" aria-pressed="true" title="Bring back the side column and the foot"><span aria-hidden="true">&#x26F6;</span> <span class="ex__wideword">Panel</span></button>
+            <button type="button" id="ex-wide" class="ex__tool ex__wide" aria-pressed="true" title="Bring back the side column"><span aria-hidden="true">&#x26F6;</span> <span class="ex__wideword">Panel</span></button>
           </div>
           <div id="ex-head" class="ex__head"></div>
           <div class="ex__body">
@@ -607,21 +615,26 @@
     </dialog>
     <!-- one dialog for a card's status (a press on it) and its settings (its gear), drawn by the script -->
     <dialog id="dlg-item" class="tkdlg cpdlg cpdlg--wide" aria-label="Details"></dialog>
+    <!-- Claude: the floating button at the top right opens this, or the Tokens tab's Add Token where
+         the repository has no Claude token yet (symphony-panel.js, pressClaude); the assistant
+         builds its box and its answer into #cp-askbar (assistantBuildBar) -->
+    <dialog id="dlg-claude" class="tkdlg cpdlg cpdlg--wide claudedlg" aria-labelledby="dlg-claude-h">
+      <form method="dialog" class="tkdlg__form">
+        <button type="submit" class="tkside__close cpdlg__close" aria-label="Close">&times;</button>
+        <h3 id="dlg-claude-h" class="console__boxh"><span aria-hidden="true">&#10070;</span> Claude</h3>
+        <p class="admin__lead">Ask about this page, or tell Claude what to do in this repository. Claude answers on the repository&rsquo;s own Claude token, and its answer offers the panel&rsquo;s buttons it names for you to press.</p>
+      </form>
+      <div class="console__askbar" id="cp-askbar"></div>
+    </dialog>
 
   </div>
-  <!-- the Ask Claude bar's place, frozen above the status line like it; the assistant fills it
-       (its own code), and while it is empty it takes no room -->
-  <div class="console__askbar" id="cp-askbar"></div>
+  <!-- the page's message: a note over the bottom of the screen while it has something to say, and
+       nothing at all while it has not; Clear empties it -->
   <div class="console__status">
     <div class="admin__box console__msg" id="msg" role="status" aria-live="polite"></div>
     <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
-    <div class="console__me">
-      <small id="cp-who"></small>
-      <p class="console__mebuttons console__zoom" role="group" aria-label="Text size"><button id="cp-zoom-down" type="button" class="quiet" title="Smaller text and buttons">A&minus;</button><button id="cp-zoom-reset" type="button" class="quiet" title="Back to the usual size">100%</button><button id="cp-zoom-up" type="button" class="quiet" title="Larger text and buttons">A+</button></p>
-      <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
-        <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
-    </div>
   </div>
+  <button type="button" class="console__claude" id="cp-claude" aria-haspopup="dialog" title="Ask Claude, or add your first Claude token"><span class="console__claudeicon" aria-hidden="true">&#10070;</span><span class="console__claudeword">Claude</span></button>
 </section>
 </main>
 <!-- site:footer -->
@@ -675,8 +688,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610201623"></script>
+<script src="/assets/js/main.js?v=202610201741"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610201623"></script>
+<script src="/assets/js/symphony-panel.js?v=202610201741"></script>
 </body>
 </html>

@@ -2607,8 +2607,6 @@
     if (!c) return;
     var top = c.getBoundingClientRect().top + (window.pageYOffset || 0);
     c.style.setProperty('--console-h', Math.max(Math.floor(window.innerHeight - top), 0) + 'px');
-    // a foot the person sized is held to what the window now leaves the stage
-    if (layout.foot != null) applyLayout();
     var rail = c.querySelector('.console__rail');
     if (rail) rail.setAttribute('aria-orientation', getComputedStyle(rail).flexDirection === 'row' ? 'horizontal' : 'vertical');
     railEdges();
@@ -3142,40 +3140,8 @@
     col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
     tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
     nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } },
-    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } },
-    // the foot: the message line and the task boxes of long work, with Clear and the buttons beside
-    // them; its bounds are measured each time, since they follow the window (footBounds)
-    foot: { prop: '--foot-h', min: 24, max: 1600, axis: 'y', sign: -1, measure: function () { return $('console').querySelector('.console__status').offsetHeight; }, bounds: footBounds }
+    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } }
   };
-  // what a sized foot may be now: never less than one line of message with its buttons, and never so
-  // tall that the stage keeps less than STAGE_MIN of the window. Where the deck fills the window, a
-  // computer's or a phone's whose console is fixed over the screen, that is what the deck holds above
-  // the foot beside the Ask Claude bar; where the page scrolls under a foot that sticks to the
-  // window's bottom, it is the rest of the window. A phone's foot stacks its message over its
-  // buttons, but for a tab's held sideways. In the foot's own pixels, which the text size scales.
-  var STAGE_MIN = 180;
-  function footBounds() {
-    var p = LAYOUT_PARTS.foot, c = $('console'), st = c && c.querySelector('.console__status');
-    if (!st || !$('msg') || !$('cp-msg-close')) return p;
-    var cs = getComputedStyle(c), ss = getComputedStyle(st), gap = parseFloat(cs.rowGap) || 0;
-    var line = parseFloat(getComputedStyle($('msg')).minHeight) || 30;
-    var buttons = Math.max($('cp-msg-close').offsetHeight, c.querySelector('.console__me').offsetHeight);
-    var pad = parseFloat(ss.paddingTop) + parseFloat(ss.paddingBottom);
-    // a phone held sideways lays a tab's foot out in one row (control.css, max-height: 520px)
-    var stacked = phoneLayout() && (consoleAtHome() || !window.matchMedia('(max-height: 520px)').matches);
-    var scrolls = cs.overflow !== 'hidden';
-    var min = Math.ceil(pad + (stacked ? line + (parseFloat(ss.rowGap) || 0) + buttons : Math.max(line, buttons)));
-    // while the Dependencies tab is shown it needs more than the stage's least, and the foot leaves
-    // it that: its own least on a computer, and on a phone that and the rail above it (graphNeed)
-    var least = Math.max(STAGE_MIN, graphNeed());
-    var room = window.innerHeight - least;
-    if (!scrolls) {
-      var ask = $('cp-askbar'), asked = ask && ask.getClientRects().length ? ask.getBoundingClientRect().height + gap : 0;
-      room = c.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - gap - asked - least;
-    }
-    min = Math.max(p.min, min);
-    return { min: min, max: Math.min(p.max, Math.max(min, Math.floor(room / scaleOf(st)))) };
-  }
   // how much the text size scales a part: its size on screen over its size in its own pixels (the
   // phone's rules leave the deck unscaled whatever text size the desktop saved)
   function scaleOf(node) {
@@ -3210,9 +3176,6 @@
       if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, sizeWithin(LAYOUT_PARTS[k], layout[k]) + 'px');
       else c.style.removeProperty(LAYOUT_PARTS[k].prop);
     });
-    // the foot is as tall as its message, up to its cap, until the person sizes it; sized, it is that
-    // tall whatever it holds, and what is taller scrolls inside the message (control.css)
-    c.classList.toggle('console--foot', layout.foot != null);
     // the answer keeps its usual cap until the person sizes it, and may then take the stage
     if (layout.drawer != null) c.style.setProperty('--drawer-max', 'calc(100% - 16px)');
     else c.style.removeProperty('--drawer-max');
@@ -3262,13 +3225,8 @@
   }
   function initLayout() {
     var c = $('console');
-    // the foot's grip lies along its top edge, so the stage above it gives up what the foot takes
-    var foot = c.querySelector('.console__status');
-    if (foot) foot.insertBefore(splitGrip('foot', 'the messages'), foot.firstChild);
     layout = readLayout();
     applyLayout();
-    // the Ask Claude bar grows as an answer is waited for, which leaves a sized foot less room
-    if ($('cp-askbar') && typeof ResizeObserver === 'function') new ResizeObserver(function () { if (layout.foot != null) applyLayout(); }).observe($('cp-askbar'));
     if ($('cp-zoom-down')) $('cp-zoom-down').addEventListener('click', function () { stepZoom(-1); });
     if ($('cp-zoom-up')) $('cp-zoom-up').addEventListener('click', function () { stepZoom(1); });
     if ($('cp-zoom-reset')) $('cp-zoom-reset').addEventListener('click', function () { stepZoom(0 - ZOOM_STEPS.indexOf(zoomOf()) + 3); });
@@ -3399,12 +3357,8 @@
       if (b.hasAttribute('data-jump')) jumpTo(b.getAttribute('data-jump'));
       if (b.hasAttribute('data-open')) openDialog(b.getAttribute('data-open'));
       var f = b.getAttribute('data-focus');
-      // the bar is hidden in a repository without the assistant: then a task asks @claude instead
-      if (f === 'cp-as-q' && $('cp-as-box') && $('cp-as-box').classList.contains('hidden')) { openTaskDialog(); $('cp-task-ask').focus(); say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.'); return; }
-      // on a phone the Ask Claude bar stands on the home screen, the one place it shows there
-      // (the step into the tab is taken back, so the phone's back gesture leaves no second home)
-      var stepped = !!(history.state && history.state.consoleHome);
-      if (f === 'cp-as-q' && phoneLayout() && !consoleAtHome()) { showHome(); if (stepped) history.back(); }
+      // Ask Claude is the floating button's press, wherever it is made from
+      if (f === 'cp-as-q') { pressClaude(); return; }
       if (f && $(f)) $(f).focus();
     });
     var pending = 0;
@@ -3495,8 +3449,8 @@
   // answer may end with that read what the page already shows; a line that would change something
   // is offered as a button that presses the panel's own button for it, as the person, so nothing
   // here writes to the repository but the label, the issue and the comments, each on a press, and
-  // what the person presses. The assistant is the Ask Claude bar at the console's foot, on every
-  // tab, and its answer opens in a drawer above the bar.
+  // what the person presses. The assistant is the Claude dialog that the floating Claude button at
+  // the top right opens (pressClaude), and its answer opens under the box in the same dialog.
   var ASSISTANT_LABEL = 'assistant';
   // the file the repository's workflow appends to the assistant's system prompt: a repository
   // without it on its default branch has no assistant, and a question there would run as an
@@ -4128,12 +4082,11 @@
     q.style.height = 'auto';
     q.style.height = q.scrollHeight + 2 + 'px';
   }
-  // The bar and its drawer are made here, into the frame's empty #cp-askbar (which the frame hides
-  // while it is empty) and over the foot of the stage, since the bar scrolls inside itself and would
-  // clip a drawer it held
+  // The bar and its drawer are made here, into the Claude dialog's empty #cp-askbar, the drawer
+  // under the bar in the same dialog
   function assistantBuildBar() {
-    var bar = $('cp-askbar'), stage = document.querySelector('#console .console__stage');
-    if (!bar || !stage || $('cp-as-q')) return;
+    var bar = $('cp-askbar'), host = bar && bar.parentNode;
+    if (!bar || !host || $('cp-as-q')) return;
     bar.setAttribute('role', 'region');
     bar.setAttribute('aria-label', 'Ask Claude');
     var row = el('div', 'console__askrow');
@@ -4184,7 +4137,7 @@
     acts.id = 'cp-as-actions';
     add(body, acts, answer);
     add(drawer, splitGrip('drawer', 'the answer'), head, body);
-    stage.appendChild(drawer);
+    host.appendChild(drawer);
   }
   // "Ask in claude.ai" opens the question on the person's own claude.ai account, in a new tab, with a
   // line or two naming what the page shows, so that Claude there, with whatever the person connected
@@ -4243,8 +4196,44 @@
     if (dropped) say('The claude.ai tab takes at most ' + OWN_CLAUDE_MAX + ' characters: ' + dropped + '.', true);
     window.open(OWN_CLAUDE + encodeURIComponent(whole), '_blank', 'noopener,noreferrer');
   }
+  // The floating Claude button at the top right: where the repository has no Claude token yet it
+  // opens the Tokens tab's Add Token, the first thing Claude needs; otherwise the Claude dialog, its
+  // box ready for the question. Whether a token is set is the Tokens tab's own read (loadTokens),
+  // made on the press where the tab has not made it for this repository; a token the person may not
+  // see listed (an organization's pool, read only by its owners) counts as maybe set, and the dialog
+  // opens, since the assistant's own line then says whether Claude can answer.
+  var CLAUDE_SLOT_SECRET = /^SYMPHONY_CLAUDE_([1-9]|[12][0-9]|3[0-2])$/;
+  var CLAUDE_WAIT_MS = 9000;
+  var claudePress = 0;
+  function claudeTokenSet() {
+    if (!tk.place || !tk.secrets || tk.secrets.unread) return null;
+    return Object.keys(tk.secrets).some(function (n) { return n === MAIN_SECRET || CLAUDE_SLOT_SECRET.test(n); });
+  }
+  function openClaude() {
+    openDialog('dlg-claude');
+    var q = $('cp-as-q');
+    if (q && !$('cp-as-box').classList.contains('hidden')) q.focus();
+  }
+  function claudeToTokens() {
+    if (consoleAtHome() && phoneLayout()) openFromHome('tokens'); else showTab('tokens');
+    openTokenDialog('', true);
+  }
+  function pressClaude() {
+    var repo = tokensRepo(), press = ++claudePress, began = Date.now();
+    if (!repo) { openClaude(); return; }
+    var b = $('cp-claude');
+    if (!(tk.repo === repo && tk.place)) loadTokens();
+    (function settle() {
+      if (press !== claudePress || tokensRepo() !== repo) { b.removeAttribute('aria-busy'); return; }
+      var read = tk.repo === repo && tk.place;
+      if (!read && Date.now() - began < CLAUDE_WAIT_MS) { b.setAttribute('aria-busy', 'true'); setTimeout(settle, 150); return; }
+      b.removeAttribute('aria-busy');
+      if (read && claudeTokenSet() === false) claudeToTokens(); else openClaude();
+    })();
+  }
   function initAssistant() {
     assistantBuildBar();
+    if ($('cp-claude')) $('cp-claude').addEventListener('click', pressClaude);
     $('cp-as-ask').addEventListener('click', assistantAsk);
     $('cp-as-own').addEventListener('click', askInClaude);
     $('cp-as-stop').addEventListener('click', function () { assistantStop('pressed'); });
@@ -11894,11 +11883,11 @@
     $('console').classList.toggle('console--exwide', on);
     var b = $('ex-wide');
     b.setAttribute('aria-pressed', on ? 'false' : 'true');
-    b.title = on ? 'Bring back the side column and the foot' : 'Give Explore the whole panel';
+    b.title = on ? 'Bring back the side column' : 'Give Explore the whole panel';
   }
   function exUnfold(e) {
     if (!explore.wide || consoleTab !== 'explore' || !e.target.closest) return;
-    if (!e.target.closest('.console__side, .console__split[data-split="side"], .console__askbar, .console__status')) return;
+    if (!e.target.closest('.console__side, .console__split[data-split="side"]')) return;
     // the rail's tabs, and what a message offers, keep their own presses; a grip's press only unfolds
     if (!e.target.closest('[data-split]') && e.target.closest('button, a, input, select, textarea, [role="tab"]')) return;
     e.preventDefault();
@@ -11913,7 +11902,7 @@
       if (Date.now() - (explore.unfolded || 0) < 600 && e.target.closest && e.target.closest('[data-split]')) { e.preventDefault(); e.stopPropagation(); }
       return;
     }
-    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"], .console__split[data-split="foot"]')) return;
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"]')) return;
     if (!/^(Arrow|Home|End|Enter| )/.test(e.key)) return;
     e.preventDefault();
     e.stopPropagation();
