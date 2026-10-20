@@ -602,11 +602,33 @@
       return Promise.resolve(false);
     }
     if (error) { say('GitHub did not sign you in (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return Promise.resolve(false); }
-    return exchange('/exchange', { code: code, code_verifier: kept.verifier, redirect_uri: pageAddress() }).then(function (answer) {
+    return exchangeCode({ code: code, code_verifier: kept.verifier, redirect_uri: pageAddress() }, 0).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
       keepOauth(answer, !!kept.keep);
       return true;
-    }).catch(function (e) { say(e.message + ' Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return false; });
+    }).catch(function (e) {
+      if (githubLimiting(e)) say('GitHub is limiting sign-ins for the moment, so this one did not finish. Wait a minute, then press Sign in with GitHub again, or use a token.', true);
+      else say(e.message + ' Press Sign in with GitHub to try again, or use a token.', true);
+      offerToken();
+      return false;
+    });
+  }
+  // GitHub holds its sign-in endpoint to a limit per address, and the sign-in service reaches it
+  // from addresses its host shares, so a 429 can come from others' sign-ins. GitHub declines such a
+  // request before acting on it, so the one-time code is not spent and is sent again after a wait;
+  // a 5xx is not, since GitHub may have spent the code before failing
+  var SIGNIN_RETRY_MS = [2000, 6000];
+  function githubLimiting(e) {
+    var words = String(e && e.message || '');
+    if (/GitHub answered 429\b|it answered 429\b/.test(words)) return true;
+    return !!e && e.code === 'github_unreachable' && !/answered 5\d\d\b/.test(words);
+  }
+  function exchangeCode(body, tries) {
+    return exchange('/exchange', body).catch(function (e) {
+      if (tries >= SIGNIN_RETRY_MS.length || !githubLimiting(e)) throw e;
+      say('GitHub is busy for the moment; trying the sign-in again...', false);
+      return new Promise(function (resolve) { setTimeout(resolve, SIGNIN_RETRY_MS[tries]); }).then(function () { return exchangeCode(body, tries + 1); });
+    });
   }
   // one renewal at a time: GitHub's refresh tokens are single use, so two renewals at once would
   // spend the same one twice and leave the page signed out
