@@ -172,7 +172,7 @@
    literally never in any case want to scroll"): the head, the tiles, the key and a card's head take
    what they need, and the chart's stage takes the rest. On a phone, where the page scrolls as a
    whole, symphony-panel.js (graphPhoneFit) gives the tab the screen's height left under the rail
-   of tabs and above the foot. The box the other tabs scroll is held still here. The buttons are
+   of tabs. The box the other tabs scroll is held still here. The buttons are
    sized from the screen: a little larger on a large one, and never under a finger's width on a
    touch screen. */
 #tab-dependencies, #cp-board { --gbtn: clamp(28px, 1.6vmin + 20px, 38px); }
@@ -186,24 +186,14 @@
    whenever the window changes size or turns. The site's header takes none of the screen, held
    either way: on this page it hides itself and comes back over the deck from its handle at the
    top centre (the bar's rules above), so its handle brings it here as on every other tab. Held
-   sideways, a phone has under 400 pixels of height, and a foot nobody sized keeps to one row */
+   sideways, a phone has under 400 pixels of height */
 /* the body's overflow, not the document's: the body's is the window's while the document's is
-   visible, and hidden on the document would make the body a box of its own, which the foot's sticky
-   place would then follow down the page instead of the window */
+   visible, and hidden on the document would make the body a box of its own */
 /* the held page is placed by the script alone: the browser's scroll anchoring, which keeps a node
    it picked in place as the layout round it changes, would carry the rail a few pixels off the
    window's top as the tab lays itself out again after a turn */
 html.graph--held { overscroll-behavior: none; overflow-anchor: none; }
 html.graph--held body { overflow: hidden; }
-@media (max-height: 520px) {
-  /* a foot nobody sized keeps to one row: the panel's line beside who is signed in, each cut to its
-     row; a foot the person sized keeps its size and its two rows, the message over the buttons, as
-     on every other tab, held to what leaves the tab its least (symphony-panel.js, footBounds) */
-  html.graph--held .console:not(.console--foot) > .console__status { flex-wrap: nowrap; }
-  html.graph--held .console:not(.console--foot) > .console__status #msg { flex: 1 1 0; max-height: 2.4em; }
-  html.graph--held .console:not(.console--foot) > .console__status .console__me { flex: 0 1 auto; flex-wrap: nowrap; max-width: 55%; }
-  html.graph--held .console:not(.console--foot) > .console__status .console__me small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-}
 #tab-dependencies > .console__scroll { overflow: hidden; display: flex; flex-direction: column; }
 #cp-graph { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 #cp-graph > .graph__section { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -502,7 +492,9 @@ html.graph--held body { overflow: hidden; }
    its list scroll inside, as Windows' own panes do, never the page */
 #tab-folders .folders__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 #tab-folders .folders__head .console__h { margin: 0; }
-#tab-folders .folders__who { flex: 1 1 auto; margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+/* whose drive it is takes what the head's buttons and the room kept for the Claude button leave,
+   wrapping its own words rather than pushing How it works onto a second row */
+#tab-folders .folders__who { flex: 1 1 12em; min-width: 0; margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
 #tab-folders .folders__head button { margin: 0; }
 #tab-folders .folders__browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 /* the start, as + Add repository draws its own: a dashed tile opening the drives to choose from,
@@ -820,43 +812,41 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 .console__links { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 0 8px; line-height: 1.4; font-size: 0.74rem; }
 .console__links span { color: var(--ink-faint); }
 .console__links a { border: 0; }
-/* who is signed in sits at the status line's right end; signed out, the gate says it */
+/* who is signed in sits under the tabs in the side column (the rules at the end of this file);
+   signed out, the gate says it */
 .console__me { flex: 0 1 auto; min-width: 0; max-width: 40%; display: flex; align-items: center; gap: 8px; }
 .console:has(#cp-app.hidden) .console__me { display: none; }
 .console__me small { margin: 0; color: var(--ink-faint); font-size: 0.74rem; line-height: 1.3; text-align: right; }
 .console__mebuttons { margin: 0; display: flex; gap: 6px; flex: 0 0 auto; }
 .console__mebuttons button { white-space: nowrap; margin: 0; padding: 4px 10px; font-size: 0.78rem; }
 
-/* the line the page speaks on is the deck's foot, always there, so a message is never off screen
-   and never covers a control; a long one (the sign-in step of Add a Claude account) scrolls inside
-   it, and Clear empties it */
+/* the page's message (symphony-panel.js, say), a note laid over the screen's foot while it has
+   something to say (the rules at the end of this file); a long one (the sign-in step of Add a
+   Claude account) scrolls inside it, and Clear empties it */
 .console__status { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 0; }
 /* the message takes the room the row leaves (a basis of 0, not its own words), so a long one wraps
    inside it and never pushes Clear under the text-size buttons */
 .console .console__status #msg { flex: 1 1 0; min-width: 0; min-height: 2.1em; max-height: 26vh; overflow: auto; padding: 5px 12px; font-size: 0.88rem; }
 .console .console__status #msg:empty { display: block; }
-/* the placeholder sits outside the live region, so emptying the line announces nothing */
-.console__status { position: relative; }
-.console__status:has(#msg:empty)::before { content: "Messages from the panel show here."; position: absolute; left: 15px; top: 6px; font-size: 0.88rem; color: var(--ink-faint); pointer-events: none; }
 /* a step with controls (the sign-in of Add a Claude account) keeps them on one line where they fit */
 .console .console__status #msg > p { display: inline-block; vertical-align: middle; margin: 2px 12px 2px 0; }
 .console .console__status #msg .admin__bar { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .console .console__status #msg input { width: 22em; max-width: 100%; padding: 5px 10px; }
 .console .console__status #msg button { margin: 0; padding: 4px 14px; font-size: 0.85rem; }
 .console .console__statusx { flex: 0 0 auto; margin: 0; padding: 4px 12px; font-size: 0.8rem; }
-/* the Ask Claude bar: a frozen row above the status line, as tall as what it holds up to a third
-   of the window, scrolling inside past that; empty, it is gone */
+/* the Ask Claude bar, in the Claude dialog: as tall as what it holds up to a third of the window,
+   scrolling inside past that; empty, it is gone */
 .console__askbar { flex: 0 0 auto; max-height: 34vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-card); padding: 6px 10px; }
 .console__askbar:empty { display: none; }
 .console:has(#cp-app.hidden) .console__askbar { display: none; }
 
-/* a new message flashes white, so the eye goes to the foot */
+/* a new message flashes white, so the eye goes to it */
 @keyframes console-msg-flash { 0%, 25% { background-color: #F4F1E6; color: #0B100F; } 100% { background-color: var(--paper-card); color: var(--ink); } }
 .console .console__status #msg.console__flash { animation: console-msg-flash 1.1s ease-out; }
 @media (prefers-reduced-motion: reduce) { .console .console__status #msg.console__flash { animation-duration: 0.4s; } }
 .console__status:has(#msg:empty) .console__statusx { visibility: hidden; }
 
-/* a task under way at the deck's foot (symphony-panel.js, msgTask): its name with a link to where it
+/* a task under way in the note (symphony-panel.js, msgTask): its name with a link to where it
    runs, the latest word on it, the run's steps with their state, the last lines of its log and the
    step the person takes there; a plain message said meanwhile is a line above it */
 .console .console__status #msg > p.msg__note { display: block; margin: 0; }
@@ -886,10 +876,8 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 .console .console__status #msg a.msgtask__go { display: inline-block; padding: 5px 14px; border: 1px solid var(--teal); border-radius: 8px; color: var(--teal); font-weight: 600; text-decoration: none; }
 .console .console__status #msg a.msgtask__go:hover { background: rgba(60, 194, 177, 0.12); }
 
-/* inside the Ask Claude bar (the frame draws the bar, symphony-panel.js fills it): the name, the
-   question box with its buttons, the state line; the answer's drawer is laid over the foot of the
-   stage, so nothing in the layout moves when it opens */
-.console:has(#cp-app.hidden) .console__askbar { display: none; }
+/* inside the Ask Claude bar, in the Claude dialog (symphony-panel.js, assistantBuildBar): the name,
+   the question box with its buttons, the state line, and the answer's drawer under them */
 .console__askrow { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .console__askname { flex: 0 0 auto; color: var(--teal); font-weight: 600; font-size: 0.88rem; white-space: nowrap; }
 .console__askbox { flex: 1 1 62%; min-width: 0; display: flex; align-items: center; gap: 6px; }
@@ -898,7 +886,7 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 .console .console__askrow button { margin: 0; padding: 5px 14px; font-size: 0.85rem; white-space: nowrap; }
 .console .console__askrow #cp-as-state { flex: 1 1 38%; min-width: 0; margin: 0; max-height: 2.7em; overflow: auto; font-size: 0.78rem; line-height: 1.35; }
 .console .console__stage { position: relative; }
-.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: var(--drawer-max, min(70%, 520px)); height: var(--drawer-h, auto); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
+.console__askdrawer { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 7; display: flex; flex-direction: column; max-height: min(70%, 520px); border: 1px solid rgba(60, 194, 177, 0.45); border-radius: 10px; background: var(--paper-card); box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45); }
 .console__askdrawer[hidden] { display: none; }
 .console__askhead { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .console .console__askhead button { margin: 0; padding: 4px 12px; font-size: 0.82rem; }
@@ -1012,18 +1000,13 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
   .console__scroll { overflow: visible; }
   .console__side { overflow: visible; }
   .console__askbar { max-height: 40vh; }
-  .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
   /* the page never pans sideways: the deck is clipped to the window's width (clip, which makes no
-     scroll box, so the status line still sticks to the window's foot, where hidden on html would
-     unstick it), and what is wider than a phone scrolls inside its own box, the rail, a table or
+     scroll box), and what is wider than a phone scrolls inside its own box, the rail, a table or
      a chart; the rail's end fades where more tabs are past it (symphony-panel.js, railEdges) */
   body[data-shell] main > .console.section, .console.section { overflow-x: clip; max-width: 100%; }
   .console__rail[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
-  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next; the
-     rest of the phone's rules stand at the end of this file, after the rules they must win over */
-  .console .console__status #msg { flex: 1 1 100%; }
 }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
@@ -1330,12 +1313,12 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
    the part as they are dragged, and the text size, which zooms the
    whole deck so its buttons and boxes grow and shrink with the words.
    ============================================================ */
-.console > .console__app, .console > .console__askbar, .console > .console__status { zoom: var(--console-zoom, 1); }
+.console > .console__app, .console > .console__status { zoom: var(--console-zoom, 1); }
 /* a phone keeps its own text size and pinch: the deck's saved text size, which widens its fixed
    parts (a tile, a box) past the window, is not applied there, and its buttons are not shown; the
    media list is the phone layout's, so a phone held sideways, wide but short, is a phone here too */
 @media (max-width: 900px), (max-height: 520px) {
-  .console > .console__app, .console > .console__askbar, .console > .console__status { zoom: 1; }
+  .console > .console__app, .console > .console__status { zoom: 1; }
   .console__zoom { display: none; }
 }
 .console__split { position: relative; cursor: col-resize; touch-action: none; outline: none; }
@@ -1344,46 +1327,6 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 /* a grip on a part's own edge: a strip inside the edge the part is sized by */
 .console__split--edge { position: absolute; z-index: 3; }
 .console__split--tkside, .console__split--nbside { top: 0; bottom: 0; left: -9px; width: 12px; }
-.console__split--drawer { left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; }
-.console__split--drawer::after { top: 50%; bottom: auto; left: 8px; right: 8px; width: auto; height: 2px; margin: -1px 0 0; }
-/* the foot's grip lies across the gap above the status line, the deck's 8 px, which no text size
-   scales, and the Ask Claude bar's bottom padding above it, 6 px of the bar's own, which the text size
-   scales as it scales the foot: about 14 px to take at any text size, over none of the foot's buttons
-   and none of the bar's box; a short bar in the gap's middle shows it is there to take, since the foot
-   is sized like the parts beside it (the owner, 2026-10-19: "i cant resize the message board panel") */
-.console__split--foot { left: 0; right: 0; top: calc(-8px / var(--console-zoom, 1) - 6px); height: calc(8px / var(--console-zoom, 1) + 6px); cursor: row-resize; }
-.console__split--foot::after { top: calc(4px + 4px / var(--console-zoom, 1)); bottom: auto; left: calc(50% - 22px); width: 44px; height: 4px; margin: 0; background: rgba(233, 230, 218, 0.3); }
-/* a foot the person sized (symphony-panel.js, LAYOUT_PARTS.foot) is that tall whatever it holds: the
-   message fills it and what is taller scrolls inside the message, as before; Clear and the buttons
-   stand at its top */
-.console.console--foot > .console__status { height: var(--foot-h); align-items: flex-start; }
-.console.console--foot > .console__status #msg { align-self: stretch; max-height: none; }
-@media (max-width: 900px), (max-height: 520px) {
-  /* on a phone the message takes the first row, all the foot leaves it, and Clear and the buttons
-     the second; the grip is a thumb's, its bar wider, in a top padding the foot keeps for it */
-  .console.console--foot > .console__status { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: center; }
-  .console.console--foot > .console__status #msg { grid-column: 1 / -1; }
-  .console__status { padding-top: 14px; }
-  .console__status:has(#msg:empty)::before { top: 14px; }
-  .console__split--foot { top: -8px; height: 26px; }
-  .console__split--foot::after { top: 13px; left: calc(50% - 28px); width: 56px; height: 5px; margin-top: 0; }
-  /* only the grip's middle is taken, a thumb's width about its bar, so the rest of the foot's top
-     edge, where a thumb rests to scroll the page, scrolls it as before */
-  .console__split--foot { left: calc(50% - 60px); right: auto; width: 120px; }
-  /* the deck fills the window at least, its foot padding below it, so on a short tab the foot rests
-     on the window's bottom as on a long one and its grip follows a finger; where the page is
-     scrolled past the deck's end, the script keeps the grip under the finger (initLayout) */
-  body[data-shell] main > .console.section, .console.section { min-height: calc(var(--console-h, calc(100dvh - env(safe-area-inset-top, 0px))) + 12px + env(safe-area-inset-bottom, 0px)); }
-}
-/* a finger takes the foot's grip on a tablet as on a phone: where the main pointer is coarse the
-   foot keeps a top padding that the grip reaches down into, a thumb's height in all, with the
-   phone's wider bar; the empty foot's placeholder moves down with the words that padding moves */
-@media (pointer: coarse) and (min-width: 901px) and (min-height: 521px) {
-  .console__status { padding-top: 10px; }
-  .console__status:has(#msg:empty)::before { top: 16px; }
-  .console__split--foot { height: calc(8px / var(--console-zoom, 1) + 16px); }
-  .console__split--foot::after { left: calc(50% - 28px); width: 56px; height: 5px; }
-}
 /* a task list's heading carries a grip on its right edge that sizes every list at once */
 .console .console__kanban > h3 { position: relative; }
 .console .console__kanban > h3 > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1393,7 +1336,6 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 /* while a grip is held the whole page shows its arrow and nothing is selected */
 body.console-dragging { user-select: none; -webkit-user-select: none; }
 body.console-dragging--x, body.console-dragging--x * { cursor: col-resize !important; }
-body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !important; }
 .console__zoom { gap: 0 !important; }
 .console .console__zoom button { padding: 4px 8px; border-radius: 0; margin: 0 0 0 -1px; font-variant-numeric: tabular-nums; }
 .console .console__zoom button:first-child { border-radius: 100px 0 0 100px; }
@@ -1408,11 +1350,11 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 }
 @media (max-width: 900px), (max-height: 520px) {
   .console__body { grid-template-columns: minmax(0, 1fr) !important; }
-  .console__body > .console__split, .console__colgrip, .console__split--tkside, .console__split--nbside, .console__split--drawer { display: none; }
+  .console__body > .console__split, .console__colgrip, .console__split--tkside, .console__split--nbside { display: none; }
 }
 /* who is signed in, the text size and Refresh wrap rather than run past the window's edge */
-/* the status line stays one line on a laptop, the name of who is signed in giving way first; it
-   wraps only where the window is too narrow for the text size and the buttons side by side */
+/* who is signed in stays one line where it fits, the name giving way first; it wraps only where
+   the column is too narrow for the text size and the buttons side by side */
 .console__me { max-width: 62%; justify-content: flex-end; row-gap: 4px; }
 .console__me small { flex: 1 1 auto; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 @media (max-width: 1100px) { .console__me { flex-wrap: wrap; } }
@@ -1645,18 +1587,15 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 }
 
 /* Explore takes most of the panel while it is shown (symphony-panel.js, exWide): the side column
-   folds to its rail of icons, the repository's box with it, the Ask Claude bar folds away and the
-   foot keeps one line of message and Clear; a press on either brings them back. */
+   folds to its rail of icons, the repository's box and who is signed in with it; a press on it
+   brings them back. */
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__body { grid-template-columns: 58px 10px minmax(0, 1fr); }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__id { display: none; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__side { cursor: e-resize; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail button { justify-content: center; padding-left: 0; padding-right: 0; cursor: pointer; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail :is(.rail__name, .rail__count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__split[data-split="side"] { cursor: e-resize; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__askbar { display: none; }
-.console.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status { height: auto; cursor: n-resize; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status .console__me { display: none; }
-.console.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status #msg { max-height: 2.1em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__me { display: none; }
 #tab-explore .ex__wideword { font-size: 0.85rem; }
 /* a phone: the tab is the stage, the zoom's buttons give way to a pinch and a double tap, and,
    folded, the tab takes the whole screen over the page, which is held still beneath it */
@@ -1688,7 +1627,7 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
    .toks): a media query adds no specificity, so an earlier phone rule of the same selector lost to
    the later desktop one and never showed. They stand last here for that reason. */
 @media (max-width: 900px), (max-height: 520px) {
-  /* Clear and the sign-in's buttons spread across the foot's second row */
+  /* who is signed in and its buttons spread across the side column's row */
   .console__me { max-width: none; flex: 1 1 auto; justify-content: space-between; }
   /* a run's card: its name and when it ran on the first line, the rest under them, indented to the
      name; the cells are ordered name, when, then the rest, and the outcome cell, which the desktop
@@ -1731,14 +1670,11 @@ body[data-shell] main > .console.section, .console.section {
   padding-left: calc(14px + env(safe-area-inset-left, 0px));
   padding-right: calc(14px + env(safe-area-inset-right, 0px));
 }
-/* the deck's foot is the screen's only in the desktop layout, where the deck fills the window (an
-   iPad's, say); in the phone layout the page scrolls on past the deck, and the status line, which
-   sticks to the screen's foot there, pads itself */
+/* the deck pads the home bar itself only in the desktop layout, where the deck fills the window (an
+   iPad's, say); in the phone layout the deck is fixed over the screen, and the note over the
+   screen's foot keeps clear of the home bar by its own place (the rules at the end of this file) */
 @media (min-width: 901px) and (min-height: 521px) {
   body[data-shell] main > .console.section, .console.section { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
-}
-@media (max-width: 900px), (max-height: 520px) {
-  .console__status { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* the site's header: its bar runs to the screen's edges, and its brand, its links and its menu
@@ -1791,15 +1727,14 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   padding-left: max(var(--band-side), calc(env(safe-area-inset-left, 0px) + 16px));
   padding-right: max(var(--band-side), calc(env(safe-area-inset-right, 0px) + 16px));
 }
-/* a long address in a message wraps instead of pushing the foot sideways */
+/* a long address in a message wraps instead of pushing the note sideways */
 #msg a { overflow-wrap: anywhere; color: inherit; text-decoration: underline; }
 
 /* ============================================================
    The phone's home screen (the owner, 2026-10-20): one thing on the screen at a time. The console
    is fixed over the whole screen, so the page never scrolls on into the footer; with no tab open
    (console--home, symphony-panel.js showHome) it shows the repository and the tabs as square
-   buttons about a centimetre across, as an iPhone's home screen, with the Ask Claude bar and the
-   foot; a tab pressed fills the screen under a bar whose back button returns to the buttons, and
+   buttons about a centimetre across, as an iPhone's home screen; a tab pressed fills the screen under a bar whose back button returns to the buttons, and
    only the tab scrolls; a dialog fills the screen over the tab, which it leaves as it was. These
    rules stand last so they win over the phone's earlier ones, where the page scrolled.
    ============================================================ */
@@ -1818,9 +1753,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console__gate { min-height: 0; max-height: 100%; }
   .console__app { flex: 1 1 auto; min-height: 0; }
   .console__body { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); }
-  /* the foot rests on the screen's bottom, keeping its top padding, where its grip lies, and its own
-     bottom padding off the home bar (above) */
-  .console__status { position: relative; }
 
   /* the home screen: the repository, then the tabs as a grid of icons with their names under them */
   .console--home .console__split[data-split="side"] { display: none; }
@@ -1828,8 +1760,8 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
      is fixed to the screen here, still opens over it when it comes */
   .console--home .console__stage { min-height: 0; height: 0; padding: 0; border: 0; overflow: visible; }
   .console--home .console__stage > :not(.console__askdrawer) { display: none; }
-  /* the repository and the buttons scroll as one above the Ask Claude bar and the foot, which stay
-     on the screen, so a phone held sideways still reaches every button */
+  /* the repository and the buttons scroll as one, so a phone held sideways still reaches every
+     button (the rules at the end of this file scroll the tab buttons alone under the repository) */
   .console--home .console__side { min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; border: 0; background: transparent; }
   .console--home .console__id { border-radius: 10px; border: 1px solid var(--line); background: var(--paper-card); }
   .console--home .console__rail {
@@ -1880,9 +1812,7 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console__phonetitle { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .console__panel { overflow-y: auto; overscroll-behavior: contain; }
   .console__scroll { overflow: auto; }
-  /* one window at a time: the Ask Claude bar and who is signed in stay on the home screen; the foot
-     keeps the page's message under a tab */
-  .console:not(.console--home) > .console__askbar { display: none; }
+  /* one window at a time: who is signed in stays on the home screen */
   .console:not(.console--home) .console__me { display: none; }
 
   /* a dialog fills the screen over the tab, the page held still beneath it, and closing it gives
@@ -1908,16 +1838,93 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .tkdlg, .cpdlg, .cpdlg--wide { padding-top: calc(28px + env(safe-area-inset-top, 0px)); }
 }
 /* a phone held sideways has little height: under a tab the back bar is a slim row with the site
-   bar's handle over its empty middle, the stage gives up its frame and the foot is one row, so the
-   tab keeps most of the screen */
+   bar's handle over its empty middle and the stage gives up its frame, so the tab keeps most of the
+   screen */
 @media (max-height: 520px) {
   body[data-shell] main > .console.section, body.console-bar-auto[data-shell] main > .console.section { padding-top: 4px; }
   .console:not(.console--home) .console__stage { padding: 2px 4px 4px; border: 0; background: transparent; }
   .console:not(.console--home) .console__phonebar { margin: 0 0 2px; padding: 0 0 2px; }
   .console button.console__back { min-height: 30px; padding-top: 1px; padding-bottom: 1px; }
-  /* and a tab's foot is one row, its message beside Clear, sized or not, so the tab keeps its height
-     and the grip takes the foot from the size it rests at (footBounds takes its least from one row) */
-  .console:not(.console--home):not(.console--foot) .console__status #msg { flex: 1 1 0; }
-  .console.console--foot:not(.console--home) > .console__status { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
-  .console.console--foot:not(.console--home) > .console__status #msg { grid-column: 1; }
+}
+
+/* ============================================================
+   Claude floats at the top right, and the page's message is a note over the bottom of the screen
+   (the owner, 2026-10-20: the Ask Claude bar and the message line ate the screen, so they are gone
+   on every layout). The button (#cp-claude) opens the Claude dialog, or Add Token where no Claude
+   token is set (symphony-panel.js, pressClaude); the tabs' heads and the phone's top rows leave it
+   room. The note shows only while the page has something to say, Clear emptying it. Who is signed
+   in, the text size, Refresh and Forget the token sit under the tabs in the side column. These
+   rules stand last so they win over the older ones.
+   ============================================================ */
+.console > .console__claude {
+  position: fixed; z-index: 45; top: calc(env(safe-area-inset-top, 0px) + 16px); right: calc(env(safe-area-inset-right, 0px) + 26px);
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin: 0; padding: 0;
+  border: 1px solid rgba(60, 194, 177, 0.6); border-radius: 100px; background: var(--paper-card); color: var(--ink);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45); cursor: pointer;
+}
+.console > .console__claude:focus, .console > .console__claude:active { background: var(--paper-card); color: var(--ink); }
+.console > .console__claude:hover, .console > .console__claude:focus-visible { border-color: var(--teal-bright, #3CC2B1); color: var(--teal-bright, #3CC2B1); }
+.console > .console__claude[aria-busy="true"] { opacity: 0.7; cursor: progress; }
+.console__claudeicon { color: var(--teal); font-size: 1.3rem; line-height: 1; }
+/* the word is for a screen reader; the button's tooltip says it on screen */
+.console__claudeword { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.console:has(#cp-app.hidden) > .console__claude { display: none; }
+/* the tabs' heads end short of it, so their "What this is" is never under it; under a head a tab's
+   scrolling box starts below it, and the Command tab, which has no head, keeps its scrolling box
+   clear of its column, so nothing scrolls under the button */
+/* and at least the button's height, so a tab's scrolling box, and the gears of the cards in it,
+   start below the button however short the head's words are (the Tokens tab's is one word) */
+.console__panel > .console__head { padding-right: 52px; min-height: 40px; }
+/* a tab with no head (Command, About) keeps its scrolling box out of the button's column */
+.console__panel > .console__scroll:first-child { margin-right: 52px; }
+
+.console > .console__status {
+  position: fixed; z-index: 44; left: 50%; right: auto; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
+  width: min(760px, calc(100% - 24px)); height: auto; max-height: 45vh; margin: 0; padding: 8px; display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--paper-card); box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+}
+/* empty, the note is still drawn, unseen and out of the pointer's way, so the live region is there
+   when the first message comes and a screen reader says it */
+.console > .console__status { transition: opacity 0.18s ease-out; }
+.console > .console__status:has(#msg:empty) { opacity: 0; pointer-events: none; }
+/* while the note shows, the stage gives up its height at its foot, so no tab's last row lies under
+   it (symphony-panel.js, toastLayout) */
+.console.console--toast:not(.console--home) .console__stage { padding-bottom: calc(var(--toast-h, 0px) + 20px); }
+.console.console--toast.console--home .console__side { padding-bottom: calc(var(--toast-h, 0px) + 20px); }
+/* signed out, the gate stands in the room the note leaves, so a long note never lies over Open the
+   panel or the sign-in */
+.console.console--toast:has(> #cp-app.hidden) { padding-bottom: calc(var(--toast-h, 0px) + 20px); }
+.console > .console__status #msg { flex: 1 1 0; min-width: 0; min-height: 0; max-height: calc(45vh - 18px); overflow: auto; border: 0; }
+.console > .console__status .console__statusx { visibility: visible; }
+
+.console__side > .console__me { flex: 0 0 auto; max-width: none; flex-wrap: wrap; justify-content: flex-start; padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+.console__side > .console__me small { flex: 1 1 100%; text-align: left; -webkit-line-clamp: 3; }
+
+/* the dialog: the box, then the line saying what Claude can do, then the answer under them */
+.claudedlg { width: min(760px, calc(100% - 32px)); }
+.claudedlg .console__askbar { max-height: none; overflow: visible; border: 0; padding: 0; background: transparent; }
+.claudedlg .console__askbar:empty { display: none; }
+.claudedlg .console__askname { display: none; }
+.claudedlg .console__askrow { flex-wrap: wrap; }
+.claudedlg .console__askbox, .claudedlg .console__askrow #cp-as-state { flex-basis: 100%; }
+.console .claudedlg .console__askrow #cp-as-state { max-height: none; }
+.console .claudedlg .console__askdrawer, .claudedlg .console__askdrawer { position: static; inset: auto; margin-top: 12px; max-height: 55vh; height: auto; box-shadow: none; }
+
+@media (max-width: 900px), (max-height: 520px) {
+  .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 16px); right: calc(env(safe-area-inset-right, 0px) + 20px); }
+  .console--home .console__titlerow, .console:not(.console--home) .console__phonebar { padding-right: 48px; }
+  /* on the home screen the repository's box stays put under the button and only the tab buttons
+     scroll, below it, so no button scrolls under the floating one */
+  .console--home .console__side { overflow: hidden; }
+  .console.console--home .console__rail { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+  .console__panel > .console__head { padding-right: 0; }
+  .console__panel > .console__scroll:first-child { margin-right: 0; }
+  .console__side > .console__me { flex-wrap: wrap; justify-content: space-between; border-top: 0; padding: 4px 2px 12px; }
+  .claudedlg { width: 100%; }
+}
+@media (max-width: 900px) and (hover: none), (max-width: 900px) and (any-pointer: coarse), (max-height: 520px) and (hover: none), (max-height: 520px) and (any-pointer: coarse) {
+  body.console-bar-auto .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 32px); }
+}
+@media (max-height: 520px) {
+  body.console-bar-auto .console > .console__claude, .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 10px); width: 32px; height: 32px; }
 }

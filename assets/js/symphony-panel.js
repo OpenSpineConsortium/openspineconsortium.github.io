@@ -120,7 +120,7 @@
     return node;
   }
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
-  // the page's own line at the deck's foot; a task under way there (msgTask) stays under it, since
+  // the page's note over the screen's foot; a task under way there (msgTask) stays under it, since
   // its work goes on, while a finished one gives way to the new words as any message did
   function say(text, warn) {
     var m = $('msg');
@@ -130,6 +130,25 @@
     });
     if (text) m.insertBefore(rich(el('p', 'msg__note'), text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
+    clearTimeout(noteTimer);
+    if (text && !warn) { var note = m.firstChild; noteTimer = setTimeout(function () { fadeNote(note); }, NOTE_MS); }
+  }
+  // A plain note goes by itself after a while, so the note over the screen's foot never sits over
+  // the page with nothing to do; a warning, a note with something to press or type, and a task stay
+  // until Clear, and a note the pointer or the focus is on waits until they leave it. While the
+  // panel is signed out the note is the only word of why (forgotten in another tab, refused by
+  // GitHub), so it stays for whoever comes back to the sign-in.
+  var NOTE_MS = 8000;
+  var noteTimer = 0;
+  function fadeNote(note) {
+    var m = $('msg');
+    if (!m || !note || note.parentNode !== m || /admin__warn/.test(m.className)) return;
+    if (note.querySelector('input, button, select, textarea')) return;
+    if ($('cp-app').classList.contains('hidden')) return;
+    var foot = m.closest('.console__status');
+    if ((foot && foot.matches(':hover')) || (foot && foot.contains(document.activeElement))) { noteTimer = setTimeout(function () { fadeNote(note); }, NOTE_MS); return; }
+    m.removeChild(note);
+    if (!m.firstChild) { m.className = 'admin__box'; toastFocusBack(); }
   }
   function stamp(iso) {
     if (!iso) return '';
@@ -269,7 +288,7 @@
     state = emptyState(state.repo);
     // a drive connected under this sign-in goes with it, whatever ended it
     dropDrive();
-    // and so does what was under way at the deck's foot, whose calls now go unanswered
+    // and so does what was under way in the note, whose calls now go unanswered
     msgTasksDrop();
   }
   function forgetToken() {
@@ -429,17 +448,17 @@
     if (lost && back && back.getClientRects().length) back.focus({ preventScroll: true });
     return live;
   }
-  // whether the whole of a node shows, under no header or status line held to the window's edge
+  // whether the whole of a node shows, under no header or note held to the window's edge
   function inSight(node) {
     var r = node.getBoundingClientRect();
     var x = r.left + Math.min(r.width / 2, 24);
     return [r.top + 1, r.bottom - 1].every(function (y) { var at = document.elementFromPoint(x, y); return !!(at && node.contains(at)); });
   }
-  // on a phone the code's box opens below the fold, behind the status line held to the window's foot,
+  // on a phone the code's box opens below the fold, behind the note over the window's foot,
   // so it is brought up to the window's middle; where it shows whole already nothing moves
   function bringIntoSight(node) {
     if (inSight(node)) return;
-    try { scrollInDeck(node, { block: 'center' }); } catch (e) { /* the code is in the status line too */ }
+    try { scrollInDeck(node, { block: 'center' }); } catch (e) { /* the code is in the note too */ }
   }
   function showCode(code) {
     $('cp-code').textContent = code;
@@ -1520,7 +1539,7 @@
     ask.className = 'console__primary';
     add(form, add(el('div', 'tkdlg__field'), add(el('label', '', 'Ask Claude to do something on it')), q), add(el('p', 'tkdlg__bar'), ask));
     q.previousSibling.htmlFor = 'dlg-ask';
-    add(form, el('p', 'tkdlg__note admin__lead', 'Ask comments on the issue mentioning @claude, and the repository\'s Claude workflow answers there on the repository\'s own Claude token. For a question about the board, use the Ask Claude bar at the foot.'));
+    add(form, el('p', 'tkdlg__note admin__lead', 'Ask comments on the issue mentioning @claude, and the repository\'s Claude workflow answers there on the repository\'s own Claude token. For a question about the board, use the Claude button at the top right.'));
     (prompt ? q : (form.querySelector('select:not(:disabled)') || q)).focus();
   }
   function askOnIssue(n, text) {
@@ -2008,7 +2027,7 @@
           x: function (b) { closePull(pr, b); }
         }));
         tr.setAttribute('data-draft', pr.draft ? 'true' : 'false');
-        // the Ask Claude bar finds a pull request's Merge button by its number; data-pull keeps
+        // the Claude dialog's answer finds a pull request's Merge button by its number; data-pull keeps
         // these cards out of the task filters, which read tr[data-number] as tasks
         tr.setAttribute('data-number', String(pr.number));
         tr.setAttribute('data-pull', String(pr.number));
@@ -2379,7 +2398,7 @@
     if (!t.title || !t.goal) { say('A task needs a title and what is true when it is done.', true); return; }
     var s = state;
     say('Queueing the task...');
-    // the dialog closes at once; what the request says comes to the deck's foot, and the fields keep
+    // the dialog closes at once; what the request says comes to the note, and the fields keep
     // their words for another try
     closeDialog('dlg-task');
     var done = hold('cp-task-queue');
@@ -2662,8 +2681,6 @@
     if (!c) return;
     var top = c.getBoundingClientRect().top + (window.pageYOffset || 0);
     c.style.setProperty('--console-h', Math.max(Math.floor(window.innerHeight - top), 0) + 'px');
-    // a foot the person sized is held to what the window now leaves the stage
-    if (layout.foot != null) applyLayout();
     var rail = c.querySelector('.console__rail');
     if (rail) rail.setAttribute('aria-orientation', getComputedStyle(rail).flexDirection === 'row' ? 'horizontal' : 'vertical');
     railEdges();
@@ -2720,7 +2737,7 @@
       head.classList.add('console__flash');
     } else box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
   }
-  // a message that arrives, or changes, flashes the line at the deck's foot; emptying it does not.
+  // a message that arrives, or changes, flashes the note; emptying it does not.
   // say() replaces className, so the flash class is put back after it rather than kept
   function initFlash() {
     var m = $('msg');
@@ -2783,13 +2800,13 @@
     return function () { clearTimeout(timer); requestAnimationFrame(release); };
   }
 
-  /* ---------- a piece of work that takes a while speaks at the deck's foot ---------- */
+  /* ---------- a piece of work that takes a while speaks in the note ---------- */
   // A workflow started from a button, or the sign-in of Add Token, held a dialog open or said one
-  // line and went quiet. Now the dialog answers and closes at once, and the work speaks on the line
-  // at the deck's foot: its name, where it is, the run's steps as GitHub lists them and the last
+  // line and went quiet. Now the dialog answers and closes at once, and the work speaks in the note
+  // over the screen's foot: its name, where it is, the run's steps as GitHub lists them and the last
   // lines of a job's log once the job has ended (GitHub gives a log then, not while the job runs),
   // and the step it needs from the person as links and a box there, so nothing more pops up. A new
-  // word flashes the foot white, as any message does; the steps and the log do not, since they
+  // word flashes the note white, as any message does; the steps and the log do not, since they
   // change every few seconds. Clear hides a task and its work goes on; the button that started it
   // shows it again, and a message said meanwhile goes above it (say).
   var msgTasks = [];
@@ -2812,7 +2829,7 @@
     var bar = el('p', 'admin__bar msgtask__bar');
     bar.hidden = true;
     // the step the person takes and the buttons come right under the line, before the steps and the
-    // log, so on a phone's short foot the sign-in's link is in view and the quiet parts are below
+    // log, so in a phone's short note the sign-in's link is in view and the quiet parts are below
     add(box, head, line, step, bar, steps, log);
     var task = {
       box: box,
@@ -2876,7 +2893,7 @@
     msgTasks = [];
   }
 
-  /* ---------- the run a button started, followed from the deck's foot ---------- */
+  /* ---------- the run a button started, followed from the note ---------- */
   // GitHub lists a workflow's runs newest first, so the run a press started is the first listed
   // whose id is above the newest before the press, the one the signed-in person started where
   // several are; one that is not listed within two minutes is left to the Runs tab. While it runs,
@@ -2906,7 +2923,7 @@
           fails = 0;
           var fresh = runs.filter(function (run) { return run.id > after && !followedRuns[run.id]; });
           // the signed-in person's own run, where GitHub names who started each: another person's,
-          // started in the same minute, speaks at their foot, and this person's is waited for
+          // started in the same minute, speaks in their note, and this person's is waited for
           var named = fresh.filter(function (run) { return isPlain(run.actor) && typeof run.actor.login === 'string' && run.actor.login; });
           var mine = named.filter(function (run) { return run.actor.login === shownLogin; });
           var run = mine[0] || (!shownLogin || !named.length ? fresh[0] : null);
@@ -2986,7 +3003,7 @@
   function followDispatched(s, workflow, after, task) {
     var era = ends;
     // the follow is over with a sign-out, with the task (Clear leaves it live; a drop does not) and
-    // once the page shows another repository, whose foot the run's end would otherwise land on
+    // once the page shows another repository, whose note the run's end would otherwise land in
     function over() { return ends !== era || !task.live || stale(s); }
     function left() {
       if (task.live && ends === era) task.end('Left as the page went to another repository; the run goes on at its link.');
@@ -3196,41 +3213,8 @@
     side: { prop: '--side-w', min: 150, max: 520, axis: 'x', sign: 1, measure: function () { return $('console').querySelector('.console__side').offsetWidth; } },
     col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
     tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
-    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } },
-    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } },
-    // the foot: the message line and the task boxes of long work, with Clear and the buttons beside
-    // them; its bounds are measured each time, since they follow the window (footBounds)
-    foot: { prop: '--foot-h', min: 24, max: 1600, axis: 'y', sign: -1, measure: function () { return $('console').querySelector('.console__status').offsetHeight; }, bounds: footBounds }
+    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } }
   };
-  // what a sized foot may be now: never less than one line of message with its buttons, and never so
-  // tall that the stage keeps less than STAGE_MIN of the window. Where the deck fills the window, a
-  // computer's or a phone's whose console is fixed over the screen, that is what the deck holds above
-  // the foot beside the Ask Claude bar; where the page scrolls under a foot that sticks to the
-  // window's bottom, it is the rest of the window. A phone's foot stacks its message over its
-  // buttons, but for a tab's held sideways. In the foot's own pixels, which the text size scales.
-  var STAGE_MIN = 180;
-  function footBounds() {
-    var p = LAYOUT_PARTS.foot, c = $('console'), st = c && c.querySelector('.console__status');
-    if (!st || !$('msg') || !$('cp-msg-close')) return p;
-    var cs = getComputedStyle(c), ss = getComputedStyle(st), gap = parseFloat(cs.rowGap) || 0;
-    var line = parseFloat(getComputedStyle($('msg')).minHeight) || 30;
-    var buttons = Math.max($('cp-msg-close').offsetHeight, c.querySelector('.console__me').offsetHeight);
-    var pad = parseFloat(ss.paddingTop) + parseFloat(ss.paddingBottom);
-    // a phone held sideways lays a tab's foot out in one row (control.css, max-height: 520px)
-    var stacked = phoneLayout() && (consoleAtHome() || !window.matchMedia('(max-height: 520px)').matches);
-    var scrolls = cs.overflow !== 'hidden';
-    var min = Math.ceil(pad + (stacked ? line + (parseFloat(ss.rowGap) || 0) + buttons : Math.max(line, buttons)));
-    // while the Dependencies tab is shown it needs more than the stage's least, and the foot leaves
-    // it that: its own least on a computer, and on a phone that and the rail above it (graphNeed)
-    var least = Math.max(STAGE_MIN, graphNeed());
-    var room = window.innerHeight - least;
-    if (!scrolls) {
-      var ask = $('cp-askbar'), asked = ask && ask.getClientRects().length ? ask.getBoundingClientRect().height + gap : 0;
-      room = c.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - gap - asked - least;
-    }
-    min = Math.max(p.min, min);
-    return { min: min, max: Math.min(p.max, Math.max(min, Math.floor(room / scaleOf(st)))) };
-  }
   // how much the text size scales a part: its size on screen over its size in its own pixels (the
   // phone's rules leave the deck unscaled whatever text size the desktop saved)
   function scaleOf(node) {
@@ -3265,12 +3249,6 @@
       if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, sizeWithin(LAYOUT_PARTS[k], layout[k]) + 'px');
       else c.style.removeProperty(LAYOUT_PARTS[k].prop);
     });
-    // the foot is as tall as its message, up to its cap, until the person sizes it; sized, it is that
-    // tall whatever it holds, and what is taller scrolls inside the message (control.css)
-    c.classList.toggle('console--foot', layout.foot != null);
-    // the answer keeps its usual cap until the person sizes it, and may then take the stage
-    if (layout.drawer != null) c.style.setProperty('--drawer-max', 'calc(100% - 16px)');
-    else c.style.removeProperty('--drawer-max');
     c.style.setProperty('--console-zoom', String(zoomOf()));
     if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
     sayGrips();
@@ -3282,13 +3260,12 @@
     Array.prototype.forEach.call($('console').querySelectorAll('[data-split][role="separator"]'), function (grip) {
       var p = LAYOUT_PARTS[grip.getAttribute('data-split')];
       if (!p || !grip.getClientRects().length) return;
-      var b = p.bounds ? p.bounds() : p;
-      grip.setAttribute('aria-valuemin', String(b.min));
-      grip.setAttribute('aria-valuemax', String(b.max));
-      grip.setAttribute('aria-valuenow', String(Math.min(b.max, Math.max(b.min, Math.round(p.measure(grip))))));
+      grip.setAttribute('aria-valuemin', String(p.min));
+      grip.setAttribute('aria-valuemax', String(p.max));
+      grip.setAttribute('aria-valuenow', String(Math.min(p.max, Math.max(p.min, Math.round(p.measure(grip))))));
     });
   }
-  // a grip made by the script, for a part the script draws (a token's panel, Claude's answer)
+  // a grip made by the script, for a part the script draws (a token's panel, a notebook's)
   function splitGrip(part, what) {
     var g = el('div', 'console__split console__split--edge console__split--' + part);
     g.setAttribute('data-split', part);
@@ -3298,10 +3275,9 @@
     g.tabIndex = 0;
     return g;
   }
-  // a size held to a part's bounds: its fixed ones, or those it measures now
+  // a size held to a part's bounds
   function sizeWithin(p, px) {
-    var b = p.bounds ? p.bounds() : p;
-    return Math.round(Math.min(b.max, Math.max(b.min, px)));
+    return Math.round(Math.min(p.max, Math.max(p.min, px)));
   }
   function setPart(part, px) {
     layout[part] = sizeWithin(LAYOUT_PARTS[part], px);
@@ -3317,13 +3293,8 @@
   }
   function initLayout() {
     var c = $('console');
-    // the foot's grip lies along its top edge, so the stage above it gives up what the foot takes
-    var foot = c.querySelector('.console__status');
-    if (foot) foot.insertBefore(splitGrip('foot', 'the messages'), foot.firstChild);
     layout = readLayout();
     applyLayout();
-    // the Ask Claude bar grows as an answer is waited for, which leaves a sized foot less room
-    if ($('cp-askbar') && typeof ResizeObserver === 'function') new ResizeObserver(function () { if (layout.foot != null) applyLayout(); }).observe($('cp-askbar'));
     if ($('cp-zoom-down')) $('cp-zoom-down').addEventListener('click', function () { stepZoom(-1); });
     if ($('cp-zoom-up')) $('cp-zoom-up').addEventListener('click', function () { stepZoom(1); });
     if ($('cp-zoom-reset')) $('cp-zoom-reset').addEventListener('click', function () { stepZoom(0 - ZOOM_STEPS.indexOf(zoomOf()) + 3); });
@@ -3339,19 +3310,8 @@
       var scale = scaleOf(grip);
       grip.setPointerCapture(e.pointerId);
       document.body.classList.add('console-dragging', 'console-dragging--' + p.axis);
-      // where the page scrolls (a phone's), a foot not resting on the window's bottom, the page
-      // scrolled past the deck's end, grows down from a top that stays put; the window is scrolled by
-      // what the grip fell behind the size it took, so the grip stays under the finger, at once, since
-      // the site's smooth scrolling would land after the next move had measured
-      var top0 = grip.getBoundingClientRect().top;
-      function follow() {
-        if (p.axis !== 'y' || getComputedStyle(c).overflow === 'hidden') return;
-        var behind = grip.getBoundingClientRect().top - (top0 + p.sign * (layout[part] - start) * scale);
-        if (Math.abs(behind) > 0.5) window.scrollBy({ top: behind, behavior: 'instant' });
-      }
       function move(ev) {
         setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale);
-        follow();
       }
       // the grip may be drawn again mid-drag (the Tokens tab redraws its panel as readings land), so
       // a lost capture ends the drag as a release does
@@ -3392,6 +3352,33 @@
     });
   }
 
+  // The note is laid over the screen's foot while it has something to say, so the stage gives up the
+  // note's height at its foot (control.css, console--toast) and no tab's last row lies under it; and
+  // the element the focus was on before it went into the note is where Clear sends it back.
+  var toastFrom = null;
+  function toastLayout() {
+    var c = $('console'), m = $('msg'), foot = c && c.querySelector('.console__status');
+    if (!c || !m || !foot) return;
+    var shown = !!m.firstChild;
+    c.classList.toggle('console--toast', shown);
+    if (shown) c.style.setProperty('--toast-h', Math.ceil(foot.getBoundingClientRect().height / scaleOf(foot)) + 'px');
+    else c.style.removeProperty('--toast-h');
+  }
+  function toastFocusBack() {
+    var foot = document.querySelector('#console .console__status');
+    var at = document.activeElement;
+    if (at && at !== document.body && !(foot && foot.contains(at))) return;
+    var back = toastFrom && toastFrom.isConnected && toastFrom.getClientRects().length ? toastFrom : $('cp-claude');
+    if (back && back.getClientRects().length) back.focus(); else if (at && at.blur) at.blur();
+  }
+  function initToast() {
+    var m = $('msg'), foot = m && m.closest('.console__status');
+    if (!foot) return;
+    document.addEventListener('focusin', function (e) { if (!foot.contains(e.target)) toastFrom = e.target; });
+    if (window.MutationObserver) new MutationObserver(toastLayout).observe(m, { childList: true, subtree: true, characterData: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(toastLayout).observe(foot);
+    toastLayout();
+  }
   function initConsole() {
     var c = $('console');
     if (!c) return;
@@ -3400,12 +3387,17 @@
     initFullScreen();
     initTiles();
     initLayout();
-    // the deck's foot holds the page's message; Clear empties it. A task under way there is only
-    // hidden, its work going on, and the button that started it shows it again, the step the person
-    // was in the middle of (the code box of Add Token) kept as it was
+    // the note over the screen's foot holds the page's message; Clear empties it. A task under way
+    // there is only hidden, its work going on, and the button that started it shows it again, the
+    // step the person was in the middle of (the code box of Add Token) kept as it was; the focus goes
+    // back where it was before it went into the note
+    initToast();
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
-      clear($('msg'));
-      $('msg').className = 'admin__box';
+      var m = $('msg');
+      msgTasks.forEach(function (t) { if (t.live) t.hide(); });
+      Array.prototype.slice.call(m.childNodes).forEach(function (n) { m.removeChild(n); });
+      m.className = 'admin__box';
+      toastFocusBack();
     });
     fitConsole();
     window.addEventListener('resize', fitConsole);
@@ -3454,12 +3446,8 @@
       if (b.hasAttribute('data-jump')) jumpTo(b.getAttribute('data-jump'));
       if (b.hasAttribute('data-open')) openDialog(b.getAttribute('data-open'));
       var f = b.getAttribute('data-focus');
-      // the bar is hidden in a repository without the assistant: then a task asks @claude instead
-      if (f === 'cp-as-q' && $('cp-as-box') && $('cp-as-box').classList.contains('hidden')) { openTaskDialog(); $('cp-task-ask').focus(); say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.'); return; }
-      // on a phone the Ask Claude bar stands on the home screen, the one place it shows there
-      // (the step into the tab is taken back, so the phone's back gesture leaves no second home)
-      var stepped = !!(history.state && history.state.consoleHome);
-      if (f === 'cp-as-q' && phoneLayout() && !consoleAtHome()) { showHome(); if (stepped) history.back(); }
+      // Ask Claude is the floating button's press, wherever it is made from
+      if (f === 'cp-as-q') { pressClaude(); return; }
       if (f && $(f)) $(f).focus();
     });
     var pending = 0;
@@ -3552,8 +3540,8 @@
   // answer may end with that read what the page already shows; a line that would change something
   // is offered as a button that presses the panel's own button for it, as the person, so nothing
   // here writes to the repository but the label, the issue and the comments, each on a press, and
-  // what the person presses. The assistant is the Ask Claude bar at the console's foot, on every
-  // tab, and its answer opens in a drawer above the bar.
+  // what the person presses. The assistant is the Claude dialog that the floating Claude button at
+  // the top right opens (pressClaude), and its answer opens under the box in the same dialog.
   var ASSISTANT_LABEL = 'assistant';
   // the file the repository's workflow appends to the assistant's system prompt: a repository
   // without it on its default branch has no assistant, and a question there would run as an
@@ -3683,7 +3671,7 @@
       if (perm !== 'admin' && perm !== 'write') { assistantWords(['The assistant answers only people with write access to ' + s.repo + ', and GitHub says yours is ' + perm + '.']); return; }
       return assistantHasFile(s).then(function (has) {
         if (a !== assistant || stale(s)) return;
-        if (!has) { assistantWords(['This repository\'s Claude workflow has no assistant yet: ' + ASSISTANT_FILE + ' is not on its default branch, so a question here would run as an ordinary @claude mention, with the tools that write. Bring in the template release that carries it first.']); return; }
+        if (!has) { a.noFile = true; assistantWords(['This repository\'s Claude workflow has no assistant yet: ' + ASSISTANT_FILE + ' is not on its default branch, so a question here would run as an ordinary @claude mention, with the tools that write. Bring in the template release that carries it first.']); return; }
         return assistantFind(s).then(function (words) {
           if (a !== assistant || stale(s)) return;
           assistantWords(words);
@@ -4101,6 +4089,9 @@
     var b = btn(label, false, function () {
       if (a !== assistant || repo !== state.repo || login !== shownLogin) { say('That button belonged to an answer for ' + repo + ' as ' + login + ', and the page has moved on; ask again.', true); return; }
       b.disabled = true;
+      // the press acts on the panel behind the Claude dialog, so the dialog gives way and the
+      // person sees what it did, and any confirmation it asks for, or why it was refused
+      closeDialog('dlg-claude');
       if (run() === false) b.disabled = false;
     });
     add(row, b, ' ', words);
@@ -4185,12 +4176,11 @@
     q.style.height = 'auto';
     q.style.height = q.scrollHeight + 2 + 'px';
   }
-  // The bar and its drawer are made here, into the frame's empty #cp-askbar (which the frame hides
-  // while it is empty) and over the foot of the stage, since the bar scrolls inside itself and would
-  // clip a drawer it held
+  // The bar and its drawer are made here, into the Claude dialog's empty #cp-askbar, the drawer
+  // under the bar in the same dialog
   function assistantBuildBar() {
-    var bar = $('cp-askbar'), stage = document.querySelector('#console .console__stage');
-    if (!bar || !stage || $('cp-as-q')) return;
+    var bar = $('cp-askbar'), host = bar && bar.parentNode;
+    if (!bar || !host || $('cp-as-q')) return;
     bar.setAttribute('role', 'region');
     bar.setAttribute('aria-label', 'Ask Claude');
     var row = el('div', 'console__askrow');
@@ -4240,8 +4230,8 @@
     var acts = el('div', 'console__askactions');
     acts.id = 'cp-as-actions';
     add(body, acts, answer);
-    add(drawer, splitGrip('drawer', 'the answer'), head, body);
-    stage.appendChild(drawer);
+    add(drawer, head, body);
+    host.appendChild(drawer);
   }
   // "Ask in claude.ai" opens the question on the person's own claude.ai account, in a new tab, with a
   // line or two naming what the page shows, so that Claude there, with whatever the person connected
@@ -4300,8 +4290,73 @@
     if (dropped) say('The claude.ai tab takes at most ' + OWN_CLAUDE_MAX + ' characters: ' + dropped + '.', true);
     window.open(OWN_CLAUDE + encodeURIComponent(whole), '_blank', 'noopener,noreferrer');
   }
+  // The floating Claude button at the top right: where the repository has no Claude token yet it
+  // opens the Tokens tab's Add Token, the first thing Claude needs; otherwise the Claude dialog, its
+  // box ready for the question. Whether a token is set is the Tokens tab's own read (loadTokens),
+  // made on the press where the tab has not made it for this repository, and in an organization's
+  // repository the repository's own secrets and the organization's secrets it reaches besides, since
+  // the main token may be a repository secret beside the pool. Add Token opens only where every one
+  // of those reads answered and none lists a Claude token; a read that failed, or a pool the person
+  // may not list (an organization's, read only by its owners), counts as maybe set, and the dialog
+  // opens, since the assistant's own line then says whether Claude can answer. A repository whose
+  // workflow has no assistant asks @claude through a task instead, as the Ask Claude launch did.
+  var CLAUDE_SLOT_SECRET = /^SYMPHONY_CLAUDE_([1-9]|[12][0-9]|3[0-2])$/;
+  var CLAUDE_WAIT_MS = 9000;
+  var claudePress = 0;
+  function isClaudeSecret(name) { return name === MAIN_SECRET || CLAUDE_SLOT_SECRET.test(name); }
+  function secretNames(list) { return list.map(function (x) { return x && x.name; }); }
+  // true, false, or null where it cannot be told
+  function claudeTokenSet(repo) {
+    var place = tk.place;
+    if (!place || !tk.secrets || tk.secrets.unread) return Promise.resolve(null);
+    var lists = [Promise.resolve(Object.keys(tk.secrets))];
+    if (place.org) {
+      lists.push(listed('/repos/' + repo + '/actions/secrets', 'secrets').then(secretNames));
+      lists.push(listed('/repos/' + repo + '/actions/organization-secrets', 'secrets').then(secretNames));
+    }
+    return Promise.all(lists).then(function (all) {
+      return all.some(function (names) { return names.some(isClaudeSecret); });
+    }, function () { return null; });
+  }
+  function openClaude() {
+    if (assistant.noFile && assistant.repo === tokensRepo()) {
+      openTaskDialog();
+      say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.');
+      return;
+    }
+    openDialog('dlg-claude');
+    var q = $('cp-as-q');
+    if (q && !$('cp-as-box').classList.contains('hidden')) q.focus();
+  }
+  function claudeToTokens() {
+    if (consoleAtHome() && phoneLayout()) openFromHome('tokens'); else showTab('tokens');
+    openTokenDialog('', true);
+  }
+  function pressClaude() {
+    var repo = tokensRepo(), press = ++claudePress, began = Date.now(), tab = consoleTab;
+    var b = $('cp-claude');
+    function done() { if (press === claudePress && b) b.removeAttribute('aria-busy'); }
+    if (!repo) { done(); openClaude(); return; }
+    if (!(tk.repo === repo && tk.place)) loadTokens();
+    if (b) b.setAttribute('aria-busy', 'true');
+    (function settle() {
+      // a later press, another repository, another tab or a dialog opened meanwhile takes over
+      if (press !== claudePress) return;
+      if (tokensRepo() !== repo || consoleTab !== tab || document.querySelector('dialog[open]')) { done(); return; }
+      var read = tk.repo === repo && tk.place, failed = tokenReadFailed === repo;
+      if (!read && !failed && Date.now() - began < CLAUDE_WAIT_MS) { setTimeout(settle, 150); return; }
+      if (!read) { done(); openClaude(); return; }
+      claudeTokenSet(repo).then(function (set) {
+        if (press !== claudePress) return;
+        done();
+        if (tokensRepo() !== repo || consoleTab !== tab || document.querySelector('dialog[open]')) return;
+        if (set === false) claudeToTokens(); else openClaude();
+      });
+    })();
+  }
   function initAssistant() {
     assistantBuildBar();
+    if ($('cp-claude')) $('cp-claude').addEventListener('click', pressClaude);
     $('cp-as-ask').addEventListener('click', assistantAsk);
     $('cp-as-own').addEventListener('click', askInClaude);
     $('cp-as-stop').addEventListener('click', function () { assistantStop('pressed'); });
@@ -4315,9 +4370,10 @@
     });
     $('cp-as-toggle').addEventListener('click', function () { assistantDrawer($('cp-as-drawer').hidden); });
     $('cp-as-close').addEventListener('click', function () { assistantDrawer(false); $('cp-as-toggle').focus(); });
-    // Escape shuts the drawer from inside it or from the bar
+    // Escape shuts the drawer from inside it or from the bar, and only the drawer: the dialog
+    // round them waits for the next Escape
     [$('cp-as-drawer'), $('cp-askbar')].forEach(function (n) {
-      n.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cp-as-drawer').hidden) { assistantDrawer(false); $('cp-as-toggle').focus(); } });
+      n.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cp-as-drawer').hidden) { e.preventDefault(); assistantDrawer(false); $('cp-as-toggle').focus(); } });
     });
     if ($('cp-as-goto')) $('cp-as-goto').addEventListener('click', function () { $('cp-as-q').focus(); });
   }
@@ -4997,13 +5053,10 @@
   // phone layout), so while this tab is shown the page is held still (graph--held on the document,
   // control.css: no scroll, no bounce, and no gesture of the browser's own on the tab), the window
   // put where the rail of tabs stands at the window's top, so the person can always leave for
-  // another tab, and the tab takes the screen's height left above the foot that sticks to the
-  // screen's bottom: the whole tab in front of the person and nothing a finger can scroll. The
+  // another tab, and the tab takes the rest of the screen's height: the whole tab in front of the person and nothing a finger can scroll. The
   // site's bar takes none of it: it hides itself on this page and comes back over the deck when its
-  // handle is tapped or swiped down (initBar, barRoom), held sideways as upright. A screen too short
-  // to spare more, a phone held sideways, gives a line of a foot nobody sized to the tab too
-  // (control.css); a foot the person sized keeps its size, held to what leaves the tab its least
-  // (footBounds, graphNeed). Opening the tab and turning the phone bring the window back there;
+  // handle is tapped or swiped down (initBar, barRoom), held sideways as upright. Opening the tab
+  // and turning the phone bring the window back there;
   // any other tab lets the page go. Elsewhere the deck holds the window and the tab simply fills
   // its stage.
   var GRAPH_PHONE_MIN = 160;
@@ -5012,17 +5065,9 @@
     if (!tab) return;
     var phone = pageScrolls(), shown = graphTabShown(tab);
     document.documentElement.classList.toggle('graph--held', phone && shown);
-    // a foot the person sized is held to what leaves the tab its least while the tab is shown, and
-    // given its own size back once another tab is (footBounds)
-    if (shown !== graphWasShown) {
-      graphWasShown = shown;
-      if (layout.foot != null) applyLayout();
-    }
     if (!phone) { tab.style.height = ''; return; }
     if (!shown) return;
-    var foot = document.querySelector('.console__status');
-    var footH = foot && getComputedStyle(foot).position === 'sticky' ? foot.getBoundingClientRect().height : 0;
-    var h = Math.floor(window.innerHeight - footH - graphHeldAround(tab));
+    var h = Math.floor(window.innerHeight - graphHeldAround(tab));
     tab.style.height = Math.max(h, GRAPH_PHONE_MIN) + 'px';
     var rail = document.querySelector('.console__rail') || tab;
     if (bring) window.scrollTo({ left: 0, top: Math.max(0, rail.getBoundingClientRect().top + window.pageYOffset - barRoom()), behavior: 'instant' });
@@ -5036,23 +5081,6 @@
     return barRoom() + lead + below + 6;
   }
   function graphTabShown(tab) { return !!tab && !tab.hidden && tab.getClientRects().length > 0; }
-  var graphWasShown = false;
-  // The least of its own pixels the tab keeps while it is shown, which a foot the person sized leaves
-  // it (footBounds): its head, the tiles and a card's tools take about 120, and the stage the rest,
-  // where a chart is still drawn whole beside or under the tools that float over its corner, never a
-  // sliver too thin to fit it. What the window must keep for it: on a computer the console's stage,
-  // the tab scaled by the text size and the stage's own padding round it; on a phone, whose page the
-  // tab holds, the window's height above the foot, the rail above the tab too (graphHeldAround).
-  // Nothing while another tab is shown.
-  var GRAPH_LEAST = 280;
-  function graphNeed() {
-    var tab = $('tab-dependencies');
-    if (!graphTabShown(tab)) return 0;
-    if (pageScrolls()) return Math.ceil(graphHeldAround(tab)) + GRAPH_LEAST;
-    var stage = tab.closest('.console__stage');
-    var around = stage ? stage.getBoundingClientRect().height - tab.getBoundingClientRect().height : 0;
-    return Math.ceil(GRAPH_LEAST * scaleOf(tab) + Math.max(0, around));
-  }
   // the issue a number names: the open list first, then what the reads brought (a closed sub-issue,
   // a blocker from outside the epic), else a bare one, so a node is drawn for every number an edge names
   function graphIssueOf(draw, n) {
@@ -6310,8 +6338,8 @@
   }
   // a node pressed, or Centre its row: the task's row is centred and marked in the Tasks tab, which
   // opens, as the assistant's focus opens it, where the task tables hold the task, and nothing else
-  // happens; no window or page opens. The words go to the message line under the deck too, on every
-  // press, whichever tab it leaves shown, so that line never keeps an earlier press's focus.
+  // happens; no window or page opens. The words go to the note over the screen's foot too, on every
+  // press, whichever tab it leaves shown, so the note never keeps an earlier press's focus.
   function graphFocus(n) {
     $('cp-graph-said').textContent = assistantFocus(n);
     say($('cp-graph-said').textContent);
@@ -6444,9 +6472,6 @@
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(graphLayout).observe(tab);
       new ResizeObserver(graphAllLayout).observe($('cp-graph'));
-      // the foot that sticks to a phone's screen grows with a long message, and the tab gives way
-      var foot = document.querySelector('.console__status');
-      if (foot) new ResizeObserver(function () { graphPhoneFit(false); }).observe(foot);
     }
     // a phone turned brings the tab back where it is held, the window's old place no longer its
     window.addEventListener('resize', function () { graphPhoneFit(!tab.hidden); });
@@ -6789,10 +6814,13 @@
     }).catch(function (e) { if (e.status === 404) return []; throw e; });
   }
 
+  // the repository whose last read of the tokens failed, so a press waiting on it settles at once
+  var tokenReadFailed = '';
   function loadTokens() {
     var asked = ++reading;
     var repo = tokensRepo();
     tokensFor = repo;
+    tokenReadFailed = '';
     if (!repo) { say('Choose a repository in the side column first.', true); return; }
     writeKey(KEY_REPO, repo, true);
     readPool(repo).catch(function (e) { if (e.status === 404) return {}; throw e; }).then(function (by) {
@@ -6905,7 +6933,7 @@
       tk.settings = vars[0];
       tk.labels = vars[1];
       drawTiles();
-    }).catch(function (e) { if (asked === reading) say('The tokens could not be read: ' + e.message, true); });
+    }).catch(function (e) { if (asked === reading) { tokenReadFailed = repo; say('The tokens could not be read: ' + e.message, true); } });
   }
 
   // a repository in crowd mode holds no Claude token (docs/setup/crowdsourcing.md), as the wizard refuses
@@ -6980,14 +7008,14 @@
   // from this branch (symphony-template's tools/sync_adopted.py)
   var SYNC_BRANCH = 'symphony/sync';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
-  // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
-  // the deck's foot, shown again when Add Token is pressed after Clear hid it, and how to stop it
+  // the sign-in under way, one at a time since each opens an issue and starts a run: its task in
+  // the note, shown again when Add Token is pressed after Clear hid it, and how to stop it
   var tokenRun = null;
   // the slot whose settings Save and sign in is saving before its sign-in starts, with the sign-out
   // count of the press, so a save that never answers after a sign-out holds nothing
   var tokenAdding = null;
 
-  // the sign-in at the deck's foot (msgTask): a line that says where the run is, the run's steps
+  // the sign-in in the note (msgTask): a line that says where the run is, the run's steps
   // under it, and the step it needs from the person, the claude.ai link and the code's box; the
   // dialog that asked for it has closed already, with its task handed on
   function signInView(title, given) {
@@ -7249,7 +7277,7 @@
       setTimeout(look, RUN_POLL_MS);
     });
   }
-  // the step the person takes, at the deck's foot: the sign-in as a link, which a phone opens as it
+  // the step the person takes, in the note: the sign-in as a link, which a phone opens as it
   // opens any, and the code's box beside it
   function drawSignIn(repo, issue, url, view) {
     var m = view.step;
@@ -7716,7 +7744,7 @@
     if (!d || !tk.place) { say('The tokens are still being read; press again in a moment.'); return; }
     // a token whose settings are still being saved is one press's: a second press meanwhile would
     // save the slot again under another id and start a second sign-in
-    if (adding && tokenAdding && tokenAdding.era === ends) { say('A token is being added already; it speaks at the foot.'); return; }
+    if (adding && tokenAdding && tokenAdding.era === ends) { say('A token is being added already; it speaks in the note at the foot of the screen.'); return; }
     clear(d);
     var s = tk.settings[slot] || {};
     var form = el('form', 'tkdlg__form');
@@ -7804,7 +7832,7 @@
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
       var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim(), at = tk.place;
-      // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
+      // the dialog answers and closes at once; the saving speaks in the note, and so does the
       // sign-in that follows it, as one task
       d.close();
       var task = adding ? msgTask('Add ' + tileName(wanted) + ' on ' + tk.repo) : null;
@@ -10094,7 +10122,7 @@
   // listed asked about one by one, since GitHub's list of them leaves out which template made each;
   // every one made from the template, or carrying the topic, joins the list, and the newest is
   // chosen in the bar, which moves the whole console to it
-  // what Track, Find and Sync now answer is said in the Track dialog as well as at the foot, which the
+  // what Track, Find and Sync now answer is said in the Track dialog as well as in the note, which the
   // dialog covers while it is open
   function fdSay(text, warn) {
     say(text, warn);
@@ -10459,7 +10487,7 @@
       else words += dispatchWords(repo, started);
       var trouble = (started !== true && !wrote.pull) || switched !== true || !!(where && where.note) || !!(renewal && renewal.failed.length);
       fdSay(words, trouble);
-      // done: the steps close by themselves, the panel's message line saying what was done; a
+      // done: the steps close by themselves, the panel's note saying what was done; a
       // sync that could not be started or switched on keeps them open, with its runs link
       if (!trouble) closeDialog('dlg-track');
       if (foldersRepo() === repo) loadFolders();
@@ -11232,7 +11260,7 @@
     return slug;
   }
   // the dialog that proposes a notebook or changes one: its title, summary and repository, and the
-  // catalog's files ticked; Propose or Save closes it at once and the write speaks at the foot
+  // catalog's files ticked; Propose or Save closes it at once and the write speaks in the note
   function openNotebookDialog(slug) {
     var d = $('nb-dialog');
     if (!d) return;
@@ -11965,20 +11993,20 @@
   }
 
   // While the tab is shown it takes most of the panel (the owner, 2026-10-19: "making it take up most
-  // of the panel when using it"): the side column folds to its icons and the foot to its one line,
-  // and on a phone the tab takes the whole screen (control.css, console--exwide). The Panel button,
-  // or a press on the folded side column or foot, brings them back, and the grips size them as
-  // before; the choice lasts while the page is open and is stored nowhere.
+  // of the panel when using it"): the side column folds to its icons, and on a phone the tab takes
+  // the whole screen (control.css, console--exwide). The Panel button, or a press on the folded side
+  // column, brings it back, and its grip sizes it as before; the choice lasts while the page is open
+  // and is stored nowhere.
   function exWide(on) {
     explore.wide = on;
     $('console').classList.toggle('console--exwide', on);
     var b = $('ex-wide');
     b.setAttribute('aria-pressed', on ? 'false' : 'true');
-    b.title = on ? 'Bring back the side column and the foot' : 'Give Explore the whole panel';
+    b.title = on ? 'Bring back the side column' : 'Give Explore the whole panel';
   }
   function exUnfold(e) {
     if (!explore.wide || consoleTab !== 'explore' || !e.target.closest) return;
-    if (!e.target.closest('.console__side, .console__split[data-split="side"], .console__askbar, .console__status')) return;
+    if (!e.target.closest('.console__side, .console__split[data-split="side"]')) return;
     // the rail's tabs, and what a message offers, keep their own presses; a grip's press only unfolds
     if (!e.target.closest('[data-split]') && e.target.closest('button, a, input, select, textarea, [role="tab"]')) return;
     e.preventDefault();
@@ -11993,7 +12021,7 @@
       if (Date.now() - (explore.unfolded || 0) < 600 && e.target.closest && e.target.closest('[data-split]')) { e.preventDefault(); e.stopPropagation(); }
       return;
     }
-    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"], .console__split[data-split="foot"]')) return;
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"]')) return;
     if (!/^(Arrow|Home|End|Enter| )/.test(e.key)) return;
     e.preventDefault();
     e.stopPropagation();
