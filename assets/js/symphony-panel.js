@@ -9761,7 +9761,7 @@
       life = 'Connected ' + when + '; a OneDrive refresh token lasts ' + MS_REFRESH_DAYS + ' days, so press Connect OneDrive again by ' + due + (left <= 14 ? ' (in ' + plural(left, 'day') + ')' : '') + ', then Track, which replaces the secret and the date.';
     }
     var kept = secret && secret.unread ? (refused ? '' : 'Whether the secret ' + DRIVE_SECRET + ' is set could not be read (' + secret.unread.message + ').')
-      : secret ? 'The secret ' + DRIVE_SECRET + ' is set' + (secret.updated_at ? ', updated ' + stamp(secret.updated_at) : '') + '.'
+      : secret ? 'The secret ' + DRIVE_SECRET + ' is set' + (secret.org ? ', as the organization\'s, which GitHub gives this repository' : '') + (secret.updated_at ? ', updated ' + stamp(secret.updated_at) : '') + '.'
       : 'The secret ' + DRIVE_SECRET + ' is not set, so the sync ends at once: press Connect OneDrive, then Track.';
     add(box, el('p', 'admin__lead', life + (kept ? ' ' + kept : '')));
     add(box, add(el('p', 'admin__bar'), btn('Sync now', false, function (ev) { syncNow(repo, ev.currentTarget, lapsed); }), ' ', link(syncLink(repo), 'the runs of ' + DRIVE_WORKFLOW)));
@@ -9839,7 +9839,7 @@
     none($('fd-tracked'), 'Reading ' + repo + '...');
     Promise.all([
       readTracked(repo),
-      readOne('/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET).catch(function (e) { return { unread: e }; }),
+      readSecret(repo),
       readOne('/repos/' + repo + '/contents/.github/workflows/' + DRIVE_WORKFLOW).then(function (found) { return !!found; }, function (e) { return e; }),
       readOne('/repos/' + repo).catch(function () { return null; }),
       readOne('/repos/' + repo + '/contents/.github/workflows/' + CATALOG_WORKFLOW).then(function (found) { return !!found; }, function () { return false; })
@@ -9999,7 +9999,12 @@
         body.visibility = 'selected';
         body.selected_repository_ids = ids;
         return gh('PUT', base + '/secrets/' + DRIVE_SECRET, body, undefined, false, account).then(function () {
-          return recordDrive(base, all[3], driveId, ids, account);
+          // GitHub takes an organization secret it then withholds from a private repository on some
+          // plans and policies, so the repository's own list says whether it reaches; where it does
+          // not, or the list cannot be read, the repository keeps a secret of its own
+          return orgSecretReaches(repo).then(function (reaches) {
+            return reaches ? recordDrive(base, all[3], driveId, ids, account) : inRepo();
+          });
         }, function (e) {
           // a token that reads the organization's secrets and may not write them keeps to the repository
           if (e.status === 403 || e.status === 404) return inRepo();
@@ -10007,6 +10012,20 @@
         });
       });
     }, function () { return inRepo(); });
+  }
+  // whether the organization's secret is among those GitHub gives this repository's workflows
+  function orgSecretReaches(repo) {
+    return ghListOf('/repos/' + repo + '/actions/organization-secrets?per_page=100', 'secrets', 10).then(function (list) {
+      return list.some(function (x) { return x && x.name === DRIVE_SECRET; });
+    }, function () { return false; });
+  }
+  // the repository's own secret, or else the organization's where GitHub gives it to the repository,
+  // or { unread } where the repository's own cannot be read
+  function readSecret(repo) {
+    return readOne('/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET).then(function (own) {
+      if (own) return own;
+      return orgSecretReaches(repo).then(function (reaches) { return reaches ? { name: DRIVE_SECRET, org: true } : null; });
+    }, function (e) { return { unread: e }; });
   }
   // every repository the organization's secret is shared with, or null where the list cannot be read whole
   function secretRepos(base) {
