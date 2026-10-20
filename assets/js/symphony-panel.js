@@ -8477,7 +8477,7 @@
   // the characters and names OneDrive refuses in a name, Windows' own rules
   var BAD_NAME = /["*:<>?\/\\|]/;
   var RESERVED_NAME = /^(con|prn|aux|nul|com[0-9]|lpt[0-9]|\.lock|desktop\.ini|_vti_)(\..*)?$/i;
-  var explorer = { view: 'details', sort: 'name', down: false, filter: '', back: [], forward: [], items: [], selected: '', sel: Object.create(null), anchor: '', clip: null, preview: false, previews: Object.create(null), thumbs: true, open: Object.create(null), cache: Object.create(null), cacheFor: null };
+  var explorer = { view: 'details', sort: 'name', down: false, filter: '', back: [], forward: [], items: [], selected: '', sel: Object.create(null), anchor: '', clip: null, busy: false, renaming: '', parentKey: Object.create(null), preview: false, previews: Object.create(null), thumbs: true, open: Object.create(null), cache: Object.create(null), cacheFor: null };
 
   function extOf(name) {
     var m = /\.([A-Za-z0-9]{1,8})$/.exec(String(name || ''));
@@ -8632,6 +8632,9 @@
     }).then(function (items) {
       var kept = items.filter(function (it) { return it && typeof it === 'object'; });
       kept.cut = !!items.cut;
+      // the list a folder's own id names, the root's among them, so a write found by its item's
+      // parent drops the right list
+      if (key.indexOf('search:') !== 0) kept.forEach(function (it) { var p = it.parentReference && it.parentReference.id; if (typeof p === 'string' && p) explorer.parentKey[p] = key; });
       return kept;
     });
     explorer.cache[key] = read;
@@ -8653,7 +8656,10 @@
   function hereFolder() { return searching() ? null : (here() ? here().id : ''); }
   function hereName() { var h = here(); return h ? h.name : 'OneDrive'; }
   // moving to a folder: the path walked is kept for Back, and Forward is cleared, as Explorer does
+  // on a phone the preview covers the list, so moving to another folder closes it
+  function narrow() { return window.matchMedia && window.matchMedia('(max-width: 900px)').matches; }
   function go(path) {
+    if (narrow()) explorer.preview = false;
     explorer.back.push(crumbs.slice());
     explorer.forward = [];
     crumbs = path;
@@ -8682,7 +8688,7 @@
   // the command bar's buttons, each with what it needs to be pressed, set again on every change of
   // the selection, the clipboard or the folder
   var COMMANDS = [
-    ['new', 'New folder', 'New folder (Ctrl+Shift+N)', function () { return hereFolder() !== null; }, function () { newFolder(); }],
+    ['new', 'New folder', 'New folder (Ctrl+Shift+N or Ctrl+Alt+N)', function () { return hereFolder() !== null; }, function () { newFolder(); }],
     ['upload', 'Upload', 'Upload files into this folder, or drop them on the list', function () { return hereFolder() !== null; }, function () { pickUpload(hereFolder()); }],
     ['cut', 'Cut', 'Cut (Ctrl+X)', function (n) { return n > 0; }, function () { clip('cut'); }],
     ['copy', 'Copy', 'Copy (Ctrl+C)', function (n) { return n > 0; }, function () { clip('copy'); }],
@@ -8814,6 +8820,9 @@
     drawItems();
   }
   function listFolder() {
+    // what another folder held is never drawn, or acted on, under this one's address
+    explorer.items = [];
+    explorer.loading = true;
     drawBrowser();
     return relist();
   }
@@ -8827,12 +8836,16 @@
     return read.then(function (items) {
       if (asked !== listing) return;
       explorer.items = items;
+      explorer.loading = false;
       // what is selected and no longer here is let go
       Object.keys(explorer.sel).forEach(function (id) { if (!items.some(function (it) { return String(it.id) === id; })) delete explorer.sel[id]; });
       if (explorer.selected && !explorer.sel[explorer.selected]) explorer.selected = '';
       drawItems();
     }).catch(function (e) {
       if (asked !== listing) return;
+      explorer.items = [];
+      explorer.loading = false;
+      selectNone();
       var main = $('fd-main');
       if (main) { clear(main); none(main, 'The list could not be read: ' + e.message); }
     });
@@ -8840,7 +8853,10 @@
   // a folder's list read again after a write changed it, and the list shown read again where it
   // is that folder or the results of a search; the tree is drawn again for a folder's change
   function changed(keys) {
-    keys.forEach(function (k) { delete explorer.cache[k === '' || k == null ? 'root' : k]; });
+    keys.forEach(function (k) {
+      var key = k === '' || k == null ? 'root' : explorer.parentKey[k] || k;
+      delete explorer.cache[key];
+    });
     Object.keys(explorer.cache).forEach(function (k) { if (k.indexOf('search:') === 0) delete explorer.cache[k]; });
     drawTree();
     return relist();
@@ -8870,7 +8886,9 @@
   }
   function drawItems() {
     var main = $('fd-main');
-    if (!main) return;
+    if (!main || explorer.loading) return;
+    // a name being edited is never drawn over; its end draws the list
+    if (explorer.renaming) return;
     clear(main);
     var list = sortedItems();
     if (explorer.view === 'details') main.appendChild(detailsTable(list));
@@ -9058,9 +9076,13 @@
     if (ev.altKey && ev.key === 'ArrowLeft') { ev.preventDefault(); goBack(); return; }
     if (ev.altKey && ev.key === 'ArrowRight') { ev.preventDefault(); goForward(); return; }
     if (ev.altKey && k === 'p') { ev.preventDefault(); togglePreview(); return; }
-    if (ev.target.tagName === 'INPUT' && ev.key !== 'Enter') return;
+    // a key on a tick or a column's heading is that control's own
+    if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'BUTTON') return;
     var chosen = selectedItems();
-    if (ctrl && ev.shiftKey && k === 'n') { ev.preventDefault(); newFolder(); return; }
+    // Ctrl+Shift+N is Explorer's, which a browser may keep for a private window; Ctrl+Alt+N too
+    if (ctrl && (ev.shiftKey || ev.altKey) && k === 'n') { ev.preventDefault(); newFolder(); return; }
+    // a Mac's Delete key is Backspace; Cmd+Backspace deletes there, as in Finder
+    if (ev.metaKey && ev.key === 'Backspace') { ev.preventDefault(); if (chosen.length) askDelete(chosen); return; }
     if (ctrl && k === 'a') { ev.preventDefault(); selectAll(); return; }
     if (ctrl && k === 'x') { ev.preventDefault(); clip('cut'); return; }
     if (ctrl && k === 'c') { ev.preventDefault(); clip('copy'); return; }
@@ -9105,7 +9127,12 @@
   }
 
   /* ---------- the menus: an item's, the list's own and the View menu ---------- */
-  function hideMenu() { var m = $('fd-menu'); if (m) m.remove(); }
+  var menuAway = null;
+  function hideMenu() {
+    var m = $('fd-menu');
+    if (m) m.remove();
+    if (menuAway) { document.removeEventListener('mousedown', menuAway); menuAway = null; }
+  }
   function menuAt(x, y, fill) {
     hideMenu();
     var menu = el('div', 'fx__menu');
@@ -9133,7 +9160,9 @@
       else if (ev.key === 'ArrowUp') { ev.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
     });
     setTimeout(function () {
-      document.addEventListener('mousedown', function away(ev) { if (!menu.contains(ev.target)) { hideMenu(); document.removeEventListener('mousedown', away); } });
+      if (!menu.isConnected) return;
+      menuAway = function (ev) { if (!menu.contains(ev.target)) hideMenu(); };
+      document.addEventListener('mousedown', menuAway);
     }, 0);
   }
   // an item's menu acts on the selection the item is in; the list's own, on the folder shown
@@ -9190,13 +9219,16 @@
       return r.id;
     });
   }
+  // the folder an item was listed in, as Graph names it, else the folder shown
+  function parentOf(it) { var p = it.parentReference && it.parentReference.id; return typeof p === 'string' && p ? p : hereFolder(); }
   function nameProblem(name, was) {
     if (!name) return 'A name cannot be empty.';
     if (name.length > 255) return 'A name can be at most 255 characters.';
     if (BAD_NAME.test(name)) return 'A name cannot hold any of " * : < > ? / \\ |';
     if (RESERVED_NAME.test(name)) return name + ' is a name OneDrive keeps for itself.';
     if (/[. ]$/.test(name) || /^ /.test(name)) return 'A name cannot begin with a space or end with a space or a full stop.';
-    var taken = explorer.items.some(function (it) { return String(it.id) !== was && String(it.name || '').toLowerCase() === name.toLowerCase(); });
+    // search results come from many folders, so there Graph's own answer says a name is taken
+    var taken = !searching() && explorer.items.some(function (it) { return String(it.id) !== was && String(it.name || '').toLowerCase() === name.toLowerCase(); });
     return taken ? 'Something named ' + name + ' is already in this folder.' : '';
   }
   function newFolder() {
@@ -9219,7 +9251,8 @@
     if (!it) return;
     var node = document.querySelector('#fd-main [data-item="' + CSS.escape(String(it.id)) + '"] [data-name]');
     if (!node) return;
-    var was = String(it.name || '');
+    var was = String(it.name || ''), parent = parentOf(it);
+    explorer.renaming = String(it.id);
     var box = el('input', 'fx__rename');
     box.type = 'text';
     box.value = was;
@@ -9232,6 +9265,7 @@
     function end(keep) {
       if (done) return;
       done = true;
+      explorer.renaming = '';
       var name = box.value.trim();
       if (keep || name === was) { drawItems(); focusMain(); return; }
       var problem = nameProblem(name, String(it.id));
@@ -9240,7 +9274,7 @@
       graph(itemAddress(String(it.id)), 'PATCH', { name: name }).then(function () {
         say('Renamed ' + was + ' to ' + name + '.');
         if (picked[String(it.id)]) picked[String(it.id)].name = name;
-        return changed([hereFolder(), String(it.id)]);
+        return changed([parent, String(it.id)]);
       }).then(focusMain).catch(function (e) { say(was + ' could not be renamed: ' + conflictWord(e, name), true); drawItems(); });
     }
     box.addEventListener('keydown', function (ev) {
@@ -9279,21 +9313,33 @@
     }, Promise.resolve()).then(function () {
       say((gone ? 'Moved ' + plural(gone, 'item') + ' to the recycle bin.' : '') + (failed.length ? ' Not deleted: ' + failed.join('; ') : ''), failed.length > 0);
       selectNone();
-      return changed([hereFolder()].concat(items.filter(function (it) { return it.folder; }).map(function (it) { return String(it.id); })));
+      return changed(items.map(parentOf).concat(items.filter(function (it) { return it.folder; }).map(function (it) { return String(it.id); })));
     });
   }
   // Cut and Copy keep the items in the page's memory until Paste; Escape forgets a cut
   function clip(mode) {
     var items = selectedItems();
     if (!items.length) return;
-    explorer.clip = { mode: mode, items: items.map(function (it) { return { id: String(it.id), name: String(it.name || ''), from: hereFolder(), folder: !!it.folder }; }) };
+    explorer.clip = { mode: mode, items: items.map(clipItem) };
     say((mode === 'cut' ? 'Cut ' : 'Copied ') + plural(items.length, 'item') + ': open a folder and press Paste (Ctrl+V).');
     drawItems();
   }
+  function clipItem(it) { return { id: String(it.id), name: String(it.name || ''), from: parentOf(it), folder: !!it.folder }; }
+  // the folders a paste into this folder would sit under: a folder never goes inside itself
+  function above(into) {
+    var path = crumbs.filter(function (c) { return !c.search; }).map(function (c) { return c.id; });
+    if (into !== hereFolder()) path.push(into);
+    return path;
+  }
   function paste(into) {
     var c = explorer.clip;
-    if (!c || into === null || into === undefined) return;
-    if (c.mode === 'cut') return move(c.items, into).then(function () { explorer.clip = null; drawItems(); });
+    if (!c || into === null || into === undefined || explorer.busy) return;
+    var path = above(into);
+    var inside = c.items.filter(function (it) { return it.folder && path.indexOf(it.id) >= 0; });
+    if (inside.length) { say(inside.map(function (it) { return it.name; }).join(', ') + ' cannot go into itself or a folder inside it.', true); return; }
+    explorer.busy = true;
+    var free = function () { explorer.busy = false; };
+    if (c.mode === 'cut') return move(c.items, into).then(free, free);
     var done = 0, failed = [];
     say('Copying ' + plural(c.items.length, 'item') + '...');
     return folderId(into).then(function (target) {
@@ -9306,19 +9352,24 @@
       // OneDrive copies in the background; the copies show once it has made them
       say((done ? 'OneDrive is copying ' + plural(done, 'item') + '; ' + (done === 1 ? 'it shows' : 'they show') + ' here when it is done (Refresh).' : '') + (failed.length ? ' Not copied: ' + failed.join('; ') : ''), failed.length > 0);
       setTimeout(function () { changed([into]); }, 2500);
-    }, function (e) { say('Nothing was copied: ' + e.message, true); });
+    }, function (e) { say('Nothing was copied: ' + e.message, true); }).then(free, free);
   }
   function move(items, into) {
-    var moved = 0, failed = [], from = [];
+    var moved = 0, failed = [], from = [], gone = [];
     return folderId(into).then(function (target) {
       return items.reduce(function (p, it) {
         return p.then(function () {
           if (it.id === into || it.id === target) { failed.push(it.name + ' (a folder cannot go into itself)'); return; }
-          if (it.from === into) return;
-          return graph(itemAddress(it.id), 'PATCH', { parentReference: { id: target } }).then(function () { moved++; from.push(it.from); }, function (e) { failed.push(it.name + ' (' + conflictWord(e, it.name) + ')'); });
+          if (it.from === into || it.from === target) { gone.push(it.id); return; }
+          return graph(itemAddress(it.id), 'PATCH', { parentReference: { id: target } }).then(function () { moved++; from.push(it.from); gone.push(it.id); }, function (e) { failed.push(it.name + ' (' + conflictWord(e, it.name) + ')'); });
         });
       }, Promise.resolve());
     }).then(function () {
+      // what moved leaves a cut; what failed stays cut, to paste again
+      if (explorer.clip && explorer.clip.mode === 'cut') {
+        explorer.clip.items = explorer.clip.items.filter(function (c) { return gone.indexOf(c.id) < 0; });
+        if (!explorer.clip.items.length) explorer.clip = null;
+      }
       if (moved || failed.length) say((moved ? 'Moved ' + plural(moved, 'item') + '.' : '') + (failed.length ? ' Not moved: ' + failed.join('; ') : ''), failed.length > 0);
       selectNone();
       return changed(from.concat([into]));
@@ -9346,7 +9397,9 @@
       ev.stopPropagation();
       if (ids) {
         var items = sortedItems().filter(function (it) { return ids.split('\n').indexOf(String(it.id)) >= 0; });
-        if (items.length) move(items.map(function (it) { return { id: String(it.id), name: String(it.name || ''), from: hereFolder(), folder: !!it.folder }; }), folder);
+        var path = above(folder);
+        if (items.some(function (it) { return it.folder && path.indexOf(String(it.id)) >= 0; })) { say('A folder cannot go into itself or a folder inside it.', true); return; }
+        if (items.length) move(items.map(clipItem), folder);
         return;
       }
       // a dropped folder comes as an entry the browser cannot read as a file
@@ -9371,9 +9424,11 @@
       var clash = files.filter(function (f) { return names.indexOf(f.name.toLowerCase()) >= 0; });
       if (!clash.length) return sendFiles(files, into, 'fail');
       var form = itemDialog(plural(clash.length, 'name') + ' already there');
+      var chosen = false;
+      $('dlg-item').addEventListener('close', function () { if (!chosen) say('Nothing was uploaded.'); }, { once: true });
       add(form, el('p', 'admin__lead', 'The folder already holds ' + clash.map(function (f) { return f.name; }).join(', ') + '.'));
       var bar = el('p', 'admin__bar');
-      function choose(how) { closeDialog('dlg-item'); sendFiles(how === 'skip' ? files.filter(function (f) { return clash.indexOf(f) < 0; }) : files, into, how === 'skip' ? 'fail' : how); }
+      function choose(how) { chosen = true; closeDialog('dlg-item'); sendFiles(how === 'skip' ? files.filter(function (f) { return clash.indexOf(f) < 0; }) : files, into, how === 'skip' ? 'fail' : how); }
       var r = btn('Replace', false, function () { choose('replace'); });
       r.id = 'fx-up-replace';
       var k = btn('Keep both', true, function () { choose('rename'); });
@@ -9403,7 +9458,11 @@
     return graph(path + '/createUploadSession', 'POST', { item: { '@microsoft.graph.conflictBehavior': how } }).then(function (s) {
       var url = httpsOnly(s.uploadUrl);
       if (!url) throw new Error('Microsoft gave no address to upload to.');
-      return sendPieces(f, url, 0);
+      // a session left after a failure is ended, so its part-written file is not kept
+      return sendPieces(f, url, 0).catch(function (e) {
+        fetch(url, { method: 'DELETE', signal: within(30000) }).catch(function () {});
+        throw e;
+      });
     });
   }
   // an upload session's address carries its own right to write, so the drive's token is never sent
@@ -9442,6 +9501,8 @@
     if (!it) return;
     var work = drive && drive.type && drive.type !== 'personal';
     var form = itemDialog('Share ' + it.name);
+    // Enter on a choice makes no link and closes nothing; Create link does
+    form.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target.tagName === 'INPUT') ev.preventDefault(); });
     add(form, el('p', 'admin__lead', 'A link to ' + it.name + ', made by OneDrive. Who can open it, and what they can do:'));
     function choice(name, options) {
       var row = el('p', 'admin__row fx__share');
@@ -9531,17 +9592,26 @@
     drawPreview();
   }
   var previewTimer = 0;
+  function previewClose() {
+    var b = btn('×', true, togglePreview);
+    b.className = 'fx__pvclose';
+    b.setAttribute('aria-label', 'Close the preview pane');
+    return b;
+  }
   function drawPreview() {
     var pane = $('fd-preview');
     if (!pane || !explorer.preview) return;
-    clearTimeout(previewTimer);
     var chosen = selectedItems();
-    if (chosen.length !== 1) { clear(pane); none(pane, chosen.length ? plural(chosen.length, 'item') + ' selected.' : 'Select a file to preview it.'); pane.removeAttribute('data-for'); return; }
+    // on a phone the pane covers the list only for one file, so a folder can still be opened
+    pane.toggleAttribute('data-empty', chosen.length !== 1 || !!chosen[0].folder);
+    if (chosen.length !== 1) { clearTimeout(previewTimer); clear(pane); add(pane, previewClose()); none(pane, chosen.length ? plural(chosen.length, 'item') + ' selected.' : 'Select a file to preview it.'); pane.removeAttribute('data-for'); return; }
     var it = chosen[0], id = String(it.id);
+    // the same file asked again keeps the preview on its way
     if (pane.getAttribute('data-for') === id) return;
+    clearTimeout(previewTimer);
     pane.setAttribute('data-for', id);
     clear(pane);
-    add(pane, add(el('div', 'fx__pvhead'), kindIcon(it, 32), add(el('div'), el('strong', '', String(it.name || '')), el('div', 'fx__itsub', kindName(it) + (sizeOf(it) ? ', ' + sizeOf(it) : '')))));
+    add(pane, add(el('div', 'fx__pvhead'), kindIcon(it, 32), add(el('div'), el('strong', '', String(it.name || '')), el('div', 'fx__itsub', kindName(it) + (sizeOf(it) ? ', ' + sizeOf(it) : ''))), previewClose()));
     var body = el('div', 'fx__pvbody');
     pane.appendChild(body);
     if (it.folder) { none(body, sizeOf(it) ? 'This folder holds ' + sizeOf(it) + '.' : 'A folder.'); return; }

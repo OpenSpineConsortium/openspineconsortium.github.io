@@ -572,6 +572,9 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .fx__preview { flex: 0 0 34%; max-width: 420px; min-width: 200px; border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 8px; gap: 8px; overflow: hidden; }
 #tab-folders .fx__preview[hidden] { display: none; }
 #tab-folders .fx__pvhead { display: flex; gap: 8px; align-items: center; overflow-wrap: anywhere; font-size: 0.88rem; }
+#tab-folders .fx__pvhead > div { flex: 1 1 auto; min-width: 0; }
+#tab-folders .fx__pvclose { margin: 0 0 0 auto; padding: 0 8px; font-size: 1.1rem; border: 0; background: none; color: var(--ink-soft); align-self: flex-start; }
+#tab-folders .fx__preview > .fx__pvclose { align-self: flex-end; }
 #tab-folders .fx__pvbody { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
 #tab-folders .fx__pvframe { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 4px; background: #FFFFFF; }
 #tab-folders .fx__pvimg { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -585,7 +588,7 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .fx__flow { padding: 6px; }
 #tab-folders .fx__it { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 4px; min-width: 0; }
 #tab-folders .fx__it:hover { background: color-mix(in srgb, var(--teal) 10%, transparent); }
-#tab-folders .fx__it input { margin: 0; flex: 0 0 auto; }
+#tab-folders .fx__it input { margin: 0; flex: 0 0 auto; width: auto; }
 #tab-folders .fx__ittext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 #tab-folders .fx__itname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; }
 #tab-folders .fx__itsub { color: var(--ink-soft); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -602,6 +605,8 @@ html.graph--held body { overflow: hidden; }
 @media (max-width: 900px) {
   /* on a phone the preview covers the list, which Alt+P or Preview hides again */
   #tab-folders .fx__preview { position: absolute; inset: 0; max-width: none; background: var(--paper-card); z-index: 2; border-left: 0; }
+  /* with no one file chosen the list stays in reach, to tap one */
+  #tab-folders .fx__preview[data-empty] { display: none; }
 }
 @media (max-width: 700px) {
   #tab-folders .fx__tree { display: none; }
