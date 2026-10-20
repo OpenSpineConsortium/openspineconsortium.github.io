@@ -1576,7 +1576,9 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
    folded, the tab takes the whole screen over the page, which is held still beneath it */
 @media (max-width: 900px), (max-height: 520px) {
   #tab-explore .ex__body { flex: 0 0 auto; height: min(72vh, 680px); }
-  #tab-explore .ex__zoom, #tab-explore .ex__status { display: none; }
+  #tab-explore .ex__zoom { display: none; }
+  /* the status is still said aloud on a phone, out of sight */
+  #tab-explore .ex__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   #tab-explore .ex__head { padding: 6px 10px 6px 12px; }
   #tab-explore .ex__name { font-size: 1rem; }
   #tab-explore .ex__head .ex__sub { display: none; }
