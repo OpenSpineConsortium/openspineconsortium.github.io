@@ -523,7 +523,8 @@ html.graph--held body { overflow: hidden; }
 .clouds .clouds__tile--dropbox::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230061FE' d='M7 3l5 3.2L7 9.4 2 6.2zm10 0l5 3.2-5 3.2-5-3.2zM2 12.6l5-3.2 5 3.2-5 3.2zm15-3.2l5 3.2-5 3.2-5-3.2zM7 17l5-3.2 5 3.2-5 3.2z'/%3E%3C/svg%3E"); }
 .clouds button.clouds__tile:hover:not(:disabled) { border-color: var(--teal); }
 .clouds .clouds__tile--later { color: var(--ink-faint); opacity: 0.7; }
-.clouds .clouds__tile--later::after { content: "Coming later"; display: block; margin-top: 2px; font-size: 0.78rem; font-weight: 400; }
+.clouds .clouds__sub { display: block; margin-top: 2px; font-size: 0.78rem; font-weight: 400; }
+#fd-cloud-note:empty { display: none; }
 .folders__new > summary { cursor: pointer; }
 #tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; flex: 1 1 auto; min-height: 240px; }
 /* where the page scrolls (a phone, a short window), the panes keep a height of their own, so a long
