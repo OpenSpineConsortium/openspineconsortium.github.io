@@ -621,11 +621,33 @@
       return Promise.resolve(false);
     }
     if (error) { say('GitHub did not sign you in (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return Promise.resolve(false); }
-    return exchange('/exchange', { code: code, code_verifier: kept.verifier, redirect_uri: pageAddress() }).then(function (answer) {
+    return exchangeCode({ code: code, code_verifier: kept.verifier, redirect_uri: pageAddress() }, 0).then(function (answer) {
       if (!answer.access_token) throw new Error('The sign-in service answered without a token.');
       keepOauth(answer, !!kept.keep);
       return true;
-    }).catch(function (e) { say(e.message + ' Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return false; });
+    }).catch(function (e) {
+      if (githubLimiting(e)) say('GitHub is limiting sign-ins for the moment, so this one did not finish. Wait a minute, then press Sign in with GitHub again, or use a token.', true);
+      else say(e.message + ' Press Sign in with GitHub to try again, or use a token.', true);
+      offerToken();
+      return false;
+    });
+  }
+  // GitHub holds its sign-in endpoint to a limit per address, and the sign-in service reaches it
+  // from addresses its host shares, so a 429 can come from others' sign-ins. GitHub declines such a
+  // request before acting on it, so the one-time code is not spent and is sent again after a wait;
+  // a 5xx is not, since GitHub may have spent the code before failing
+  var SIGNIN_RETRY_MS = [2000, 6000];
+  function githubLimiting(e) {
+    var words = String(e && e.message || '');
+    if (/GitHub answered 429\b|it answered 429\b/.test(words)) return true;
+    return !!e && e.code === 'github_unreachable' && !/answered 5\d\d\b/.test(words);
+  }
+  function exchangeCode(body, tries) {
+    return exchange('/exchange', body).catch(function (e) {
+      if (tries >= SIGNIN_RETRY_MS.length || !githubLimiting(e)) throw e;
+      say('GitHub is busy for the moment; trying the sign-in again...', false);
+      return new Promise(function (resolve) { setTimeout(resolve, SIGNIN_RETRY_MS[tries]); }).then(function () { return exchangeCode(body, tries + 1); });
+    });
   }
   // one renewal at a time: GitHub's refresh tokens are single use, so two renewals at once would
   // spend the same one twice and leave the page signed out
@@ -2198,6 +2220,39 @@
     }, function (e) { if (picker.token === mine) picker.reading = null; throw e; });
     return picker.reading;
   }
+  // The repository with Symphony set up that was pushed most recently, of those the sign-in reaches:
+  // the one a person works in, read from GitHub, since a new browser keeps no list of its own
+  function usualRepo(groups) {
+    var best = null;
+    groups.forEach(function (g) {
+      g.repos.forEach(function (r) {
+        if (r.archived || !(r.topics && r.topics.indexOf(TOPIC) >= 0)) return;
+        if (!best || String(r.pushed_at || '') > String(best.pushed_at || '')) best = r;
+      });
+    });
+    return best ? best.full_name : '';
+  }
+  function openUsualRepo(again) {
+    var asked = token, was = state;
+    $('cp-summary').textContent = 'Looking for your repository with Symphony...';
+    // a repository opened, a picker opened or a sign-in changed since the lookup began wins over it
+    function chosenMeanwhile() { return state !== was || chosenRepo() || $('dlg-repos').open || !token; }
+    function none() {
+      $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.';
+      openDialog('dlg-repos');
+    }
+    pickerRead().then(function (groups) {
+      if (chosenMeanwhile()) return;
+      // the token renewed while GitHub listed them: the lookup is made once more with the new one
+      if (!groups || token !== asked) { if (again) none(); else openUsualRepo(true); return; }
+      var name = usualRepo(groups);
+      if (!name) { none(); return; }
+      loadRepo(name);
+      say('Opened ' + name + ', your repository with Symphony pushed most recently. Press + Add repository to open another.');
+    }).catch(function () {
+      if (!chosenMeanwhile()) none();
+    });
+  }
   function pickerOpen() {
     $('cp-add-name').value = '';
     clear($('cp-add-answer'));
@@ -3447,14 +3502,16 @@
       heldDrive();
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
-      // the picker opens by itself where nothing is listed, but not over the Folders tab, which needs no repository
-      if (location.hash === '#repos' || (!name && consoleTab !== 'folders')) setTimeout(function () { openDialog('dlg-repos'); }, 0);
+      if (location.hash === '#repos') setTimeout(function () { openDialog('dlg-repos'); }, 0);
       if (name) loadRepo(name);
       else {
         $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.';
         graphReset(GRAPH_NO_REPOSITORY);
         // the Folders tab needs no repository to connect a drive or make one
         if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
+        // a browser that keeps nothing, a new one or a guest window, opens the usual repository, and
+        // the picker opens by itself only where there is none, never over the Folders tab
+        else if (location.hash !== '#repos') openUsualRepo();
       }
     }
     // A drive's return comes back to this page as GitHub's does, so it is read first, and in order:
