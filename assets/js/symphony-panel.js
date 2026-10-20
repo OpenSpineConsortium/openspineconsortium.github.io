@@ -2263,8 +2263,10 @@
     var typed = ($('cp-add-name').value || '').trim();
     var cards = Array.prototype.slice.call($('rp-list').querySelectorAll('.repos__card'));
     var exact = cards.filter(function (c) { return typed && c.getAttribute('data-repo').toLowerCase() === typed.toLowerCase(); })[0];
-    if (exact) { exact.click(); return; }
+    // a whole name typed is read by name, which opens one with Symphony at once and offers Open
+    // first for one without; a card pressed opens its repository whatever it carries
     if (REPOSITORY.test(typed)) { addRepository(typed); return; }
+    if (exact) { exact.click(); return; }
     if (cards.length) { cards[0].click(); return; }
     say(typed ? 'Nothing matches "' + typed + '"; type the whole OWNER/NAME to open it by name.' : 'Type a name, or press a repository.', true);
   }
