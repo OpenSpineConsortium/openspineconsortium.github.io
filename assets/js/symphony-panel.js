@@ -10065,19 +10065,19 @@
   /* ---------- Explore: the project as a map to go into ---------- */
   // The repository at the top, then its goals and epics, each epic's tasks, a task's pull requests
   // (or its claim branch where it has none), the runs on that branch, a run's jobs, a job's steps and,
-  // at the bottom, the lines of a step's log. One level is drawn at a time, its children as tiles:
-  // a click, or scrolling up while pointing at a tile, goes into it; scrolling down, Backspace or a
-  // crumb comes back out. The wheel scrolls a long level to its edge first and only then moves a
-  // level, so a long list still scrolls. Goals, epics and tasks are what the console read already;
+  // at the bottom, the lines of a step's log. One level is drawn at a time, its children as cards on
+  // a stage that zooms and never scrolls (below, drawing): a click goes into a card; zooming out past
+  // the whole level, Backspace, Escape or a crumb comes back out. Goals, epics and tasks are what the
+  // console read already;
   // the levels below a task are read as the person, one read each, only when the person goes into
   // them, kept in the tab's memory for the repository chosen and written nowhere.
   var EXPLORE_KINDS = { repo: 'Repository', goal: 'Goal', epic: 'Epic', group: 'Group', issue: 'Task', pull: 'Pull request', branch: 'Branch', run: 'Run', job: 'Job', step: 'Step', log: 'Log' };
   var EXPLORE_LOG_LINES = 5000;
-  // a wheel event this long after the one before starts a new gesture; only a gesture's first event
-  // moves a level, so a trackpad's glide never carries on into the next level
+  // a wheel event this long after the one before starts a new gesture, and one gesture moves one
+  // level at most, so a trackpad's glide never carries on into the next level
   var EXPLORE_GESTURE_GAP = 250;
   var EXPLORE_LOGS_KEPT = 3;
-  var explore = { s: null, issues: null, pulls: null, draw: null, failed: '', root: null, path: [], wheelLast: 0, era: 0, logs: [] };
+  var explore = { s: null, issues: null, pulls: null, draw: null, failed: '', root: null, path: [], wheelLast: 0, wheelMoved: false, wheeling: false, keying: false, wide: true, era: 0, logs: [] };
 
   // the repository changed: nothing of the last one is kept, its logs included
   function exploreForget() {
@@ -10262,6 +10262,17 @@
   }
 
   /* drawing */
+  // The owner, 2026-10-19: "the explorer looks janky so work on modernizing it and making it take up
+  // most of the panel when using it". A level is drawn as cards on the console's zoom stage
+  // (stageMake), as the Dependencies tab draws its charts, so nothing in the tab scrolls: the whole
+  // level fitted to the box, its cards laid out in the number of columns that draws them largest, and
+  // a level of few cards grown up to EXPLORE_GROW times its size so it fills the box. Pinch, the
+  // wheel, + and - zoom about a point, a drag pans once zoomed in, and zooming out past the whole
+  // level comes out of it, one level for one turn of the wheel. A swipe, or an arrow key while the
+  // stage itself has the keyboard, steps to the level beside this one under the same parent; with a
+  // card in hand the arrows move between the cards. A log is drawn on the same stage at a size to
+  // read, opened on its first error or else at its end, and the wheel moves along it.
+  var EXPLORE_GROW = 1.6, EXPLORE_COLS = 24;
   function exCurrent() { return explore.path[explore.path.length - 1] || null; }
   function exStatus(text) { $('ex-status').textContent = text; }
   function exKids(n) { return Array.isArray(n.children) ? n.children : []; }
@@ -10269,56 +10280,102 @@
     var t = el('button', 'ex__tile ex__tile--' + n.kind + ' ex__s--' + (n.state || 'open'));
     t.type = 'button';
     t.setAttribute('data-ex', String(i));
-    if (exKids(n).length > 8) t.className += ' ex__tile--wide';
-    var top = add(t, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind)).lastChild;
-    if (n.claude) add(top, ' ', el('span', 'ex__claude', 'Claude'));
+    var top = add(t, el('span', 'ex__top')).lastChild;
+    var kind = add(top, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind)).lastChild;
+    if (n.claude) add(kind, ' ', el('span', 'ex__claude', 'Claude'));
+    var pill = add(top, el('span', 'ex__pill', n.state || 'open')).lastChild;
+    pill.setAttribute('aria-hidden', 'true');
     add(t, el('span', 'ex__title', n.title));
     if (n.sub) add(t, el('span', 'ex__sub', n.sub));
+    var foot = add(t, el('span', 'ex__foot')).lastChild;
     var kids = exKids(n);
     if (kids.length) {
-      var dots = add(t, el('span', 'ex__dots')).lastChild;
+      var dots = add(foot, el('span', 'ex__dots')).lastChild;
       kids.slice(0, 40).forEach(function (k) { var d = add(dots, el('span', 'ex__dot ex__s--' + (k.state || 'open'))).lastChild; d.title = k.title; });
       if (kids.length > 40) add(dots, el('span', 'ex__more', '+' + (kids.length - 40)));
-    } else if (n.load && !n.children) add(t, el('span', 'ex__hint', 'Go in to read'));
-    var pill = add(t, el('span', 'ex__pill', n.state || 'open')).lastChild;
-    pill.setAttribute('aria-hidden', 'true');
+      add(foot, el('span', 'ex__count', String(kids.length) + ' inside'));
+    } else if (n.load && !n.children) add(foot, el('span', 'ex__hint', 'Go in to read'));
     t.setAttribute('aria-label', (EXPLORE_KINDS[n.kind] || n.kind) + ': ' + n.title + (n.sub ? ', ' + n.sub : '') + ', ' + (n.state || 'open'));
     return t;
   }
+  // the stage emptied: its picture gone, so the zoom has nothing to move until the next is put there
+  function exClearStage() {
+    var stage = $('ex-stage'), st = stageOf(stage);
+    clear(stage);
+    stage.classList.remove('ex__stage--log');
+    if (st) {
+      st.svg = null; st.faces = []; st.whole = true;
+      // a drag, a pinch or a tap held across a level would move or zoom the next level's picture
+      st.pointers = {}; st.drag = null; st.pinch = null; st.lastTap = null; st.outBy = 1;
+      clearTimeout(st.tapTimer);
+    }
+  }
+  // words in the middle of the stage, in place of a picture
+  function exNote(text) {
+    var box = add($('ex-stage'), el('div', 'ex__note')).lastChild;
+    none(box, text);
+    return box;
+  }
+  // the level's own card above the stage: what it is, its name, its line, and its tools
+  function exHead(n) {
+    var head = $('ex-head');
+    clear(head);
+    head.className = 'ex__head ex__s--' + (n && n.state || 'open');
+    if (!n) return;
+    var words = add(head, el('div', 'ex__words')).lastChild;
+    add(words, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind), el('h3', 'ex__name', n.title));
+    if (n.sub) add(words, el('p', 'ex__sub', n.sub));
+    add(head, el('div', 'ex__acts'));
+  }
+  function exActs() { return $('ex-head').querySelector('.ex__acts'); }
   function exDraw() {
     var stage = $('ex-stage'), n = exCurrent();
-    clear(stage);
+    exClearStage();
     exPath();
     exTree();
+    exHead(n);
     var gh2 = $('ex-github');
     if (n && n.url) { gh2.href = n.url; gh2.hidden = false; } else { gh2.hidden = true; gh2.removeAttribute('href'); }
     $('ex-out').disabled = explore.path.length <= 1;
-    if (!n) { none(stage, 'Nothing to explore yet: no repository is chosen.'); exStatus('Choose a repository in the side column.'); return; }
-    var head = add(stage, el('div', 'ex__head ex__s--' + (n.state || 'open'))).lastChild;
-    add(head, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind), el('h3', 'ex__name', n.title));
-    if (n.sub) add(head, el('p', 'ex__sub', n.sub));
+    if (!n) { exNote('Nothing to explore yet: no repository is chosen.'); exStatus('Choose a repository in the side column.'); return; }
     if (n.kind === 'step' || n.kind === 'log') return exDrawLog(stage, n);
     if (n.failed) {
-      none(stage, n.failed);
-      var again = add(stage, el('button', 'ex__tool', 'Try again')).lastChild;
+      var note = exNote(n.failed);
+      var again = add(note, el('button', 'ex__tool', 'Try again')).lastChild;
       again.type = 'button';
       again.addEventListener('click', function () { n.failed = ''; exGo(explore.path.slice()); });
       exStatus('This level could not be read.');
       return;
     }
-    if (!n.children) { none(stage, 'Reading from GitHub...'); exStatus('Reading...'); return; }
+    if (!n.children) { exNote('Reading from GitHub...'); exStatus('Reading...'); return; }
     var kids = exKids(n);
+    if (n.load) add(exActs(), exAgain('Read again', function () { n.children = null; }));
     if (!kids.length) {
-      none(stage, n.unread || exEmpty(n));
-      if (n.load) add(stage, exAgain('Read this level again', function () { n.children = null; }));
+      exNote(n.unread || exEmpty(n));
       exStatus('Nothing below this level.');
       return;
     }
-    var grid = add(stage, el('div', 'ex__grid')).lastChild;
+    var sheet = add(stage, el('div', 'ex__sheet')).lastChild;
+    var grid = add(sheet, el('div', 'ex__grid')).lastChild;
     kids.forEach(function (k, i) { grid.appendChild(exTile(k, i)); });
-    if (kids.more) add(stage, el('p', 'admin__none', kids.more));
-    if (n.load) add(stage, exAgain('Read this level again', function () { n.children = null; }));
-    exStatus(plural(kids.length, 'item') + '. Click a tile, or scroll up on it, to go in; scroll down or press Backspace to come out.');
+    exFit();
+    exStatus(plural(kids.length, 'item') + (kids.more ? ' (' + kids.more + ')' : '') + '. Click a card to go in; pinch, the wheel or + and - zoom, and zooming out past the whole level comes out of it; swipe for the level beside this one.');
+  }
+  // the cards laid out in the number of columns that draws them largest in the stage, and put on it;
+  // a zoom the person made is kept, as the Dependencies tab keeps one
+  function exFit() {
+    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet:not(.ex__sheet--log)');
+    var grid = sheet && sheet.querySelector('.ex__grid');
+    if (!st || !grid || !stage.clientWidth || !stage.clientHeight || (st.svg === sheet && !st.whole)) return;
+    var W = Math.max(1, stage.clientWidth - 2 * STAGE_PAD), H = Math.max(1, stage.clientHeight - 2 * STAGE_PAD);
+    var n = grid.children.length, best = null;
+    for (var c = 1; c <= Math.min(n, EXPLORE_COLS); c++) {
+      grid.style.setProperty('--ex-cols', String(c));
+      var k = Math.min(W / sheet.offsetWidth, H / sheet.offsetHeight);
+      if (!best || k > best.k + 1e-3) best = { c: c, k: k };
+    }
+    grid.style.setProperty('--ex-cols', String(best.c));
+    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], EXPLORE_GROW);
   }
   // what a run still going shows changes, so a level read below a task can be read again by hand
   function exAgain(words, forget) {
@@ -10335,140 +10392,254 @@
     return 'Nothing here.';
   }
   function exDrawLog(stage, n) {
-    var job = n.job, box = add(stage, el('div', 'ex__log')).lastChild;
-    var link = n.url ? el('a', 'ex__link', 'Open the log on GitHub') : null;
-    if (link) { link.href = n.url; link.target = '_blank'; link.rel = 'noopener'; }
-    none(box, 'Reading the log...');
+    var job = n.job;
+    function gitHub() {
+      if (!n.url) return null;
+      var a = el('a', 'ex__tool ex__link', 'Open the log on GitHub');
+      a.href = n.url; a.target = '_blank'; a.rel = 'noopener';
+      return a;
+    }
+    // the stage pans on a drag, so the lines are copied whole from a button, never selected
+    function copyLog(lines) {
+      var b = btn('Copy the lines', true, function () {
+        var text = lines.map(function (l) { return l.text.replace(/^##\[(group|endgroup|error|warning)\]/, ''); }).join('\n');
+        if (!navigator.clipboard) { exStatus('This browser gives the page no clipboard.'); return; }
+        navigator.clipboard.writeText(text).then(function () { exStatus('Copied ' + plural(lines.length, 'line') + '.'); }, function () { exStatus('The browser refused the clipboard.'); });
+      });
+      b.classList.add('ex__tool');
+      return b;
+    }
+    var box = exNote('Reading the log...');
     exStatus('Reading the log...');
     var era = explore.era;
     exLog(job).then(function (all) {
       if (era !== explore.era || exCurrent() !== n) return;
       var lines = n.kind === 'step' ? exStepLines(all, job, n.step) : all;
-      clear(box);
-      if (!lines.length || (lines.length === 1 && !lines[0].text)) { none(box, 'No line of the log falls in this step.'); if (link) add(box, link); exStatus('An empty step.'); return; }
-      var pre = add(box, el('pre', 'ex__lines')).lastChild;
+      add(exActs(), exAgain('Read again', function () { job.logRead = null; }));
+      if (!lines.length || (lines.length === 1 && !lines[0].text)) { clear(box); none(box, 'No line of the log falls in this step.'); add(box, gitHub()); exStatus('An empty step.'); return; }
+      exClearStage();
+      stage.classList.add('ex__stage--log');
+      var sheet = add(stage, el('div', 'ex__sheet ex__sheet--log')).lastChild;
+      sheet.style.width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
+      var pre = add(sheet, el('pre', 'ex__lines')).lastChild, first = null;
       lines.slice(0, EXPLORE_LOG_LINES).forEach(function (l) {
         var cls = /^##\[group\]/.test(l.text) ? 'ex__group' : /^##\[error\]/.test(l.text) ? 'ex__error' : /^##\[warning\]/.test(l.text) ? 'ex__warning' : '';
         add(pre, el('span', cls ? 'ex__line ' + cls : 'ex__line', l.text.replace(/^##\[(group|endgroup|error|warning)\]/, '')));
+        if (!first && cls === 'ex__error') first = pre.lastChild;
       });
-      if (lines.length > EXPLORE_LOG_LINES) add(box, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
-      if (link) add(box, link);
-      add(box, exAgain('Read the log again', function () { job.logRead = null; }));
-      exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' Backspace comes back out.');
+      if (lines.length > EXPLORE_LOG_LINES) add(sheet, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
+      add(exActs(), copyLog(lines.slice(0, EXPLORE_LOG_LINES)), gitHub());
+      stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
+      exLogAt(stageOf(stage), first);
+      exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' The wheel or a drag moves along it; Backspace comes back out.');
     }).catch(function (e) {
       if (era !== explore.era || exCurrent() !== n) return;
       clear(box);
       none(box, 'The log could not be read: ' + e.message);
-      if (link) add(box, link);
+      add(box, gitHub());
       exStatus('The log could not be read here; GitHub shows it.');
     });
+  }
+  // the box changed size under a log (Panel, a rotation, the window): its lines wrap to the new width
+  // and the reading place is kept
+  function exLogFit() {
+    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet--log');
+    if (!st || !sheet || st.svg !== sheet) return;
+    var width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
+    if (sheet.style.width === width) return;
+    var y = st.y, whole = st.whole;
+    sheet.style.width = width;
+    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
+    if (whole) { exLogAt(st, null); return; }
+    st.k = 1; st.x = STAGE_PAD; st.y = y; st.whole = false;
+    stageClamp(st, false);
+    stageApply(st, false);
+  }
+  // a log taller than its box is drawn at its own size, a size to read, and opened on its first
+  // error, else at its end, where a failed step says why; the rest is a drag or the wheel away
+  function exLogAt(st, line) {
+    if (!st || !st.svg) return;
+    // a log that fits is read from its top, as a page is
+    if (st.fit >= 0.999) { st.y = STAGE_PAD; stageApply(st, false); return; }
+    var r = stageRoom(st), y = line ? line.offsetTop + line.offsetHeight / 2 : st.h;
+    st.k = 1;
+    st.x = STAGE_PAD;
+    st.y = r.h / 2 - y;
+    st.whole = false;
+    stageClamp(st, false);
+    stageApply(st, false);
   }
   function exPath() {
     var nav = $('ex-path');
     clear(nav);
     explore.path.forEach(function (n, i) {
-      if (i) add(nav, el('span', 'ex__sep', '\u203a'));
+      if (i) add(nav, el('span', 'ex__sep', '›'));
       var last = i === explore.path.length - 1;
       var b = add(nav, el(last ? 'span' : 'button', last ? 'ex__here' : 'ex__crumb', n.title)).lastChild;
+      b.title = n.title;
       if (!last) { b.type = 'button'; b.addEventListener('click', function () { exGo(explore.path.slice(0, i + 1)); }); }
       else b.setAttribute('aria-current', 'location');
     });
   }
-  // the outline: every level read so far, open along the path
+  // the outline: every level read so far, open along the path, drawn on a stage of its own so a long
+  // one is zoomed rather than scrolled; it is shown when the person opens it
   function exTree() {
     var box = $('ex-tree');
     clear(box);
+    var st = stageOf(box);
+    if (st) { st.svg = null; st.faces = []; st.whole = true; }
     if (!explore.root) return;
-    (function walk(n, chain, depth, parent) {
+    var list = add(box, el('div', 'ex__treebox')).lastChild;
+    (function walk(n, chain, depth) {
       var on = explore.path.indexOf(n) >= 0;
-      var row = add(parent, el('div', 'ex__node' + (n === exCurrent() ? ' ex__current' : ''))).lastChild;
+      var row = add(list, el('div', 'ex__node' + (n === exCurrent() ? ' ex__current' : ''))).lastChild;
       row.style.paddingLeft = (depth * 12 + 4) + 'px';
       var b = add(row, el('button', 'ex__nodename ex__s--' + (n.state || 'open'), n.title)).lastChild;
       b.type = 'button';
       b.title = n.title;
       if (n === exCurrent()) b.setAttribute('aria-current', 'location');
       b.addEventListener('click', function () { exGo(chain); });
-      if (on) exKids(n).forEach(function (k) { walk(k, chain.concat([k]), depth + 1, parent); });
-    })(explore.root, [explore.root], 0, box);
+      if (on) exKids(n).forEach(function (k) { walk(k, chain.concat([k]), depth + 1); });
+    })(explore.root, [explore.root], 0);
+    exTreeFit();
+  }
+  function exTreeFit() {
+    var box = $('ex-tree'), list = box.querySelector('.ex__treebox');
+    if (!list || box.hidden || !box.clientWidth || !box.clientHeight) return;
+    stageShow(box, [{ svg: list, w: list.offsetWidth, h: list.offsetHeight }], 1);
+  }
+  function exOutline(on) {
+    $('ex-tree').hidden = !on;
+    $('ex-outline').setAttribute('aria-expanded', on ? 'true' : 'false');
+    if (on) exTreeFit();
   }
 
   // going to a level: its children read where they are not yet, then drawn
   // the keys stay with the tab: a person who went in from inside it is left on the new level's
-  // first tile, or on the level itself where it has none
-  function exGo(path, from) {
+  // first card, or on the level itself where it has none; one who stepped sideways from the stage
+  // itself is left on the stage, so the next arrow steps again
+  function exGo(path) {
     var n = path[path.length - 1];
-    var held = $('tab-explore').contains(document.activeElement);
+    var held = $('tab-explore').contains(document.activeElement) ? (document.activeElement === $('ex-stage') ? 'stage' : 'card') : '';
     explore.path = path;
-    exZoom(from);
     exDraw();
     if (n && !n.children && n.load && !n.failed) {
       var era = explore.era;
       if (!n.reading) n.reading = n.load().then(function (kids) { n.children = kids; }).catch(function (e) { n.failed = 'Not read: ' + e.message; }).then(function () { n.reading = null; });
-      n.reading.then(function () { if (era === explore.era && exCurrent() === n) { held = held || document.activeElement === document.body; exDraw(); exFocus(held); } });
+      n.reading.then(function () { if (era === explore.era && exCurrent() === n) { held = held || (document.activeElement === document.body ? 'card' : ''); exDraw(); exFocus(held); } });
     } else exFocus(held);
   }
-  function exIn(i, tile) {
+  function exIn(i) {
     var n = exCurrent(), k = n && exKids(n)[i];
-    if (k) exGo(explore.path.concat([k]), tile);
+    if (k) exGo(explore.path.concat([k]));
   }
   function exOut() { if (explore.path.length > 1) exGo(explore.path.slice(0, -1)); }
   function exFocus(held) {
     if (!held) return;
-    var tile = $('ex-stage').querySelector('.ex__tile');
+    var tile = held === 'card' ? $('ex-stage').querySelector('.ex__tile') : null;
     (tile || $('ex-stage')).focus({ preventScroll: true });
   }
-  // a short growth of the tile into the stage, so the move reads as going in; none for a reader who
-  // asked for less motion
-  function exZoom(tile) {
-    var stage = $('ex-stage');
-    if (!tile || !stage.getBoundingClientRect || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-    // the box is placed in the stage's parent, so both ends are measured from it
-    var a = tile.getBoundingClientRect(), b = stage.getBoundingClientRect(), p = stage.parentNode.getBoundingClientRect();
-    var z = el('div', 'ex__zoom');
-    z.style.left = (a.left - p.left) + 'px';
-    z.style.top = (a.top - p.top) + 'px';
-    z.style.width = a.width + 'px';
-    z.style.height = a.height + 'px';
-    stage.parentNode.appendChild(z);
-    z.getBoundingClientRect();
-    z.style.left = (b.left - p.left) + 'px'; z.style.top = (b.top - p.top) + 'px'; z.style.width = b.width + 'px'; z.style.height = b.height + 'px'; z.style.opacity = '0';
-    setTimeout(function () { if (z.parentNode) z.parentNode.removeChild(z); }, 320);
-  }
-  // Only the first event of a gesture that starts at an edge moves a level: scrolling up from the
-  // top over a tile goes into it, scrolling down from the bottom comes out. A gesture that reaches
-  // the edge partway, or glides on after a move, only scrolls. A pinch (ctrl and the wheel) is the
-  // browser's own zoom.
-  function exWheel(e) {
-    var now = Date.now(), first = now - explore.wheelLast > EXPLORE_GESTURE_GAP;
-    explore.wheelLast = now;
-    if (e.ctrlKey || Math.abs(e.deltaY) < 4) return;
-    var stage = $('ex-stage'), n = exCurrent();
-    if (!n || n.kind === 'step' || n.kind === 'log') return;
-    if (e.deltaY < 0) {
-      var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
-      if (!tile || stage.scrollTop > 0) return;
-      e.preventDefault();
-      if (first) exIn(Number(tile.getAttribute('data-ex')), tile);
-    } else {
-      if (stage.scrollTop + stage.clientHeight < stage.scrollHeight - 2 || explore.path.length <= 1) return;
-      e.preventDefault();
-      if (first) exOut();
+  // the way a swipe or an arrow key goes: from a card in hand, to the card that way; otherwise to
+  // the level beside this one under the same parent, the next for a swipe to the left or the right
+  // arrow, the one before for the other way
+  function exWay(dx, dy) {
+    var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
+    var at = explore.keying ? tiles.indexOf(document.activeElement) : -1;
+    if (at >= 0) {
+      var grid = $('ex-stage').querySelector('.ex__grid');
+      var across = Math.max(1, Number(grid && grid.style.getPropertyValue('--ex-cols')) || 1);
+      var to = Math.max(0, Math.min(tiles.length - 1, at + dx + dy * across));
+      tiles[to].focus();
+      return true;
     }
+    if (!dx || explore.path.length < 2) return false;
+    // a key held down steps to the next level once, never through every level it passes, each a read
+    if (explore.keying && explore.repeat) return true;
+    var kids = exKids(explore.path[explore.path.length - 2]), i = kids.indexOf(exCurrent()), j = i + (dx > 0 ? 1 : -1);
+    if (i < 0 || j < 0 || j >= kids.length) return false;
+    exGo(explore.path.slice(0, -1).concat([kids[j]]));
+    return true;
+  }
+  // zooming out past the whole level comes out of it: from the keys, a pinch or the buttons at once,
+  // and from the wheel once a gesture, so a trackpad's glide never carries on into the next level
+  function exZoomOut() {
+    if (explore.path.length <= 1) return false;
+    if (explore.wheeling) {
+      if (explore.wheelMoved) return true;
+      explore.wheelMoved = true;
+    }
+    exOut();
+    return true;
+  }
+  // a wheel event this long after the one before starts a new gesture; a log's wheel, which no
+  // pinch holds, moves along it as reading does
+  function exWheelBefore(e) {
+    var now = Date.now();
+    if (now - explore.wheelLast > EXPLORE_GESTURE_GAP) explore.wheelMoved = false;
+    explore.wheelLast = now;
+    explore.wheeling = true;
+    var stage = $('ex-stage'), st = stageOf(stage);
+    if (st && !st.svg && explore.path.length > 1 && e.deltaY > 0) {
+      // words in place of a picture: nothing to zoom, so turning the wheel out comes out at once
+      e.preventDefault();
+      exZoomOut();
+      return;
+    }
+    if (e.ctrlKey || !st || !st.svg || !stage.classList.contains('ex__stage--log')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    explore.wheeling = false;
+    st.y -= e.deltaY * (e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? stage.clientHeight : 1));
+    stageClamp(st, false);
+    stageApply(st, false);
   }
   function exKey(e) {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
     var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
     var at = tiles.indexOf(document.activeElement);
     if (e.key === 'Backspace' || e.key === 'Escape') { if (explore.path.length > 1) { e.preventDefault(); exOut(); } return; }
-    // the arrows move between tiles only from a tile or the stage, never from the outline or the trail
-    if (!tiles.length || (at < 0 && e.target !== $('ex-stage'))) return;
-    if (e.key === 'Enter' && at >= 0) { e.preventDefault(); exIn(at, tiles[at]); return; }
-    var across = 1;
-    if (tiles.length > 1) { var top0 = tiles[0].offsetTop; while (across < tiles.length && tiles[across].offsetTop === top0) across++; }
-    var to = { ArrowRight: at + 1, ArrowLeft: at - 1, ArrowDown: at + across, ArrowUp: at - across, Home: 0, End: tiles.length - 1 }[e.key];
+    if (!tiles.length || at < 0) return;
+    if (e.key === 'Enter') { e.preventDefault(); exIn(at); return; }
+    var to = { Home: 0, End: tiles.length - 1 }[e.key];
     if (to === undefined) return;
     e.preventDefault();
-    tiles[Math.max(0, Math.min(tiles.length - 1, at < 0 ? 0 : to))].focus();
+    tiles[to].focus();
+  }
+
+  // While the tab is shown it takes most of the panel (the owner, 2026-10-19: "making it take up most
+  // of the panel when using it"): the side column folds to its icons and the foot to its one line,
+  // and on a phone the tab takes the whole screen (control.css, console--exwide). The Panel button,
+  // or a press on the folded side column or foot, brings them back, and the grips size them as
+  // before; the choice lasts while the page is open and is stored nowhere.
+  function exWide(on) {
+    explore.wide = on;
+    $('console').classList.toggle('console--exwide', on);
+    var b = $('ex-wide');
+    b.setAttribute('aria-pressed', on ? 'false' : 'true');
+    b.title = on ? 'Bring back the side column and the foot' : 'Give Explore the whole panel';
+  }
+  function exUnfold(e) {
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest) return;
+    if (!e.target.closest('.console__side, .console__split[data-split="side"], .console__askbar, .console__status')) return;
+    // the rail's tabs, and what a message offers, keep their own presses; a grip's press only unfolds
+    if (!e.target.closest('[data-split]') && e.target.closest('button, a, input, select, textarea, [role="tab"]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    explore.unfolded = Date.now();
+    exWide(false);
+  }
+  // the second press of a double click that unfolded is no grip's double click, which would forget
+  // the width the person set; a key on a folded grip unfolds as a press does
+  function exUnfoldKeys(e) {
+    if (e.type === 'dblclick') {
+      if (Date.now() - (explore.unfolded || 0) < 600 && e.target.closest && e.target.closest('[data-split]')) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"], .console__split[data-split="foot"]')) return;
+    if (!/^(Arrow|Home|End|Enter| )/.test(e.key)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    exWide(false);
   }
 
   // the tab opened, or the issues were read again while it is open: the tree built afresh from what
@@ -10476,7 +10647,11 @@
   function openExplore() {
     var s = state;
     if (!s.repo) { explore.root = null; explore.path = []; explore.s = s; exDraw(); return; }
-    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) { exDraw(); return; }
+    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) {
+      // nothing changed: the level stays as the person left it, zoom and keyboard alike
+      if (!$('ex-stage').firstChild) exDraw();
+      return;
+    }
     var keys = explore.s && explore.s.repo === s.repo ? explore.path.map(function (n) { return n.key; }) : [];
     var old = explore.s && explore.s.repo === s.repo ? explore.path.slice() : [];
     explore.era++;
@@ -10501,10 +10676,53 @@
     $('ex-out').addEventListener('click', exOut);
     $('ex-stage').addEventListener('click', function (e) {
       var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
-      if (tile) exIn(Number(tile.getAttribute('data-ex')), tile);
+      // a double click's second press lands on the next level's card: it goes one level, not two
+      if (tile && e.detail <= 1) exIn(Number(tile.getAttribute('data-ex')));
     });
-    $('ex-stage').addEventListener('wheel', exWheel, { passive: false });
+    // the stage's own listeners come between these: the wheel's gesture is marked before the zoom
+    // reads it and let go after, and a key is marked as a key while the stage turns it into a way
+    var stage = $('ex-stage');
+    stage.addEventListener('wheel', exWheelBefore, { passive: false });
+    stage.addEventListener('keydown', function (e) {
+      explore.keying = true;
+      explore.repeat = !!e.repeat;
+      // with a card in hand the arrows move between the cards, zoomed in or not
+      var a = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (!a || e.altKey || e.ctrlKey || e.metaKey || !document.activeElement.classList.contains('ex__tile')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      exWay(a[0], a[1]);
+      explore.keying = false;
+    });
+    stageMake(stage, {
+      zooms: function () { return true; },
+      wheel: function () { return true; },
+      go: exWay,
+      out: exZoomOut,
+      tap: function () {}
+    });
+    stage.addEventListener('wheel', function () { explore.wheeling = false; });
+    stage.addEventListener('keydown', function () { explore.keying = false; });
+    stageMake($('ex-tree'), { zooms: function () { return true; }, wheel: function () { return true; } });
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(function () { if (consoleTab === 'explore') { exFit(); exLogFit(); } }).observe(stage);
+      new ResizeObserver(function () { var st = stageOf($('ex-tree')); if (consoleTab === 'explore' && (!st || st.whole)) exTreeFit(); }).observe($('ex-tree'));
+    }
+    $('ex-zoom-in').addEventListener('click', function () { stageStep(stage, 1.4); });
+    $('ex-zoom-out').addEventListener('click', function () { var st = stageOf(stage); if (st && !st.svg) exZoomOut(); else stageStep(stage, 1 / 1.4); });
+    $('ex-zoom-whole').addEventListener('click', function () { var st = stageOf(stage); if (st) stageWhole(st, true); });
+    $('ex-outline').addEventListener('click', function () { exOutline($('ex-tree').hidden); });
+    $('ex-wide').addEventListener('click', function () { exWide(!explore.wide); });
+    $('console').addEventListener('pointerdown', exUnfold, true);
+    $('console').addEventListener('dblclick', exUnfoldKeys, true);
+    $('console').addEventListener('keydown', exUnfoldKeys, true);
     $('tab-explore').addEventListener('keydown', exKey);
+    // folded, the rail shows its icons alone, so each says its name when pointed at
+    Array.prototype.forEach.call(document.querySelectorAll('.console__rail [data-tab]'), function (b) {
+      var name = b.querySelector('.rail__name');
+      if (name && !b.title) b.title = name.textContent;
+    });
+    exWide(true);
     consoleOnOpen.explore = openExplore;
   }
 
