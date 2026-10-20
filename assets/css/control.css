@@ -1466,63 +1466,135 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 .console button.repos__name:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
 .repos__list { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
 
-/* Explore (#tab-explore): one level of the project at a time as tiles, an outline of what has
-   been read on the left, the trail of levels above; a step's log at the bottom. The state colours
-   follow the Dependencies charts': green todo, yellow claimed, blue in review, red blocked or
-   failed, grey closed or skipped. */
-#tab-explore { --ex-todo: #2FB36A; --ex-claimed: #E8B931; --ex-review: #4C9BEA; --ex-blocked: #E0625F; --ex-closed: #7C8278; --ex-open: #3CC2B1; }
-#tab-explore .ex__bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); }
-#tab-explore .ex__tool { margin: 0; padding: 3px 10px; font-size: 0.9rem; }
-#tab-explore .ex__link { text-decoration: none; white-space: nowrap; }
-#tab-explore .ex__path { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; min-width: 0; font-size: 0.88rem; }
-#tab-explore .ex__crumb { margin: 0; padding: 1px 6px; font-size: 0.88rem; border: 0; background: none; color: var(--teal-bright); max-width: 22em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#tab-explore .ex__crumb:hover { text-decoration: underline; }
-#tab-explore .ex__here { padding: 1px 6px; font-weight: 600; max-width: 30em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#tab-explore .ex__sep { color: var(--ink-faint); }
-#tab-explore .ex__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; gap: 8px; }
-#tab-explore .ex__tree { flex: 0 0 210px; max-width: 34%; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; font-size: 0.84rem; background: var(--paper-deep); }
+/* Explore (#tab-explore): one level of the project at a time as cards on a stage that zooms and
+   never scrolls (symphony-panel.js, the stage), the trail of levels and the tools in a bar above,
+   the level's own card under it, and an outline that opens over the stage's left. The state
+   colours are the Dependencies charts' (--st-*): green todo or done, yellow claimed, running or
+   draft, blue in review, red blocked or failed, grey closed or skipped, pale grey open. */
+#tab-explore { --ex-r: 14px; }
+#tab-explore .ex__bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 6px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--paper-card) 88%, #fff 3%); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset; }
+.console #tab-explore .ex__tool { flex: 0 0 auto; margin: 0; padding: 4px 12px; min-height: 32px; font-size: 0.88rem; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); line-height: 1.2; }
+.console #tab-explore .ex__tool:hover:not(:disabled) { border-color: var(--teal); color: var(--teal-bright); }
+.console #tab-explore .ex__tool:disabled { opacity: 0.35; }
+.console #tab-explore .ex__icon { width: 34px; padding: 0; font-size: 1rem; }
+.console #tab-explore .ex__tool[aria-pressed="true"], .console #tab-explore .ex__tool[aria-expanded="true"] { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal-bright); }
+#tab-explore .ex__zoom { display: inline-flex; gap: 0; flex: 0 0 auto; }
+.console #tab-explore .ex__zoom .ex__tool { border-radius: 0; margin-left: -1px; }
+.console #tab-explore .ex__zoom .ex__tool:first-child { border-radius: 9px 0 0 9px; margin-left: 0; }
+.console #tab-explore .ex__zoom .ex__tool:last-child { border-radius: 0 9px 9px 0; }
+#tab-explore .ex__link { display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap; }
+#tab-explore .ex__link::after { content: "\2197"; margin-left: 5px; font-size: 0.85em; }
+#tab-explore .ex__link[hidden] { display: none; }
+/* the trail keeps to one row: the levels above shrink to a few letters each, the one shown last */
+#tab-explore .ex__path { flex: 1 1 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; min-width: 0; overflow: hidden; font-size: 0.88rem; }
+.console #tab-explore .ex__crumb { flex: 0 1 auto; min-width: 2.6em; max-width: 16em; margin: 0; padding: 3px 7px; font-size: 0.88rem; border: 0; border-radius: 7px; background: none; color: var(--teal-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console #tab-explore .ex__crumb:hover { background: color-mix(in srgb, var(--teal) 14%, transparent); }
+#tab-explore .ex__here { flex: 0 1 auto; min-width: 3em; padding: 3px 7px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+#tab-explore .ex__sep { flex: 0 0 auto; color: var(--ink-faint); }
+/* the level's own card: a bar of its state's colour, its kind, its name and line, and its tools */
+#tab-explore .ex__head { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 12px 8px 14px; border-radius: 12px; background: linear-gradient(90deg, color-mix(in srgb, var(--ex-c) 14%, transparent), transparent 70%); box-shadow: inset 4px 0 0 var(--ex-c); }
+#tab-explore .ex__head:empty { display: none; }
+#tab-explore .ex__words { flex: 1 1 auto; min-width: 0; }
+#tab-explore .ex__name { margin: 1px 0 0; font-size: 1.12rem; font-family: var(--font-body); letter-spacing: 0; text-transform: none; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tab-explore .ex__head .ex__sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tab-explore .ex__acts { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+#tab-explore .ex__acts:empty { display: none; }
+#tab-explore .ex__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+/* the stage: the console's dotted ground, held still, the picture moved inside it */
+#tab-explore .ex__stage { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; outline: none; border: 1px solid rgba(233, 230, 218, 0.09); border-radius: 14px; background-color: #0F1916; background-image: radial-gradient(rgba(233, 230, 218, 0.07) 1px, transparent 1.4px); background-size: 18px 18px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: contain; }
+#tab-explore .ex__stage:focus-visible { box-shadow: inset 0 0 0 2px var(--teal); }
+#tab-explore .ex__stage.stage--touched:focus-visible { box-shadow: none; }
+#tab-explore .ex__sheet { position: absolute; left: 0; top: 0; width: max-content; transform-origin: 0 0; }
+#tab-explore .ex__grid { display: grid; grid-template-columns: repeat(var(--ex-cols, 3), 232px); gap: 14px; animation: ex-in 0.22s ease-out; }
+@keyframes ex-in { from { opacity: 0; transform: scale(0.96); } }
+#tab-explore .ex__note { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; user-select: text; -webkit-user-select: text; }
+#tab-explore .ex__note .admin__none { max-width: 36em; margin: 0; }
+/* a card: a soft panel tinted by its state, its kind and state on top, its name, its line, and at
+   its foot a dot for each thing inside it */
+.console #tab-explore .ex__tile { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 232px; min-height: 128px; margin: 0; padding: 12px 14px 12px; text-align: left; border: 1px solid color-mix(in srgb, var(--ex-c) 30%, var(--line)); border-radius: var(--ex-r); background: linear-gradient(180deg, color-mix(in srgb, var(--ex-c) 11%, var(--paper-card)), var(--paper-card) 65%); color: var(--ink); cursor: pointer; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 22px rgba(0, 0, 0, 0.28); transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease; font-weight: 400; }
+.console #tab-explore .ex__tile::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--ex-c); }
+.console #tab-explore .ex__tile:hover, .console #tab-explore .ex__tile:focus-visible { transform: translateY(-3px); border-color: var(--ex-c); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 14px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px color-mix(in srgb, var(--ex-c) 40%, transparent); outline: none; }
+#tab-explore .ex__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#tab-explore .ex__kind { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
+#tab-explore .ex__pill { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 600; padding: 2px 8px 2px 7px; border-radius: 999px; color: var(--ex-c); background: color-mix(in srgb, var(--ex-c) 16%, transparent); text-transform: lowercase; }
+#tab-explore .ex__pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ex-c); }
+#tab-explore .ex__s--running .ex__pill::before { animation: ex-pulse 1.2s ease-in-out infinite; }
+@keyframes ex-pulse { 50% { opacity: 0.25; } }
+#tab-explore .ex__title { font-weight: 600; font-size: 0.98rem; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+#tab-explore .ex__sub { font-size: 0.8rem; color: var(--ink-soft); margin: 0; overflow-wrap: anywhere; }
+#tab-explore .ex__tile .ex__sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#tab-explore .ex__foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; min-height: 12px; }
+#tab-explore .ex__hint { font-size: 0.76rem; color: var(--ink-faint); }
+#tab-explore .ex__count { flex: 0 0 auto; font-size: 0.74rem; color: var(--ink-faint); white-space: nowrap; }
+#tab-explore .ex__count::after { content: " \203A"; }
+#tab-explore .ex__dots { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+#tab-explore .ex__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ex-c); }
+#tab-explore .ex__more { font-size: 0.7rem; color: var(--ink-faint); }
+#tab-explore .ex__claude { display: inline-block; margin-left: 4px; font-size: 0.64rem; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 999px; background: var(--ochre); color: var(--paper); text-transform: none; vertical-align: 1px; }
+/* the outline opens over the stage's left, a stage of its own that zooms when it is long */
+#tab-explore .ex__tree { position: absolute; z-index: 4; left: 8px; top: 8px; bottom: 8px; width: min(280px, 60%); overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-deep); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); touch-action: none; }
+#tab-explore .ex__tree[hidden] { display: none; }
+#tab-explore .ex__treebox { position: absolute; left: 0; top: 0; width: 260px; padding: 6px 0; transform-origin: 0 0; }
 #tab-explore .ex__node { white-space: nowrap; }
-#tab-explore .ex__nodename { display: block; width: 100%; margin: 0; padding: 2px 6px 2px 14px; border: 0; background: none; color: var(--ink); text-align: left; overflow: hidden; text-overflow: ellipsis; font-size: 0.84rem; position: relative; }
-#tab-explore .ex__nodename::before { content: ""; position: absolute; left: 3px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 2px; background: var(--ex-c, var(--ex-open)); }
-#tab-explore .ex__current > .ex__nodename { background: color-mix(in srgb, var(--teal) 22%, transparent); font-weight: 600; }
-#tab-explore .ex__stage { position: relative; flex: 1 1 auto; min-width: 0; overflow: auto; outline: none; padding: 4px 4px 12px; overscroll-behavior: contain; }
-#tab-explore .ex__stage:focus-visible { box-shadow: inset 0 0 0 2px var(--teal); border-radius: 6px; }
-#tab-explore .ex__head { border-left: 4px solid var(--ex-c, var(--ex-open)); padding: 2px 0 2px 10px; margin: 0 0 10px; }
-#tab-explore .ex__name { margin: 2px 0; font-size: 1.15rem; font-family: var(--font-body); letter-spacing: 0; text-transform: none; color: var(--ink); overflow-wrap: anywhere; }
-#tab-explore .ex__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-#tab-explore .ex__tile { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin: 0; padding: 10px 12px 26px; min-height: 104px; text-align: left; border: 1px solid var(--line); border-top: 4px solid var(--ex-c, var(--ex-open)); border-radius: 8px; background: var(--paper-card); color: var(--ink); cursor: zoom-in; transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease; }
-#tab-explore .ex__tile:hover, #tab-explore .ex__tile:focus-visible { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); border-color: var(--ex-c, var(--ex-open)); outline: none; }
-#tab-explore .ex__tile--wide { grid-column: span 2; }
-#tab-explore .ex__kind { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
-#tab-explore .ex__title { font-weight: 600; font-size: 0.95rem; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-#tab-explore .ex__sub { font-size: 0.82rem; color: var(--ink-soft); margin: 0; overflow-wrap: anywhere; }
-#tab-explore .ex__hint { font-size: 0.78rem; color: var(--ink-faint); font-style: italic; }
-#tab-explore .ex__dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
-#tab-explore .ex__dot { width: 9px; height: 9px; border-radius: 2px; background: var(--ex-c, var(--ex-open)); }
-#tab-explore .ex__more { font-size: 0.72rem; color: var(--ink-faint); }
-#tab-explore .ex__pill { position: absolute; right: 8px; bottom: 6px; font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; color: var(--paper); background: var(--ex-c, var(--ex-open)); text-transform: lowercase; }
-#tab-explore .ex__claude { display: inline-block; font-size: 0.66rem; letter-spacing: 0.04em; padding: 0 6px; border-radius: 999px; background: var(--ochre); color: var(--paper); text-transform: none; }
-#tab-explore .ex__zoom { position: absolute; z-index: 5; pointer-events: none; border: 2px solid var(--teal); border-radius: 8px; background: color-mix(in srgb, var(--teal) 12%, transparent); transition: left 0.28s ease, top 0.28s ease, width 0.28s ease, height 0.28s ease, opacity 0.28s ease; }
-#tab-explore .ex__log { display: flex; flex-direction: column; gap: 8px; }
-#tab-explore .ex__lines { margin: 0; padding: 8px 10px; max-height: none; overflow: auto; font-size: 0.8rem; line-height: 1.45; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.console #tab-explore .ex__nodename { display: block; width: 100%; margin: 0; padding: 4px 8px 4px 16px; border: 0; border-radius: 6px; background: none; color: var(--ink); text-align: left; overflow: hidden; text-overflow: ellipsis; font-size: 0.84rem; font-weight: 400; position: relative; }
+#tab-explore .ex__nodename::before { content: ""; position: absolute; left: 4px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ex-c); }
+.console #tab-explore .ex__current > .ex__nodename { background: color-mix(in srgb, var(--teal) 22%, transparent); font-weight: 600; }
+/* a log: dark paper, its groups, errors and warnings coloured */
+#tab-explore .ex__sheet--log { padding: 0; }
+#tab-explore .ex__lines { margin: 0; padding: 10px 12px; font-size: 0.8rem; line-height: 1.5; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 #tab-explore .ex__line { display: block; }
 #tab-explore .ex__group { color: var(--teal-bright); font-weight: 600; }
-#tab-explore .ex__error { color: var(--ex-blocked); }
-#tab-explore .ex__warning { color: var(--ex-claimed); }
-#tab-explore .ex__status { flex: 0 0 auto; margin: 0; font-size: 0.84rem; color: var(--ink-soft); }
-#tab-explore .ex__s--todo, #tab-explore .ex__s--done { --ex-c: var(--ex-todo); }
-#tab-explore .ex__s--claimed, #tab-explore .ex__s--running, #tab-explore .ex__s--draft { --ex-c: var(--ex-claimed); }
-#tab-explore .ex__s--review { --ex-c: var(--ex-review); }
-#tab-explore .ex__s--blocked, #tab-explore .ex__s--failed { --ex-c: var(--ex-blocked); }
-#tab-explore .ex__s--closed, #tab-explore .ex__s--skipped, #tab-explore .ex__s--cancelled { --ex-c: var(--ex-closed); }
-@media (max-width: 700px) {
-  #tab-explore .ex__tree { display: none; }
-  #tab-explore .ex__tile--wide { grid-column: auto; }
-}
+#tab-explore .ex__error { color: var(--st-blocked); background: color-mix(in srgb, var(--st-blocked) 10%, transparent); }
+#tab-explore .ex__warning { color: var(--st-claimed); }
+#tab-explore .ex__status { flex: 0 0 auto; margin: 0; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tab-explore .ex__s--todo, #tab-explore .ex__s--done { --ex-c: var(--st-todo); }
+#tab-explore .ex__s--claimed, #tab-explore .ex__s--running, #tab-explore .ex__s--draft { --ex-c: var(--st-claimed); }
+#tab-explore .ex__s--review { --ex-c: var(--st-review); }
+#tab-explore .ex__s--blocked, #tab-explore .ex__s--failed { --ex-c: var(--st-blocked); }
+#tab-explore .ex__s--closed, #tab-explore .ex__s--skipped, #tab-explore .ex__s--cancelled { --ex-c: var(--st-closed); }
+#tab-explore .ex__s--open { --ex-c: var(--st-open); }
 @media (prefers-reduced-motion: reduce) {
-  #tab-explore .ex__tile { transition: none; }
+  .console #tab-explore .ex__tile { transition: none; }
+  #tab-explore .ex__grid, #tab-explore .ex__s--running .ex__pill::before { animation: none; }
 }
-#tab-explore .ex__again { margin: 10px 0 0; font-size: 0.84rem; }
+
+/* Explore takes most of the panel while it is shown (symphony-panel.js, exWide): the side column
+   folds to its rail of icons, the repository's box with it, the Ask Claude bar folds away and the
+   foot keeps one line of message and Clear; a press on either brings them back. */
+.console--exwide:has(#tab-explore:not([hidden])) .console__body { grid-template-columns: 58px 10px minmax(0, 1fr); }
+.console--exwide:has(#tab-explore:not([hidden])) .console__id { display: none; }
+.console--exwide:has(#tab-explore:not([hidden])) .console__side { cursor: e-resize; }
+.console--exwide:has(#tab-explore:not([hidden])) .console__rail button { justify-content: center; padding-left: 0; padding-right: 0; cursor: pointer; }
+.console--exwide:has(#tab-explore:not([hidden])) .console__rail :is(.rail__name, .rail__count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.console--exwide:has(#tab-explore:not([hidden])) .console__split[data-split="side"] { cursor: e-resize; }
+.console--exwide:has(#tab-explore:not([hidden])) > .console__askbar { display: none; }
+.console.console--exwide:has(#tab-explore:not([hidden])) > .console__status { height: auto; cursor: n-resize; }
+.console--exwide:has(#tab-explore:not([hidden])) > .console__status .console__me { display: none; }
+.console.console--exwide:has(#tab-explore:not([hidden])) > .console__status #msg { max-height: 2.1em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#tab-explore .ex__wideword { font-size: 0.85rem; }
+/* a phone: the tab is the stage, the zoom's buttons give way to a pinch and a double tap, and,
+   folded, the tab takes the whole screen over the page, which is held still beneath it */
+@media (max-width: 900px), (max-height: 520px) {
+  #tab-explore .ex__body { flex: 0 0 auto; height: min(72vh, 680px); }
+  #tab-explore .ex__zoom, #tab-explore .ex__status { display: none; }
+  #tab-explore .ex__head { padding: 6px 10px 6px 12px; }
+  #tab-explore .ex__name { font-size: 1rem; }
+  #tab-explore .ex__head .ex__sub { display: none; }
+  .console #tab-explore .ex__link { width: 34px; padding: 0; justify-content: center; font-size: 0; }
+  .console #tab-explore .ex__link::after { margin: 0; font-size: 1rem; }
+  .console--exwide #tab-explore:not([hidden]) { position: fixed; z-index: 50; inset: 0; padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px); background: var(--paper); gap: 6px; }
+  .console--exwide #tab-explore:not([hidden]) .console__head { display: none; }
+  .console--exwide #tab-explore:not([hidden]) .ex__body { flex: 1 1 auto; height: auto; }
+  html:has(.console--exwide #tab-explore:not([hidden])) body { overflow: hidden; overscroll-behavior: none; }
+}
+/* the site bar's handle stays above the tab's own bar, so no press meant for the tab lands on it */
+@media (max-width: 900px) and (hover: none), (max-width: 900px) and (any-pointer: coarse), (max-height: 520px) and (hover: none), (max-height: 520px) and (any-pointer: coarse) {
+  body.console-bar-auto .console--exwide #tab-explore:not([hidden]) { padding-top: calc(env(safe-area-inset-top, 0px) + 26px); }
+}
+@media (max-width: 900px) and (pointer: coarse), (max-height: 520px) and (pointer: coarse) {
+  .console #tab-explore .ex__tool { min-height: 38px; }
+  .console #tab-explore .ex__icon { width: 40px; }
+}
 
 /* The phone's rules that must win over unconditional rules above them (.console__me, the run rows,
    .toks): a media query adds no specificity, so an earlier phone rule of the same selector lost to
