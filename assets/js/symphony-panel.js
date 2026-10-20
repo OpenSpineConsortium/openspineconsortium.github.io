@@ -120,7 +120,7 @@
     return node;
   }
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
-  // the page's own line at the deck's foot; a task under way there (msgTask) stays under it, since
+  // the page's note over the screen's foot; a task under way there (msgTask) stays under it, since
   // its work goes on, while a finished one gives way to the new words as any message did
   function say(text, warn) {
     var m = $('msg');
@@ -135,13 +135,16 @@
   }
   // A plain note goes by itself after a while, so the note over the screen's foot never sits over
   // the page with nothing to do; a warning, a note with something to press or type, and a task stay
-  // until Clear, and a note the pointer or the focus is on waits until they leave it.
+  // until Clear, and a note the pointer or the focus is on waits until they leave it. While the
+  // panel is signed out the note is the only word of why (forgotten in another tab, refused by
+  // GitHub), so it stays for whoever comes back to the sign-in.
   var NOTE_MS = 8000;
   var noteTimer = 0;
   function fadeNote(note) {
     var m = $('msg');
     if (!m || !note || note.parentNode !== m || /admin__warn/.test(m.className)) return;
     if (note.querySelector('input, button, select, textarea')) return;
+    if ($('cp-app').classList.contains('hidden')) return;
     var foot = m.closest('.console__status');
     if ((foot && foot.matches(':hover')) || (foot && foot.contains(document.activeElement))) { noteTimer = setTimeout(function () { fadeNote(note); }, NOTE_MS); return; }
     m.removeChild(note);
@@ -285,7 +288,7 @@
     state = emptyState(state.repo);
     // a drive connected under this sign-in goes with it, whatever ended it
     dropDrive();
-    // and so does what was under way at the deck's foot, whose calls now go unanswered
+    // and so does what was under way in the note, whose calls now go unanswered
     msgTasksDrop();
   }
   function forgetToken() {
@@ -445,17 +448,17 @@
     if (lost && back && back.getClientRects().length) back.focus({ preventScroll: true });
     return live;
   }
-  // whether the whole of a node shows, under no header or status line held to the window's edge
+  // whether the whole of a node shows, under no header or note held to the window's edge
   function inSight(node) {
     var r = node.getBoundingClientRect();
     var x = r.left + Math.min(r.width / 2, 24);
     return [r.top + 1, r.bottom - 1].every(function (y) { var at = document.elementFromPoint(x, y); return !!(at && node.contains(at)); });
   }
-  // on a phone the code's box opens below the fold, behind the status line held to the window's foot,
+  // on a phone the code's box opens below the fold, behind the note over the window's foot,
   // so it is brought up to the window's middle; where it shows whole already nothing moves
   function bringIntoSight(node) {
     if (inSight(node)) return;
-    try { scrollInDeck(node, { block: 'center' }); } catch (e) { /* the code is in the status line too */ }
+    try { scrollInDeck(node, { block: 'center' }); } catch (e) { /* the code is in the note too */ }
   }
   function showCode(code) {
     $('cp-code').textContent = code;
@@ -2340,7 +2343,7 @@
     if (!t.title || !t.goal) { say('A task needs a title and what is true when it is done.', true); return; }
     var s = state;
     say('Queueing the task...');
-    // the dialog closes at once; what the request says comes to the deck's foot, and the fields keep
+    // the dialog closes at once; what the request says comes to the note, and the fields keep
     // their words for another try
     closeDialog('dlg-task');
     var done = hold('cp-task-queue');
@@ -2679,7 +2682,7 @@
       head.classList.add('console__flash');
     } else box.scrollTop = head.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
   }
-  // a message that arrives, or changes, flashes the line at the deck's foot; emptying it does not.
+  // a message that arrives, or changes, flashes the note; emptying it does not.
   // say() replaces className, so the flash class is put back after it rather than kept
   function initFlash() {
     var m = $('msg');
@@ -2742,13 +2745,13 @@
     return function () { clearTimeout(timer); requestAnimationFrame(release); };
   }
 
-  /* ---------- a piece of work that takes a while speaks at the deck's foot ---------- */
+  /* ---------- a piece of work that takes a while speaks in the note ---------- */
   // A workflow started from a button, or the sign-in of Add Token, held a dialog open or said one
-  // line and went quiet. Now the dialog answers and closes at once, and the work speaks on the line
-  // at the deck's foot: its name, where it is, the run's steps as GitHub lists them and the last
+  // line and went quiet. Now the dialog answers and closes at once, and the work speaks in the note
+  // over the screen's foot: its name, where it is, the run's steps as GitHub lists them and the last
   // lines of a job's log once the job has ended (GitHub gives a log then, not while the job runs),
   // and the step it needs from the person as links and a box there, so nothing more pops up. A new
-  // word flashes the foot white, as any message does; the steps and the log do not, since they
+  // word flashes the note white, as any message does; the steps and the log do not, since they
   // change every few seconds. Clear hides a task and its work goes on; the button that started it
   // shows it again, and a message said meanwhile goes above it (say).
   var msgTasks = [];
@@ -2771,7 +2774,7 @@
     var bar = el('p', 'admin__bar msgtask__bar');
     bar.hidden = true;
     // the step the person takes and the buttons come right under the line, before the steps and the
-    // log, so on a phone's short foot the sign-in's link is in view and the quiet parts are below
+    // log, so in a phone's short note the sign-in's link is in view and the quiet parts are below
     add(box, head, line, step, bar, steps, log);
     var task = {
       box: box,
@@ -2835,7 +2838,7 @@
     msgTasks = [];
   }
 
-  /* ---------- the run a button started, followed from the deck's foot ---------- */
+  /* ---------- the run a button started, followed from the note ---------- */
   // GitHub lists a workflow's runs newest first, so the run a press started is the first listed
   // whose id is above the newest before the press, the one the signed-in person started where
   // several are; one that is not listed within two minutes is left to the Runs tab. While it runs,
@@ -2865,7 +2868,7 @@
           fails = 0;
           var fresh = runs.filter(function (run) { return run.id > after && !followedRuns[run.id]; });
           // the signed-in person's own run, where GitHub names who started each: another person's,
-          // started in the same minute, speaks at their foot, and this person's is waited for
+          // started in the same minute, speaks in their note, and this person's is waited for
           var named = fresh.filter(function (run) { return isPlain(run.actor) && typeof run.actor.login === 'string' && run.actor.login; });
           var mine = named.filter(function (run) { return run.actor.login === shownLogin; });
           var run = mine[0] || (!shownLogin || !named.length ? fresh[0] : null);
@@ -2945,7 +2948,7 @@
   function followDispatched(s, workflow, after, task) {
     var era = ends;
     // the follow is over with a sign-out, with the task (Clear leaves it live; a drop does not) and
-    // once the page shows another repository, whose foot the run's end would otherwise land on
+    // once the page shows another repository, whose note the run's end would otherwise land in
     function over() { return ends !== era || !task.live || stale(s); }
     function left() {
       if (task.live && ends === era) task.end('Left as the page went to another repository; the run goes on at its link.');
@@ -3155,8 +3158,7 @@
     side: { prop: '--side-w', min: 150, max: 520, axis: 'x', sign: 1, measure: function () { return $('console').querySelector('.console__side').offsetWidth; } },
     col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
     tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
-    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } },
-    drawer: { prop: '--drawer-h', min: 120, max: 1600, axis: 'y', sign: -1, measure: function () { return $('cp-as-drawer').offsetHeight; } }
+    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } }
   };
   // how much the text size scales a part: its size on screen over its size in its own pixels (the
   // phone's rules leave the deck unscaled whatever text size the desktop saved)
@@ -3192,9 +3194,6 @@
       if (layout[k] != null) c.style.setProperty(LAYOUT_PARTS[k].prop, sizeWithin(LAYOUT_PARTS[k], layout[k]) + 'px');
       else c.style.removeProperty(LAYOUT_PARTS[k].prop);
     });
-    // the answer keeps its usual cap until the person sizes it, and may then take the stage
-    if (layout.drawer != null) c.style.setProperty('--drawer-max', 'calc(100% - 16px)');
-    else c.style.removeProperty('--drawer-max');
     c.style.setProperty('--console-zoom', String(zoomOf()));
     if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
     sayGrips();
@@ -3206,13 +3205,12 @@
     Array.prototype.forEach.call($('console').querySelectorAll('[data-split][role="separator"]'), function (grip) {
       var p = LAYOUT_PARTS[grip.getAttribute('data-split')];
       if (!p || !grip.getClientRects().length) return;
-      var b = p.bounds ? p.bounds() : p;
-      grip.setAttribute('aria-valuemin', String(b.min));
-      grip.setAttribute('aria-valuemax', String(b.max));
-      grip.setAttribute('aria-valuenow', String(Math.min(b.max, Math.max(b.min, Math.round(p.measure(grip))))));
+      grip.setAttribute('aria-valuemin', String(p.min));
+      grip.setAttribute('aria-valuemax', String(p.max));
+      grip.setAttribute('aria-valuenow', String(Math.min(p.max, Math.max(p.min, Math.round(p.measure(grip))))));
     });
   }
-  // a grip made by the script, for a part the script draws (a token's panel, Claude's answer)
+  // a grip made by the script, for a part the script draws (a token's panel, a notebook's)
   function splitGrip(part, what) {
     var g = el('div', 'console__split console__split--edge console__split--' + part);
     g.setAttribute('data-split', part);
@@ -3222,10 +3220,9 @@
     g.tabIndex = 0;
     return g;
   }
-  // a size held to a part's bounds: its fixed ones, or those it measures now
+  // a size held to a part's bounds
   function sizeWithin(p, px) {
-    var b = p.bounds ? p.bounds() : p;
-    return Math.round(Math.min(b.max, Math.max(b.min, px)));
+    return Math.round(Math.min(p.max, Math.max(p.min, px)));
   }
   function setPart(part, px) {
     layout[part] = sizeWithin(LAYOUT_PARTS[part], px);
@@ -3258,19 +3255,8 @@
       var scale = scaleOf(grip);
       grip.setPointerCapture(e.pointerId);
       document.body.classList.add('console-dragging', 'console-dragging--' + p.axis);
-      // where the page scrolls (a phone's), a foot not resting on the window's bottom, the page
-      // scrolled past the deck's end, grows down from a top that stays put; the window is scrolled by
-      // what the grip fell behind the size it took, so the grip stays under the finger, at once, since
-      // the site's smooth scrolling would land after the next move had measured
-      var top0 = grip.getBoundingClientRect().top;
-      function follow() {
-        if (p.axis !== 'y' || getComputedStyle(c).overflow === 'hidden') return;
-        var behind = grip.getBoundingClientRect().top - (top0 + p.sign * (layout[part] - start) * scale);
-        if (Math.abs(behind) > 0.5) window.scrollBy({ top: behind, behavior: 'instant' });
-      }
       function move(ev) {
         setPart(part, start + p.sign * ((p.axis === 'x' ? ev.clientX : ev.clientY) - from) / scale);
-        follow();
       }
       // the grip may be drawn again mid-drag (the Tokens tab redraws its panel as readings land), so
       // a lost capture ends the drag as a release does
@@ -4187,7 +4173,7 @@
     var acts = el('div', 'console__askactions');
     acts.id = 'cp-as-actions';
     add(body, acts, answer);
-    add(drawer, splitGrip('drawer', 'the answer'), head, body);
+    add(drawer, head, body);
     host.appendChild(drawer);
   }
   // "Ask in claude.ai" opens the question on the person's own claude.ai account, in a new tab, with a
@@ -4278,7 +4264,6 @@
   function openClaude() {
     if (assistant.noFile && assistant.repo === tokensRepo()) {
       openTaskDialog();
-      $('cp-task-ask').focus();
       say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.');
       return;
     }
@@ -5011,8 +4996,7 @@
   // phone layout), so while this tab is shown the page is held still (graph--held on the document,
   // control.css: no scroll, no bounce, and no gesture of the browser's own on the tab), the window
   // put where the rail of tabs stands at the window's top, so the person can always leave for
-  // another tab, and the tab takes the screen's height left above the foot that sticks to the
-  // screen's bottom: the whole tab in front of the person and nothing a finger can scroll. The
+  // another tab, and the tab takes the rest of the screen's height: the whole tab in front of the person and nothing a finger can scroll. The
   // site's bar takes none of it: it hides itself on this page and comes back over the deck when its
   // handle is tapped or swiped down (initBar, barRoom), held sideways as upright. Opening the tab
   // and turning the phone bring the window back there;
@@ -6297,8 +6281,8 @@
   }
   // a node pressed, or Centre its row: the task's row is centred and marked in the Tasks tab, which
   // opens, as the assistant's focus opens it, where the task tables hold the task, and nothing else
-  // happens; no window or page opens. The words go to the message line under the deck too, on every
-  // press, whichever tab it leaves shown, so that line never keeps an earlier press's focus.
+  // happens; no window or page opens. The words go to the note over the screen's foot too, on every
+  // press, whichever tab it leaves shown, so the note never keeps an earlier press's focus.
   function graphFocus(n) {
     $('cp-graph-said').textContent = assistantFocus(n);
     say($('cp-graph-said').textContent);
@@ -6967,14 +6951,14 @@
   // from this branch (symphony-template's tools/sync_adopted.py)
   var SYNC_BRANCH = 'symphony/sync';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
-  // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
-  // the deck's foot, shown again when Add Token is pressed after Clear hid it, and how to stop it
+  // the sign-in under way, one at a time since each opens an issue and starts a run: its task in
+  // the note, shown again when Add Token is pressed after Clear hid it, and how to stop it
   var tokenRun = null;
   // the slot whose settings Save and sign in is saving before its sign-in starts, with the sign-out
   // count of the press, so a save that never answers after a sign-out holds nothing
   var tokenAdding = null;
 
-  // the sign-in at the deck's foot (msgTask): a line that says where the run is, the run's steps
+  // the sign-in in the note (msgTask): a line that says where the run is, the run's steps
   // under it, and the step it needs from the person, the claude.ai link and the code's box; the
   // dialog that asked for it has closed already, with its task handed on
   function signInView(title, given) {
@@ -7236,7 +7220,7 @@
       setTimeout(look, RUN_POLL_MS);
     });
   }
-  // the step the person takes, at the deck's foot: the sign-in as a link, which a phone opens as it
+  // the step the person takes, in the note: the sign-in as a link, which a phone opens as it
   // opens any, and the code's box beside it
   function drawSignIn(repo, issue, url, view) {
     var m = view.step;
@@ -7791,7 +7775,7 @@
       if (why) { problem.hidden = false; problem.textContent = why; return; }
       save.disabled = true;
       var wanted = slot, labelText = wanted === 'main' ? '' : label.value.trim(), at = tk.place;
-      // the dialog answers and closes at once; the saving speaks at the deck's foot, and so does the
+      // the dialog answers and closes at once; the saving speaks in the note, and so does the
       // sign-in that follows it, as one task
       d.close();
       var task = adding ? msgTask('Add ' + tileName(wanted) + ' on ' + tk.repo) : null;
@@ -10081,7 +10065,7 @@
   // listed asked about one by one, since GitHub's list of them leaves out which template made each;
   // every one made from the template, or carrying the topic, joins the list, and the newest is
   // chosen in the bar, which moves the whole console to it
-  // what Track, Find and Sync now answer is said in the Track dialog as well as at the foot, which the
+  // what Track, Find and Sync now answer is said in the Track dialog as well as in the note, which the
   // dialog covers while it is open
   function fdSay(text, warn) {
     say(text, warn);
@@ -10446,7 +10430,7 @@
       else words += dispatchWords(repo, started);
       var trouble = (started !== true && !wrote.pull) || switched !== true || !!(where && where.note) || !!(renewal && renewal.failed.length);
       fdSay(words, trouble);
-      // done: the steps close by themselves, the panel's message line saying what was done; a
+      // done: the steps close by themselves, the panel's note saying what was done; a
       // sync that could not be started or switched on keeps them open, with its runs link
       if (!trouble) closeDialog('dlg-track');
       if (foldersRepo() === repo) loadFolders();
@@ -11196,7 +11180,7 @@
     return slug;
   }
   // the dialog that proposes a notebook or changes one: its title, summary and repository, and the
-  // catalog's files ticked; Propose or Save closes it at once and the write speaks at the foot
+  // catalog's files ticked; Propose or Save closes it at once and the write speaks in the note
   function openNotebookDialog(slug) {
     var d = $('nb-dialog');
     if (!d) return;
