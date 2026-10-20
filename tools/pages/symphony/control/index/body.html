@@ -63,7 +63,7 @@ app: yes
           <button type="button" role="tab" data-tab="board" id="rail-board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
           <button type="button" role="tab" data-tab="tasks" id="rail-tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
           <button type="button" role="tab" data-tab="dependencies" id="rail-dependencies" aria-controls="tab-dependencies"><span class="rail__icon" aria-hidden="true">&#8658;</span><span class="rail__name">Dependencies</span></button>
-          <button type="button" role="tab" data-tab="explore" id="rail-explore" aria-controls="tab-explore"><span class="rail__icon" aria-hidden="true">&#9673;</span><span class="rail__name">Explore</span></button>
+          <button type="button" role="tab" data-tab="explore" id="rail-explore" aria-controls="tab-explore"><span class="rail__icon" aria-hidden="true">&#9672;</span><span class="rail__name">Explore</span></button>
           <button type="button" role="tab" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
           <button type="button" role="tab" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
@@ -190,17 +190,21 @@ app: yes
           <div class="console__head">
             <h2 id="h-explore" class="console__h">Explore</h2>
             <details class="console__help"><summary>How to move through it and what it reads</summary><div>
-              <p>The whole project as a map, one level at a time: the repository, its goals and epics, each epic&rsquo;s tasks, the pull requests of a task (or its claim branch where it has none), the GitHub Actions runs on that branch, each run&rsquo;s jobs, each job&rsquo;s steps and, at the bottom, the lines of a step&rsquo;s log, where the steps that run Claude are marked. Click a tile, or point at it and scroll up, to go into it; scroll down, press Backspace or pick a level in the trail at the top to come back out. The scroll wheel scrolls a long level as usual; a new turn of the wheel that starts at its top, over a tile, goes in, and one that starts at its bottom comes out, so reaching the end of a list never moves you by itself. The arrow keys move between tiles and Enter goes in. The outline on the left shows the levels on your way down and what sits beside each; click a name to go there.</p>
+              <p>The whole project as a map, one level at a time: the repository, its goals and epics, each epic&rsquo;s tasks, the pull requests of a task (or its claim branch where it has none), the GitHub Actions runs on that branch, each run&rsquo;s jobs, each job&rsquo;s steps and, at the bottom, the lines of a step&rsquo;s log, where the steps that run Claude are marked. Click a card to go into it; press Backspace or Escape, or pick a level in the trail at the top, to come back out. Nothing here scrolls: the whole level is drawn to fit, and you zoom instead, with a pinch, the scroll wheel, the &minus; and + buttons or keys, or a double click, then drag to move around; Whole, or 0, draws it whole again, and zooming out past the whole level comes out of it, one level for each turn of the wheel. A swipe sideways, or the left and right arrows while the map itself has the keyboard, goes to the level beside this one, the next task of the same epic or the next run on the same branch. With a card in hand the arrow keys move between the cards and Enter goes in. A log opens at a size to read, on its first error or else at its end, and the wheel or a drag moves along it. While you use this tab it takes most of the panel: the side column folds to its icons and the foot to one line, and on a phone the tab takes the whole screen; Panel, or a press on the folded column or foot, brings them back. The outline button shows every level read on your way down and what sits beside each; click a name to go there.</p>
               <p>The repository, its goals, epics and tasks come from what the console has already read (the Dependencies tab&rsquo;s reads). Everything below a task is read from GitHub as you, only when you go into it: the runs on a branch, a run&rsquo;s jobs and steps, and a job&rsquo;s log, one read each, none once GitHub says the token has fewer than a hundred calls left this hour. What is read stays in this tab&rsquo;s memory until you choose another repository, the logs of the last three jobs only, and is written nowhere; Read again reads a level or a log afresh, for a run still going. GitHub hands a job&rsquo;s log over from its own storage; where your browser may not read it from there, the step says so and links the log on GitHub.</p>
             </div></details>
           </div>
           <div class="ex__bar">
-            <button type="button" id="ex-out" class="ex__tool" title="Come out one level (Backspace)" aria-label="Come out one level">&#8592;</button>
+            <button type="button" id="ex-out" class="ex__tool ex__icon" title="Come out one level (Backspace)" aria-label="Come out one level">&#8592;</button>
+            <button type="button" id="ex-outline" class="ex__tool ex__icon" aria-expanded="false" aria-controls="ex-tree" title="The outline of every level read so far" aria-label="Outline">&#9776;</button>
             <nav id="ex-path" class="ex__path" aria-label="Where you are"></nav>
+            <span class="ex__zoom" role="group" aria-label="Zoom"><button type="button" id="ex-zoom-out" class="ex__tool ex__icon" title="Zoom out (-); past the whole level, come out of it" aria-label="Zoom out">&minus;</button><button type="button" id="ex-zoom-whole" class="ex__tool" title="The whole level (0)">Whole</button><button type="button" id="ex-zoom-in" class="ex__tool ex__icon" title="Zoom in (+)" aria-label="Zoom in">+</button></span>
             <a id="ex-github" class="ex__tool ex__link" href="#" target="_blank" rel="noopener" hidden>Open on GitHub</a>
+            <button type="button" id="ex-wide" class="ex__tool ex__wide" aria-pressed="true" title="Bring back the side column and the foot"><span aria-hidden="true">&#x26F6;</span> <span class="ex__wideword">Panel</span></button>
           </div>
+          <div id="ex-head" class="ex__head"></div>
           <div class="ex__body">
-            <nav id="ex-tree" class="ex__tree" aria-label="Outline"></nav>
+            <nav id="ex-tree" class="ex__tree" aria-label="Outline" hidden></nav>
             <div id="ex-stage" class="ex__stage" tabindex="0"></div>
           </div>
           <p id="ex-status" class="ex__status" aria-live="polite">Nothing to explore yet: no repository is chosen.</p>
@@ -273,49 +277,23 @@ app: yes
         </section>
 
         <!-- Folders: a repository that tracks files and folders of your OneDrive -->
-        <section class="console__panel console__panel--split folders" id="tab-folders" data-tab-panel="folders" role="tabpanel" aria-labelledby="rail-folders" hidden>
-          <div class="console__col">
-            <div class="console__head">
-              <h2 id="h-folders" class="console__h">Folders</h2>
-              <details class="console__help"><summary>How the drive is kept in step</summary><div>
-                <p>A repository that tracks files and folders of your OneDrive, one press per step, in the column beside the list. From Track on, the repository&rsquo;s own workflow, <code>drive-sync.yml</code>, brings what changed in the drive down as a pull request every half hour and sends what changed in the repository back up, and a new comment in a document becomes a task on the board. On a private repository each of those half-hourly runs spends at least a minute of the account&rsquo;s Actions minutes, about 1,440 a month of GitHub Free&rsquo;s 2,000 (3,000 on Pro and Team), from the day the repository is made, whether or not it tracks a drive; a public repository spends none. Google Drive comes later, once there is a way that needs no key: Google&rsquo;s own picker takes a browser API key, which the owner has declined.</p>
-                <p>Connect: Microsoft asks, on its own page, whether Symphony may read and write your files and keep that access when you are away, and sends you straight back to this tab. A personal OneDrive connects at once; a work or school account may need its organization&rsquo;s IT department to approve Symphony first, and Microsoft says so on its page. The page then holds the drive&rsquo;s two tokens in its memory alone, never in the browser&rsquo;s storage, so finish the steps in one sitting: a reload, signing out or a sign-in as another GitHub account forgets them, and Connect is one press again. Leaving the page for Microsoft also ends the renewals of a sign-in with GitHub made for this tab alone, whose token still serves for the rest of its eight hours.</p>
-                <p>The list: your OneDrive, drawn here from Microsoft Graph as you, in this browser, as a file explorer: the folder tree on the left, Back, Forward and Up beside the address, Details or Large icons at the foot, and a search box for the folder shown. Double-click a Word, Excel or PowerPoint file to open it in that program on your computer, where your edits save straight to the drive (your browser may ask first); any other file opens on OneDrive&rsquo;s own page, and a right click offers both and Tick. Tick in it what to track. The page draws it itself rather than opening OneDrive&rsquo;s own picker, since the access you gave reaches every file already and the picker would need a token for your tenant&rsquo;s SharePoint, a page of Microsoft&rsquo;s inside this one and an address that differs between a personal and a work account. A ticked folder is tracked with everything in it, six levels down. Nothing of the list leaves this browser but the names and ids of what you tick, which go into the repository&rsquo;s file.</p>
-                <p>The repository: GitHub&rsquo;s own form makes it from the template, named by you, so its first commit stays yours and no App needs to administer it. While the template is internal to OpenSpineConsortium&rsquo;s enterprise, that form works only for the enterprise&rsquo;s members; anyone else makes the repository through the front door: install <a href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">SymphonyBoard</a> and press Create on the form its install leads to, which brings a new or empty repository the whole template, <code>drive-sync.yml</code> with it, by a pull request to merge. The form opens in a new tab; name the repository, press &ldquo;Create repository&rdquo;, come back here and press &ldquo;Find the repository I just made&rdquo;, which lists it in the bar&rsquo;s Repository and chooses it. Signed in with GitHub, the page reaches it once SymphonyBoard is installed on it (an installation on all your repositories covers it); a fine-grained token reaches what it was made for, and Track needs it to hold Contents, Secrets and Actions, each Read and write.</p>
-                <p>Track writes three things, as you: the drive&rsquo;s refresh token, sealed in this browser with the repository&rsquo;s public key the way GitHub&rsquo;s own secrets page seals one, as the secret <code>SYMPHONY_DRIVE_REFRESH</code>; the file <code>.github/symphony/drive.json</code> naming the drive, the folder and what you ticked; and the first run of the sync. The page then drops the drive&rsquo;s tokens from its memory. In a public repository the files you tick, their names and the comments in them become readable by anyone, so the tab asks you to confirm before it tracks into one. Where the default branch takes only pull requests, the file waits on a pull request; until it merges, the half-hourly sync runs with the new secret on the file the default branch already holds. Whoever can run a workflow on the repository, anyone who may write to it, can read that secret and, through the sign-in service, reach every file of your OneDrive with it, not only what you ticked, until it lapses or you withdraw Symphony&rsquo;s access at Microsoft: at <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener">account.live.com/consent/Manage</a> for a personal account, or in <a href="https://myapps.microsoft.com" target="_blank" rel="noopener">My Apps</a> for a work or school account, where its administrator may have to. Deleting the secret withdraws nothing at Microsoft. A Microsoft refresh token lasts 90 days, and the run cannot keep the newer one Microsoft issues on each sync, so the tab says when to press Connect OneDrive again, then Track, which replaces the secret and the date; what the repository tracks is ticked already.</p>
-              </div></details>
-            </div>
-            <div class="console__scroll">
-              <div id="fd-tracked" class="admin__box"></div>
-              <h3 id="h-drive">Your OneDrive</h3>
-              <div id="fd-browser"></div>
-              <p class="admin__lead" id="fd-picked-head">Nothing ticked yet.</p>
-              <ul id="fd-picked" class="folders__picked"></ul>
-            </div>
+        <!-- Folders: the person's OneDrive as Windows' File Explorer draws it, filling the tab; the
+             repository steps that track what is ticked open from "Track in a repository" -->
+        <section class="console__panel folders" id="tab-folders" data-tab-panel="folders" role="tabpanel" aria-labelledby="rail-folders" hidden>
+          <div class="console__head folders__head">
+            <h2 id="h-folders" class="console__h">Folders</h2>
+            <p class="folders__who" id="fd-connect-note"></p>
+            <button id="fd-connect" type="button" class="console__primary folders__connect">Connect OneDrive</button>
+            <button type="button" class="console__add folders__trackopen" data-open="dlg-track" id="fd-track-open">Track in a repository</button>
+            <details class="console__help"><summary>How it works</summary><div>
+              <p>A repository that tracks files and folders of your OneDrive, one press per step, in Track in a repository. From Track on, the repository&rsquo;s own workflow, <code>drive-sync.yml</code>, brings what changed in the drive down as a pull request every half hour and sends what changed in the repository back up, and a new comment in a document becomes a task on the board. On a private repository each of those half-hourly runs spends at least a minute of the account&rsquo;s Actions minutes, about 1,440 a month of GitHub Free&rsquo;s 2,000 (3,000 on Pro and Team), from the day the repository is made, whether or not it tracks a drive; a public repository spends none. Google Drive comes later, once there is a way that needs no key: Google&rsquo;s own picker takes a browser API key, which the owner has declined.</p>
+              <p>Connect: Microsoft asks, on its own page, whether Symphony may read and write your files and keep that access when you are away, and sends you straight back to this tab. A personal OneDrive connects at once; a work or school account may need its organization&rsquo;s IT department to approve Symphony first, and Microsoft says so on its page. The page then holds the drive&rsquo;s two tokens in its memory alone, never in the browser&rsquo;s storage, so finish the steps in one sitting: a reload, signing out or a sign-in as another GitHub account forgets them, and Connect is one press again. Leaving the page for Microsoft also ends the renewals of a sign-in with GitHub made for this tab alone, whose token still serves for the rest of its eight hours.</p>
+              <p>The list: your OneDrive, drawn here from Microsoft Graph as you, in this browser, as Windows&rsquo; File Explorer draws a folder: it fills the tab, with the folder tree on the left, Back, Forward, Up and Refresh beside the address, the folder&rsquo;s items in Details or Large icons, sorted by a column&rsquo;s heading, and a search box for the folder shown. Double-click a Word, Excel or PowerPoint file to open it in that program on your computer, where your edits save straight to the drive (your browser may ask first); any other file opens on OneDrive&rsquo;s own page, and a right click offers both and Tick. The page reads the drive only once you connect it, as yourself, through Microsoft&rsquo;s own sign-in. Tick in it what to track, then press Track in a repository: the steps that make a repository and track what you ticked are there. A ticked folder is tracked with everything in it, six levels down. Nothing of the list leaves this browser but the names and ids of what you tick, which go into the repository&rsquo;s file.</p>
+              <p>The repository: GitHub&rsquo;s own form makes it from the template, named by you, so its first commit stays yours and no App needs to administer it. While the template is internal to OpenSpineConsortium&rsquo;s enterprise, that form works only for the enterprise&rsquo;s members; anyone else makes the repository through the front door: install <a href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">SymphonyBoard</a> and press Create on the form its install leads to, which brings a new or empty repository the whole template, <code>drive-sync.yml</code> with it, by a pull request to merge. The form opens in a new tab; name the repository, press &ldquo;Create repository&rdquo;, come back here and press &ldquo;Find the repository I just made&rdquo;, which lists it in the bar&rsquo;s Repository and chooses it. Signed in with GitHub, the page reaches it once SymphonyBoard is installed on it (an installation on all your repositories covers it); a fine-grained token reaches what it was made for, and Track needs it to hold Contents, Secrets and Actions, each Read and write.</p>
+              <p>Track writes three things, as you: the drive&rsquo;s refresh token, sealed in this browser with the repository&rsquo;s public key the way GitHub&rsquo;s own secrets page seals one, as the secret <code>SYMPHONY_DRIVE_REFRESH</code>; the file <code>.github/symphony/drive.json</code> naming the drive, the folder and what you ticked; and the first run of the sync. The page then drops the drive&rsquo;s tokens from its memory. In a public repository the files you tick, their names and the comments in them become readable by anyone, so the tab asks you to confirm before it tracks into one. Where the default branch takes only pull requests, the file waits on a pull request; until it merges, the half-hourly sync runs with the new secret on the file the default branch already holds. Whoever can run a workflow on the repository, anyone who may write to it, can read that secret and, through the sign-in service, reach every file of your OneDrive with it, not only what you ticked, until it lapses or you withdraw Symphony&rsquo;s access at Microsoft: at <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener">account.live.com/consent/Manage</a> for a personal account, or in <a href="https://myapps.microsoft.com" target="_blank" rel="noopener">My Apps</a> for a work or school account, where its administrator may have to. Deleting the secret withdraws nothing at Microsoft. A Microsoft refresh token lasts 90 days, and the run cannot keep the newer one Microsoft issues on each sync, so the tab says when to press Connect OneDrive again, then Track, which replaces the secret and the date; what the repository tracks is ticked already.</p>
+            </div></details>
           </div>
-          <div class="console__col console__col--side">
-            <div class="admin__box console__scroll">
-              <div class="folders__step">
-                <h3 class="console__boxh">1. Connect the drive</h3>
-                <p class="admin__bar"><button id="fd-connect" type="button" class="console__primary">Connect OneDrive</button></p>
-                <p class="admin__lead" id="fd-connect-note"></p>
-              </div>
-              <div class="folders__step">
-                <h3 class="console__boxh">2. Make the repository</h3>
-                <p class="admin__lead" id="fd-create-note">Only for a new one; yours are in the bar. Outside OpenSpineConsortium, use <a href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">the front door</a>.</p>
-                <p class="admin__bar"><a id="fd-create" class="folders__button" href="https://github.com/new?template_owner=OpenSpineConsortium&amp;template_name=symphony-template" target="_blank" rel="noopener">Create a repository from the template</a></p>
-                <p class="admin__bar"><button id="fd-reload" type="button">Find the repository I just made</button></p>
-              </div>
-              <div class="folders__step">
-                <h3 class="console__boxh" id="fd-track-head">3. Track</h3>
-                <div class="admin__row">
-                  <div><label for="fd-folder">Folder in the repository</label><input id="fd-folder" type="text" autocomplete="off" spellcheck="false" value="papers" maxlength="80"></div>
-                  <div><button id="fd-track" type="button">Track</button></div>
-                </div>
-                <div class="admin__checks" id="fd-public-row" hidden><label><input id="fd-public" type="checkbox"> This repository is public: the files I tick, their names and the comments in them will be readable by anyone.</label></div>
-              </div>
-            </div>
-          </div>
+          <div id="fd-browser" class="folders__browser"></div>
         </section>
 
         <!-- Leaderboard: the issues each token, and each person whose tokens they are, worked and closed -->
@@ -477,6 +455,31 @@ app: yes
           <span class="share__ways"><button id="sh-gmail" type="button" class="chip">Gmail</button><button id="sh-outlook" type="button" class="chip">Outlook (work)</button><button id="sh-outlook-com" type="button" class="chip">Outlook.com</button><button id="sh-mail" type="button" class="chip">Email app</button><button id="sh-native" type="button" class="chip">Share&hellip;</button><button id="sh-copy" type="button" class="chip">Copy the note</button></span>
         </div>
         <div id="sh-answer" class="control__answer" role="status" aria-live="polite"></div>
+      </form>
+    </dialog>
+    <!-- Track in a repository: what the chosen repository tracks of the drive, the repository made
+         from the template, and Track; the Folders tab's explorer ticks what it tracks -->
+    <dialog id="dlg-track" class="tkdlg cpdlg cpdlg--wide" aria-labelledby="dlg-track-h">
+      <form method="dialog" class="tkdlg__form folders__dialog">
+        <button type="submit" class="tkside__close cpdlg__close" aria-label="Close">&times;</button>
+        <h3 id="dlg-track-h" class="console__boxh">Track in a repository</h3>
+        <p id="fd-say" class="admin__lead folders__say" role="status" aria-live="polite"></p>
+        <div id="fd-tracked" class="admin__box"></div>
+        <p class="admin__lead" id="fd-picked-head">Nothing ticked yet.</p>
+        <ul id="fd-picked" class="folders__picked"></ul>
+        <div class="folders__step">
+          <h3 class="console__boxh">Make the repository</h3>
+          <p class="admin__lead" id="fd-create-note">Only for a new one; yours are in the bar. Outside OpenSpineConsortium, use <a href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">the front door</a>.</p>
+          <p class="admin__bar"><a id="fd-create" class="folders__button" href="https://github.com/new?template_owner=OpenSpineConsortium&amp;template_name=symphony-template" target="_blank" rel="noopener">Create a repository from the template</a> <button id="fd-reload" type="button">Find the repository I just made</button></p>
+        </div>
+        <div class="folders__step">
+          <h3 class="console__boxh" id="fd-track-head">Track</h3>
+          <div class="admin__row">
+            <div><label for="fd-folder">Folder in the repository</label><input id="fd-folder" type="text" autocomplete="off" spellcheck="false" value="papers" maxlength="80"></div>
+            <div><button id="fd-track" type="button">Track</button></div>
+          </div>
+          <div class="admin__checks" id="fd-public-row" hidden><label><input id="fd-public" type="checkbox"> This repository is public: the files I tick, their names and the comments in them will be readable by anyone.</label></div>
+        </div>
       </form>
     </dialog>
     <!-- one dialog for a card's status (a press on it) and its settings (its gear), drawn by the script -->
