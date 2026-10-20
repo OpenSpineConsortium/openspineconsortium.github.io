@@ -505,7 +505,12 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .folders__who { flex: 1 1 auto; margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
 #tab-folders .folders__head button { margin: 0; }
 #tab-folders .folders__browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-#tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; flex: 1 1 auto; min-height: 320px; }
+#tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; flex: 1 1 auto; min-height: 240px; }
+/* where the page scrolls (a phone, a short window), the panes keep a height of their own, so a long
+   folder scrolls in its list with its heading held and the status bar in reach */
+@media (max-width: 900px), (max-height: 520px) {
+  #tab-folders .fx { height: min(78vh, 680px); flex: 0 0 auto; }
+}
 #tab-folders .fx__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line); }
 #tab-folders .fx__bar .fx__tool { padding: 3px 9px; margin: 0; font-size: 0.9rem; min-width: 2.2em; }
 #tab-folders .fx__bar .fx__tool[aria-pressed="true"] { background: var(--teal); color: var(--paper); }
@@ -574,8 +579,10 @@ html.graph--held body { overflow: hidden; }
 #dlg-track #fd-track-head { overflow-wrap: anywhere; }
 #dlg-track #fd-public-row { margin: 6px 0 0; font-size: 0.86rem; }
 #dlg-track #fd-public-row[hidden] { display: none; }
+#dlg-track .folders__say:empty { display: none; }
+#dlg-track .folders__say { margin: 0 0 8px; }
 #dlg-track .folders__step .admin__row > div:last-child { flex: 0 1 auto; }
-/* a link drawn as an outline button, so the side column fills only the next step's button */
+/* a link drawn as an outline button, so only the next step's button is filled */
 #dlg-track .folders__button { display: inline-block; font-size: 0.9rem; font-weight: 600; color: var(--teal); background: transparent; border: 1px solid var(--teal); border-radius: 100px; padding: 7px 16px; text-decoration: none; }
 #dlg-track .folders__button:hover { color: var(--teal-bright); border-color: var(--teal-bright); }
 #tab-folders #fd-connect-note:empty { display: none; }
