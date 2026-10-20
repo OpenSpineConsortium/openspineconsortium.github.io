@@ -13,13 +13,15 @@ app: yes
      starts under the bar and jumps up, nor the bar slides away, as the script loads. -->
 <script>document.body.classList.add('console-bar-auto');</script>
 <!-- The console: one screen under the site's header, a side column (the repository and the rail of
-     tabs), one tab at a time and a status line at the foot (the page's message, who is signed in), each scrolling inside itself so the page does not. assets/js/symphony-panel.js (initConsole)
+     tabs), one tab at a time, the page's message as a note over the screen's foot while it has
+     something to say, and Claude as a floating button at the top right, each scrolling inside
+     itself so the page does not. assets/js/symphony-panel.js (initConsole)
      sizes it to the window, switches the tabs, keeps the tab in the address (#board, #tokens, ...),
      counts the rows of each list onto the readouts, and opens the tab of anything the page points
      at. A new section is one more rail button (data-tab="name") and one more
      <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. Every element with
      data-split is a grip the person drags to size a part (the side column, the task lists, a token's
-     panel, Claude's answer), and the status line's A- and A+ set the text size; both are kept in
+     panel), and A- and A+ under the tabs set the text size; both are kept in
      this browser (initLayout). -->
 <section class="section admin control console" id="console" aria-labelledby="cp-title">
 
@@ -75,6 +77,13 @@ app: yes
           <button type="button" role="tab" data-tab="notebooks" id="rail-notebooks" aria-controls="tab-notebooks"><span class="rail__icon" aria-hidden="true">&#9636;</span><span class="rail__name">Notebooks</span></button>
           <button type="button" role="tab" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
         </div>
+        <!-- who is signed in, the text size, Refresh and Forget the token: under the tabs -->
+        <div class="console__me">
+          <small id="cp-who"></small>
+          <p class="console__mebuttons console__zoom" role="group" aria-label="Text size"><button id="cp-zoom-down" type="button" class="quiet" title="Smaller text and buttons">A&minus;</button><button id="cp-zoom-reset" type="button" class="quiet" title="Back to the usual size">100%</button><button id="cp-zoom-up" type="button" class="quiet" title="Larger text and buttons">A+</button></p>
+          <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
+            <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
+        </div>
       </div>
       <div class="console__split" data-split="side" role="separator" aria-orientation="vertical" aria-label="Drag to size the side column; double-click to reset" tabindex="0"></div>
 
@@ -111,7 +120,7 @@ app: yes
               <button id="cp-run-ci" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#10003;</span><span class="launch__name">Run the checks</span><span class="launch__note">The required check, on the default branch</span></button>
               <button id="cp-run-metrics" type="button" class="launch"><span class="launch__icon" aria-hidden="true">&#8721;</span><span class="launch__name">Run the metrics now</span><span class="launch__note">Writes the branch metrics</span></button>
               <button type="button" class="launch launch--plan" data-goto="tasks" data-open="dlg-task"><span class="launch__icon" aria-hidden="true">&#43;</span><span class="launch__name">Add a task</span><span class="launch__note">For the workers, or for @claude now</span></button>
-              <button type="button" class="launch launch--plan" data-focus="cp-as-q"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">The bar at the foot, on every tab</span></button>
+              <button type="button" class="launch launch--plan" data-focus="cp-as-q"><span class="launch__icon" aria-hidden="true">&#10070;</span><span class="launch__name">Ask Claude</span><span class="launch__note">The Claude button at the top right, on every tab</span></button>
               <button type="button" class="launch launch--plan" data-goto="tokens"><span class="launch__icon" aria-hidden="true">&#9919;</span><span class="launch__name">Tokens</span><span class="launch__note">Your Claude tokens, their use and settings</span></button>
               <button type="button" class="launch launch--plan" data-open="dlg-repos"><span class="launch__icon" aria-hidden="true">&#8853;</span><span class="launch__name">Add a repository</span><span class="launch__note">Put one on the list, or set Symphony up on it</span></button>
             </div>
@@ -197,7 +206,7 @@ app: yes
           <div class="console__head">
             <h2 id="h-explore" class="console__h">Explore</h2>
             <details class="console__help"><summary>How to move through it and what it reads</summary><div>
-              <p>The whole project as a map, one level at a time: the repository, its goals and epics, each epic&rsquo;s tasks, the pull requests of a task (or its claim branch where it has none), the GitHub Actions runs on that branch, each run&rsquo;s jobs, each job&rsquo;s steps and, at the bottom, the lines of a step&rsquo;s log, where the steps that run Claude are marked. Click a card to go into it; press Backspace or Escape, or pick a level in the trail at the top, to come back out. Nothing here scrolls: the whole level is drawn to fit, and you zoom instead, with a pinch, the scroll wheel, the &minus; and + buttons or keys, or a double click, then drag to move around; Whole, or 0, draws it whole again, and zooming out past the whole level comes out of it, one level for each turn of the wheel. A swipe sideways, or the left and right arrows while the map itself has the keyboard, goes to the level beside this one, the next task of the same epic or the next run on the same branch. With a card in hand the arrow keys move between the cards and Enter goes in. A log opens at a size to read, on its first error or else at its end, and the wheel or a drag moves along it. While you use this tab it takes most of the panel: the side column folds to its icons and the foot to one line, and on a phone the tab takes the whole screen; Panel, or a press on the folded column or foot, brings them back. The outline button shows every level read on your way down and what sits beside each; click a name to go there.</p>
+              <p>The whole project as a map, one level at a time: the repository, its goals and epics, each epic&rsquo;s tasks, the pull requests of a task (or its claim branch where it has none), the GitHub Actions runs on that branch, each run&rsquo;s jobs, each job&rsquo;s steps and, at the bottom, the lines of a step&rsquo;s log, where the steps that run Claude are marked. Click a card to go into it; press Backspace or Escape, or pick a level in the trail at the top, to come back out. Nothing here scrolls: the whole level is drawn to fit, and you zoom instead, with a pinch, the scroll wheel, the &minus; and + buttons or keys, or a double click, then drag to move around; Whole, or 0, draws it whole again, and zooming out past the whole level comes out of it, one level for each turn of the wheel. A swipe sideways, or the left and right arrows while the map itself has the keyboard, goes to the level beside this one, the next task of the same epic or the next run on the same branch. With a card in hand the arrow keys move between the cards and Enter goes in. A log opens at a size to read, on its first error or else at its end, and the wheel or a drag moves along it. While you use this tab it takes most of the panel: the side column folds to its icons, and on a phone the tab takes the whole screen; Panel, or a press on the folded column, brings it back. The outline button shows every level read on your way down and what sits beside each; click a name to go there.</p>
               <p>The repository, its goals, epics and tasks come from what the console has already read (the Dependencies tab&rsquo;s reads). Everything below a task is read from GitHub as you, only when you go into it: the runs on a branch, a run&rsquo;s jobs and steps, and a job&rsquo;s log, one read each, none once GitHub says the token has fewer than a hundred calls left this hour. What is read stays in this tab&rsquo;s memory until you choose another repository, the logs of the last three jobs only, and is written nowhere; Read again reads a level or a log afresh, for a run still going. GitHub hands a job&rsquo;s log over from its own storage; where your browser may not read it from there, the step says so and links the log on GitHub.</p>
             </div></details>
           </div>
@@ -207,7 +216,7 @@ app: yes
             <nav id="ex-path" class="ex__path" aria-label="Where you are"></nav>
             <span class="ex__zoom" role="group" aria-label="Zoom"><button type="button" id="ex-zoom-out" class="ex__tool ex__icon" title="Zoom out (-); past the whole level, come out of it" aria-label="Zoom out">&minus;</button><button type="button" id="ex-zoom-whole" class="ex__tool" title="The whole level (0)">Whole</button><button type="button" id="ex-zoom-in" class="ex__tool ex__icon" title="Zoom in (+)" aria-label="Zoom in">+</button></span>
             <a id="ex-github" class="ex__tool ex__link" href="#" target="_blank" rel="noopener" hidden>Open on GitHub</a>
-            <button type="button" id="ex-wide" class="ex__tool ex__wide" aria-pressed="true" title="Bring back the side column and the foot"><span aria-hidden="true">&#x26F6;</span> <span class="ex__wideword">Panel</span></button>
+            <button type="button" id="ex-wide" class="ex__tool ex__wide" aria-pressed="true" title="Bring back the side column"><span aria-hidden="true">&#x26F6;</span> <span class="ex__wideword">Panel</span></button>
           </div>
           <div id="ex-head" class="ex__head"></div>
           <div class="ex__body">
@@ -506,19 +515,24 @@ app: yes
     </dialog>
     <!-- one dialog for a card's status (a press on it) and its settings (its gear), drawn by the script -->
     <dialog id="dlg-item" class="tkdlg cpdlg cpdlg--wide" aria-label="Details"></dialog>
+    <!-- Claude: the floating button at the top right opens this, or the Tokens tab's Add Token where
+         the repository has no Claude token yet (symphony-panel.js, pressClaude); the assistant
+         builds its box and its answer into #cp-askbar (assistantBuildBar) -->
+    <dialog id="dlg-claude" class="tkdlg cpdlg cpdlg--wide claudedlg" aria-labelledby="dlg-claude-h">
+      <form method="dialog" class="tkdlg__form">
+        <button type="submit" class="tkside__close cpdlg__close" aria-label="Close">&times;</button>
+        <h3 id="dlg-claude-h" class="console__boxh"><span aria-hidden="true">&#10070;</span> Claude</h3>
+        <p class="admin__lead">Ask about this page, or tell Claude what to do in this repository. Claude answers on the repository&rsquo;s own Claude token, and its answer offers the panel&rsquo;s buttons it names for you to press.</p>
+      </form>
+      <div class="console__askbar" id="cp-askbar"></div>
+    </dialog>
 
   </div>
-  <!-- the Ask Claude bar's place, frozen above the status line like it; the assistant fills it
-       (its own code), and while it is empty it takes no room -->
-  <div class="console__askbar" id="cp-askbar"></div>
+  <!-- the page's message: a note over the bottom of the screen while it has something to say, and
+       nothing at all while it has not; Clear empties it -->
   <div class="console__status">
     <div class="admin__box console__msg" id="msg" role="status" aria-live="polite"></div>
     <button type="button" class="console__statusx quiet" id="cp-msg-close" aria-label="Clear the message">Clear</button>
-    <div class="console__me">
-      <small id="cp-who"></small>
-      <p class="console__mebuttons console__zoom" role="group" aria-label="Text size"><button id="cp-zoom-down" type="button" class="quiet" title="Smaller text and buttons">A&minus;</button><button id="cp-zoom-reset" type="button" class="quiet" title="Back to the usual size">100%</button><button id="cp-zoom-up" type="button" class="quiet" title="Larger text and buttons">A+</button></p>
-      <p class="console__mebuttons"><button id="cp-refresh" type="button" class="quiet">Refresh</button>
-        <button id="cp-signout" type="button" class="quiet">Forget the token</button></p>
-    </div>
   </div>
+  <button type="button" class="console__claude" id="cp-claude" aria-haspopup="dialog" title="Ask Claude, or add your first Claude token"><span class="console__claudeicon" aria-hidden="true">&#10070;</span><span class="console__claudeword">Claude</span></button>
 </section>
