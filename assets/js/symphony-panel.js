@@ -130,6 +130,22 @@
     });
     if (text) m.insertBefore(rich(el('p', 'msg__note'), text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
+    clearTimeout(noteTimer);
+    if (text && !warn) { var note = m.firstChild; noteTimer = setTimeout(function () { fadeNote(note); }, NOTE_MS); }
+  }
+  // A plain note goes by itself after a while, so the note over the screen's foot never sits over
+  // the page with nothing to do; a warning, a note with something to press or type, and a task stay
+  // until Clear, and a note the pointer or the focus is on waits until they leave it.
+  var NOTE_MS = 8000;
+  var noteTimer = 0;
+  function fadeNote(note) {
+    var m = $('msg');
+    if (!m || !note || note.parentNode !== m || /admin__warn/.test(m.className)) return;
+    if (note.querySelector('input, button, select, textarea')) return;
+    var foot = m.closest('.console__status');
+    if ((foot && foot.matches(':hover')) || (foot && foot.contains(document.activeElement))) { noteTimer = setTimeout(function () { fadeNote(note); }, NOTE_MS); return; }
+    m.removeChild(note);
+    if (!m.firstChild) { m.className = 'admin__box'; toastFocusBack(); }
   }
   function stamp(iso) {
     if (!iso) return '';
@@ -1498,7 +1514,7 @@
     ask.className = 'console__primary';
     add(form, add(el('div', 'tkdlg__field'), add(el('label', '', 'Ask Claude to do something on it')), q), add(el('p', 'tkdlg__bar'), ask));
     q.previousSibling.htmlFor = 'dlg-ask';
-    add(form, el('p', 'tkdlg__note admin__lead', 'Ask comments on the issue mentioning @claude, and the repository\'s Claude workflow answers there on the repository\'s own Claude token. For a question about the board, use the Ask Claude bar at the foot.'));
+    add(form, el('p', 'tkdlg__note admin__lead', 'Ask comments on the issue mentioning @claude, and the repository\'s Claude workflow answers there on the repository\'s own Claude token. For a question about the board, use the Claude button at the top right.'));
     (prompt ? q : (form.querySelector('select:not(:disabled)') || q)).focus();
   }
   function askOnIssue(n, text) {
@@ -1986,7 +2002,7 @@
           x: function (b) { closePull(pr, b); }
         }));
         tr.setAttribute('data-draft', pr.draft ? 'true' : 'false');
-        // the Ask Claude bar finds a pull request's Merge button by its number; data-pull keeps
+        // the Claude dialog's answer finds a pull request's Merge button by its number; data-pull keeps
         // these cards out of the task filters, which read tr[data-number] as tasks
         tr.setAttribute('data-number', String(pr.number));
         tr.setAttribute('data-pull', String(pr.number));
@@ -3295,6 +3311,33 @@
     });
   }
 
+  // The note is laid over the screen's foot while it has something to say, so the stage gives up the
+  // note's height at its foot (control.css, console--toast) and no tab's last row lies under it; and
+  // the element the focus was on before it went into the note is where Clear sends it back.
+  var toastFrom = null;
+  function toastLayout() {
+    var c = $('console'), m = $('msg'), foot = c && c.querySelector('.console__status');
+    if (!c || !m || !foot) return;
+    var shown = !!m.firstChild;
+    c.classList.toggle('console--toast', shown);
+    if (shown) c.style.setProperty('--toast-h', Math.ceil(foot.getBoundingClientRect().height / scaleOf(foot)) + 'px');
+    else c.style.removeProperty('--toast-h');
+  }
+  function toastFocusBack() {
+    var foot = document.querySelector('#console .console__status');
+    var at = document.activeElement;
+    if (at && at !== document.body && !(foot && foot.contains(at))) return;
+    var back = toastFrom && toastFrom.isConnected && toastFrom.getClientRects().length ? toastFrom : $('cp-claude');
+    if (back && back.getClientRects().length) back.focus(); else if (at && at.blur) at.blur();
+  }
+  function initToast() {
+    var m = $('msg'), foot = m && m.closest('.console__status');
+    if (!foot) return;
+    document.addEventListener('focusin', function (e) { if (!foot.contains(e.target)) toastFrom = e.target; });
+    if (window.MutationObserver) new MutationObserver(toastLayout).observe(m, { childList: true, subtree: true, characterData: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(toastLayout).observe(foot);
+    toastLayout();
+  }
   function initConsole() {
     var c = $('console');
     if (!c) return;
@@ -3303,12 +3346,17 @@
     initFullScreen();
     initTiles();
     initLayout();
-    // the deck's foot holds the page's message; Clear empties it. A task under way there is only
-    // hidden, its work going on, and the button that started it shows it again, the step the person
-    // was in the middle of (the code box of Add Token) kept as it was
+    // the note over the screen's foot holds the page's message; Clear empties it. A task under way
+    // there is only hidden, its work going on, and the button that started it shows it again, the
+    // step the person was in the middle of (the code box of Add Token) kept as it was; the focus goes
+    // back where it was before it went into the note
+    initToast();
     if ($('cp-msg-close')) $('cp-msg-close').addEventListener('click', function () {
-      clear($('msg'));
-      $('msg').className = 'admin__box';
+      var m = $('msg');
+      msgTasks.forEach(function (t) { if (t.live) t.hide(); });
+      Array.prototype.slice.call(m.childNodes).forEach(function (n) { m.removeChild(n); });
+      m.className = 'admin__box';
+      toastFocusBack();
     });
     fitConsole();
     window.addEventListener('resize', fitConsole);
@@ -3580,7 +3628,7 @@
       if (perm !== 'admin' && perm !== 'write') { assistantWords(['The assistant answers only people with write access to ' + s.repo + ', and GitHub says yours is ' + perm + '.']); return; }
       return assistantHasFile(s).then(function (has) {
         if (a !== assistant || stale(s)) return;
-        if (!has) { assistantWords(['This repository\'s Claude workflow has no assistant yet: ' + ASSISTANT_FILE + ' is not on its default branch, so a question here would run as an ordinary @claude mention, with the tools that write. Bring in the template release that carries it first.']); return; }
+        if (!has) { a.noFile = true; assistantWords(['This repository\'s Claude workflow has no assistant yet: ' + ASSISTANT_FILE + ' is not on its default branch, so a question here would run as an ordinary @claude mention, with the tools that write. Bring in the template release that carries it first.']); return; }
         return assistantFind(s).then(function (words) {
           if (a !== assistant || stale(s)) return;
           assistantWords(words);
@@ -3998,6 +4046,9 @@
     var b = btn(label, false, function () {
       if (a !== assistant || repo !== state.repo || login !== shownLogin) { say('That button belonged to an answer for ' + repo + ' as ' + login + ', and the page has moved on; ask again.', true); return; }
       b.disabled = true;
+      // the press acts on the panel behind the Claude dialog, so the dialog gives way and the
+      // person sees what it did, and any confirmation it asks for, or why it was refused
+      closeDialog('dlg-claude');
       if (run() === false) b.disabled = false;
     });
     add(row, b, ' ', words);
@@ -4199,17 +4250,38 @@
   // The floating Claude button at the top right: where the repository has no Claude token yet it
   // opens the Tokens tab's Add Token, the first thing Claude needs; otherwise the Claude dialog, its
   // box ready for the question. Whether a token is set is the Tokens tab's own read (loadTokens),
-  // made on the press where the tab has not made it for this repository; a token the person may not
-  // see listed (an organization's pool, read only by its owners) counts as maybe set, and the dialog
-  // opens, since the assistant's own line then says whether Claude can answer.
+  // made on the press where the tab has not made it for this repository, and in an organization's
+  // repository the repository's own secrets and the organization's secrets it reaches besides, since
+  // the main token may be a repository secret beside the pool. Add Token opens only where every one
+  // of those reads answered and none lists a Claude token; a read that failed, or a pool the person
+  // may not list (an organization's, read only by its owners), counts as maybe set, and the dialog
+  // opens, since the assistant's own line then says whether Claude can answer. A repository whose
+  // workflow has no assistant asks @claude through a task instead, as the Ask Claude launch did.
   var CLAUDE_SLOT_SECRET = /^SYMPHONY_CLAUDE_([1-9]|[12][0-9]|3[0-2])$/;
   var CLAUDE_WAIT_MS = 9000;
   var claudePress = 0;
-  function claudeTokenSet() {
-    if (!tk.place || !tk.secrets || tk.secrets.unread) return null;
-    return Object.keys(tk.secrets).some(function (n) { return n === MAIN_SECRET || CLAUDE_SLOT_SECRET.test(n); });
+  function isClaudeSecret(name) { return name === MAIN_SECRET || CLAUDE_SLOT_SECRET.test(name); }
+  function secretNames(list) { return list.map(function (x) { return x && x.name; }); }
+  // true, false, or null where it cannot be told
+  function claudeTokenSet(repo) {
+    var place = tk.place;
+    if (!place || !tk.secrets || tk.secrets.unread) return Promise.resolve(null);
+    var lists = [Promise.resolve(Object.keys(tk.secrets))];
+    if (place.org) {
+      lists.push(listed('/repos/' + repo + '/actions/secrets', 'secrets').then(secretNames));
+      lists.push(listed('/repos/' + repo + '/actions/organization-secrets', 'secrets').then(secretNames));
+    }
+    return Promise.all(lists).then(function (all) {
+      return all.some(function (names) { return names.some(isClaudeSecret); });
+    }, function () { return null; });
   }
   function openClaude() {
+    if (assistant.noFile && assistant.repo === tokensRepo()) {
+      openTaskDialog();
+      $('cp-task-ask').focus();
+      say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.');
+      return;
+    }
     openDialog('dlg-claude');
     var q = $('cp-as-q');
     if (q && !$('cp-as-box').classList.contains('hidden')) q.focus();
@@ -4219,16 +4291,25 @@
     openTokenDialog('', true);
   }
   function pressClaude() {
-    var repo = tokensRepo(), press = ++claudePress, began = Date.now();
-    if (!repo) { openClaude(); return; }
+    var repo = tokensRepo(), press = ++claudePress, began = Date.now(), tab = consoleTab;
     var b = $('cp-claude');
+    function done() { if (press === claudePress && b) b.removeAttribute('aria-busy'); }
+    if (!repo) { done(); openClaude(); return; }
     if (!(tk.repo === repo && tk.place)) loadTokens();
+    if (b) b.setAttribute('aria-busy', 'true');
     (function settle() {
-      if (press !== claudePress || tokensRepo() !== repo) { b.removeAttribute('aria-busy'); return; }
-      var read = tk.repo === repo && tk.place;
-      if (!read && Date.now() - began < CLAUDE_WAIT_MS) { b.setAttribute('aria-busy', 'true'); setTimeout(settle, 150); return; }
-      b.removeAttribute('aria-busy');
-      if (read && claudeTokenSet() === false) claudeToTokens(); else openClaude();
+      // a later press, another repository, another tab or a dialog opened meanwhile takes over
+      if (press !== claudePress) return;
+      if (tokensRepo() !== repo || consoleTab !== tab || document.querySelector('dialog[open]')) { done(); return; }
+      var read = tk.repo === repo && tk.place, failed = tokenReadFailed === repo;
+      if (!read && !failed && Date.now() - began < CLAUDE_WAIT_MS) { setTimeout(settle, 150); return; }
+      if (!read) { done(); openClaude(); return; }
+      claudeTokenSet(repo).then(function (set) {
+        if (press !== claudePress) return;
+        done();
+        if (tokensRepo() !== repo || consoleTab !== tab || document.querySelector('dialog[open]')) return;
+        if (set === false) claudeToTokens(); else openClaude();
+      });
     })();
   }
   function initAssistant() {
@@ -4247,9 +4328,10 @@
     });
     $('cp-as-toggle').addEventListener('click', function () { assistantDrawer($('cp-as-drawer').hidden); });
     $('cp-as-close').addEventListener('click', function () { assistantDrawer(false); $('cp-as-toggle').focus(); });
-    // Escape shuts the drawer from inside it or from the bar
+    // Escape shuts the drawer from inside it or from the bar, and only the drawer: the dialog
+    // round them waits for the next Escape
     [$('cp-as-drawer'), $('cp-askbar')].forEach(function (n) {
-      n.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cp-as-drawer').hidden) { assistantDrawer(false); $('cp-as-toggle').focus(); } });
+      n.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('cp-as-drawer').hidden) { e.preventDefault(); assistantDrawer(false); $('cp-as-toggle').focus(); } });
     });
     if ($('cp-as-goto')) $('cp-as-goto').addEventListener('click', function () { $('cp-as-q').focus(); });
   }
@@ -4932,10 +5014,8 @@
   // another tab, and the tab takes the screen's height left above the foot that sticks to the
   // screen's bottom: the whole tab in front of the person and nothing a finger can scroll. The
   // site's bar takes none of it: it hides itself on this page and comes back over the deck when its
-  // handle is tapped or swiped down (initBar, barRoom), held sideways as upright. A screen too short
-  // to spare more, a phone held sideways, gives a line of a foot nobody sized to the tab too
-  // (control.css); a foot the person sized keeps its size, held to what leaves the tab its least
-  // (footBounds, graphNeed). Opening the tab and turning the phone bring the window back there;
+  // handle is tapped or swiped down (initBar, barRoom), held sideways as upright. Opening the tab
+  // and turning the phone bring the window back there;
   // any other tab lets the page go. Elsewhere the deck holds the window and the tab simply fills
   // its stage.
   var GRAPH_PHONE_MIN = 160;
@@ -4944,17 +5024,9 @@
     if (!tab) return;
     var phone = pageScrolls(), shown = graphTabShown(tab);
     document.documentElement.classList.toggle('graph--held', phone && shown);
-    // a foot the person sized is held to what leaves the tab its least while the tab is shown, and
-    // given its own size back once another tab is (footBounds)
-    if (shown !== graphWasShown) {
-      graphWasShown = shown;
-      if (layout.foot != null) applyLayout();
-    }
     if (!phone) { tab.style.height = ''; return; }
     if (!shown) return;
-    var foot = document.querySelector('.console__status');
-    var footH = foot && getComputedStyle(foot).position === 'sticky' ? foot.getBoundingClientRect().height : 0;
-    var h = Math.floor(window.innerHeight - footH - graphHeldAround(tab));
+    var h = Math.floor(window.innerHeight - graphHeldAround(tab));
     tab.style.height = Math.max(h, GRAPH_PHONE_MIN) + 'px';
     var rail = document.querySelector('.console__rail') || tab;
     if (bring) window.scrollTo({ left: 0, top: Math.max(0, rail.getBoundingClientRect().top + window.pageYOffset - barRoom()), behavior: 'instant' });
@@ -4968,23 +5040,6 @@
     return barRoom() + lead + below + 6;
   }
   function graphTabShown(tab) { return !!tab && !tab.hidden && tab.getClientRects().length > 0; }
-  var graphWasShown = false;
-  // The least of its own pixels the tab keeps while it is shown, which a foot the person sized leaves
-  // it (footBounds): its head, the tiles and a card's tools take about 120, and the stage the rest,
-  // where a chart is still drawn whole beside or under the tools that float over its corner, never a
-  // sliver too thin to fit it. What the window must keep for it: on a computer the console's stage,
-  // the tab scaled by the text size and the stage's own padding round it; on a phone, whose page the
-  // tab holds, the window's height above the foot, the rail above the tab too (graphHeldAround).
-  // Nothing while another tab is shown.
-  var GRAPH_LEAST = 280;
-  function graphNeed() {
-    var tab = $('tab-dependencies');
-    if (!graphTabShown(tab)) return 0;
-    if (pageScrolls()) return Math.ceil(graphHeldAround(tab)) + GRAPH_LEAST;
-    var stage = tab.closest('.console__stage');
-    var around = stage ? stage.getBoundingClientRect().height - tab.getBoundingClientRect().height : 0;
-    return Math.ceil(GRAPH_LEAST * scaleOf(tab) + Math.max(0, around));
-  }
   // the issue a number names: the open list first, then what the reads brought (a closed sub-issue,
   // a blocker from outside the epic), else a bare one, so a node is drawn for every number an edge names
   function graphIssueOf(draw, n) {
@@ -6376,9 +6431,6 @@
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(graphLayout).observe(tab);
       new ResizeObserver(graphAllLayout).observe($('cp-graph'));
-      // the foot that sticks to a phone's screen grows with a long message, and the tab gives way
-      var foot = document.querySelector('.console__status');
-      if (foot) new ResizeObserver(function () { graphPhoneFit(false); }).observe(foot);
     }
     // a phone turned brings the tab back where it is held, the window's old place no longer its
     window.addEventListener('resize', function () { graphPhoneFit(!tab.hidden); });
@@ -6721,10 +6773,13 @@
     }).catch(function (e) { if (e.status === 404) return []; throw e; });
   }
 
+  // the repository whose last read of the tokens failed, so a press waiting on it settles at once
+  var tokenReadFailed = '';
   function loadTokens() {
     var asked = ++reading;
     var repo = tokensRepo();
     tokensFor = repo;
+    tokenReadFailed = '';
     if (!repo) { say('Choose a repository in the side column first.', true); return; }
     writeKey(KEY_REPO, repo, true);
     readPool(repo).catch(function (e) { if (e.status === 404) return {}; throw e; }).then(function (by) {
@@ -6837,7 +6892,7 @@
       tk.settings = vars[0];
       tk.labels = vars[1];
       drawTiles();
-    }).catch(function (e) { if (asked === reading) say('The tokens could not be read: ' + e.message, true); });
+    }).catch(function (e) { if (asked === reading) { tokenReadFailed = repo; say('The tokens could not be read: ' + e.message, true); } });
   }
 
   // a repository in crowd mode holds no Claude token (docs/setup/crowdsourcing.md), as the wizard refuses
@@ -7648,7 +7703,7 @@
     if (!d || !tk.place) { say('The tokens are still being read; press again in a moment.'); return; }
     // a token whose settings are still being saved is one press's: a second press meanwhile would
     // save the slot again under another id and start a second sign-in
-    if (adding && tokenAdding && tokenAdding.era === ends) { say('A token is being added already; it speaks at the foot.'); return; }
+    if (adding && tokenAdding && tokenAdding.era === ends) { say('A token is being added already; it speaks in the note at the foot of the screen.'); return; }
     clear(d);
     var s = tk.settings[slot] || {};
     var form = el('form', 'tkdlg__form');
@@ -11874,10 +11929,10 @@
   }
 
   // While the tab is shown it takes most of the panel (the owner, 2026-10-19: "making it take up most
-  // of the panel when using it"): the side column folds to its icons and the foot to its one line,
-  // and on a phone the tab takes the whole screen (control.css, console--exwide). The Panel button,
-  // or a press on the folded side column or foot, brings them back, and the grips size them as
-  // before; the choice lasts while the page is open and is stored nowhere.
+  // of the panel when using it"): the side column folds to its icons, and on a phone the tab takes
+  // the whole screen (control.css, console--exwide). The Panel button, or a press on the folded side
+  // column, brings it back, and its grip sizes it as before; the choice lasts while the page is open
+  // and is stored nowhere.
   function exWide(on) {
     explore.wide = on;
     $('console').classList.toggle('console--exwide', on);

@@ -195,15 +195,6 @@
    window's top as the tab lays itself out again after a turn */
 html.graph--held { overscroll-behavior: none; overflow-anchor: none; }
 html.graph--held body { overflow: hidden; }
-@media (max-height: 520px) {
-  /* a foot nobody sized keeps to one row: the panel's line beside who is signed in, each cut to its
-     row; a foot the person sized keeps its size and its two rows, the message over the buttons, as
-     on every other tab, held to what leaves the tab its least (symphony-panel.js, footBounds) */
-  html.graph--held .console:not(.console--foot) > .console__status { flex-wrap: nowrap; }
-  html.graph--held .console:not(.console--foot) > .console__status #msg { flex: 1 1 0; max-height: 2.4em; }
-  html.graph--held .console:not(.console--foot) > .console__status .console__me { flex: 0 1 auto; flex-wrap: nowrap; max-width: 55%; }
-  html.graph--held .console:not(.console--foot) > .console__status .console__me small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-}
 #tab-dependencies > .console__scroll { overflow: hidden; display: flex; flex-direction: column; }
 #cp-graph { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 #cp-graph > .graph__section { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -1009,7 +1000,6 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
   .console__scroll { overflow: visible; }
   .console__side { overflow: visible; }
   .console__askbar { max-height: 40vh; }
-  .console__status { position: sticky; bottom: 0; z-index: 6; background: var(--paper-deep); padding: 6px 0; flex-wrap: wrap; }
   /* the page never pans sideways: the deck is clipped to the window's width (clip, which makes no
      scroll box, so the status line still sticks to the window's foot, where hidden on html would
      unstick it), and what is wider than a phone scrolls inside its own box, the rail, a table or
@@ -1018,9 +1008,6 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
   .console__rail[data-more="right"] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="left"] { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 40px), transparent); }
   .console__rail[data-more="both"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
-  /* the status line takes a whole row of the foot, Clear and the sign-in's buttons the next; the
-     rest of the phone's rules stand at the end of this file, after the rules they must win over */
-  .console .console__status #msg { flex: 1 1 100%; }
 }
 .console th { white-space: nowrap; }
 .console .admin__box + .admin__box { margin-top: 10px; }
@@ -1343,43 +1330,11 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 .console__split--tkside, .console__split--nbside { top: 0; bottom: 0; left: -9px; width: 12px; }
 .console__split--drawer { left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; }
 .console__split--drawer::after { top: 50%; bottom: auto; left: 8px; right: 8px; width: auto; height: 2px; margin: -1px 0 0; }
-/* the foot's grip lies across the gap above the status line, the deck's 8 px, which no text size
-   scales, and the Ask Claude bar's bottom padding above it, 6 px of the bar's own, which the text size
-   scales as it scales the foot: about 14 px to take at any text size, over none of the foot's buttons
-   and none of the bar's box; a short bar in the gap's middle shows it is there to take, since the foot
-   is sized like the parts beside it (the owner, 2026-10-19: "i cant resize the message board panel") */
-.console__split--foot { left: 0; right: 0; top: calc(-8px / var(--console-zoom, 1) - 6px); height: calc(8px / var(--console-zoom, 1) + 6px); cursor: row-resize; }
-.console__split--foot::after { top: calc(4px + 4px / var(--console-zoom, 1)); bottom: auto; left: calc(50% - 22px); width: 44px; height: 4px; margin: 0; background: rgba(233, 230, 218, 0.3); }
-/* a foot the person sized (symphony-panel.js, LAYOUT_PARTS.foot) is that tall whatever it holds: the
-   message fills it and what is taller scrolls inside the message, as before; Clear and the buttons
-   stand at its top */
-.console.console--foot > .console__status { height: var(--foot-h); align-items: flex-start; }
-.console.console--foot > .console__status #msg { align-self: stretch; max-height: none; }
 @media (max-width: 900px), (max-height: 520px) {
-  /* on a phone the message takes the first row, all the foot leaves it, and Clear and the buttons
-     the second; the grip is a thumb's, its bar wider, in a top padding the foot keeps for it */
-  .console.console--foot > .console__status { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: center; }
-  .console.console--foot > .console__status #msg { grid-column: 1 / -1; }
-  .console__status { padding-top: 14px; }
-  .console__status:has(#msg:empty)::before { top: 14px; }
-  .console__split--foot { top: -8px; height: 26px; }
-  .console__split--foot::after { top: 13px; left: calc(50% - 28px); width: 56px; height: 5px; margin-top: 0; }
-  /* only the grip's middle is taken, a thumb's width about its bar, so the rest of the foot's top
-     edge, where a thumb rests to scroll the page, scrolls it as before */
-  .console__split--foot { left: calc(50% - 60px); right: auto; width: 120px; }
   /* the deck fills the window at least, its foot padding below it, so on a short tab the foot rests
      on the window's bottom as on a long one and its grip follows a finger; where the page is
      scrolled past the deck's end, the script keeps the grip under the finger (initLayout) */
   body[data-shell] main > .console.section, .console.section { min-height: calc(var(--console-h, calc(100dvh - env(safe-area-inset-top, 0px))) + 12px + env(safe-area-inset-bottom, 0px)); }
-}
-/* a finger takes the foot's grip on a tablet as on a phone: where the main pointer is coarse the
-   foot keeps a top padding that the grip reaches down into, a thumb's height in all, with the
-   phone's wider bar; the empty foot's placeholder moves down with the words that padding moves */
-@media (pointer: coarse) and (min-width: 901px) and (min-height: 521px) {
-  .console__status { padding-top: 10px; }
-  .console__status:has(#msg:empty)::before { top: 16px; }
-  .console__split--foot { height: calc(8px / var(--console-zoom, 1) + 16px); }
-  .console__split--foot::after { left: calc(50% - 28px); width: 56px; height: 5px; }
 }
 /* a task list's heading carries a grip on its right edge that sizes every list at once */
 .console .console__kanban > h3 { position: relative; }
@@ -1731,9 +1686,6 @@ body[data-shell] main > .console.section, .console.section {
 @media (min-width: 901px) and (min-height: 521px) {
   body[data-shell] main > .console.section, .console.section { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 }
-@media (max-width: 900px), (max-height: 520px) {
-  .console__status { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
-}
 
 /* the site's header: its bar runs to the screen's edges, and its brand, its links and its menu
    button keep inside the insets, by the bar's own padding (site.css, by the window's width: 32px,
@@ -1812,9 +1764,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console__gate { min-height: 0; max-height: 100%; }
   .console__app { flex: 1 1 auto; min-height: 0; }
   .console__body { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); }
-  /* the foot rests on the screen's bottom, keeping its top padding, where its grip lies, and its own
-     bottom padding off the home bar (above) */
-  .console__status { position: relative; }
 
   /* the home screen: the repository, then the tabs as a grid of icons with their names under them */
   .console--home .console__split[data-split="side"] { display: none; }
@@ -1874,9 +1823,7 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console__phonetitle { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .console__panel { overflow-y: auto; overscroll-behavior: contain; }
   .console__scroll { overflow: auto; }
-  /* one window at a time: the Ask Claude bar and who is signed in stay on the home screen; the foot
-     keeps the page's message under a tab */
-  .console:not(.console--home) > .console__askbar { display: none; }
+  /* one window at a time: who is signed in stays on the home screen */
   .console:not(.console--home) .console__me { display: none; }
 
   /* a dialog fills the screen over the tab, the page held still beneath it, and closing it gives
@@ -1909,11 +1856,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console:not(.console--home) .console__stage { padding: 2px 4px 4px; border: 0; background: transparent; }
   .console:not(.console--home) .console__phonebar { margin: 0 0 2px; padding: 0 0 2px; }
   .console button.console__back { min-height: 30px; padding-top: 1px; padding-bottom: 1px; }
-  /* and a tab's foot is one row, its message beside Clear, sized or not, so the tab keeps its height
-     and the grip takes the foot from the size it rests at (footBounds takes its least from one row) */
-  .console:not(.console--home):not(.console--foot) .console__status #msg { flex: 1 1 0; }
-  .console.console--foot:not(.console--home) > .console__status { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
-  .console.console--foot:not(.console--home) > .console__status #msg { grid-column: 1; }
 }
 
 /* ============================================================
@@ -1938,16 +1880,25 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 /* the word is for a screen reader; the button's tooltip says it on screen */
 .console__claudeword { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .console:has(#cp-app.hidden) > .console__claude { display: none; }
-/* the tabs' heads end short of it, so their "What this is" is never under it */
+/* the tabs' heads end short of it, so their "What this is" is never under it; under a head a tab's
+   scrolling box starts below it, and the Command tab, which has no head, keeps its scrolling box
+   clear of its column, so nothing scrolls under the button */
 .console__panel > .console__head { padding-right: 52px; }
-.console #tab-command .deck__readouts, .console #tab-tokens > :first-child { margin-right: 52px; }
+.console #tab-command > .console__scroll { margin-right: 52px; }
 
 .console > .console__status {
   position: fixed; z-index: 44; left: 50%; right: auto; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
   width: min(760px, calc(100% - 24px)); height: auto; max-height: 45vh; margin: 0; padding: 8px; display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px;
   border: 1px solid var(--line); border-radius: 12px; background: var(--paper-card); box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
 }
-.console > .console__status:has(#msg:empty) { display: none; }
+/* empty, the note is still drawn, unseen and out of the pointer's way, so the live region is there
+   when the first message comes and a screen reader says it */
+.console > .console__status { transition: opacity 0.18s ease-out; }
+.console > .console__status:has(#msg:empty) { opacity: 0; pointer-events: none; }
+/* while the note shows, the stage gives up its height at its foot, so no tab's last row lies under
+   it (symphony-panel.js, toastLayout) */
+.console.console--toast:not(.console--home) .console__stage { padding-bottom: calc(var(--toast-h, 0px) + 20px); }
+.console.console--toast.console--home .console__side { padding-bottom: calc(var(--toast-h, 0px) + 20px); }
 .console > .console__status #msg { flex: 1 1 0; min-width: 0; min-height: 0; max-height: calc(45vh - 18px); overflow: auto; border: 0; }
 .console > .console__status .console__statusx { visibility: visible; }
 
@@ -1968,8 +1919,12 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 @media (max-width: 900px), (max-height: 520px) {
   .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 16px); right: calc(env(safe-area-inset-right, 0px) + 20px); }
   .console--home .console__titlerow, .console:not(.console--home) .console__phonebar { padding-right: 48px; }
+  /* on the home screen the repository's box stays put under the button and only the tab buttons
+     scroll, below it, so no button scrolls under the floating one */
+  .console--home .console__side { overflow: hidden; }
+  .console.console--home .console__rail { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
   .console__panel > .console__head { padding-right: 0; }
-  .console #tab-command .deck__readouts, .console #tab-tokens > :first-child { margin-right: 0; }
+  .console #tab-command > .console__scroll { margin-right: 0; }
   .console__side > .console__me { flex-wrap: wrap; justify-content: space-between; border-top: 0; padding: 4px 2px 12px; }
   .claudedlg { width: 100%; }
 }
