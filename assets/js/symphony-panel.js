@@ -1220,7 +1220,8 @@
     var listed = repos().length ? ' The repositories you listed stay.' : '';
     // a sign-in by code still asking would sign the page in again after it was signed out
     endCode();
-    forgetKept(drive && drive.login || shownLogin);
+    // Forget the token is the browser's sign-out, so every connection kept on it goes
+    writeKept({});
     forgetToken();
     dropDrive();
     showGate();
@@ -8245,15 +8246,20 @@
       else localStorage.removeItem(KEY_DRIVE_KEPT);
     } catch (e) { /* a browser that refuses its storage keeps the drive for this page alone */ }
   }
+  // another tab may have connected again since this page read the kept token, so an older one is
+  // never written over a newer one
   function keepDrive(d) {
     if (!d || !d.login || !d.refresh) return;
-    var m = keptDrives();
+    var m = keptDrives(), had = m[d.login.toLowerCase()];
+    if (had && had.refresh !== d.refresh && String(had.connected || '') > String(d.connected || '')) return;
     m[d.login.toLowerCase()] = { provider: d.provider, refresh: d.refresh, connected: d.connected || dayOf(new Date()), owner: d.owner || '', id: d.id || '', type: d.type || '' };
     writeKept(m);
   }
-  function forgetKept(login) {
+  // given the refresh token, only that one is forgotten, so a tab's dead token never takes
+  // another tab's new connection with it
+  function forgetKept(login, refresh) {
     var m = keptDrives(), key = String(login || '').toLowerCase();
-    if (!key || !m[key]) return;
+    if (!key || !m[key] || (refresh && m[key].refresh !== refresh)) return;
     delete m[key];
     writeKept(m);
   }
@@ -8438,7 +8444,7 @@
       // Microsoft refusing the refresh token (withdrawn, or past its days) ends the kept connection too
       if (e.code === 'invalid_grant') {
         var words = 'Microsoft no longer takes the OneDrive connection kept on this browser (' + e.message + '); press Connect OneDrive again.';
-        forgetKept(d.login);
+        forgetKept(d.login, d.refresh);
         if (drive === d) { dropDrive(); say(words, true); }
         throw new Error(words);
       }
@@ -8494,8 +8500,9 @@
     return step(url, GRAPH_PAGES);
   }
   function nameDrive() {
+    var asked = drive;
     return graph('/me/drive?$select=id,driveType,owner').then(function (d) {
-      if (!drive) return;
+      if (!drive || drive !== asked) return;
       var who = d.owner && d.owner.user ? d.owner.user.displayName : '';
       drive.owner = (who || '') + (d.driveType ? ' (' + d.driveType + ')' : '');
       drive.id = typeof d.id === 'string' ? d.id : '';
@@ -10038,8 +10045,8 @@
   function sealed(seal, key, refresh) {
     return { encrypted_value: toBase64(seal(new TextEncoder().encode(refresh), fromBase64(key.key))), key_id: key.key_id };
   }
-  // Where the refresh token is kept: the organization's secret, which every private repository of
-  // the organization reads, so one Track covers the whole organization as the owner chose on
+  // Where the refresh token is kept: the organization's secret, which every private and internal
+  // repository of the organization reads, so one Track covers the whole organization as the owner chose on
   // 2026-10-20, where the person may set one; else the repository's own. An organization secret
   // holds one drive, so one that another drive holds is never written over, and a repository with a
   // secret of its own keeps it, since its own would shadow the organization's; a public repository
@@ -10094,7 +10101,7 @@
   // choice of 2026-10-20); a repository that only walks the drive names no drive and is left as it is.
   // Says how many were renewed and which could not be.
   var RENEW_AT_ONCE = 6;
-  function renewOthers(repo, meta, refresh, driveId, account) {
+  function renewOthers(repo, meta, refresh, driveId, account, connected) {
     var owner = meta && meta.owner || {};
     if (owner.type !== 'User' || !driveId) return Promise.resolve(null);
     var me = String(owner.login || '').toLowerCase();
@@ -10107,19 +10114,21 @@
       function next() {
         var other = others.shift();
         if (!other) return Promise.resolve();
-        return renewOne(other, refresh, driveId, account).then(function (done) { if (done) renewed.push(other); }, function () { failed.push(other); }).then(next);
+        return renewOne(other, refresh, driveId, account, connected).then(function (done) { if (done) renewed.push(other); }, function () { failed.push(other); }).then(next);
       }
       var lanes = [];
       for (var i = 0; i < RENEW_AT_ONCE; i++) lanes.push(next());
       return Promise.all(lanes).then(function () { return { renewed: renewed, failed: failed }; });
     }, function () { return null; });
   }
-  function renewOne(other, refresh, driveId, account) {
+  function renewOne(other, refresh, driveId, account, connected) {
     return readOne('/repos/' + other + '/actions/secrets/' + DRIVE_SECRET).then(function (own) {
       if (!own) return false;
       return readTracked(other).then(function (config) {
         var same = trackedItems(config || {}).some(function (i) { return typeof i.drive === 'string' && i.drive.toLowerCase() === driveId.toLowerCase(); });
         if (!same) return false;
+        // a repository whose drive.json is dated no earlier than this connection holds a token as new
+        if (connected && String(config.connected || '') >= connected) return false;
         return Promise.all([loadSealer(), gh('GET', '/repos/' + other + '/actions/secrets/public-key')]).then(function (both) {
           return gh('PUT', '/repos/' + other + '/actions/secrets/' + DRIVE_SECRET, sealed(both[0], both[1].data, refresh), undefined, false, account);
         }).then(function () { return true; });
@@ -10208,7 +10217,7 @@
       refresh = '';
       return save.then(function (where) {
         if (where !== 'repo') return [where, null];
-        return renewOthers(repo, meta, d.refresh, d.id, account).then(function (renewal) { return [where, renewal]; });
+        return renewOthers(repo, meta, d.refresh, d.id, account, d.connected).then(function (renewal) { return [where, renewal]; });
       });
     }).then(function (two) {
       var where = two[0], renewal = two[1];
@@ -10250,7 +10259,7 @@
     // that account, so a token another tab puts in place meanwhile stops the chain
     var account = d.login || shownLogin;
     var refresh = d.refresh;
-    var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { var i = picked[id]; return { id: i.id, name: i.name, drive: i.drive }; }), connected: dayOf(new Date()) };
+    var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { var i = picked[id]; return { id: i.id, name: i.name, drive: i.drive }; }), connected: d.connected || dayOf(new Date()) };
     var branch = '', wrote = null, saved = false, meta = null, where = '', switched = null, renewal = null;
     fdSay('Sealing the drive\'s refresh token in this browser and saving ' + DRIVE_SECRET + ' on ' + repo + '...');
     gh('GET', '/repos/' + repo).then(function (r) {
@@ -10291,7 +10300,7 @@
     }).then(function (started) {
       if (where !== 'repo') return started;
       fdSay('Renewing the secret in your other repositories that track this drive...');
-      return renewOthers(repo, meta, d.refresh, d.id, account).then(function (r) { renewal = r; return started; });
+      return renewOthers(repo, meta, d.refresh, d.id, account, d.connected).then(function (r) { renewal = r; return started; });
     }).then(function (started) {
       button.disabled = false;
       showConnectState();
