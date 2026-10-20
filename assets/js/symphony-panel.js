@@ -2109,12 +2109,13 @@
         loadRepo(meta.full_name);
         return;
       }
-      add(box, el('p', '', meta.full_name + ' does not carry the topic symphony, so Symphony is not set up on it yet. Two steps, on GitHub:'));
+      add(box, el('p', '', meta.full_name + ' does not carry the topic symphony, so Symphony is not set up on it yet. The Folders tab\'s Track, and every tab that reads only what GitHub has, work on it as it is:'));
+      add(box, add(el('p', 'admin__bar'), btn('Open ' + meta.full_name, false, function () { clear(box); closeDialog('dlg-repos'); loadRepo(meta.full_name); })));
+      add(box, el('p', '', 'To set Symphony up on it as well, two steps on GitHub:'));
       var ol = el('ol');
       add(ol, add(el('li'), link(installLink(meta), 'Install SymphonyBoard on ' + meta.full_name), ' (the page comes with this one repository selected; it sends you on to Symphony Setup\'s install page, then to the form).'));
       add(ol, add(el('li'), 'On ', link(FORM_URL, 'the form'), ', press Create: the pull request lands within about two minutes and merges unless you asked to review it. Then come back here and press Add again.'));
       add(box, ol);
-      add(box, btn('Add it to the list anyway', true, function () { clear(box); closeDialog('dlg-repos'); loadRepo(meta.full_name); }));
     }).catch(function (e) {
       if (e.status !== 404 || !signedInByApp()) { say(e.message, true); add(box, el('p', 'admin__warn', e.message)); return; }
       // the sign-in reaches only the repositories SymphonyBoard is installed on, so a private one
@@ -2251,8 +2252,10 @@
       add(card, x);
     }
     function choose() {
-      if (adopted || listed || !r.topics) { closeDialog('dlg-repos'); if (r.full_name !== state.repo) loadRepo(r.full_name); return; }
-      addRepository(r.full_name);
+      // a repository the picker lists opens as it is: one without Symphony still serves the Folders
+      // tab's Track and every tab that reads only GitHub, so setting it up is offered, never required
+      closeDialog('dlg-repos');
+      if (r.full_name !== state.repo) loadRepo(r.full_name);
     }
     card.addEventListener('click', function (ev) { if (ev.target.closest && ev.target.closest('a, button') && !ev.target.closest('.repos__name')) return; choose(); });
     return card;
@@ -2262,8 +2265,10 @@
     var typed = ($('cp-add-name').value || '').trim();
     var cards = Array.prototype.slice.call($('rp-list').querySelectorAll('.repos__card'));
     var exact = cards.filter(function (c) { return typed && c.getAttribute('data-repo').toLowerCase() === typed.toLowerCase(); })[0];
-    if (exact) { exact.click(); return; }
+    // a whole name typed is read by name, which opens one with Symphony at once and offers Open
+    // first for one without; a card pressed opens its repository whatever it carries
     if (REPOSITORY.test(typed)) { addRepository(typed); return; }
+    if (exact) { exact.click(); return; }
     if (cards.length) { cards[0].click(); return; }
     say(typed ? 'Nothing matches "' + typed + '"; type the whole OWNER/NAME to open it by name.' : 'Type a name, or press a repository.', true);
   }
