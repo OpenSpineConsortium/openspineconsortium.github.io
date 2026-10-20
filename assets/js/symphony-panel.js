@@ -10043,15 +10043,26 @@
     });
   }
   // A repository that tracks a drive already, its workflow, file and secret all there and the
-  // connection not run out, has its half-hourly sync switched on when the tab opens it, as the owner
-  // chose on 2026-10-20, so a drive tracked before Track set the switch syncs without another Track;
-  // said only when it wrote or could not
+  // connection not known to have run out, has its half-hourly sync switched on when the tab opens it,
+  // as the owner chose on 2026-10-20, so a drive tracked before Track set the switch syncs without
+  // another Track; only a switch never set is made, since one set to off was turned off by someone on
+  // purpose, and only for the account the read was made as; said only when it wrote or could not
   function switchSyncOn(repo, config, secret, workflow, account, asked) {
     if (workflow !== true || !config || !secret || secret.unread || lapsedOn(config)) return;
-    ensureSyncOn(repo, account).then(function (wrote) {
-      if (wrote && asked === folderReading) none($('fd-tracked'), 'The half-hourly sync was off in ' + repo + ', so the repository variable ' + SYNC_SWITCH + ' is now set to on.');
+    if (!account || account !== shownLogin) return;
+    var path = '/repos/' + repo + '/actions/variables';
+    var here = function () { return asked === folderReading; };
+    readOne(path + '/' + SYNC_SWITCH).then(function (v) {
+      if (v) return;
+      return gh('POST', path, { name: SYNC_SWITCH, value: 'on' }, undefined, false, account).then(function () {
+        if (here()) none($('fd-tracked'), 'The half-hourly sync was never switched on in ' + repo + ', so the repository variable ' + SYNC_SWITCH + ' is now set to on.');
+      }, function (e) {
+        // a write already made from another reading of the same repository is the switch on
+        if (e.status === 409) return;
+        if (here()) none($('fd-tracked'), 'The half-hourly sync is not switched on in ' + repo + ' and the repository variable ' + SYNC_SWITCH + ' could not be set to on (' + e.message + '); Sync now still runs it by hand.');
+      });
     }, function (e) {
-      if (asked === folderReading) none($('fd-tracked'), 'The half-hourly sync is off in ' + repo + ' and the repository variable ' + SYNC_SWITCH + ' could not be set to on (' + e.message + '); Sync now still runs it by hand.');
+      if (here()) none($('fd-tracked'), 'Whether the half-hourly sync is switched on in ' + repo + ' could not be read (' + e.message + ').');
     });
   }
   // Track on a repository that only walks the drive: the secret alone, no file and no run, since
