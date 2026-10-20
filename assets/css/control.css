@@ -1561,16 +1561,16 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
 /* Explore takes most of the panel while it is shown (symphony-panel.js, exWide): the side column
    folds to its rail of icons, the repository's box with it, the Ask Claude bar folds away and the
    foot keeps one line of message and Clear; a press on either brings them back. */
-.console--exwide:has(#tab-explore:not([hidden])) .console__body { grid-template-columns: 58px 10px minmax(0, 1fr); }
-.console--exwide:has(#tab-explore:not([hidden])) .console__id { display: none; }
-.console--exwide:has(#tab-explore:not([hidden])) .console__side { cursor: e-resize; }
-.console--exwide:has(#tab-explore:not([hidden])) .console__rail button { justify-content: center; padding-left: 0; padding-right: 0; cursor: pointer; }
-.console--exwide:has(#tab-explore:not([hidden])) .console__rail :is(.rail__name, .rail__count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.console--exwide:has(#tab-explore:not([hidden])) .console__split[data-split="side"] { cursor: e-resize; }
-.console--exwide:has(#tab-explore:not([hidden])) > .console__askbar { display: none; }
-.console.console--exwide:has(#tab-explore:not([hidden])) > .console__status { height: auto; cursor: n-resize; }
-.console--exwide:has(#tab-explore:not([hidden])) > .console__status .console__me { display: none; }
-.console.console--exwide:has(#tab-explore:not([hidden])) > .console__status #msg { max-height: 2.1em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__body { grid-template-columns: 58px 10px minmax(0, 1fr); }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__id { display: none; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__side { cursor: e-resize; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail button { justify-content: center; padding-left: 0; padding-right: 0; cursor: pointer; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail :is(.rail__name, .rail__count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__split[data-split="side"] { cursor: e-resize; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__askbar { display: none; }
+.console.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status { height: auto; cursor: n-resize; }
+.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status .console__me { display: none; }
+.console.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) > .console__status #msg { max-height: 2.1em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #tab-explore .ex__wideword { font-size: 0.85rem; }
 /* a phone: the tab is the stage, the zoom's buttons give way to a pinch and a double tap, and,
    folded, the tab takes the whole screen over the page, which is held still beneath it */
@@ -1582,14 +1582,14 @@ body.console-dragging--y, body.console-dragging--y * { cursor: row-resize !impor
   #tab-explore .ex__head .ex__sub { display: none; }
   .console #tab-explore .ex__link { width: 34px; padding: 0; justify-content: center; font-size: 0; }
   .console #tab-explore .ex__link::after { margin: 0; font-size: 1rem; }
-  .console--exwide #tab-explore:not([hidden]) { position: fixed; z-index: 50; inset: 0; padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px); background: var(--paper); gap: 6px; }
-  .console--exwide #tab-explore:not([hidden]) .console__head { display: none; }
-  .console--exwide #tab-explore:not([hidden]) .ex__body { flex: 1 1 auto; height: auto; }
-  html:has(.console--exwide #tab-explore:not([hidden])) body { overflow: hidden; overscroll-behavior: none; }
+  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) { position: fixed; z-index: 50; inset: 0; padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px); background: var(--paper); gap: 6px; }
+  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) .console__head { display: none; }
+  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) .ex__body { flex: 1 1 auto; height: auto; }
+  html:has(.console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden])) body { overflow: hidden; overscroll-behavior: none; }
 }
 /* the site bar's handle stays above the tab's own bar, so no press meant for the tab lands on it */
 @media (max-width: 900px) and (hover: none), (max-width: 900px) and (any-pointer: coarse), (max-height: 520px) and (hover: none), (max-height: 520px) and (any-pointer: coarse) {
-  body.console-bar-auto .console--exwide #tab-explore:not([hidden]) { padding-top: calc(env(safe-area-inset-top, 0px) + 26px); }
+  body.console-bar-auto .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) { padding-top: calc(env(safe-area-inset-top, 0px) + 26px); }
 }
 @media (max-width: 900px) and (pointer: coarse), (max-height: 520px) and (pointer: coarse) {
   .console #tab-explore .ex__tool { min-height: 38px; }

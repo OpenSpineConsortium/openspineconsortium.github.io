@@ -10414,7 +10414,12 @@
     var stage = $('ex-stage'), st = stageOf(stage);
     clear(stage);
     stage.classList.remove('ex__stage--log');
-    if (st) { st.svg = null; st.faces = []; st.whole = true; }
+    if (st) {
+      st.svg = null; st.faces = []; st.whole = true;
+      // a drag, a pinch or a tap held across a level would move or zoom the next level's picture
+      st.pointers = {}; st.drag = null; st.pinch = null; st.lastTap = null; st.outBy = 1;
+      clearTimeout(st.tapTimer);
+    }
   }
   // words in the middle of the stage, in place of a picture
   function exNote(text) {
@@ -10505,6 +10510,16 @@
       a.href = n.url; a.target = '_blank'; a.rel = 'noopener';
       return a;
     }
+    // the stage pans on a drag, so the lines are copied whole from a button, never selected
+    function copyLog(lines) {
+      var b = btn('Copy the lines', true, function () {
+        var text = lines.map(function (l) { return l.text.replace(/^##\[(group|endgroup|error|warning)\]/, ''); }).join('\n');
+        if (!navigator.clipboard) { exStatus('This browser gives the page no clipboard.'); return; }
+        navigator.clipboard.writeText(text).then(function () { exStatus('Copied ' + plural(lines.length, 'line') + '.'); }, function () { exStatus('The browser refused the clipboard.'); });
+      });
+      b.classList.add('ex__tool');
+      return b;
+    }
     var box = exNote('Reading the log...');
     exStatus('Reading the log...');
     var era = explore.era;
@@ -10524,7 +10539,7 @@
         if (!first && cls === 'ex__error') first = pre.lastChild;
       });
       if (lines.length > EXPLORE_LOG_LINES) add(sheet, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
-      add(exActs(), gitHub());
+      add(exActs(), copyLog(lines.slice(0, EXPLORE_LOG_LINES)), gitHub());
       stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
       exLogAt(stageOf(stage), first);
       exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' The wheel or a drag moves along it; Backspace comes back out.');
@@ -10535,6 +10550,21 @@
       add(box, gitHub());
       exStatus('The log could not be read here; GitHub shows it.');
     });
+  }
+  // the box changed size under a log (Panel, a rotation, the window): its lines wrap to the new width
+  // and the reading place is kept
+  function exLogFit() {
+    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet--log');
+    if (!st || !sheet || st.svg !== sheet) return;
+    var width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
+    if (sheet.style.width === width) return;
+    var y = st.y, whole = st.whole;
+    sheet.style.width = width;
+    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
+    if (whole) { exLogAt(st, null); return; }
+    st.k = 1; st.x = STAGE_PAD; st.y = y; st.whole = false;
+    stageClamp(st, false);
+    stageApply(st, false);
   }
   // a log taller than its box is drawn at its own size, a size to read, and opened on its first
   // error, else at its end, where a failed step says why; the rest is a drag or the wheel away
@@ -10634,6 +10664,8 @@
       return true;
     }
     if (!dx || explore.path.length < 2) return false;
+    // a key held down steps to the next level once, never through every level it passes, each a read
+    if (explore.keying && explore.repeat) return true;
     var kids = exKids(explore.path[explore.path.length - 2]), i = kids.indexOf(exCurrent()), j = i + (dx > 0 ? 1 : -1);
     if (i < 0 || j < 0 || j >= kids.length) return false;
     exGo(explore.path.slice(0, -1).concat([kids[j]]));
@@ -10658,7 +10690,13 @@
     explore.wheelLast = now;
     explore.wheeling = true;
     var stage = $('ex-stage'), st = stageOf(stage);
-    if (e.ctrlKey || !st || !st.svg || st.whole || !stage.classList.contains('ex__stage--log')) return;
+    if (st && !st.svg && explore.path.length > 1 && e.deltaY > 0) {
+      // words in place of a picture: nothing to zoom, so turning the wheel out comes out at once
+      e.preventDefault();
+      exZoomOut();
+      return;
+    }
+    if (e.ctrlKey || !st || !st.svg || !stage.classList.contains('ex__stage--log')) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     explore.wheeling = false;
@@ -10688,7 +10726,7 @@
     explore.wide = on;
     $('console').classList.toggle('console--exwide', on);
     var b = $('ex-wide');
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-pressed', on ? 'false' : 'true');
     b.title = on ? 'Bring back the side column and the foot' : 'Give Explore the whole panel';
   }
   function exUnfold(e) {
@@ -10696,6 +10734,20 @@
     if (!e.target.closest('.console__side, .console__split[data-split="side"], .console__askbar, .console__status')) return;
     // the rail's tabs, and what a message offers, keep their own presses; a grip's press only unfolds
     if (!e.target.closest('[data-split]') && e.target.closest('button, a, input, select, textarea, [role="tab"]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    explore.unfolded = Date.now();
+    exWide(false);
+  }
+  // the second press of a double click that unfolded is no grip's double click, which would forget
+  // the width the person set; a key on a folded grip unfolds as a press does
+  function exUnfoldKeys(e) {
+    if (e.type === 'dblclick') {
+      if (Date.now() - (explore.unfolded || 0) < 600 && e.target.closest && e.target.closest('[data-split]')) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
+    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"], .console__split[data-split="foot"]')) return;
+    if (!/^(Arrow|Home|End|Enter| )/.test(e.key)) return;
     e.preventDefault();
     e.stopPropagation();
     exWide(false);
@@ -10706,7 +10758,11 @@
   function openExplore() {
     var s = state;
     if (!s.repo) { explore.root = null; explore.path = []; explore.s = s; exDraw(); return; }
-    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) { exDraw(); return; }
+    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) {
+      // nothing changed: the level stays as the person left it, zoom and keyboard alike
+      if (!$('ex-stage').firstChild) exDraw();
+      return;
+    }
     var keys = explore.s && explore.s.repo === s.repo ? explore.path.map(function (n) { return n.key; }) : [];
     var old = explore.s && explore.s.repo === s.repo ? explore.path.slice() : [];
     explore.era++;
@@ -10731,13 +10787,24 @@
     $('ex-out').addEventListener('click', exOut);
     $('ex-stage').addEventListener('click', function (e) {
       var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
-      if (tile) exIn(Number(tile.getAttribute('data-ex')));
+      // a double click's second press lands on the next level's card: it goes one level, not two
+      if (tile && e.detail <= 1) exIn(Number(tile.getAttribute('data-ex')));
     });
     // the stage's own listeners come between these: the wheel's gesture is marked before the zoom
     // reads it and let go after, and a key is marked as a key while the stage turns it into a way
     var stage = $('ex-stage');
     stage.addEventListener('wheel', exWheelBefore, { passive: false });
-    stage.addEventListener('keydown', function () { explore.keying = true; });
+    stage.addEventListener('keydown', function (e) {
+      explore.keying = true;
+      explore.repeat = !!e.repeat;
+      // with a card in hand the arrows move between the cards, zoomed in or not
+      var a = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (!a || e.altKey || e.ctrlKey || e.metaKey || !document.activeElement.classList.contains('ex__tile')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      exWay(a[0], a[1]);
+      explore.keying = false;
+    });
     stageMake(stage, {
       zooms: function () { return true; },
       wheel: function () { return true; },
@@ -10749,15 +10816,17 @@
     stage.addEventListener('keydown', function () { explore.keying = false; });
     stageMake($('ex-tree'), { zooms: function () { return true; }, wheel: function () { return true; } });
     if (typeof ResizeObserver === 'function') {
-      new ResizeObserver(function () { if (consoleTab === 'explore') exFit(); }).observe(stage);
+      new ResizeObserver(function () { if (consoleTab === 'explore') { exFit(); exLogFit(); } }).observe(stage);
       new ResizeObserver(function () { var st = stageOf($('ex-tree')); if (consoleTab === 'explore' && (!st || st.whole)) exTreeFit(); }).observe($('ex-tree'));
     }
     $('ex-zoom-in').addEventListener('click', function () { stageStep(stage, 1.4); });
-    $('ex-zoom-out').addEventListener('click', function () { stageStep(stage, 1 / 1.4); });
+    $('ex-zoom-out').addEventListener('click', function () { var st = stageOf(stage); if (st && !st.svg) exZoomOut(); else stageStep(stage, 1 / 1.4); });
     $('ex-zoom-whole').addEventListener('click', function () { var st = stageOf(stage); if (st) stageWhole(st, true); });
     $('ex-outline').addEventListener('click', function () { exOutline($('ex-tree').hidden); });
     $('ex-wide').addEventListener('click', function () { exWide(!explore.wide); });
     $('console').addEventListener('pointerdown', exUnfold, true);
+    $('console').addEventListener('dblclick', exUnfoldKeys, true);
+    $('console').addEventListener('keydown', exUnfoldKeys, true);
     $('tab-explore').addEventListener('keydown', exKey);
     // folded, the rail shows its icons alone, so each says its name when pointed at
     Array.prototype.forEach.call(document.querySelectorAll('.console__rail [data-tab]'), function (b) {
