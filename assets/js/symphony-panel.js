@@ -1413,7 +1413,7 @@
     'dlg-repos': function () { pickerOpen(); },
     'dlg-share': function () { shareDialogOpen(); },
     // a read of what the repository tracks that failed is tried again when the steps are opened
-    'dlg-track': function () { var s = $('fd-say'); if (s) clear(s); if (foldersFor !== foldersRepo()) loadFolders(); }
+    'dlg-track': function () { var s = $('fd-say'); if (s) clear(s); if (foldersRepo() !== foldersFor) loadFolders(); }
   };
   // the one dialog a card's status and settings are drawn in
   function itemDialog(title) {
