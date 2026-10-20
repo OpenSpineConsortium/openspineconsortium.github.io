@@ -2508,6 +2508,11 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-tab-panel]'), function (p) { p.hidden = p.getAttribute('data-tab-panel') !== name; });
     var changed = consoleTab !== name;
     consoleTab = name;
+    // on a phone a tab fills the screen, named in the bar over it beside the way back
+    var c = $('console');
+    if (c) c.classList.remove('console--home');
+    var title = $('cp-phonetitle'), named = document.querySelector('.console__rail [data-tab="' + name + '"] .rail__name');
+    if (title && named) title.textContent = named.textContent;
     // on a phone the rail scrolls sideways, so the chosen tab is brought into its view, without
     // moving the window
     var rail = document.querySelector('.console__rail');
@@ -2516,10 +2521,73 @@
       if (chosen) rail.scrollLeft = chosen.offsetLeft - Math.max(0, (rail.clientWidth - chosen.offsetWidth) / 2);
       railEdges();
     }
+    // the state is kept, so a tab opened from the phone's home screen still steps back to it
     if (location.hash !== '#' + name) {
-      try { history.replaceState(null, '', location.pathname + location.search + '#' + name); } catch (e) { /* the address stays */ }
+      try { history.replaceState(history.state, '', location.pathname + location.search + '#' + name); } catch (e) { /* the address stays */ }
     }
     if (changed && consoleOnOpen[name]) consoleOnOpen[name]();
+  }
+  // A phone shows one thing at a time (the owner, 2026-10-20): the tabs as a home screen of square
+  // buttons, or one tab filling the screen, with a back button to the buttons; a dialog fills the
+  // screen over the tab and gives it back when it closes (control.css, the phone's home screen).
+  // The home screen keeps no tab in the address, so a reload there comes back to it, and a tab
+  // opened from it is a step in the history, so the phone's own back gesture returns as the button does.
+  var PHONE_QUERY = '(max-width: 900px), (max-height: 520px)';
+  function phoneLayout() { return !!(window.matchMedia && window.matchMedia(PHONE_QUERY).matches); }
+  function consoleAtHome() { var c = $('console'); return !!c && c.classList.contains('console--home'); }
+  function showHome() {
+    var c = $('console');
+    if (!c || !phoneLayout()) return;
+    // a tab's own dialog open over it (a token's, a notebook's) closes with the tab, never left
+    // open and unseen with the page held behind it
+    Array.prototype.forEach.call(c.querySelectorAll('.console__stage dialog[open]'), function (d) {
+      try { d.close(); } catch (e) { d.removeAttribute('open'); }
+    });
+    c.classList.add('console--home');
+    // no tab is shown under the home screen, so nothing a tab sets for itself (Explore's wide
+    // fold) reaches it; showTab shows the tab again
+    Array.prototype.forEach.call(document.querySelectorAll('[data-tab-panel]'), function (p) { p.hidden = true; });
+    if (location.hash) {
+      try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* the address stays */ }
+    }
+    var tabs = consoleTabs();
+    tabs.forEach(function (t) { t.tabIndex = -1; });
+    var chosen = tabs.filter(function (t) { return t.getAttribute('data-tab') === consoleTab; })[0] || tabs[0];
+    if (chosen) chosen.tabIndex = 0;
+    if (chosen && c.contains(document.activeElement)) chosen.focus();
+  }
+  // the console left the phone's layout (a window widened, a tablet turned): the tab it showed
+  // before the home screen comes back, as a computer's console always shows one
+  function leftPhone() {
+    var c = $('console');
+    if (!c || !c.classList.contains('console--home') || phoneLayout()) return;
+    c.classList.remove('console--home');
+    var name = consoleTab;
+    consoleTab = '';
+    showTab(name);
+  }
+  // the home screen's arrows move among the buttons as a grid, a row being the buttons level with
+  // the first, and open nothing; Enter or Space presses the one in focus
+  function homeArrow(e, i, all) {
+    var across = all.filter(function (t) { return t.offsetTop === all[0].offsetTop; }).length || 1;
+    var step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: across, ArrowUp: -across }[e.key];
+    var to = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : step === undefined ? -1 : Math.min(all.length - 1, Math.max(0, i + step));
+    if (to < 0) return;
+    e.preventDefault();
+    all[i].tabIndex = -1;
+    all[to].tabIndex = 0;
+    all[to].focus();
+  }
+  // a tab pressed on the home screen: a step in the history, then the tab
+  function openFromHome(name) {
+    if (location.hash !== '#' + name) {
+      try { history.pushState({ consoleHome: 1 }, '', location.pathname + location.search + '#' + name); } catch (e) { /* replaced below */ }
+    }
+    showTab(name);
+    if ($('cp-back')) $('cp-back').focus();
+  }
+  function leaveTab() {
+    if (history.state && history.state.consoleHome) history.back(); else showHome();
   }
   function revealTab(node) {
     var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
@@ -2574,6 +2642,8 @@
       var text = state && state.ready ? String(n) : '';
       if (span.classList.contains('readout__n')) text = text || '\u2013';
       if (span.textContent !== text) span.textContent = text;
+      // the phone's home screen draws a count as a badge, and as a phone does shows none for nothing
+      if (span.classList.contains('rail__count')) span.toggleAttribute('data-zero', text === '0');
       var readout = span.closest ? span.closest('.readout') : null;
       if (readout) readout.classList.toggle('readout--on', n > 0);
     });
@@ -3078,10 +3148,11 @@
     foot: { prop: '--foot-h', min: 24, max: 1600, axis: 'y', sign: -1, measure: function () { return $('console').querySelector('.console__status').offsetHeight; }, bounds: footBounds }
   };
   // what a sized foot may be now: never less than one line of message with its buttons, and never so
-  // tall that the stage keeps less than STAGE_MIN of the window. On a computer that is what the deck
-  // holds above the foot beside the Ask Claude bar; on a phone, whose page scrolls under a foot that
-  // sticks to the window's bottom, it is the rest of the window. In the foot's own pixels, which
-  // the text size scales.
+  // tall that the stage keeps less than STAGE_MIN of the window. Where the deck fills the window, a
+  // computer's or a phone's whose console is fixed over the screen, that is what the deck holds above
+  // the foot beside the Ask Claude bar; where the page scrolls under a foot that sticks to the
+  // window's bottom, it is the rest of the window. A phone's foot stacks its message over its
+  // buttons, but for a tab's held sideways. In the foot's own pixels, which the text size scales.
   var STAGE_MIN = 180;
   function footBounds() {
     var p = LAYOUT_PARTS.foot, c = $('console'), st = c && c.querySelector('.console__status');
@@ -3090,13 +3161,15 @@
     var line = parseFloat(getComputedStyle($('msg')).minHeight) || 30;
     var buttons = Math.max($('cp-msg-close').offsetHeight, c.querySelector('.console__me').offsetHeight);
     var pad = parseFloat(ss.paddingTop) + parseFloat(ss.paddingBottom);
-    var stacked = cs.overflow !== 'hidden';
+    // a phone held sideways lays a tab's foot out in one row (control.css, max-height: 520px)
+    var stacked = phoneLayout() && (consoleAtHome() || !window.matchMedia('(max-height: 520px)').matches);
+    var scrolls = cs.overflow !== 'hidden';
     var min = Math.ceil(pad + (stacked ? line + (parseFloat(ss.rowGap) || 0) + buttons : Math.max(line, buttons)));
     // while the Dependencies tab is shown it needs more than the stage's least, and the foot leaves
     // it that: its own least on a computer, and on a phone that and the rail above it (graphNeed)
     var least = Math.max(STAGE_MIN, graphNeed());
     var room = window.innerHeight - least;
-    if (!stacked) {
+    if (!scrolls) {
       var ask = $('cp-askbar'), asked = ask && ask.getClientRects().length ? ask.getBoundingClientRect().height + gap : 0;
       room = c.getBoundingClientRect().height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - gap - asked - least;
     }
@@ -3284,16 +3357,27 @@
     window.addEventListener('load', fitConsole);
     if (c.querySelector('.console__rail')) c.querySelector('.console__rail').addEventListener('scroll', railEdges, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitConsole);
-    showTab(location.hash.slice(1));
+    var asked = location.hash.slice(1);
+    showTab(asked);
+    if (!consoleTabs().some(function (t) { return t.getAttribute('data-tab') === asked; })) showHome();
+    if ($('cp-back')) $('cp-back').addEventListener('click', leaveTab);
+    if (window.matchMedia) {
+      var phoneMedia = window.matchMedia(PHONE_QUERY);
+      if (phoneMedia.addEventListener) phoneMedia.addEventListener('change', leftPhone); else if (phoneMedia.addListener) phoneMedia.addListener(leftPhone);
+    }
     window.addEventListener('hashchange', function () {
       var name = location.hash.slice(1);
+      if (!name || name === 'home') { showHome(); return; }
       // #repos was the Repositories tab before the picker took its place
       if (name === 'repos') { if (!$('cp-app').classList.contains('hidden')) openDialog('dlg-repos'); return; }
       if (consoleTabs().some(function (t) { return t.getAttribute('data-tab') === name; })) showTab(name);
     });
     consoleTabs().forEach(function (t, i, all) {
-      t.addEventListener('click', function () { showTab(t.getAttribute('data-tab')); });
+      t.addEventListener('click', function () {
+        if (consoleAtHome() && phoneLayout()) openFromHome(t.getAttribute('data-tab')); else showTab(t.getAttribute('data-tab'));
+      });
       t.addEventListener('keydown', function (e) {
+        if (consoleAtHome() && phoneLayout()) { homeArrow(e, i, all); return; }
         var step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
         var next = e.key === 'Home' ? all[0] : e.key === 'End' ? all[all.length - 1] : step ? all[(i + step + all.length) % all.length] : null;
         if (!next) return;
@@ -3317,6 +3401,10 @@
       var f = b.getAttribute('data-focus');
       // the bar is hidden in a repository without the assistant: then a task asks @claude instead
       if (f === 'cp-as-q' && $('cp-as-box') && $('cp-as-box').classList.contains('hidden')) { openTaskDialog(); $('cp-task-ask').focus(); say('This repository has no assistant yet, so Claude is asked by an issue: write what it should do and press Ask @claude now.'); return; }
+      // on a phone the Ask Claude bar stands on the home screen, the one place it shows there
+      // (the step into the tab is taken back, so the phone's back gesture leaves no second home)
+      var stepped = !!(history.state && history.state.consoleHome);
+      if (f === 'cp-as-q' && phoneLayout() && !consoleAtHome()) { showHome(); if (stepped) history.back(); }
       if (f && $(f)) $(f).focus();
     });
     var pending = 0;

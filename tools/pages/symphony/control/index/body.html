@@ -79,6 +79,13 @@ app: yes
       <div class="console__split" data-split="side" role="separator" aria-orientation="vertical" aria-label="Drag to size the side column; double-click to reset" tabindex="0"></div>
 
       <div class="console__stage">
+        <!-- on a phone the console is one screen at a time: the tabs as a home screen of square
+             buttons, or one tab filling the screen under this bar, whose back button returns to
+             them (symphony-panel.js, showHome; control.css, the phone's home screen) -->
+        <div class="console__phonebar">
+          <button type="button" class="console__back quiet" id="cp-back"><span aria-hidden="true">&#8249;</span> Tabs</button>
+          <span class="console__phonetitle" id="cp-phonetitle"></span>
+        </div>
 
         <!-- Command: the readouts and the launch buttons -->
         <section class="console__panel" id="tab-command" data-tab-panel="command" role="tabpanel" aria-labelledby="rail-command" hidden>
