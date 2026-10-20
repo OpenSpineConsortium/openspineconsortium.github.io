@@ -6822,6 +6822,9 @@
   var SIGN_IN_CODE = /^[A-Za-z0-9_.~#-]{8,512}$/;
   var ACTIONS_NEEDED = ' Starting the workflow needs the SymphonyBoard App\'s repository permission Actions: read and write, and opening the issue Issues: read and write; an administrator accepts them on the App\'s installation, at https://github.com/settings/installations for a personal account or the organization\'s own installations page, Configure beside SymphonyBoard.';
   var ADOPT_BRANCH = 'symphony/adopt';
+  // the template's sync offers an adopted repository its board files, the workflow Token among them,
+  // from this branch (symphony-template's tools/sync_adopted.py)
+  var SYNC_BRANCH = 'symphony/sync';
   var STOPPED = 'Stopped; nothing was saved. Press Add Token to start again.';
   // the sign-in under way, one at a time since each opens an issue and starts a run: its task at
   // the deck's foot, shown again when Add Token is pressed after Clear hid it, and how to stop it
@@ -6857,12 +6860,23 @@
       return adoptionHint(repo, view, hint);
     });
   }
-  function adoptionHint(repo, view, hint) {
-    return gh('GET', '/repos/' + repo + '/pulls?state=open&per_page=1&head=' + encodeURIComponent(repo.split('/')[0] + ':' + ADOPT_BRANCH)).then(function (r) {
+  function openPull(repo, branch) {
+    return gh('GET', '/repos/' + repo + '/pulls?state=open&per_page=1&head=' + encodeURIComponent(repo.split('/')[0] + ':' + branch)).then(function (r) {
       var pr = (r.data || [])[0];
       if (!pr || !/^https:\/\/github\.com\//.test(pr.html_url || '')) throw new Error('none open');
+      return pr;
+    });
+  }
+  // a repository adopted before it was offered the workflow Token gets it by the sync's pull request
+  function adoptionHint(repo, view, hint) {
+    return openPull(repo, ADOPT_BRANCH).then(function (pr) {
       add(view.step, add(el('p', 'admin__bar'), link(pr.html_url, 'Open the adoption pull request #' + pr.number)));
       return hint + ' Merge its adoption pull request first, then press Add Token again.';
+    }).catch(function () {
+      return openPull(repo, SYNC_BRANCH).then(function (pr) {
+        add(view.step, add(el('p', 'admin__bar'), link(pr.html_url, 'Open the pull request #' + pr.number)));
+        return hint + ' Merge its pull request "Bring Symphony\'s board files up to date" first, then press Add Token again.';
+      });
     }).catch(function () {
       return hint + ' Merge its adoption pull request first, or adopt it if it never was, at ' + FORM_URL + ', then press Add Token again.';
     });
@@ -7027,10 +7041,14 @@
       }
       if (e.page) add(view.step, add(el('p', 'admin__bar'), link(e.page, 'Open the workflow Token')));
       var hint = Promise.resolve('');
-      if ((step === 'workflow' || step === 'dispatch') && e.status === 404) hint = noTokenWorkflow(repo, view);
+      var said = e.message;
+      if ((step === 'workflow' || step === 'dispatch') && e.status === 404) {
+        // the repository answered, so the 404 is the missing file, never a missing install
+        hint = noTokenWorkflow(repo, view).then(function (text) { said = ''; return text.replace(/^ /, ''); });
+      }
       else if ((step === 'workflow' || step === 'dispatch' || step === 'issue') && e.status === 403) hint = Promise.resolve(ACTIONS_NEEDED);
       else if (step === 'secrets' && (e.status === 403 || e.status === 404)) hint = Promise.resolve(secretsNeeded(place));
-      hint.then(function (text) { view.task.end(e.message + text, true); });
+      hint.then(function (text) { view.task.end(said + text, true); });
     });
   }
   // the issue's comments from the run, read every three seconds: the link shows the sign-in box, the
@@ -9329,7 +9347,7 @@
   }
   function shareInviteFailed(e) {
     var words = e.status === 403 || e.status === 404
-      ? 'GitHub refused the invitation: you must administer ' + shareRepo() + ', and SymphonyBoard needs its Administration permission accepted on this installation (or a pasted token with Administration).'
+      ? 'GitHub refused the invitation: only an administrator of ' + shareRepo() + ' may invite people, and the sign-in does it only once SymphonyBoard\'s Administration permission is accepted on its installation (or with a pasted token that has Administration); a collaborator with Write cannot invite.'
       : 'GitHub refused the invitation: ' + e.message;
     shareSay(words + ' Open GitHub\'s Add people instead.');
   }
