@@ -1313,12 +1313,12 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
    the part as they are dragged, and the text size, which zooms the
    whole deck so its buttons and boxes grow and shrink with the words.
    ============================================================ */
-.console > .console__app, .console > .console__askbar, .console > .console__status { zoom: var(--console-zoom, 1); }
+.console > .console__app, .console > .console__status { zoom: var(--console-zoom, 1); }
 /* a phone keeps its own text size and pinch: the deck's saved text size, which widens its fixed
    parts (a tile, a box) past the window, is not applied there, and its buttons are not shown; the
    media list is the phone layout's, so a phone held sideways, wide but short, is a phone here too */
 @media (max-width: 900px), (max-height: 520px) {
-  .console > .console__app, .console > .console__askbar, .console > .console__status { zoom: 1; }
+  .console > .console__app, .console > .console__status { zoom: 1; }
   .console__zoom { display: none; }
 }
 .console__split { position: relative; cursor: col-resize; touch-action: none; outline: none; }
@@ -1875,7 +1875,8 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 /* and at least the button's height, so a tab's scrolling box, and the gears of the cards in it,
    start below the button however short the head's words are (the Tokens tab's is one word) */
 .console__panel > .console__head { padding-right: 52px; min-height: 40px; }
-.console #tab-command > .console__scroll { margin-right: 52px; }
+/* a tab with no head (Command, About) keeps its scrolling box out of the button's column */
+.console__panel > .console__scroll:first-child { margin-right: 52px; }
 
 .console > .console__status {
   position: fixed; z-index: 44; left: 50%; right: auto; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
@@ -1917,7 +1918,7 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console--home .console__side { overflow: hidden; }
   .console.console--home .console__rail { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
   .console__panel > .console__head { padding-right: 0; }
-  .console #tab-command > .console__scroll { margin-right: 0; }
+  .console__panel > .console__scroll:first-child { margin-right: 0; }
   .console__side > .console__me { flex-wrap: wrap; justify-content: space-between; border-top: 0; padding: 4px 2px 12px; }
   .claudedlg { width: 100%; }
 }
