@@ -559,6 +559,55 @@ html.graph--held body { overflow: hidden; }
 .fx__menu { position: fixed; z-index: 1000; display: flex; flex-direction: column; min-width: 190px; padding: 4px; background: var(--paper-card); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
 .fx__menu button { margin: 0; padding: 6px 12px; border: 0; border-radius: 4px; background: none; color: var(--ink); text-align: left; font-size: 0.9rem; }
 .fx__menu button:hover, .fx__menu button:focus { background: color-mix(in srgb, var(--teal) 22%, transparent); outline: none; }
+.fx__menu button:disabled { color: var(--ink-faint); background: none; }
+.fx__menusep { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+/* the command bar under the address, Windows 11's row of verbs */
+#tab-folders .fx__cmds { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+#tab-folders .fx__cmds .fx__tool { padding: 2px 9px; margin: 0; font-size: 0.84rem; border-color: transparent; background: none; color: var(--ink); }
+#tab-folders .fx__cmds .fx__tool:hover:not(:disabled) { background: color-mix(in srgb, var(--teal) 14%, transparent); }
+#tab-folders .fx__cmds .fx__tool:disabled { color: var(--ink-faint); }
+#tab-folders .fx__cmds .fx__tool[aria-pressed="true"] { background: color-mix(in srgb, var(--teal) 26%, transparent); }
+#tab-folders .fx__cmdsep { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--line); }
+#tab-folders .fx__body { position: relative; }
+#tab-folders .fx__preview { flex: 0 0 34%; max-width: 420px; min-width: 200px; border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 8px; gap: 8px; overflow: hidden; }
+#tab-folders .fx__preview[hidden] { display: none; }
+#tab-folders .fx__pvhead { display: flex; gap: 8px; align-items: center; overflow-wrap: anywhere; font-size: 0.88rem; }
+#tab-folders .fx__pvhead > div { flex: 1 1 auto; min-width: 0; }
+#tab-folders .fx__pvclose { margin: 0 0 0 auto; padding: 0 8px; font-size: 1.1rem; border: 0; background: none; color: var(--ink-soft); align-self: flex-start; }
+#tab-folders .fx__preview > .fx__pvclose { align-self: flex-end; }
+#tab-folders .fx__pvbody { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+#tab-folders .fx__pvframe { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 4px; background: #FFFFFF; }
+#tab-folders .fx__pvimg { max-width: 100%; max-height: 100%; object-fit: contain; }
+#tab-folders .fx__thumb { width: var(--s); height: var(--s); object-fit: contain; display: block; flex: 0 0 auto; }
+#tab-folders [data-item].fx__cutitem { opacity: 0.5; }
+#tab-folders [data-item].fx__focus { outline: 1px dotted var(--teal); outline-offset: -1px; }
+#tab-folders .fx__drop { background: color-mix(in srgb, var(--teal) 30%, transparent) !important; outline: 2px solid var(--teal); outline-offset: -2px; }
+#tab-folders .fx__rename { font: inherit; padding: 1px 4px; margin: 0; width: 100%; min-width: 8em; }
+#tab-folders .fx__where { color: var(--ink-soft); white-space: normal !important; overflow-wrap: anywhere; }
+/* Small icons, List, Tiles and Content */
+#tab-folders .fx__flow { padding: 6px; }
+#tab-folders .fx__it { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 4px; min-width: 0; }
+#tab-folders .fx__it:hover { background: color-mix(in srgb, var(--teal) 10%, transparent); }
+#tab-folders .fx__it input { margin: 0; flex: 0 0 auto; width: auto; }
+#tab-folders .fx__ittext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+#tab-folders .fx__itname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; }
+#tab-folders .fx__itsub { color: var(--ink-soft); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tab-folders .fx__itside { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; }
+#tab-folders .fx__flow--small { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 8px; }
+#tab-folders .fx__flow--list { column-width: 220px; column-gap: 12px; }
+#tab-folders .fx__flow--list .fx__it { break-inside: avoid; }
+#tab-folders .fx__flow--tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; }
+#tab-folders .fx__flow--tiles .fx__it { padding: 6px; }
+#tab-folders .fx__flow--content .fx__it { padding: 6px 8px; border-bottom: 1px solid var(--line); border-radius: 0; gap: 10px; }
+.fx__share { flex-wrap: wrap; gap: 4px 16px; font-size: 0.9rem; }
+.fx__shareout { overflow-wrap: anywhere; }
+.fx__sharelink { width: min(100%, 420px); font-size: 0.85rem; }
+@media (max-width: 900px) {
+  /* on a phone the preview covers the list, which Alt+P or Preview hides again */
+  #tab-folders .fx__preview { position: absolute; inset: 0; max-width: none; background: var(--paper-card); z-index: 2; border-left: 0; }
+  /* with no one file chosen the list stays in reach, to tap one */
+  #tab-folders .fx__preview[data-empty] { display: none; }
+}
 @media (max-width: 700px) {
   #tab-folders .fx__tree { display: none; }
   #tab-folders .fx__details th:nth-child(3), #tab-folders .fx__details td:nth-child(3),
