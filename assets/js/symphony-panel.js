@@ -2201,6 +2201,39 @@
     }, function (e) { if (picker.token === mine) picker.reading = null; throw e; });
     return picker.reading;
   }
+  // The repository with Symphony set up that was pushed most recently, of those the sign-in reaches:
+  // the one a person works in, read from GitHub, since a new browser keeps no list of its own
+  function usualRepo(groups) {
+    var best = null;
+    groups.forEach(function (g) {
+      g.repos.forEach(function (r) {
+        if (r.archived || !(r.topics && r.topics.indexOf(TOPIC) >= 0)) return;
+        if (!best || String(r.pushed_at || '') > String(best.pushed_at || '')) best = r;
+      });
+    });
+    return best ? best.full_name : '';
+  }
+  function openUsualRepo(again) {
+    var asked = token, was = state;
+    $('cp-summary').textContent = 'Looking for your repository with Symphony...';
+    // a repository opened, a picker opened or a sign-in changed since the lookup began wins over it
+    function chosenMeanwhile() { return state !== was || chosenRepo() || $('dlg-repos').open || !token; }
+    function none() {
+      $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.';
+      openDialog('dlg-repos');
+    }
+    pickerRead().then(function (groups) {
+      if (chosenMeanwhile()) return;
+      // the token renewed while GitHub listed them: the lookup is made once more with the new one
+      if (!groups || token !== asked) { if (again) none(); else openUsualRepo(true); return; }
+      var name = usualRepo(groups);
+      if (!name) { none(); return; }
+      loadRepo(name);
+      say('Opened ' + name + ', your repository with Symphony pushed most recently. Press + Add repository to open another.');
+    }).catch(function () {
+      if (!chosenMeanwhile()) none();
+    });
+  }
   function pickerOpen() {
     $('cp-add-name').value = '';
     clear($('cp-add-answer'));
@@ -3481,14 +3514,16 @@
       heldDrive();
       var name = chosenRepo();
       fillRepoSelect($('cp-repo'), name);
-      // the picker opens by itself where nothing is listed, but not over the Folders tab, which needs no repository
-      if (location.hash === '#repos' || (!name && consoleTab !== 'folders')) setTimeout(function () { openDialog('dlg-repos'); }, 0);
+      if (location.hash === '#repos') setTimeout(function () { openDialog('dlg-repos'); }, 0);
       if (name) loadRepo(name);
       else {
         $('cp-summary').textContent = 'No repository listed yet. Press + Add repository in the side column to pick one.';
         graphReset(GRAPH_NO_REPOSITORY);
         // the Folders tab needs no repository to connect a drive or make one
         if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
+        // a browser that keeps nothing, a new one or a guest window, opens the usual repository, and
+        // the picker opens by itself only where there is none, never over the Folders tab
+        else if (location.hash !== '#repos') openUsualRepo();
       }
     }
     // A drive's return comes back to this page as GitHub's does, so it is read first, and in order:
