@@ -498,7 +498,19 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .folders__crumbs button { padding: 3px 10px; font-size: 0.88rem; margin: 0; }
 /* the drive drawn as Windows' File Explorer: toolbar and address, the folder tree, the items in
    Details or Large icons, the status bar, and the menu a right click opens */
-#tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; min-height: 360px; }
+/* the explorer is the tab: the head is one line, the window fills the rest, and only its tree and
+   its list scroll inside, as Windows' own panes do, never the page */
+#tab-folders .folders__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+#tab-folders .folders__head .console__h { margin: 0; }
+#tab-folders .folders__who { flex: 1 1 auto; margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+#tab-folders .folders__head button { margin: 0; }
+#tab-folders .folders__browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; flex: 1 1 auto; min-height: 240px; }
+/* where the page scrolls (a phone, a short window), the panes keep a height of their own, so a long
+   folder scrolls in its list with its heading held and the status bar in reach */
+@media (max-width: 900px), (max-height: 520px) {
+  #tab-folders .fx { height: min(78vh, 680px); flex: 0 0 auto; }
+}
 #tab-folders .fx__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line); }
 #tab-folders .fx__bar .fx__tool { padding: 3px 9px; margin: 0; font-size: 0.9rem; min-width: 2.2em; }
 #tab-folders .fx__bar .fx__tool[aria-pressed="true"] { background: var(--teal); color: var(--paper); }
@@ -508,14 +520,14 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .fx__search { flex: 0 1 180px; min-width: 120px; margin: 0; padding: 4px 8px; font-size: 0.88rem; }
 #tab-folders .fx__views { display: flex; gap: 2px; }
 #tab-folders .fx__body { display: flex; flex: 1 1 auto; min-height: 0; }
-#tab-folders .fx__tree { flex: 0 0 170px; max-width: 40%; overflow: auto; border-right: 1px solid var(--line); padding: 4px 0; font-size: 0.88rem; max-height: 52vh; }
+#tab-folders .fx__tree { flex: 0 0 170px; max-width: 40%; overflow: auto; border-right: 1px solid var(--line); padding: 4px 0; font-size: 0.88rem; }
 #tab-folders .fx__node { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
 #tab-folders .fx__node button { margin: 0; padding: 2px 4px; font-size: 0.88rem; border: 0; background: none; color: var(--ink); text-align: left; }
 #tab-folders .fx__twisty { width: 1.4em; color: var(--ink-soft) !important; }
 #tab-folders .fx__nodename { display: inline-flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; }
 #tab-folders .fx__current { background: color-mix(in srgb, var(--teal) 22%, transparent); }
 #tab-folders .fx__wait { color: var(--ink-faint); padding: 2px 0; }
-#tab-folders .fx__main { flex: 1 1 auto; overflow: auto; max-height: 52vh; outline: none; padding: 0 2px; }
+#tab-folders .fx__main { flex: 1 1 auto; overflow: auto; min-height: 0; outline: none; padding: 0 2px; }
 #tab-folders .fx__main:focus-visible { box-shadow: inset 0 0 0 2px var(--teal); }
 #tab-folders .fx__main .table-scroll { border: 0; border-radius: 0; margin: 0; box-shadow: none; }
 #tab-folders .fx__details { width: 100%; font-size: 0.88rem; border: 0; margin: 0; }
@@ -526,7 +538,7 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .fx__details th .fx__sort { border: 0; background: none; padding: 2px 0; margin: 0; font-weight: 600; color: var(--ink); }
 #tab-folders .fx__details td { white-space: nowrap; }
 #tab-folders .fx__details td:first-child, #tab-folders .fx__tickh { width: 2.2em; text-align: center; }
-#tab-folders .fx__name { width: 100%; min-width: 10em; white-space: normal !important; overflow-wrap: anywhere; }
+#tab-folders .fx__name { width: 100%; min-width: 14em; white-space: normal !important; overflow-wrap: anywhere; }
 #tab-folders .fx__namewrap { display: flex; align-items: center; gap: 8px; }
 #tab-folders .fx__icon { display: block; }
 .fx__mark { position: relative; display: inline-block; flex: 0 0 auto; line-height: 0; }
@@ -555,22 +567,24 @@ html.graph--held body { overflow: hidden; }
 .folders__picked { margin: 0 0 8px 22px; font-size: 0.95rem; }
 .folders__picked li { margin: 3px 0; }
 .folders__picked:empty { display: none; }
-#tab-folders .folders__picked button { padding: 1px 8px; font-size: 0.8rem; margin: 0 0 0 8px; }
-/* the three steps of the side column, one under the other, each with its own heading */
-#tab-folders .folders__step + .folders__step { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
-#tab-folders .folders__step .console__boxh { margin-bottom: 4px; }
-#tab-folders .folders__step .admin__lead { margin: 0 0 6px; font-size: 0.9rem; }
-#tab-folders .folders__step .admin__bar { margin: 4px 0; }
-#tab-folders .folders__step .admin__bar button, #tab-folders .folders__step label { margin-top: 2px; }
-#tab-folders .folders__step .admin__row { gap: 8px; }
-#tab-folders .folders__step .admin__row button { margin: 0 0 1px; }
-#tab-folders #fd-track-head { overflow-wrap: anywhere; }
-#tab-folders #fd-public-row { margin: 6px 0 0; font-size: 0.86rem; }
-#tab-folders #fd-public-row[hidden] { display: none; }
-#tab-folders .folders__step .admin__row > div:last-child { flex: 0 1 auto; }
-/* a link drawn as an outline button, so the side column fills only the next step's button */
-#tab-folders .folders__button { display: inline-block; font-size: 0.9rem; font-weight: 600; color: var(--teal); background: transparent; border: 1px solid var(--teal); border-radius: 100px; padding: 7px 16px; text-decoration: none; }
-#tab-folders .folders__button:hover { color: var(--teal-bright); border-color: var(--teal-bright); }
+#dlg-track .folders__picked button { padding: 1px 8px; font-size: 0.8rem; margin: 0 0 0 8px; }
+/* the Track dialog's two steps, one under the other, each with its own heading */
+#dlg-track .folders__step + .folders__step { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+#dlg-track .folders__step .console__boxh { margin-bottom: 4px; }
+#dlg-track .folders__step .admin__lead { margin: 0 0 6px; font-size: 0.9rem; }
+#dlg-track .folders__step .admin__bar { margin: 4px 0; }
+#dlg-track .folders__step .admin__bar button, #dlg-track .folders__step label { margin-top: 2px; }
+#dlg-track .folders__step .admin__row { gap: 8px; }
+#dlg-track .folders__step .admin__row button { margin: 0 0 1px; }
+#dlg-track #fd-track-head { overflow-wrap: anywhere; }
+#dlg-track #fd-public-row { margin: 6px 0 0; font-size: 0.86rem; }
+#dlg-track #fd-public-row[hidden] { display: none; }
+#dlg-track .folders__say:empty { display: none; }
+#dlg-track .folders__say { margin: 0 0 8px; }
+#dlg-track .folders__step .admin__row > div:last-child { flex: 0 1 auto; }
+/* a link drawn as an outline button, so only the next step's button is filled */
+#dlg-track .folders__button { display: inline-block; font-size: 0.9rem; font-weight: 600; color: var(--teal); background: transparent; border: 1px solid var(--teal); border-radius: 100px; padding: 7px 16px; text-decoration: none; }
+#dlg-track .folders__button:hover { color: var(--teal-bright); border-color: var(--teal-bright); }
 #tab-folders #fd-connect-note:empty { display: none; }
 
 /* ---------- the cost page ---------- */
