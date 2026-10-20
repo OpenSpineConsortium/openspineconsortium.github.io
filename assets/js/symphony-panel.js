@@ -122,13 +122,14 @@
   function none(parent, text) { return add(parent, el('p', 'admin__none', text)); }
   // the page's note over the screen's foot; a task under way there (msgTask) stays under it, since
   // its work goes on, while a finished one gives way to the new words as any message did
-  function say(text, warn) {
+  function say(text, warn, plainText) {
     var m = $('msg');
     if (!m) return;
     Array.prototype.slice.call(m.childNodes).forEach(function (n) {
       if (!(n.classList && n.classList.contains('msgtask') && n.getAttribute('data-state') === 'live')) m.removeChild(n);
     });
-    if (text) m.insertBefore(rich(el('p', 'msg__note'), text), m.firstChild);
+    // a note that quotes a file's name keeps it as text, since a name can look like an address
+    if (text) m.insertBefore(plainText ? el('p', 'msg__note', text) : rich(el('p', 'msg__note'), text), m.firstChild);
     m.className = warn ? 'admin__box admin__warn' : 'admin__box';
     clearTimeout(noteTimer);
     if (text && !warn) { var note = m.firstChild; noteTimer = setTimeout(function () { fadeNote(note); }, NOTE_MS); }
@@ -8305,7 +8306,39 @@
   var MS_AUTHORIZE = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
   var MS_SCOPE = 'Files.ReadWrite offline_access';
   var MS_REFRESH_DAYS = 90;
-  var DRIVE_PARAMS = ['code', 'state', 'error', 'error_description', 'error_uri', 'session_state', 'admin_consent'];
+  // Globus, the second drive (the owner, 2026-10-20: the WSU grid's files with no VPN and no
+  // download, "as high speed ... as possible", "with as few intermediate steps as possible"): the
+  // page signs in to Globus Auth itself, as a native app with PKCE and no secret, since Globus Auth
+  // answers a browser's token exchange, so no sign-in service route is needed; it lists a
+  // collection's folders through the Transfer API as the person, and a double click opens a file
+  // over the collection's own HTTPS address, where Globus Connect Server streams it to the browser
+  // after one sign-in click there, as Globus's own file manager opens files. The page writes
+  // nothing to a Globus collection: the grid's files are read here, never changed. The client id
+  // is the owner's registration of this page at Globus (app.globus.org/settings/developers, a
+  // "thick client" with this console's address as its redirect); '' until it is registered.
+  var GLOBUS_CLIENT = '';
+  var GLOBUS_AUTH = 'https://auth.globus.org/v2/oauth2';
+  var GLOBUS_TRANSFER = 'https://transfer.api.globus.org/v0.10';
+  var GLOBUS_RS = 'transfer.api.globus.org';
+  var GLOBUS_SCOPE = 'openid profile urn:globus:auth:scope:transfer.api.globus.org:all';
+  // the collections the page knows by name: the first is looked up and connected on Connect Globus,
+  // so the person chooses nothing; its id, once known, lets the one sign-in carry the
+  // collection's consents too, and a blank one costs one more consent page the first time
+  var GLOBUS_KNOWN = [{ name: 'wsugrid#globus', label: 'WSU grid', id: '' }];
+  // how many entries of a folder the list takes; the grid has folders of a million files
+  var GLOBUS_PAGE = 2000;
+  // a preview fetched into the page is this large at most; a bigger file opens in its own tab
+  var GLOBUS_PREVIEW_MAX = 50 * 1024 * 1024;
+  // where a person goes when the collection will not read here: Globus's own file manager, the
+  // consents page and the service's status; and Beethoven, which gives a shell and jobs on the grid,
+  // since Globus moves files only
+  var GLOBUS_MANAGER = 'https://app.globus.org/file-manager';
+  var GLOBUS_CONSENTS = 'https://app.globus.org/settings/consents';
+  var GLOBUS_STATUS = 'https://status.globus.org/';
+  var BEETHOVEN_PAGE = 'https://openspineconsortium.com/beethoven/';
+  var BEETHOVEN_STORE = 'https://chromewebstore.google.com/detail/beethoven/heoopgbkbkfckhhpbkkcgigohfekjicn';
+  var GLOBUS_HOP = 'symphony_panel_globus_hop';
+  var DRIVE_PARAMS =['code', 'state', 'error', 'error_description', 'error_uri', 'session_state', 'admin_consent'];
   // the newest repositories "Find the repository I just made" looks through
   var NEWEST = 10;
   // the folder's shape as drive-sync.yml reads it, one path segment; it ends in no dot or blank,
@@ -8363,7 +8396,12 @@
 
   function driveAddress() { return location.origin + DRIVE_RETURN; }
   function foldersRepo() { return state && state.repo ? state.repo : ''; }
-  function driveName(provider) { return provider === 'microsoft' ? 'OneDrive' : provider === 'google' ? 'Google Drive' : provider; }
+  function driveName(provider) { return provider === 'microsoft' ? 'OneDrive' : provider === 'google' ? 'Google Drive' : provider === 'globus' ? 'Globus' : provider; }
+  // the drive connected now is Globus, read-only here
+  function onGlobus() { return !!(drive && drive.provider === 'globus'); }
+  function canWrite() { return !!drive && !onGlobus(); }
+  // the name at the root of the address and the tree: OneDrive, or the Globus collection's
+  function rootName() { return onGlobus() ? (drive.name || 'Globus') : 'OneDrive'; }
   function dayOf(date) { return date.toISOString().slice(0, 10); }
   function daysAfter(day, days) {
     var d = new Date(day + 'T00:00:00Z');
@@ -8421,32 +8459,79 @@
   }
   // another tab may have connected again since this page read the kept token, so an older one is
   // never written over a newer one
+  // OneDrive's connection is kept under the account's login, as before this page knew a second
+  // drive, so nothing kept earlier is lost; Globus's under the login and its name
+  function keptKey(login, provider) { return String(login || '').toLowerCase() + (provider === 'globus' ? '|globus' : ''); }
   function keepDrive(d) {
     if (!d || !d.login || !d.refresh) return;
-    var m = keptDrives(), had = m[d.login.toLowerCase()];
+    var m = keptDrives(), key = keptKey(d.login, d.provider), had = m[key];
     if (had && had.refresh !== d.refresh && String(had.connected || '') > String(d.connected || '')) return;
-    m[d.login.toLowerCase()] = { provider: d.provider, refresh: d.refresh, connected: d.connected || dayOf(new Date()), owner: d.owner || '', id: d.id || '', type: d.type || '' };
+    var kept = { provider: d.provider, refresh: d.refresh, connected: d.connected || dayOf(new Date()), owner: d.owner || '', id: d.id || '', type: d.type || '' };
+    // Globus gives one refresh token per service, the collection's HTTPS server among them; the
+    // collection's name and address are kept so the tab draws it before any call
+    if (d.provider === 'globus') {
+      kept.tokens = {};
+      Object.keys(d.tokens || {}).forEach(function (rs) { if (d.tokens[rs] && d.tokens[rs].refresh) kept.tokens[rs] = { refresh: d.tokens[rs].refresh }; });
+      kept.name = d.name || '';
+      kept.https = d.https || '';
+      kept.home = d.home || '';
+    }
+    m[key] = kept;
     writeKept(m);
   }
   // given the refresh token, only that one is forgotten, so a tab's dead token never takes
   // another tab's new connection with it
-  function forgetKept(login, refresh) {
-    var m = keptDrives(), key = String(login || '').toLowerCase();
-    if (!key || !m[key] || (refresh && m[key].refresh !== refresh)) return;
+  function forgetKept(login, refresh, provider) {
+    var m = keptDrives(), key = keptKey(login, provider);
+    if (!String(login || '') || !m[key] || (refresh && m[key].refresh !== refresh)) return;
     delete m[key];
     writeKept(m);
   }
   // the account's kept connection, as a drive whose access token is to be fetched on its first call
-  function keptFor(login) {
-    var k = login ? keptDrives()[login.toLowerCase()] : null;
+  function keptFor(login, provider) {
+    var k = login ? keptDrives()[keptKey(login, provider)] : null;
     if (!k || typeof k !== 'object' || typeof k.refresh !== 'string' || !k.refresh || typeof k.provider !== 'string') return null;
+    if (k.provider === 'globus') {
+      var tokens = {};
+      Object.keys(k.tokens && typeof k.tokens === 'object' ? k.tokens : {}).forEach(function (rs) { if (k.tokens[rs] && typeof k.tokens[rs].refresh === 'string') tokens[rs] = { access: '', refresh: k.tokens[rs].refresh, expiresAt: 0 }; });
+      if (!tokens[GLOBUS_RS]) tokens[GLOBUS_RS] = { access: '', refresh: k.refresh, expiresAt: 0 };
+      return { provider: 'globus', access: '', refresh: k.refresh, expiresAt: 0, tokens: tokens, connected: String(k.connected || ''), owner: String(k.owner || ''), id: String(k.id || ''), type: 'globus', name: String(k.name || ''), https: httpsOnly(k.https), home: String(k.home || ''), login: login };
+    }
     var end = daysAfter(String(k.connected || ''), MS_REFRESH_DAYS);
     if (!end || end <= dayOf(new Date())) { forgetKept(login); return null; }
     return { provider: k.provider, access: '', refresh: k.refresh, expiresAt: 0, connected: String(k.connected), owner: String(k.owner || ''), id: String(k.id || ''), type: String(k.type || ''), login: login };
   }
+  // which of the account's kept drives the tab shows, remembered on this browser; with both kept,
+  // the other is a second root in the folder tree, and a press on it switches
+  var KEY_DRIVE_ACTIVE = 'symphony_panel_drive_active';
+  function activeProvider(login) {
+    try { var m = JSON.parse(localStorage.getItem(KEY_DRIVE_ACTIVE) || '{}'); var p = m && m[String(login || '').toLowerCase()]; return p === 'globus' ? 'globus' : 'microsoft'; } catch (e) { return 'microsoft'; }
+  }
+  function setActiveProvider(login, provider) {
+    try { var m = JSON.parse(localStorage.getItem(KEY_DRIVE_ACTIVE) || '{}'); if (!m || typeof m !== 'object') m = {}; m[String(login || '').toLowerCase()] = provider; localStorage.setItem(KEY_DRIVE_ACTIVE, JSON.stringify(m)); } catch (e) { /* the choice holds for this page alone */ }
+  }
+  function otherKept() {
+    if (!drive || !shownLogin) return null;
+    return keptFor(shownLogin, drive.provider === 'globus' ? 'microsoft' : 'globus');
+  }
   function restoreDrive() {
-    if (!drive && token && shownLogin) drive = keptFor(shownLogin);
+    if (!drive && token && shownLogin) {
+      var first = activeProvider(shownLogin);
+      drive = keptFor(shownLogin, first) || keptFor(shownLogin, first === 'globus' ? 'microsoft' : 'globus');
+    }
     return drive;
+  }
+  // the other kept drive takes the tab: the list, the tree and the head are drawn for it
+  function switchDrive(d) {
+    if (!d) return;
+    setActiveProvider(shownLogin, d.provider);
+    drive = d;
+    crumbs = [];
+    resetExplorer();
+    listedFor = d;
+    showConnectState();
+    nameDrive();
+    if (d.provider === 'globus') globusHome(); else listFolder();
   }
   // The connection belongs to the GitHub account the page named when Connect OneDrive was pressed,
   // or, pressed while it named nobody, the first it names after the return; another account named
@@ -8454,7 +8539,7 @@
   // so one person's refresh token is never sealed into another's repository
   function heldDrive() {
     if (!restoreDrive()) return null;
-    if (!drive.login) { drive.login = shownLogin; keepDrive(drive); }
+    if (!drive.login) { drive.login = shownLogin; keepDrive(drive); setActiveProvider(shownLogin, drive.provider === 'globus' ? 'globus' : 'microsoft'); }
     else if (shownLogin && drive.login !== shownLogin) { dropDrive(); return restoreDrive(); }
     return drive;
   }
@@ -8462,9 +8547,14 @@
   // saved stay, since they are the repositories'
   function forgetDrive() {
     var d = drive;
-    forgetKept(d && d.login || shownLogin);
+    var globus = !!(d && d.provider === 'globus');
+    forgetKept(d && d.login || shownLogin, '', globus ? 'globus' : 'microsoft');
     dropDrive();
-    say('OneDrive is forgotten on this browser. The repositories that track it keep their secret until you delete it there or withdraw Symphony\'s access at Microsoft.');
+    if (globus) say('Globus is forgotten on this browser. Its consent stays at Globus until you withdraw it at ' + GLOBUS_CONSENTS + '.');
+    else say('OneDrive is forgotten on this browser. The repositories that track it keep their secret until you delete it there or withdraw Symphony\'s access at Microsoft.');
+    // the other kept drive, if any, takes the tab
+    var next = restoreDrive();
+    if (next) { listedFor = null; openFolders(); }
   }
   // the drive, what was ticked in it and its list go with the sign-in they were made under
   function dropDrive() {
@@ -8500,22 +8590,33 @@
     drawConnectState();
     // the drives' dialog says why OneDrive cannot be pressed, since the head is behind it while it is open
     var said = $('fd-cloud-note');
-    if (said) said.textContent = $('fd-connect').disabled ? $('fd-connect-note').textContent : '';
+    if (said) said.textContent = $('fd-connect').disabled && !onGlobus() ? $('fd-connect-note').textContent : '';
+    drawGlobusTile();
   }
   function drawConnectState() {
     var button = $('fd-connect'), note = $('fd-connect-note');
     // the next step's button is the one filled: Connect until a drive is held, then Track
     heldDrive();
     button.classList.toggle('console__primary', !drive);
-    $('fd-track').classList.toggle('console__primary', !!drive);
-    note.classList.toggle('folders__who--on', !!drive);
+    $('fd-track').classList.toggle('console__primary', !!drive && !onGlobus());
+    note.classList.toggle('folders__who--on', !!drive && !onGlobus());
+    note.classList.toggle('folders__who--globus', onGlobus());
     // with no drive the tab's own tile is the one + Add; the head's comes once one is connected
     $('fd-add').hidden = !drive;
     $('fd-forget').hidden = !drive;
+    $('fd-forget').textContent = 'Forget ' + (drive ? driveName(drive.provider) : 'OneDrive');
+    var other = otherKept();
+    if (drive && drive.provider === 'globus') {
+      var held = !signinAvailable() ? 'Connecting OneDrive goes through the sign-in service, which the page does not name yet.' : driveConfig && (!driveConfig.microsoft || !driveConfig.microsoft.client_id) ? 'The owner has not set OneDrive up on the sign-in service yet.' : '';
+      button.disabled = !!held;
+      button.textContent = other ? 'Connect OneDrive again' : 'Connect OneDrive';
+      note.textContent = 'Connected to Globus' + (drive.name ? ', ' + drive.name : '') + (drive.owner ? ', as ' + drive.owner : '') + ', read-only, kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' OneDrive is connected too: press it in the folder tree.' : '') + (held ? ' ' + held : '');
+      return;
+    }
     if (drive) {
       button.disabled = false;
       button.textContent = 'Connect OneDrive again';
-      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', kept on this browser for ' + (drive.login || 'this GitHub account') + '.';
+      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' Globus is connected too: press ' + (other.name || 'Globus') + ' in the folder tree.' : '');
       return;
     }
     button.textContent = 'Connect OneDrive';
@@ -8524,6 +8625,17 @@
     if (!driveConfig.microsoft || !driveConfig.microsoft.client_id) { button.disabled = true; note.textContent = 'The owner has not set OneDrive up on the sign-in service yet, so this button cannot be pressed.'; return; }
     button.disabled = false;
     note.textContent = '';
+  }
+  // the Globus tile needs no service: it is pressable once the page is registered at Globus
+  function drawGlobusTile() {
+    var tile = $('fd-globus');
+    if (!tile) return;
+    var sub = tile.querySelector('.clouds__sub');
+    var connected = onGlobus() || !!(shownLogin && keptFor(shownLogin, 'globus'));
+    tile.disabled = !GLOBUS_CLIENT;
+    var word = tile.querySelector('.clouds__name');
+    if (word) word.textContent = connected ? 'Connect Globus again' : 'Connect Globus';
+    if (sub) sub.textContent = !GLOBUS_CLIENT ? 'Not registered at Globus yet' : (GLOBUS_KNOWN[0] ? GLOBUS_KNOWN[0].label + ' (' + GLOBUS_KNOWN[0].name + ')' : 'A Globus collection');
   }
   // asked once a load, when the tab first opens; a failed ask is asked again on the next opening
   // or by Connect OneDrive
@@ -8589,11 +8701,13 @@
     forgetDriveState();
     stripDriveParams();
     restoreQuery(kept.back);
+    var name = kept.provider === 'globus' ? 'Globus' : 'OneDrive';
     if (!ours) {
-      say('The OneDrive connection did not come back the way it left (its state differs), so nothing was exchanged; press Connect OneDrive to start it again.', true);
+      say('The ' + name + ' connection did not come back the way it left (its state differs), so nothing was exchanged; press Connect ' + name + ' to start it again.', true);
       return Promise.resolve(true);
     }
-    if (error) { say('Microsoft did not connect the drive (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Connect OneDrive to try again.', true); return Promise.resolve(true); }
+    if (error) { say((kept.provider === 'globus' ? 'Globus' : 'Microsoft') + ' did not connect the drive (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Connect ' + name + ' to try again.', true); return Promise.resolve(true); }
+    if (kept.provider === 'globus') return globusReturn(kept, code);
     if (!signinAvailable()) return Promise.resolve(true);
     say('Connecting OneDrive...');
     return exchange('/drive/connect', { provider: kept.provider, code: code, code_verifier: kept.verifier, redirect_uri: driveAddress() }).then(function (answer) {
@@ -8605,10 +8719,280 @@
       return true;
     }).catch(function (e) { say(e.message + ' Press Connect OneDrive to try again.', true); return true; });
   }
+  /* ---------- Globus: the sign-in, the tokens, the Transfer API ---------- */
+  // Connect Globus: PKCE straight to Globus Auth, the pending state kept beside OneDrive's under
+  // the same key, since one connection is pending at a time; the collection's consents ride on
+  // the same sign-in where its id is known, else the first list asks for them (globusConsent)
+  function startGlobusConnect(scopes, collection) {
+    if (!GLOBUS_CLIENT) { say('This page is not registered at Globus yet, so Connect Globus cannot be pressed.', true); return; }
+    if (!window.crypto || !crypto.subtle || !crypto.getRandomValues) { say('This browser cannot make the connection\'s secret (no Web Crypto).', true); return; }
+    var tile = $('fd-globus');
+    if (tile) tile.disabled = true;
+    var state = randomHex(16);
+    var verifier = randomHex(32);
+    var known = collection || (drive && drive.provider === 'globus' && drive.id) || (GLOBUS_KNOWN[0] && GLOBUS_KNOWN[0].id) || '';
+    var scope = scopes || (known ? globusScopes(known) : GLOBUS_SCOPE);
+    crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)).then(function (hash) {
+      var challenge = base64url(new Uint8Array(hash));
+      try {
+        sessionStorage.setItem(KEY_DRIVE, JSON.stringify({ provider: 'globus', state: state, verifier: verifier, back: location.search, login: shownLogin, collection: known, scope: scope }));
+      } catch (e) { if (tile) tile.disabled = false; say('This browser refuses session storage, which the connection needs to come back.', true); return; }
+      location.href = GLOBUS_AUTH + '/authorize?client_id=' + encodeURIComponent(GLOBUS_CLIENT)
+        + '&response_type=code&redirect_uri=' + encodeURIComponent(driveAddress())
+        + '&scope=' + encodeURIComponent(scope) + '&state=' + encodeURIComponent(state)
+        + '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256&access_type=offline';
+    }).catch(function (e) { if (tile) tile.disabled = false; say('The connection could not start: ' + e.message, true); });
+  }
+  // the scopes a collection needs: the Transfer API with the collection's data_access as its
+  // dependent, and the collection's HTTPS server for previews fetched into the page
+  function globusScopes(collection) {
+    return 'openid profile urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/' + collection + '/data_access] https://auth.globus.org/scopes/' + collection + '/https';
+  }
+  // a call to Globus Auth's token endpoint, form-encoded as it takes, with no secret
+  function globusTokenCall(fields, query) {
+    var body = Object.keys(fields).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(fields[k]); }).join('&');
+    return fetch(GLOBUS_AUTH + '/token' + (query || ''), { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' }, body: body, signal: within(30000) })
+      .catch(function () { throw new Error('Globus Auth could not be reached.'); })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          var data = null;
+          try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
+          if (!r.ok || !data || typeof data !== 'object') {
+            var e = new Error('Globus Auth answered ' + r.status + (data && data.error ? ' (' + String(data.error).slice(0, 64) + (data.error_description ? ': ' + String(data.error_description).slice(0, 200) : '') + ')' : '') + '.');
+            e.code = data && data.error ? String(data.error) : '';
+            throw e;
+          }
+          return data;
+        });
+      });
+  }
+  // every token a Globus Auth answer holds, by the service it is for: the first is the sign-in's
+  // own (openid), the rest ride in other_tokens
+  function globusTokensOf(answer, into) {
+    var tokens = into || {};
+    [answer].concat(Array.isArray(answer.other_tokens) ? answer.other_tokens : []).forEach(function (t) {
+      if (!t || typeof t !== 'object' || typeof t.resource_server !== 'string' || typeof t.access_token !== 'string') return;
+      var had = tokens[t.resource_server] || {};
+      tokens[t.resource_server] = { access: t.access_token, refresh: typeof t.refresh_token === 'string' && t.refresh_token ? t.refresh_token : (had.refresh || ''), expiresAt: Date.now() + (Number(t.expires_in) || 172800) * 1000 };
+    });
+    return tokens;
+  }
+  // the return from Globus Auth: the code exchanged here, in the page, then the collection found
+  // and the list opened at the account's home folder on it
+  function globusReturn(kept, code) {
+    say('Connecting Globus...');
+    return globusTokenCall({ grant_type: 'authorization_code', code: code, client_id: GLOBUS_CLIENT, code_verifier: kept.verifier, redirect_uri: driveAddress() }, '?include_consented_scopes=true').then(function (answer) {
+      // a consent asked for after the first connection keeps the drive's other tokens
+      var was = drive && drive.provider === 'globus' ? drive : (kept.login ? keptFor(kept.login, 'globus') : null);
+      var tokens = globusTokensOf(answer, was ? was.tokens : {});
+      if (!tokens[GLOBUS_RS]) throw new Error('Globus Auth gave no token for the Transfer API.');
+      if (!tokens[GLOBUS_RS].refresh) throw new Error('Globus Auth gave no refresh token, so the connection could not be kept: the sign-in did not include keeping access when you are away.');
+      drive = { provider: 'globus', access: '', refresh: tokens[GLOBUS_RS].refresh, expiresAt: 0, tokens: tokens, connected: was && was.connected ? was.connected : dayOf(new Date()), owner: was ? was.owner : '', id: kept.collection || (was ? was.id : ''), type: 'globus', name: was ? was.name : '', https: was ? was.https : '', home: was ? was.home : '', login: typeof kept.login === 'string' ? kept.login : '', fresh: true };
+      keepDrive(drive);
+      setActiveProvider(drive.login || shownLogin, 'globus');
+      say('Globus is connected, and stays connected on this browser for your GitHub account until you press Forget Globus.');
+      return true;
+    }).catch(function (e) { say(e.message + ' Press Connect Globus to try again.', true); return true; });
+  }
+  // the access token for one Globus service, renewed with its own refresh token when its two
+  // days are nearly up; Globus refusing the refresh token ends the kept connection
+  function globusAccess(rs) {
+    var d = heldDrive();
+    if (!d || d.provider !== 'globus') return Promise.reject(new Error('Globus is not connected to this page: press Connect Globus first.'));
+    var t = d.tokens[rs];
+    if (!t) return Promise.reject(plain('no token for ' + rs));
+    if (t.access && Date.now() < t.expiresAt - 60000) return Promise.resolve(t.access);
+    if (!t.refresh) return Promise.reject(plain('no refresh token for ' + rs));
+    if (t.renewing) return t.renewing;
+    t.renewing = globusTokenCall({ grant_type: 'refresh_token', refresh_token: t.refresh, client_id: GLOBUS_CLIENT }).catch(function (e) {
+      if (e.code === 'invalid_grant' && rs === GLOBUS_RS) {
+        var words = 'Globus no longer takes the connection kept on this browser (' + e.message + '); press Connect Globus again.';
+        forgetKept(d.login, d.refresh, 'globus');
+        if (drive === d) { dropDrive(); say(words, true); }
+        throw new Error(words);
+      }
+      // a consent withdrawn for one service alone (the collection's HTTPS, the sign-in's own)
+      // loses that token; the Transfer connection goes on
+      if (e.code === 'invalid_grant') { delete d.tokens[rs]; keepDrive(d); throw plain('Globus no longer takes the token for ' + rs + ' kept here; its consent is asked for again on the next press.'); }
+      throw e;
+    }).then(function (answer) {
+      if (drive !== d) throw new Error('The connection changed while its token was renewed.');
+      globusTokensOf(answer, d.tokens);
+      if (!d.tokens[rs] || !d.tokens[rs].access) throw new Error('Globus Auth answered without an access token for ' + rs + '.');
+      keepDrive(d);
+      return d.tokens[rs].access;
+    });
+    var done = function () { t.renewing = null; };
+    t.renewing.then(done, done);
+    return t.renewing;
+  }
+  // a read of the Transfer API as the person; an error carries Globus's code, and ConsentRequired
+  // its required_scopes
+  function transfer(path) {
+    return globusAccess(GLOBUS_RS).then(function (access) {
+      return fetch(GLOBUS_TRANSFER + path, { headers: { 'Authorization': 'Bearer ' + access, 'Accept': 'application/json' }, redirect: 'error', signal: within(60000) }).catch(function () { throw new Error('The Globus Transfer API could not be reached.'); });
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var data = null;
+        try { data = t ? JSON.parse(t) : null; } catch (e) { data = null; }
+        if (!r.ok) {
+          var e = new Error('Globus answered ' + r.status + (data && data.message ? ': ' + String(data.message).slice(0, 200) : '') + '.');
+          e.status = r.status;
+          e.code = data && typeof data.code === 'string' ? data.code : '';
+          e.scopes = data && Array.isArray(data.required_scopes) ? data.required_scopes.filter(function (s) { return typeof s === 'string'; }) : [];
+          if (r.status === 401) e.message = 'Globus refused the connection\'s token (401); press Connect Globus again.';
+          throw e;
+        }
+        return data || {};
+      });
+    });
+  }
+  // the collection, by its id or by the known name: its address for files and its home folder
+  function globusSetup() {
+    var d = drive;
+    var found = d.id ? Promise.resolve(d.id) : transfer('/endpoint_search?filter_scope=all&limit=5&filter_fulltext=' + encodeURIComponent(GLOBUS_KNOWN[0] ? GLOBUS_KNOWN[0].name : '')).then(function (r) {
+      var want = GLOBUS_KNOWN[0] ? GLOBUS_KNOWN[0].name.toLowerCase() : '';
+      var hits = Array.isArray(r.DATA) ? r.DATA.filter(function (c) { return c && typeof c.id === 'string'; }) : [];
+      // the name must match exactly, in either of the names Globus gives: the search ranks by
+      // words, and its first hit can be a stranger's collection with a similar name
+      var hit = hits.filter(function (c) { return String(c.display_name || '').toLowerCase() === want || String(c.canonical_name || '').toLowerCase() === want; })[0];
+      if (!hit) throw plain('Globus found no collection named ' + (GLOBUS_KNOWN[0] ? GLOBUS_KNOWN[0].name : '') + ' that you may see.');
+      return hit.id;
+    });
+    return found.then(function (id) {
+      return transfer('/endpoint/' + encodeURIComponent(id)).then(function (c) {
+        if (drive !== d) return;
+        d.id = id;
+        d.name = String(c.display_name || (GLOBUS_KNOWN[0] && GLOBUS_KNOWN[0].label) || 'Globus');
+        d.https = httpsOnly(c.https_server);
+        d.home = typeof c.default_directory === 'string' ? c.default_directory : '';
+        keepDrive(d);
+        showConnectState();
+      });
+    });
+  }
+  // a Globus folder path as the tab keeps it: absolute, ending in a slash
+  function globusPath(p) {
+    p = String(p || '');
+    if (!p) return '/';
+    if (p.charAt(0) !== '/') p = '/' + p;
+    return p.charAt(p.length - 1) === '/' ? p : p + '/';
+  }
+  function globusCrumbs(abs) {
+    var out = [], so = '/';
+    globusPath(abs).split('/').filter(Boolean).forEach(function (seg) { so += seg + '/'; out.push({ id: so, name: seg }); });
+    return out;
+  }
+  // the account's home folder on the collection opened, the path above it walked for Up; a
+  // folder the grid will not show opens the root instead
+  function globusHome() {
+    var d = drive;
+    explorer.items = [];
+    explorer.loading = true;
+    drawBrowser();
+    return (d.id && d.name ? Promise.resolve() : globusSetup()).then(function () {
+      if (drive !== d) return;
+      var home = d.home && d.home !== '/~/' ? d.home : '';
+      return (home ? Promise.resolve(home) : transfer('/operation/endpoint/' + encodeURIComponent(d.id) + '/ls?limit=1').then(function (r) { return typeof r.absolute_path === 'string' ? r.absolute_path : '/'; }).catch(function (e) { if (e.code === 'ConsentRequired') throw e; return '/'; })).then(function (abs) {
+        if (drive !== d) return;
+        d.home = globusPath(abs);
+        keepDrive(d);
+        crumbs = globusCrumbs(abs);
+        explorer.back = [];
+        listFolder();
+      });
+    }).catch(function (e) {
+      if (drive !== d) return;
+      var main = $('fd-main');
+      if (e.code === 'ConsentRequired') { globusConsent(e.scopes); return; }
+      if (main) { clear(main); globusTrouble(main, 'The collection could not be read: ' + e.message); }
+    });
+  }
+  // what to press when the collection will not read here: the same folder in Globus's own file
+  // manager, Connect Globus again, the consents, Globus's status; and Beethoven for a shell or a
+  // job on the grid, which Globus, a file service, never gives
+  function globusTrouble(main, why) {
+    var d = drive, at = here() && !here().search ? String(here().id || '') : (d && d.home) || '/';
+    var p = el('p', 'admin__none fx__trouble');
+    if (why) add(p, el('strong', '', why), ' ');
+    add(p, 'Try it in ', link(GLOBUS_MANAGER + (d && d.id ? '?origin_id=' + encodeURIComponent(d.id) + '&origin_path=' + encodeURIComponent(at) : ''), 'Globus\'s own file manager'), ', which says what the collection answers; ');
+    add(p, btn('Connect Globus again', true, function () { startGlobusConnect('', d && d.id); }), ' for a fresh sign-in; ');
+    add(p, 'check ', link(GLOBUS_CONSENTS, 'your Globus consents'), ' and ', link(GLOBUS_STATUS, 'Globus\'s status'), '.');
+    main.appendChild(p);
+    var q = el('p', 'admin__none fx__trouble');
+    add(q, 'Globus moves and streams files only. A shell, a job or Claude Code on the grid is Beethoven\'s: ', link(BEETHOVEN_PAGE, 'what Beethoven does'), ', ', link(BEETHOVEN_STORE, 'install Beethoven in Chrome'), ' (an approved account), then press its button in the toolbar; the portal itself is ', link('https://ondemand.grid.wayne.edu', 'OnDemand'), ' on the VPN.');
+    main.appendChild(q);
+  }
+  // the collection asks for a consent of its own (data_access, on a mapped collection): one more
+  // sign-in page, at once after Connect Globus, else on a press, so the page never leaves on its own
+  function globusConsent(scopes) {
+    var d = drive;
+    var asked = (scopes && scopes.length ? scopes : []).concat(d.id ? ['https://auth.globus.org/scopes/' + d.id + '/https'] : []);
+    var scope = ('openid profile ' + asked.filter(function (s, i) { return asked.indexOf(s) === i; }).join(' ')).trim();
+    var hopped = '';
+    try { hopped = sessionStorage.getItem(GLOBUS_HOP) || ''; } catch (e) { hopped = 'unknown'; }
+    if (d.fresh && hopped !== String(d.id || 'none')) {
+      d.fresh = false;
+      try { sessionStorage.setItem(GLOBUS_HOP, String(d.id || 'none')); } catch (e) { /* the button below is the way then */ }
+      startGlobusConnect(scope, d.id);
+      return;
+    }
+    d.fresh = false;
+    var main = $('fd-main');
+    if (!main) return;
+    clear(main);
+    var p = none(main, (d.name || 'The collection') + ' needs your consent before Globus lists it for this page' + (hopped === String(d.id || 'none') ? ', and the consent Globus took a moment ago did not cover it' : '') + '. ');
+    add(p, btn('Allow it at Globus', false, function () { startGlobusConnect(scope, d.id); }));
+    globusTrouble(main, '');
+  }
+  // one folder of the collection as the Transfer API lists it, in the list's own shape: a folder's
+  // id is its path with a slash at the end, a file's its path, and a file's address is the
+  // collection's HTTPS server's; a search is the folder's own entries filtered by name
+  function globusList(folder, filter) {
+    var d = drive;
+    // the tree asks for the root's folders while the collection is still being looked up
+    if (!d.id) return Promise.resolve([]);
+    var abs = globusPath(folder);
+    var q = '/operation/endpoint/' + encodeURIComponent(d.id) + '/ls?path=' + encodeURIComponent(abs) + '&show_hidden=false&limit=' + GLOBUS_PAGE;
+    if (filter) q += '&filter=' + encodeURIComponent('name:~*' + filter.replace(/[*?\/,]/g, ' ').trim() + '*');
+    return transfer(q).then(function (r) {
+      try { sessionStorage.removeItem(GLOBUS_HOP); } catch (e) { /* nothing kept */ }
+      var at = globusPath(typeof r.absolute_path === 'string' && r.absolute_path ? r.absolute_path : abs);
+      var rows = Array.isArray(r.DATA) ? r.DATA.filter(function (f) { return f && typeof f === 'object' && typeof f.name === 'string' && f.name; }) : [];
+      var out = rows.map(function (f) { return globusItem(f, at, d); });
+      out.cut = rows.length >= GLOBUS_PAGE || (typeof r.total === 'number' && r.total > rows.length);
+      return out;
+    });
+  }
+  function globusItem(f, at, d) {
+    var dir = f.type === 'dir';
+    var when = typeof f.last_modified === 'string' ? f.last_modified.replace(' ', 'T') : '';
+    var it = { id: dir ? at + f.name + '/' : at + f.name, name: f.name, size: typeof f.size === 'number' && !dir ? f.size : undefined, lastModifiedDateTime: when, parentReference: { id: at, path: '/drive/root:' + at.split('/').map(encodeURIComponent).join('/').replace(/\/$/, '') }, webUrl: d.https ? d.https + at.split('/').map(encodeURIComponent).join('/') + encodeURIComponent(f.name) : '', globus: { type: String(f.type || ''), permissions: String(f.permissions || ''), user: f.user == null ? '' : String(f.user), group: f.group == null ? '' : String(f.group), link: f.link_target == null ? '' : String(f.link_target) } };
+    if (dir) it.folder = {};
+    return it;
+  }
+  // a file of the collection fetched into the page with the collection's own token, for the
+  // preview pane; the server must allow the page's origin, which the double click never needs
+  function globusFetch(it) {
+    var d = drive;
+    if (!d || !d.https || !it.webUrl) return Promise.reject(plain('no address'));
+    if (typeof it.size === 'number' && it.size > GLOBUS_PREVIEW_MAX) return Promise.reject(plain('too large to preview here'));
+    // the collection's own token: asked for on the sign-in where the collection was known, else
+    // on a press (the preview pane offers it), since the first sign-in may have known no collection
+    if (!d.tokens[d.id]) { var missing = plain('this page is not yet allowed to fetch the collection\'s files'); missing.code = 'NoCollectionToken'; return Promise.reject(missing); }
+    return globusAccess(d.id).then(function (access) {
+      return fetch(it.webUrl, { headers: { 'Authorization': 'Bearer ' + access }, redirect: 'error', signal: within(120000) });
+    }).then(function (r) {
+      if (!r.ok) throw plain('the collection answered ' + r.status);
+      return r.blob();
+    });
+  }
+
   // the access token for a Graph call, renewed through the service when its hour is nearly up
   function driveAccess() {
     var d = heldDrive();
     if (!d) return Promise.reject(new Error('No drive is connected to this page: press Connect OneDrive first.'));
+    if (d.provider === 'globus') return Promise.reject(new Error('The drive connected is Globus, which Microsoft Graph does not reach.'));
     if (Date.now() < d.expiresAt - 60000) return Promise.resolve(d.access);
     // the calls that find the token run out together, as the drive's name and its list do after a
     // reload, share one renewal
@@ -8674,6 +9058,17 @@
   }
   function nameDrive() {
     var asked = drive;
+    if (asked && asked.provider === 'globus') {
+      // who is signed in at Globus, a nicety from Globus Auth's own userinfo
+      return globusAccess('auth.globus.org').then(function (access) {
+        return fetch(GLOBUS_AUTH + '/userinfo', { headers: { 'Authorization': 'Bearer ' + access, 'Accept': 'application/json' }, signal: within(20000) }).then(function (r) { return r.ok ? r.json() : {}; });
+      }).then(function (u) {
+        if (!drive || drive !== asked) return;
+        drive.owner = String(u.preferred_username || u.name || '');
+        keepDrive(drive);
+        showConnectState();
+      }).catch(function () { /* the name is a nicety; the list says the rest */ });
+    }
     return graph('/me/drive?$select=id,driveType,owner').then(function (d) {
       if (!drive || drive !== asked) return;
       var who = d.owner && d.owner.user ? d.owner.user.displayName : '';
@@ -8811,8 +9206,11 @@
   }
   function openInBrowser(it) {
     var url = httpsOnly(it.webUrl);
-    if (!url) { say('OneDrive gave no address for ' + it.name + '.', true); return; }
+    if (!url) { say((onGlobus() ? 'The collection has no HTTPS address, so ' + it.name + ' cannot be opened in the browser; Globus\'s own file manager transfers it instead.' : 'OneDrive gave no address for ' + it.name + '.'), true, true); return; }
     window.open(url, '_blank', 'noopener');
+    // the collection's server asks for a Globus sign-in in the new tab the first time, then
+    // remembers it; the file streams from there, with no download
+    if (onGlobus()) say('Opening ' + it.name + ' from ' + rootName() + ' in a new tab. The first time, Globus asks you to sign in there; after that files open at once.', false, true);
   }
   function openInApp(it) {
     var app = officeApp(it), url = app ? officeAddress(it) : '';
@@ -8824,13 +9222,14 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
-    say('Opening ' + it.name + ' in ' + appName(app) + '. If nothing opens, the app is not installed here: right-click the file and choose Open in the browser.');
+    say('Opening ' + it.name + ' in ' + appName(app) + '. If nothing opens, the app is not installed here: right-click the file and choose Open in the browser.', false, true);
   }
   function appName(app) { return { 'ms-word': 'Word', 'ms-excel': 'Excel', 'ms-powerpoint': 'PowerPoint', 'ms-visio': 'Visio' }[app] || 'its app'; }
   function openItem(it) {
     // a folder found by a search opens on its own, since the folders above it were never walked
+    if (it.folder && onGlobus()) { go(globusCrumbs(String(it.id))); return; }
     if (it.folder) { go((searching() ? [] : crumbs).concat([{ id: String(it.id), name: String(it.name || ''), url: httpsOnly(it.webUrl) }])); return; }
-    if (officeApp(it)) openInApp(it); else openInBrowser(it);
+    if (officeApp(it) && canWrite()) openInApp(it); else openInBrowser(it);
   }
 
   // a mark for an item's kind, drawn here, so no picture comes from anywhere; its letters are the
@@ -8890,6 +9289,7 @@
     return id ? '/me/drive/items/' + encodeURIComponent(id) + '/children' + select : '/me/drive/root/children' + select;
   }
   function readChildren(id) {
+    if (onGlobus()) return readList(id || 'root', function () { return globusList(id || '/', ''); });
     return readList(id || 'root', function () { return listAddress(id); });
   }
   // the drive's own search, which looks through every folder, names and words inside the files alike
@@ -8900,11 +9300,12 @@
     var have = cachedRead(key);
     if (have) return have;
     var d = drive;
-    var read = graphChildren(address()).catch(function (e) {
+    // on Globus the address function is the read itself; on OneDrive it names Graph's page
+    var read = (onGlobus() ? address() : graphChildren(address()).catch(function (e) {
       if (e.status !== 400 || !explorer.thumbs || key.indexOf('search:') === 0) throw e;
       explorer.thumbs = false;
       return graphChildren(address());
-    }).then(function (items) {
+    })).then(function (items) {
       var kept = items.filter(function (it) { return it && typeof it === 'object'; });
       kept.cut = !!items.cut;
       // the list a folder's own id names, the root's among them, so a write found by its item's
@@ -8926,10 +9327,10 @@
   // where the list is: a folder (its id, '' for the root), or the results of a search of the drive
   function here() { return crumbs.length ? crumbs[crumbs.length - 1] : null; }
   function searching() { var h = here(); return !!(h && h.search); }
-  function hereKey() { var h = here(); return !h ? 'root' : h.search ? 'search:' + h.search : h.id; }
+  function hereKey() { var h = here(); return !h ? 'root' : h.search ? 'search:' + (h.id || '') + ':' + h.search : h.id; }
   // the folder new things go into: the one shown, or none while search results are shown
   function hereFolder() { return searching() ? null : (here() ? here().id : ''); }
-  function hereName() { var h = here(); return h ? h.name : 'OneDrive'; }
+  function hereName() { var h = here(); return h ? h.name : rootName(); }
   // moving to a folder: the path walked is kept for Back, and Forward is cleared, as Explorer does
   // on a phone the preview covers the list, so moving to another folder closes it
   function narrow() { return window.matchMedia && window.matchMedia('(max-width: 900px)').matches; }
@@ -8949,6 +9350,10 @@
     q = String(q || '').trim();
     if (!q) return;
     var base = crumbs.filter(function (c) { return !c.search; });
+    // on Globus a path typed into the box opens that folder, and a word looks through the folder
+    // shown by name, since the Transfer API lists one folder at a time
+    if (onGlobus() && q.charAt(0) === '/') { go(globusCrumbs(q)); return; }
+    if (onGlobus()) { go(base.concat([{ id: base.length ? base[base.length - 1].id : '/', search: q, name: 'Names matching "' + q + '" in ' + (base.length ? base[base.length - 1].name : rootName()) }])); return; }
     go(base.concat([{ id: '', search: q, name: 'Search results for "' + q + '"' }]));
   }
 
@@ -8962,15 +9367,16 @@
   }
   // the command bar's buttons, each with what it needs to be pressed, set again on every change of
   // the selection, the clipboard or the folder
+  // the verbs that write stay off on a drive the page reads only (Globus)
   var COMMANDS = [
-    ['new', 'New folder', 'New folder (Ctrl+Shift+N or Ctrl+Alt+N)', function () { return hereFolder() !== null; }, function () { newFolder(); }],
-    ['upload', 'Upload', 'Upload files into this folder, or drop them on the list', function () { return hereFolder() !== null; }, function () { pickUpload(hereFolder()); }],
-    ['cut', 'Cut', 'Cut (Ctrl+X)', function (n) { return n > 0; }, function () { clip('cut'); }],
-    ['copy', 'Copy', 'Copy (Ctrl+C)', function (n) { return n > 0; }, function () { clip('copy'); }],
-    ['paste', 'Paste', 'Paste (Ctrl+V)', function () { return !!explorer.clip && hereFolder() !== null; }, function () { paste(hereFolder()); }],
-    ['rename', 'Rename', 'Rename (F2)', function (n) { return n === 1; }, function () { startRename(selectedItems()[0]); }],
-    ['share', 'Share', 'Make a sharing link', function (n) { return n === 1; }, function () { shareDialog(selectedItems()[0]); }],
-    ['delete', 'Delete', 'Delete to the recycle bin (Delete)', function (n) { return n > 0; }, function () { askDelete(selectedItems()); }],
+    ['new', 'New folder', 'New folder (Ctrl+Shift+N or Ctrl+Alt+N)', function () { return canWrite() && hereFolder() !== null; }, function () { newFolder(); }],
+    ['upload', 'Upload', 'Upload files into this folder, or drop them on the list', function () { return canWrite() && hereFolder() !== null; }, function () { pickUpload(hereFolder()); }],
+    ['cut', 'Cut', 'Cut (Ctrl+X)', function (n) { return canWrite() && n > 0; }, function () { clip('cut'); }],
+    ['copy', 'Copy', 'Copy (Ctrl+C)', function (n) { return canWrite() && n > 0; }, function () { clip('copy'); }],
+    ['paste', 'Paste', 'Paste (Ctrl+V)', function () { return canWrite() && !!explorer.clip && hereFolder() !== null; }, function () { paste(hereFolder()); }],
+    ['rename', 'Rename', 'Rename (F2)', function (n) { return canWrite() && n === 1; }, function () { startRename(selectedItems()[0]); }],
+    ['share', 'Share', 'Make a sharing link', function (n) { return canWrite() && n === 1; }, function () { shareDialog(selectedItems()[0]); }],
+    ['delete', 'Delete', 'Delete to the recycle bin (Delete)', function (n) { return canWrite() && n > 0; }, function () { askDelete(selectedItems()); }],
     ['download', 'Download', 'Download the selected files', function (n) { return n > 0 && selectedItems().some(function (it) { return !it.folder; }); }, function () { download(selectedItems()); }],
     ['props', 'Properties', 'Properties (Alt+Enter)', function (n) { return n > 0; }, function () { properties(selectedItems()); }]
   ];
@@ -9004,19 +9410,19 @@
       toolButton('↻', 'Refresh (F5)', true, refresh));
     var address = el('nav', 'fx__address folders__crumbs');
     address.setAttribute('aria-label', 'Where you are in the drive');
-    add(address, btn('OneDrive', true, function () { if (crumbs.length) go([]); }));
+    add(address, btn(rootName(), true, function () { if (crumbs.length) go([]); }));
     crumbs.forEach(function (c, i) {
       var b = btn(c.name, true, function () { if (i < crumbs.length - 1) go(crumbs.slice(0, i + 1)); });
-      if (!c.search) dropTarget(b, c.id);
+      if (!c.search && canWrite()) dropTarget(b, c.id);
       add(address, el('span', 'fx__sep', '›'), b);
     });
     bar.appendChild(address);
     var search = el('input', 'fx__search');
     search.type = 'search';
     search.id = 'fd-search';
-    search.placeholder = 'Search ' + (searching() ? 'OneDrive' : hereName());
-    search.title = 'Typing narrows this folder; Enter searches all of OneDrive';
-    search.setAttribute('aria-label', search.placeholder + '; Enter searches all of OneDrive');
+    search.placeholder = 'Search ' + (searching() ? rootName() : hereName());
+    search.title = onGlobus() ? 'Typing narrows this folder; Enter asks the collection for the names, or opens a path that starts with /' : 'Typing narrows this folder; Enter searches all of OneDrive';
+    search.setAttribute('aria-label', search.placeholder + (onGlobus() ? '; Enter asks the collection, or opens a path' : '; Enter searches all of OneDrive'));
     search.value = explorer.filter;
     search.addEventListener('input', function () { explorer.filter = search.value; drawItems(); });
     search.addEventListener('keydown', function (ev) {
@@ -9057,8 +9463,8 @@
     main.addEventListener('keydown', onExplorerKey);
     main.addEventListener('contextmenu', function (ev) { if (ev.target === main || ev.target.classList.contains('fx__grid') || ev.target.classList.contains('admin__none')) { ev.preventDefault(); selectNone(); showMenu(null, ev.clientX, ev.clientY); } });
     main.addEventListener('click', function (ev) { if (ev.target === main || ev.target.classList.contains('fx__grid')) selectNone(); });
-    if (!searching()) dropTarget(main, hereFolder());
-    none(main, 'Reading ' + (crumbs.length ? hereName() : 'your files') + '...');
+    if (!searching() && canWrite()) dropTarget(main, hereFolder());
+    none(main, 'Reading ' + (crumbs.length ? hereName() : onGlobus() ? rootName() : 'your files') + '...');
     body.appendChild(main);
     var preview = el('aside', 'fx__preview');
     preview.id = 'fd-preview';
@@ -9114,7 +9520,7 @@
     var asked = ++listing;
     if (!heldDrive()) return Promise.resolve();
     var h = here();
-    var read = h && h.search ? readList(hereKey(), function () { return searchAddress(h.search); }) : readChildren(h ? h.id : '');
+    var read = h && h.search ? readList(hereKey(), function () { return onGlobus() ? globusList(h.id, h.search) : searchAddress(h.search); }) : readChildren(h ? h.id : '');
     return read.then(function (items) {
       if (asked !== listing) return;
       explorer.items = items;
@@ -9129,7 +9535,9 @@
       explorer.loading = false;
       selectNone();
       var main = $('fd-main');
-      if (main) { clear(main); none(main, 'The list could not be read: ' + e.message); }
+      // a Globus collection whose consent is missing asks for it in the list's place
+      if (e.code === 'ConsentRequired' && onGlobus()) { globusConsent(e.scopes); return; }
+      if (main) { clear(main); if (onGlobus()) globusTrouble(main, 'The list could not be read: ' + e.message); else none(main, 'The list could not be read: ' + e.message); }
     });
   }
   // a folder's list read again after a write changed it, and the list shown read again where it
@@ -9176,9 +9584,9 @@
     if (explorer.view === 'details') main.appendChild(detailsTable(list));
     else if (explorer.view === 'icons') main.appendChild(iconGrid(list));
     else main.appendChild(itemFlow(list, explorer.view));
-    if (!explorer.items.length) none(main, searching() ? 'Nothing in OneDrive matches "' + here().search + '".' : 'This folder is empty.');
+    if (!explorer.items.length) none(main, searching() ? 'Nothing in ' + (onGlobus() ? 'this folder' : 'OneDrive') + ' matches "' + here().search + '".' : 'This folder is empty.');
     else if (!list.length) none(main, 'Nothing here matches "' + explorer.filter + '".');
-    if (explorer.items.cut) none(main, 'More than ' + (GRAPH_PAGES * 200) + ' items are here; only the first are listed.' + (searching() ? ' Search for something narrower.' : ' Tick the folder itself to track them all.'));
+    if (explorer.items.cut) none(main, 'More than ' + (onGlobus() ? GLOBUS_PAGE : GRAPH_PAGES * 200) + ' items are here; only the first are listed.' + (searching() || onGlobus() ? ' Search for something narrower.' : ' Tick the folder itself to track them all.'));
     drawStatus(list);
     drawPicked();
     drawCommands();
@@ -9192,9 +9600,11 @@
     chosen.forEach(function (it) { if (!it.folder && typeof it.size === 'number') bytes += it.size; });
     var sel = chosen.length ? '   ' + chosen.length + ' selected' + (bytes ? '  ' + bytesWord(bytes) : '') : '';
     var clipped = explorer.clip ? '   ' + plural(explorer.clip.items.length, 'item') + ' to ' + (explorer.clip.mode === 'cut' ? 'move' : 'copy') : '';
-    status.textContent = plural(list.length, 'item') + sel + (ticked ? '   ' + ticked + ' ticked' : '') + clipped + '   Double-click to open; right-click for more.';
+    status.textContent = plural(list.length, 'item') + sel + (ticked && !onGlobus() ? '   ' + ticked + ' ticked' : '') + clipped + '   Double-click to open; right-click for more.' + (onGlobus() ? '   Read-only.' : '');
   }
+  // the ticks are what Track records of OneDrive; a Globus collection is read here, never tracked
   function tickBox(it) {
+    if (onGlobus()) return el('span', 'fx__notick');
     var box = el('input');
     box.type = 'checkbox';
     box.setAttribute('data-id', String(it.id || ''));
@@ -9220,14 +9630,16 @@
       if (!explorer.sel[id]) select(id); else explorer.selected = id;
       showMenu(it, ev.clientX, ev.clientY);
     });
-    // an item is dragged onto a folder to move it there, the selection with it
-    node.draggable = true;
+    // an item is dragged onto a folder to move it there, the selection with it; nothing moves on
+    // a drive the page reads only
+    node.draggable = canWrite();
     node.addEventListener('dragstart', function (ev) {
+      if (!canWrite()) { ev.preventDefault(); return; }
       if (!explorer.sel[id]) select(id);
       ev.dataTransfer.effectAllowed = 'move';
       ev.dataTransfer.setData(DRAG_TYPE, Object.keys(explorer.sel).join('\n'));
     });
-    if (it.folder) dropTarget(node, id);
+    if (it.folder && canWrite()) dropTarget(node, id);
     if (explorer.sel[id]) node.classList.add('fx__selected');
     if (explorer.clip && explorer.clip.mode === 'cut' && explorer.clip.items.some(function (c) { return c.id === id; })) node.classList.add('fx__cutitem');
     return node;
@@ -9265,7 +9677,7 @@
       add(row, it.lastModifiedDateTime ? add(el('td'), timeEl(it.lastModifiedDateTime)) : el('td', '', ''));
       add(row, el('td', '', kindName(it)));
       add(row, el('td', 'fx__size', sizeOf(it)));
-      if (searching()) { var p = folderPath(it); add(row, el('td', 'fx__where', p === null ? '' : p ? 'OneDrive/' + p : 'OneDrive')); }
+      if (searching()) { var p = folderPath(it); add(row, el('td', 'fx__where', p === null ? '' : p ? rootName() + '/' + p : rootName())); }
       body.appendChild(wire(row, it));
     });
     table.appendChild(body);
@@ -9295,7 +9707,7 @@
       if (view === 'tiles') add(text, el('span', 'fx__itsub', kindName(it)), el('span', 'fx__itsub', sizeOf(it)));
       if (view === 'content') {
         var where = searching() ? folderPath(it) : null;
-        add(text, el('span', 'fx__itsub', kindName(it) + (where !== null ? '  in OneDrive' + (where ? '/' + where : '') : '')));
+        add(text, el('span', 'fx__itsub', kindName(it) + (where !== null ? '  in ' + rootName() + (where ? '/' + where : '') : '')));
         var side = el('span', 'fx__itside');
         if (it.lastModifiedDateTime) add(side, add(el('span', 'fx__itsub'), 'Modified ', timeEl(it.lastModifiedDateTime)));
         if (sizeOf(it)) add(side, el('span', 'fx__itsub', 'Size ' + sizeOf(it)));
@@ -9383,7 +9795,7 @@
     else if (ev.key === 'Home') next = 0;
     else if (ev.key === 'End') next = list.length - 1;
     else if (ev.key === 'Enter' && at >= 0) { ev.preventDefault(); openItem(list[at]); return; }
-    else if (ev.key === ' ' && at >= 0) { ev.preventDefault(); var it = list[at]; tick(it, !picked[String(it.id)]); drawStatus(list); return; }
+    else if (ev.key === ' ' && at >= 0) { ev.preventDefault(); if (onGlobus()) return; var it = list[at]; tick(it, !picked[String(it.id)]); drawStatus(list); return; }
     else if (ev.key === 'Backspace') { ev.preventDefault(); goUp(); return; }
     else if (ev.key === 'ContextMenu' || (ev.shiftKey && ev.key === 'F10')) {
       ev.preventDefault();
@@ -9450,34 +9862,39 @@
   // an item's menu acts on the selection the item is in; the list's own, on the folder shown
   function showMenu(it, x, y) {
     menuAt(x, y, function (entry, line) {
+      var writes = canWrite();
       if (!it) {
         var into = hereFolder();
-        entry('New folder', newFolder, into !== null);
-        entry('Upload files', function () { pickUpload(into); }, into !== null);
-        entry('Paste', function () { paste(into); }, !!explorer.clip && into !== null);
-        line();
+        if (writes) {
+          entry('New folder', newFolder, into !== null);
+          entry('Upload files', function () { pickUpload(into); }, into !== null);
+          entry('Paste', function () { paste(into); }, !!explorer.clip && into !== null);
+          line();
+        }
         entry('Select all', selectAll);
         entry('Refresh', refresh);
         return;
       }
       var chosen = selectedItems(), one = chosen.length <= 1;
       if (it.folder) entry('Open', function () { openItem(it); });
-      var app = officeApp(it);
+      var app = writes ? officeApp(it) : '';
       if (one && app) entry('Open in ' + appName(app), function () { openInApp(it); });
-      if (one && !it.folder) entry('Open in the browser', function () { openInBrowser(it); });
-      if (one && it.folder && httpsOnly(it.webUrl)) entry('Open in OneDrive', function () { openInBrowser(it); });
+      if (one && !it.folder) entry(onGlobus() ? 'Open in a new tab' : 'Open in the browser', function () { openInBrowser(it); });
+      if (one && it.folder && httpsOnly(it.webUrl) && writes) entry('Open in OneDrive', function () { openInBrowser(it); });
       line();
       if (chosen.some(function (c) { return !c.folder; })) entry('Download', function () { download(chosen); });
-      entry('Cut', function () { clip('cut'); });
-      entry('Copy', function () { clip('copy'); });
-      if (one && it.folder) entry('Paste into this folder', function () { paste(String(it.id)); }, !!explorer.clip);
-      line();
-      if (one) entry('Share', function () { shareDialog(it); });
-      if (one) entry('Rename', function () { startRename(it); });
-      entry('Delete', function () { askDelete(chosen); });
+      if (writes) {
+        entry('Cut', function () { clip('cut'); });
+        entry('Copy', function () { clip('copy'); });
+        if (one && it.folder) entry('Paste into this folder', function () { paste(String(it.id)); }, !!explorer.clip);
+        line();
+        if (one) entry('Share', function () { shareDialog(it); });
+        if (one) entry('Rename', function () { startRename(it); });
+        entry('Delete', function () { askDelete(chosen); });
+      }
       line();
       var on = !!picked[String(it.id || '')];
-      if (one) entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
+      if (one && writes) entry(on ? 'Untick' : 'Tick to track', function () { tick(it, !on); drawStatus(sortedItems()); });
       entry('Properties', function () { properties(chosen); });
     });
   }
@@ -9515,7 +9932,7 @@
   }
   function newFolder() {
     var into = hereFolder();
-    if (into === null) return;
+    if (into === null || !canWrite()) return;
     var name = 'New folder', n = 2;
     while (explorer.items.some(function (it) { return String(it.name || '').toLowerCase() === name.toLowerCase(); })) name = 'New folder (' + (n++) + ')';
     say('Making ' + name + '...');
@@ -9530,7 +9947,7 @@
   // the name edited where it is drawn, as F2 does in Explorer: Enter or leaving it renames, Escape
   // keeps the name; a file's name is chosen up to its extension
   function startRename(it) {
-    if (!it) return;
+    if (!it || !canWrite()) return;
     var node = document.querySelector('#fd-main [data-item="' + CSS.escape(String(it.id)) + '"] [data-name]');
     if (!node) return;
     var was = String(it.name || ''), parent = parentOf(it);
@@ -9572,7 +9989,7 @@
   function conflictWord(e, name) { return e.status === 409 ? 'something named ' + name + ' is already there.' : e.message; }
   // Delete asks first in the page, never in a browser box, and says where the items go
   function askDelete(items) {
-    if (!items.length) return;
+    if (!items.length || !canWrite()) return;
     var form = itemDialog(items.length === 1 ? 'Delete ' + items[0].name : 'Delete ' + plural(items.length, 'item'));
     add(form, el('p', 'admin__lead', (items.length === 1 ? 'This moves ' + items[0].name : 'This moves ' + plural(items.length, 'item')) + ' to OneDrive\'s recycle bin, where you can restore ' + (items.length === 1 ? 'it' : 'them') + ' from OneDrive\'s own page: for 30 days on a personal OneDrive, 93 on a work or school one.'));
     var bar = el('p', 'admin__bar');
@@ -9601,7 +10018,7 @@
   // Cut and Copy keep the items in the page's memory until Paste; Escape forgets a cut
   function clip(mode) {
     var items = selectedItems();
-    if (!items.length) return;
+    if (!items.length || !canWrite()) return;
     explorer.clip = { mode: mode, items: items.map(clipItem) };
     say((mode === 'cut' ? 'Cut ' : 'Copied ') + plural(items.length, 'item') + ': open a folder and press Paste (Ctrl+V).');
     drawItems();
@@ -9615,10 +10032,10 @@
   }
   function paste(into) {
     var c = explorer.clip;
-    if (!c || into === null || into === undefined || explorer.busy) return;
+    if (!c || into === null || into === undefined || explorer.busy || !canWrite()) return;
     var path = above(into);
     var inside = c.items.filter(function (it) { return it.folder && path.indexOf(it.id) >= 0; });
-    if (inside.length) { say(inside.map(function (it) { return it.name; }).join(', ') + ' cannot go into itself or a folder inside it.', true); return; }
+    if (inside.length) { say(inside.map(function (it) { return it.name; }).join(', ') + ' cannot go into itself or a folder inside it.', true, true); return; }
     explorer.busy = true;
     var free = function () { explorer.busy = false; };
     if (c.mode === 'cut') return move(c.items, into).then(free, free);
@@ -9694,13 +10111,14 @@
   }
   function pickUpload(into) {
     var input = $('fd-upload');
-    if (!input || into === null) return;
+    if (!input || into === null || !canWrite()) return;
     input.setAttribute('data-to', into);
     input.click();
   }
   // Upload asks, as Explorer does, what to do with a name already in the folder: replace it,
   // keep both (OneDrive numbers the new one) or skip it
   function upload(files, into) {
+    if (!canWrite()) return Promise.resolve();
     return readChildren(into).then(function (there) {
       var names = there.map(function (it) { return String(it.name || '').toLowerCase(); });
       var clash = files.filter(function (f) { return names.indexOf(f.name.toLowerCase()) >= 0; });
@@ -9760,6 +10178,17 @@
   // carries its own short-lived right to read, so no token goes with it; a folder has none
   function download(items) {
     var files = items.filter(function (it) { return !it.folder; });
+    if (onGlobus()) {
+      // the collection's server sends the file as a download when asked with ?download, as
+      // Globus's own file manager asks; a folder needs a transfer there
+      if (files.length < items.length) say('A folder is not downloaded from here: Globus\'s own file manager transfers it.', !files.length);
+      var first = files[0], url = first ? httpsOnly(first.webUrl) : '';
+      if (first && !url) { say('The collection has no HTTPS address, so ' + first.name + ' cannot be downloaded from here.', true, true); return Promise.resolve(); }
+      // one press opens one tab: the browser blocks a second opened from the same press
+      if (url) window.open(url + '?download', '_blank', 'noopener');
+      if (files.length > 1) say('Only ' + first.name + ' was downloaded: the browser allows one download per press, so download each of the others by itself.', true, true);
+      return Promise.resolve();
+    }
     if (files.length < items.length) say('A folder downloads from OneDrive\'s own page, as a zip: right-click it and choose Open in OneDrive.', !files.length);
     return files.reduce(function (p, it, i) {
       return p.then(function () {
@@ -9774,13 +10203,13 @@
           a.click();
           a.remove();
           if (i < files.length - 1) return new Promise(function (r) { setTimeout(r, 400); });
-        }).catch(function (e) { say(it.name + ' could not be downloaded: ' + e.message, true); });
+        }).catch(function (e) { say(it.name + ' could not be downloaded: ' + e.message, true, true); });
       });
     }, Promise.resolve());
   }
   // Share makes a link of the kind chosen in the page, never before Create link is pressed
   function shareDialog(it) {
-    if (!it) return;
+    if (!it || !canWrite()) return;
     var work = drive && drive.type && drive.type !== 'personal';
     var form = itemDialog('Share ' + it.name);
     // Enter on a choice makes no link and closes nothing; Create link does
@@ -9845,8 +10274,19 @@
     var form = itemDialog(it.name + ' Properties');
     var box = el('div', 'fx__props');
     box.id = 'fx-props';
-    add(box, el('p', 'admin__none', 'Reading...'));
     form.appendChild(box);
+    if (onGlobus()) {
+      // what the collection's listing said of it, which is all the Transfer API says
+      var g = it.globus || {};
+      add(box, fact('Type:', kindName(it) + (g.type && g.type !== 'file' && g.type !== 'dir' ? ' (' + g.type + ')' : '')), fact('Location:', locationOf(it)), fact('Path:', String(it.id || '')));
+      if (typeof it.size === 'number') add(box, fact('Size:', bytesWord(it.size) + ' (' + it.size.toLocaleString('en-US') + ' bytes)'));
+      if (it.lastModifiedDateTime) add(box, fact('Modified:', stamp(it.lastModifiedDateTime)));
+      if (g.permissions) add(box, fact('Permissions:', g.permissions + (g.user ? '  ' + g.user : '') + (g.group ? ' ' + g.group : '')));
+      if (g.link) add(box, fact('Link to:', g.link));
+      if (httpsOnly(it.webUrl) && !it.folder) add(box, add(el('p', 'admin__bar'), link(httpsOnly(it.webUrl), 'Open in a new tab')));
+      return;
+    }
+    add(box, el('p', 'admin__none', 'Reading...'));
     graph(itemAddress(String(it.id)) + '?$select=id,name,size,file,folder,parentReference,createdDateTime,lastModifiedDateTime,createdBy,lastModifiedBy,webUrl,shared').then(function (p) {
       clear(box);
       function by(x) { return x && x.user && x.user.displayName ? String(x.user.displayName) : ''; }
@@ -9860,9 +10300,9 @@
     }).catch(function (e) { clear(box); none(box, 'Its properties could not be read: ' + e.message); });
   }
   function locationOf(it) {
-    var p = folderPath(it);
-    if (p !== null) return p ? 'OneDrive/' + p : 'OneDrive';
-    return searching() ? 'OneDrive' : ['OneDrive'].concat(crumbs.map(function (c) { return c.name; })).join('/');
+    var p = folderPath(it), root = rootName();
+    if (p !== null) return p ? root + '/' + p : root;
+    return searching() ? root : [root].concat(crumbs.map(function (c) { return c.name; })).join('/');
   }
 
   /* ---------- the preview pane, shown or hidden as Alt+P does in Explorer ---------- */
@@ -9907,7 +10347,9 @@
           var f = el('iframe', 'fx__pvframe');
           f.src = p.frame;
           f.title = 'Preview of ' + it.name;
-          f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups');
+          // a blob fetched from a collection is same-origin with this page, so its frame runs no
+          // script; Graph's preview page is another origin and keeps its own
+          f.setAttribute('sandbox', p.blob ? '' : 'allow-scripts allow-same-origin allow-popups');
           f.referrerPolicy = 'no-referrer';
           body.appendChild(f);
         } else if (p.image) {
@@ -9916,15 +10358,60 @@
           img.alt = 'Preview of ' + it.name;
           img.referrerPolicy = 'no-referrer';
           body.appendChild(img);
-        } else none(body, 'No preview is available for this file.');
+        } else if (p.media) {
+          // a video or a sound plays from the collection's own address, streamed by its server
+          // as the double click streams it; where the server will not play it here, the tab
+          var media = el(kindKey(it) === 'audio' ? 'audio' : 'video', 'fx__pvmedia');
+          media.controls = true;
+          media.src = p.media;
+          media.addEventListener('error', function () { clear(body); openHere(body, it, 'This browser could not play it here.'); });
+          body.appendChild(media);
+        } else if (typeof p.text === 'string') {
+          body.appendChild(el('pre', 'fx__pvtext', p.text));
+        } else if (onGlobus() && !it.folder) openHere(body, it, p.why || 'No preview is made here for this file.', p.consent);
+        else none(body, 'No preview is available for this file.');
       });
     }, 300);
   }
+  // the preview pane's way out: the file in its own tab, where the collection's server streams it
+  function openHere(body, it, why, consent) {
+    var p = none(body, why + ' ');
+    if (httpsOnly(it.webUrl)) add(p, btn('Open in a new tab', false, function () { openInBrowser(it); }));
+    // the collection's own token, missing where the first sign-in knew no collection
+    if (consent && drive && drive.id) add(p, ' ', btn('Allow it at Globus', false, function () { startGlobusConnect(globusScopes(drive.id), drive.id); }));
+  }
   // Graph's preview page for the file where it makes one, else its largest thumbnail; kept for the
-  // sitting so going back to a file asks nothing again
+  // sitting so going back to a file asks nothing again. On Globus a video or a sound plays from
+  // the collection's address, an image, a PDF or a text is fetched into the page with the
+  // collection's token, and anything else opens in its own tab
+  // an image's media type from its name, for the blob a preview shows
+  function imageType(it) {
+    var m = /\.([a-z0-9]+)$/i.exec(String(it.name || ''));
+    var ext = m ? m[1].toLowerCase() : '';
+    return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', avif: 'image/avif' }[ext] || 'application/octet-stream';
+  }
   function previewOf(it) {
     var id = String(it.id);
     if (explorer.previews[id]) return explorer.previews[id];
+    if (onGlobus()) {
+      var kind = kindKey(it), url = httpsOnly(it.webUrl);
+      var made;
+      if (!url) made = Promise.resolve({ why: 'The collection has no HTTPS address.' });
+      else if (kind === 'video' || kind === 'audio') made = Promise.resolve({ media: url });
+      else if (kind === 'image' || kind === 'pdf' || kind === 'text' || kind === 'code') {
+        made = globusFetch(it).then(function (blob) {
+          // the type is this page's, by the name, never the server's, so no file is shown as a page
+          if (kind === 'image') return { image: URL.createObjectURL(new Blob([blob], { type: imageType(it) })) };
+          if (kind === 'pdf') return { frame: URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })), blob: true };
+          return blob.text().then(function (t) { return { text: t.length > 200000 ? t.slice(0, 200000) + '\n...' : t }; });
+        }).catch(function (e) {
+          if (e.code === 'NoCollectionToken') { delete explorer.previews[id]; return { why: 'This page is not yet allowed to fetch the collection\'s files into it.', consent: true }; }
+          return { why: 'It could not be fetched into the page (' + e.message + ').' };
+        });
+      } else made = Promise.resolve({ why: 'No preview is made here for a ' + kindName(it).toLowerCase() + '.' });
+      explorer.previews[id] = made;
+      return made;
+    }
     var image = kindKey(it) === 'image';
     var ask = image ? Promise.reject(new Error('an image shows its thumbnail')) : graph(itemAddress(id) + '/preview', 'POST', {});
     var p = ask.then(function (r) {
@@ -9947,8 +10434,27 @@
     var tree = $('fd-tree');
     if (!tree) return;
     clear(tree);
-    var root = treeNode({ id: '', name: 'OneDrive' }, [], 0);
+    // on Globus the tree starts at the account's home folder, since the cluster's root and the
+    // folders above home hold thousands of other accounts' folders
+    var top = onGlobus() && drive.home ? globusPath(drive.home) : '';
+    var root = treeNode({ id: top, name: rootName() }, top ? globusCrumbs(top) : [], 0);
     tree.appendChild(root);
+    // the account's other kept drive is a second root, closed; a press on it switches the tab to it
+    var other = otherKept();
+    if (!other) return;
+    var wrap = el('div', 'fx__branch');
+    var row = el('div', 'fx__node fx__otherroot');
+    row.setAttribute('role', 'treeitem');
+    row.setAttribute('aria-expanded', 'false');
+    row.style.paddingLeft = '4px';
+    var name = btn('', true, function () { switchDrive(other); });
+    name.className = 'fx__nodename';
+    name.id = 'fd-other-root';
+    name.title = 'Switch to ' + (other.provider === 'globus' ? (other.name || 'Globus') : 'OneDrive');
+    add(name, kindIcon({ folder: {} }, 16), el('span', '', other.provider === 'globus' ? (other.name || 'Globus') : 'OneDrive'));
+    add(row, el('span', 'fx__twisty', '▸'), name);
+    wrap.appendChild(row);
+    tree.appendChild(wrap);
   }
   function treeNode(folder, path, depth) {
     var wrap = el('div', 'fx__branch');
@@ -9957,7 +10463,7 @@
     row.style.paddingLeft = (4 + depth * 14) + 'px';
     var key = folder.id || 'root';
     var at = here() && !here().search ? here().id : searching() ? null : '';
-    var onPath = folder.id === '' || crumbs.some(function (c) { return c.id === folder.id; });
+    var onPath = folder.id === '' || depth === 0 || crumbs.some(function (c) { return c.id === folder.id; });
     var open = explorer.open[key] !== undefined ? explorer.open[key] : onPath;
     var twisty = btn(open ? '▾' : '▸', true, function (ev) { ev.stopPropagation(); explorer.open[key] = !open; drawTree(); });
     twisty.className = 'fx__twisty';
@@ -9968,7 +10474,7 @@
     if (folder.id === at) { row.classList.add('fx__current'); row.setAttribute('aria-current', 'true'); }
     row.setAttribute('aria-expanded', String(open));
     add(row, twisty, name);
-    dropTarget(row, folder.id);
+    if (canWrite()) dropTarget(row, folder.id);
     wrap.appendChild(row);
     if (!open) return wrap;
     var kids = el('div', 'fx__kids');
@@ -10420,6 +10926,8 @@
     var d = heldDrive();
     if (!repo) { fdSay('Choose a repository in the bar first (or make one under Need a new repository?).', true); return; }
     if (!d || !d.refresh) { showConnectState(); drawBrowser(); fdSay('Connect OneDrive first, under + Add a cloud drive: the drive\'s refresh token is what the repository keeps.', true); closeDialog('dlg-track'); ($('fd-add-tile') || $('fd-add')).focus(); return; }
+    // a Globus collection is read here and never synced: Track is OneDrive's
+    if (d.provider === 'globus') { fdSay('Track records folders of OneDrive for the repository\'s sync. ' + (d.name || 'The Globus collection') + ' is read here only; press OneDrive in the folder tree, or Connect OneDrive, to track a drive.', true); closeDialog('dlg-track'); return; }
     if (walkOnly && foldersFor === repo) { trackWalk(button, repo, d); return; }
     if (!pickedOrder.length) { fdSay('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
     if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { fdSay('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
@@ -10509,7 +11017,7 @@
     showConnectState();
     if (!driveConfig && !driveAsked) wireConnect();
     drawPicked();
-    if (d) { if (listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); listFolder(); } }
+    if (d) { if (listedFor !== d) { listedFor = d; crumbs = []; resetExplorer(); nameDrive(); if (d.provider === 'globus') globusHome(); else listFolder(); } }
     else drawBrowser();
     if (foldersFor !== foldersRepo()) loadFolders();
   }
@@ -10518,6 +11026,7 @@
   function initFoldersTab() {
     $('fd-reload').addEventListener('click', findRepos);
     $('fd-connect').addEventListener('click', startDriveConnect);
+    if ($('fd-globus')) $('fd-globus').addEventListener('click', function () { startGlobusConnect(); });
     $('fd-forget').addEventListener('click', forgetDrive);
     $('fd-track').addEventListener('click', function (ev) { track(ev.currentTarget); });
     consoleOnOpen.folders = openFolders;

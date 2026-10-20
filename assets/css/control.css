@@ -514,6 +514,8 @@ html.graph--held body { overflow: hidden; }
 .clouds .clouds__tile::before { content: ""; position: absolute; top: 14px; left: 50%; width: 40px; height: 40px; margin-left: -20px; background: center / contain no-repeat; }
 .clouds .clouds__tile--onedrive::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E"); }
 .clouds .clouds__tile--gdrive::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F9D58' d='M8 3h8l7 12h-8z'/%3E%3Cpath fill='%23FFC107' d='M8 3L1 15l4 6 7-12z'/%3E%3Cpath fill='%234285F4' d='M5 21h14l4-6H9z'/%3E%3C/svg%3E"); }
+.clouds .clouds__tile--globus::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23335C97' stroke-width='2'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3Cpath d='M3 12h18M5 7.5h14M5 16.5h14' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3C/svg%3E"); }
+.clouds button.clouds__tile:disabled { color: var(--ink-faint); opacity: 0.7; }
 .clouds .clouds__tile--dropbox::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230061FE' d='M7 3l5 3.2L7 9.4 2 6.2zm10 0l5 3.2-5 3.2-5-3.2zM2 12.6l5-3.2 5 3.2-5 3.2zm15-3.2l5 3.2-5 3.2-5-3.2zM7 17l5-3.2 5 3.2-5 3.2z'/%3E%3C/svg%3E"); }
 .clouds button.clouds__tile:hover:not(:disabled) { border-color: var(--teal); }
 .clouds .clouds__tile--later { color: var(--ink-faint); opacity: 0.7; }
@@ -593,6 +595,17 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .fx__pvbody { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
 #tab-folders .fx__pvframe { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 4px; background: #FFFFFF; }
 #tab-folders .fx__pvimg { max-width: 100%; max-height: 100%; object-fit: contain; }
+#tab-folders .fx__pvmedia { width: 100%; max-height: 100%; background: #000000; border-radius: 4px; }
+#tab-folders .fx__pvtext { margin: 0; max-height: 100%; overflow: auto; font-size: 0.78rem; white-space: pre-wrap; word-break: break-word; }
+#tab-folders .fx__notick { display: inline-block; width: 13px; }
+#tab-folders .fx__otherroot { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 6px; }
+#tab-folders .folders__who--globus { display: flex; align-items: center; gap: 8px; }
+/* what to press when a collection will not read here: the links in the theme's own colours, scaled with the text size like the rest of the console */
+#tab-folders .fx__trouble { line-height: 1.5; }
+#tab-folders .fx__trouble a { color: var(--teal); border-bottom: 1px solid var(--line); }
+#tab-folders .fx__trouble strong { color: var(--ink); font-weight: 600; }
+#tab-folders .fx__trouble button { margin: 0 2px; padding: 1px 8px; font-size: 0.9em; }
+#tab-folders .folders__who--globus::before { content: ""; flex: 0 0 auto; width: 26px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23335C97' stroke-width='2'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3Cpath d='M3 12h18M5 7.5h14M5 16.5h14' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 #tab-folders .fx__thumb { width: var(--s); height: var(--s); object-fit: contain; display: block; flex: 0 0 auto; }
 #tab-folders [data-item].fx__cutitem { opacity: 0.5; }
 #tab-folders [data-item].fx__focus { outline: 1px dotted var(--teal); outline-offset: -1px; }
