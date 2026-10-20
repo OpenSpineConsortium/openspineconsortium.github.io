@@ -1413,6 +1413,8 @@
     'dlg-repos': function () { pickerOpen(); },
     'dlg-share': function () { shareDialogOpen(); },
     // a read of what the repository tracks that failed is tried again when the steps are opened
+    // the drives to add: the sign-in service is asked which it serves, if this load has not asked yet
+    'dlg-cloud': function () { if (!driveConfig && !driveAsked) wireConnect(); },
     'dlg-track': function () { var s = $('fd-say'); if (s) clear(s); if (foldersRepo() !== foldersFor) loadFolders(); }
   };
   // the one dialog a card's status and settings are drawn in
@@ -8105,7 +8107,13 @@
   var KEY_DRIVE = 'symphony_panel_drive_state';
   var DRIVE_FILE = '.github/symphony/drive.json';
   var DRIVE_SECRET = 'SYMPHONY_DRIVE_REFRESH';
+  // the repository variable drive-sync.yml's half-hourly run waits for, and the organization
+  // variable naming the one drive an organization's secret holds
+  var SYNC_SWITCH = 'SYMPHONY_DRIVE';
+  var DRIVE_ID_VAR = 'SYMPHONY_DRIVE_ID';
   var DRIVE_WORKFLOW = 'drive-sync.yml';
+  // the walk-only workflow a drive-organizing repository carries in place of the sync
+  var CATALOG_WORKFLOW = 'drive-catalog.yml';
   var DRIVE_BRANCH = 'symphony/drive';
   // the drive organizer's catalog, which the Notebooks tab reads: catalog.json on the branch
   // drive-catalog, a flat list of the drive's folders and files whose paths start with this root
@@ -8141,6 +8149,8 @@
   var pendingPull = Object.create(null);
   var crumbs = [];
   var tracked = null;
+  // the chosen repository walks the drive (drive-catalog.yml) and has no sync: Track keeps the token alone
+  var walkOnly = false;
   var folderReading = 0;
   var listing = 0;
   // the repository the tab last read, null when it is to be read again; the connection its list
@@ -8256,10 +8266,19 @@
     });
   }
   function showConnectState() {
+    drawConnectState();
+    // the drives' dialog says why OneDrive cannot be pressed, since the head is behind it while it is open
+    var said = $('fd-cloud-note');
+    if (said) said.textContent = $('fd-connect').disabled ? $('fd-connect-note').textContent : '';
+  }
+  function drawConnectState() {
     var button = $('fd-connect'), note = $('fd-connect-note');
     // the next step's button is the one filled: Connect until a drive is held, then Track
     button.classList.toggle('console__primary', !drive);
     $('fd-track').classList.toggle('console__primary', !!drive);
+    note.classList.toggle('folders__who--on', !!drive);
+    // with no drive the tab's own tile is the one + Add; the head's comes once one is connected
+    $('fd-add').hidden = !drive;
     if (drive) {
       button.disabled = false;
       button.textContent = 'Connect OneDrive again';
@@ -8715,7 +8734,14 @@
     clear(box);
     hideMenu();
     if (!drive) {
-      none(box, 'Connect OneDrive first: the list of your files and folders is read as you, in this browser, once the drive is connected.');
+      // nothing connected: one dashed tile, as + Add repository is, opening the drives to choose from
+      var start = el('div', 'folders__start');
+      var tile = el('button', 'folders__addtile', '+ Add a cloud drive');
+      tile.type = 'button';
+      tile.id = 'fd-add-tile';
+      tile.setAttribute('data-open', 'dlg-cloud');
+      add(start, tile, el('p', 'folders__startnote', 'Your files and folders are drawn here as File Explorer draws them, read as you, in this browser, once a drive is connected.'));
+      add(box, start);
       return;
     }
     var win = el('div', 'fx');
@@ -9716,7 +9742,7 @@
     clear(box);
     // the workflow is there (true), missing (false), or could not be read (the error)
     if (workflow !== true) {
-      none(box, repo + ' has no .github/workflows/' + DRIVE_WORKFLOW + (workflow === false ? ': it was not made from the template, or from one older than the drive sync, so there is no run to track a drive with. Make one under Make the repository (GitHub\'s form for the enterprise\'s members, the front door for anyone else), or bring the workflow in.' : ' that could be read (' + workflow.message + ').'));
+      none(box, repo + ' has no .github/workflows/' + DRIVE_WORKFLOW + (workflow === false ? ': it was not made from the template, or from one older than the drive sync, so there is no run to track a drive with. Choose a repository made from the template in the bar, make one under Need a new repository? below (GitHub\'s form for the enterprise\'s members, the front door for anyone else), or bring the workflow in.' : ' that could be read (' + workflow.message + ').'));
       if (workflow === false) { $('fd-track').disabled = true; drawPull(box, repo); return; }
     }
     // a sign-in that cannot reach the repository's secrets is told so before Connect, not after it
@@ -9754,6 +9780,16 @@
   }
   function daysBetween(from, to) { return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000); }
   // the pull request Track made this sitting, which the default branch's file does not show yet
+  // a repository that walks the whole drive keeps only its refresh token, so Track asks for no tick
+  function drawWalk(repo, secret) {
+    var box = $('fd-tracked');
+    clear(box);
+    var refused = !!(secret && secret.unread && secret.unread.status === 403);
+    $('fd-track').disabled = refused;
+    if (refused) { none(box, secretsRefused(repo)); return; }
+    var has = secret && !secret.unread;
+    none(box, repo + ' walks the whole drive with .github/workflows/' + CATALOG_WORKFLOW + ' and has no sync, so Track saves only the drive\'s refresh token there, as ' + DRIVE_SECRET + ', and writes no file; nothing need be ticked.' + (has ? ' The secret is set; Track replaces it with this connection\'s.' : ' The secret is not set yet.'));
+  }
   function drawPull(box, repo) {
     var url = pendingPull[repo];
     if (!url) return;
@@ -9795,22 +9831,28 @@
     letPrefilledGo(repo);
     foldersFor = repo;
     tracked = null;
+    walkOnly = false;
     clear($('fd-tracked'));
     $('fd-track-head').textContent = repo ? 'Track in ' + repo : 'Track';
     $('fd-public').checked = false;
     $('fd-public-row').hidden = true;
-    if (!repo) { $('fd-track').disabled = true; none($('fd-tracked'), 'No repository is chosen: choose one in the bar, or make one under Make the repository.'); return; }
+    if (!repo) { $('fd-track').disabled = true; none($('fd-tracked'), 'No repository is chosen: choose one in the bar, or make one under Need a new repository? below.'); return; }
     if (!token) { $('fd-track').disabled = true; none($('fd-tracked'), 'Sign in to read what ' + repo + ' tracks.'); return; }
+    // Track waits for the read, which says whether the repository syncs or only walks the drive
+    $('fd-track').disabled = true;
     none($('fd-tracked'), 'Reading ' + repo + '...');
     Promise.all([
       readTracked(repo),
       readOne('/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET).catch(function (e) { return { unread: e }; }),
       readOne('/repos/' + repo + '/contents/.github/workflows/' + DRIVE_WORKFLOW).then(function (found) { return !!found; }, function (e) { return e; }),
-      readOne('/repos/' + repo).catch(function () { return null; })
+      readOne('/repos/' + repo).catch(function () { return null; }),
+      readOne('/repos/' + repo + '/contents/.github/workflows/' + CATALOG_WORKFLOW).then(function (found) { return !!found; }, function () { return false; })
     ]).then(function (all) {
       if (asked !== folderReading) return;
       tracked = all[0];
-      drawTracked(repo, tracked, all[1], all[2]);
+      walkOnly = all[2] === false && all[4] === true;
+      if (walkOnly) drawWalk(repo, all[1]);
+      else drawTracked(repo, tracked, all[1], all[2]);
       showPublic(all[3]);
       // what the repository tracks is ticked already, so Connect again needs no second pick
       if (tracked && !pickedOrder.length) {
@@ -9854,7 +9896,7 @@
       if (!added.length) {
         fdSay('None of the ' + NEWEST + ' newest repositories ' + (signedInByApp() ? 'the sign-in' : 'this token') + ' reaches is new to the list and made from the template. ' + (signedInByApp()
           ? 'Signed in with GitHub, the page reaches only the repositories SymphonyBoard is installed on: add the new one to its installation, at https://github.com/apps/' + APP_SLUG + '/installations/new, then press this again.'
-          : 'A fine-grained token reaches only the repositories it was made for.') + ' One made on GitHub\'s form without the template, which the form gives the enterprise\'s members alone, is neither: set it up through the front door under Make the repository.' + (repos().length ? ' The bar keeps the one chosen.' : ''));
+          : 'A fine-grained token reaches only the repositories it was made for.') + ' One made on GitHub\'s form without the template, which the form gives the enterprise\'s members alone, is neither: set it up through the front door under Need a new repository? in Track in a repository.' + (repos().length ? ' The bar keeps the one chosen.' : ''));
         return;
       }
       added.forEach(rememberRepo);
@@ -9919,13 +9961,134 @@
       });
     });
   }
+  // the refresh token sealed in this browser with a public key of GitHub's, as its own secrets page seals one
+  function sealed(seal, key, refresh) {
+    return { encrypted_value: toBase64(seal(new TextEncoder().encode(refresh), fromBase64(key.key))), key_id: key.key_id };
+  }
+  // Where the refresh token is kept: the organization's secret, shared only with the repositories
+  // it lists, where the person may set one; else the repository's own. An organization secret holds
+  // one drive, so one that another drive holds is never written over, and a repository with a
+  // secret of its own keeps it, since its own would shadow the organization's. Says 'org' or 'repo'.
+  function saveRefresh(repo, meta, refresh, driveId, account) {
+    var owner = meta && meta.owner || {};
+    var org = owner.type === 'Organization' ? String(owner.login || '') : '';
+    var sealer = loadSealer();
+    function inRepo() {
+      return Promise.all([sealer, gh('GET', '/repos/' + repo + '/actions/secrets/public-key')]).then(function (both) {
+        return gh('PUT', '/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET, sealed(both[0], both[1].data, refresh), undefined, false, account);
+      }).then(function () { return 'repo'; });
+    }
+    if (!org || !driveId || !meta.id) return inRepo();
+    var base = '/orgs/' + org + '/actions';
+    var reads = Promise.all([
+      readOne('/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET),
+      gh('GET', base + '/secrets/public-key'),
+      readOne(base + '/secrets/' + DRIVE_SECRET),
+      readOne(base + '/variables/' + DRIVE_ID_VAR),
+      readOne('/orgs/' + org)
+    ]);
+    return reads.then(function (all) {
+      var ours = !all[2] || (all[3] && String(all[3].value) === driveId);
+      // on GitHub Free a private repository reads no organization secret, so a plan the page cannot
+      // see as paid keeps a private repository to its own
+      var plan = all[4] && all[4].plan && all[4].plan.name;
+      var reaches = isPublic(meta) || (!!plan && plan !== 'free');
+      if (all[0] || !ours || !reaches) return inRepo();
+      var listed = all[2] && all[2].visibility === 'selected' ? secretRepos(base) : Promise.resolve([]);
+      return Promise.all([sealer, listed]).then(function (two) {
+        if (!two[1]) return inRepo();
+        var ids = union(two[1], [meta.id]);
+        var body = sealed(two[0], all[1].data, refresh);
+        body.visibility = 'selected';
+        body.selected_repository_ids = ids;
+        return gh('PUT', base + '/secrets/' + DRIVE_SECRET, body, undefined, false, account).then(function () {
+          return recordDrive(base, all[3], driveId, ids, account);
+        }, function (e) {
+          // a token that reads the organization's secrets and may not write them keeps to the repository
+          if (e.status === 403 || e.status === 404) return inRepo();
+          throw e;
+        });
+      });
+    }, function () { return inRepo(); });
+  }
+  // every repository the organization's secret is shared with, or null where the list cannot be read whole
+  function secretRepos(base) {
+    var ids = [];
+    function page(n) {
+      return gh('GET', base + '/secrets/' + DRIVE_SECRET + '/repositories?per_page=100&page=' + n).then(function (x) {
+        var got = x.data.repositories || [];
+        ids = ids.concat(got.map(function (r) { return r.id; }));
+        if (ids.length >= (x.data.total_count || 0) || !got.length) return ids.length >= (x.data.total_count || 0) ? ids : null;
+        return n < 50 ? page(n + 1) : null;
+      });
+    }
+    return page(1).catch(function () { return null; });
+  }
+  // which drive the organization's secret holds, so a Track with another drive keeps to its
+  // repository; read again after the write, since two Tracks at once may both have found it free
+  function recordDrive(base, had, driveId, ids, account) {
+    var record = { name: DRIVE_ID_VAR, value: driveId, visibility: 'selected', selected_repository_ids: ids };
+    var write = had ? gh('PATCH', base + '/variables/' + DRIVE_ID_VAR, record, undefined, false, account) : gh('POST', base + '/variables', record, undefined, false, account);
+    return write.then(function () { return readOne(base + '/variables/' + DRIVE_ID_VAR); }).then(function (v) {
+      if (v && String(v.value) !== driveId) return { where: 'org', note: 'Another Track wrote the organization\'s secret at the same time, with another drive: press Track again to keep this repository to a secret of its own.' };
+      return 'org';
+    }, function (e) {
+      return { where: 'org', note: 'The record of which drive the organization\'s secret holds (' + DRIVE_ID_VAR + ') could not be written (' + e.message + '), so the next Track in the organization keeps to its repository\'s own secret.' };
+    });
+  }
+  // the switch drive-sync.yml's half-hourly run waits for, turned on where it is not; says whether it wrote
+  function ensureSyncOn(repo, account) {
+    var path = '/repos/' + repo + '/actions/variables';
+    return readOne(path + '/' + SYNC_SWITCH).then(function (v) {
+      if (v && String(v.value).toLowerCase() === 'on') return false;
+      var body = { name: SYNC_SWITCH, value: 'on' };
+      return (v ? gh('PATCH', path + '/' + SYNC_SWITCH, body, undefined, false, account) : gh('POST', path, body, undefined, false, account)).then(function () { return true; });
+    });
+  }
+  // Track on a repository that only walks the drive: the secret alone, no file and no run, since
+  // the walk is started by its own workflow and reads the drive from its root
+  function trackWalk(button, repo, d) {
+    button.disabled = true;
+    var account = d.login || shownLogin;
+    var refresh = d.refresh;
+    fdSay('Sealing the drive\'s refresh token in this browser and saving ' + DRIVE_SECRET + ' on ' + repo + '...');
+    gh('GET', '/repos/' + repo).then(function (r) {
+      if (isPublic(r.data) && !$('fd-public').checked) {
+        showPublic(r.data);
+        throw plain(repo + ' is public, so what its walk writes of your drive, the names of your files among it, would be readable by anyone: tick the box under Track to go on, or choose a private repository in the bar.');
+      }
+      var save = saveRefresh(repo, r.data, refresh, d.id, account);
+      refresh = '';
+      return save;
+    }).then(function (where) {
+      if (drive === d) { drive = null; listedFor = null; }
+      button.disabled = false;
+      showConnectState();
+      drawBrowser();
+      fdSay(repo + ' keeps the drive\'s refresh token as ' + DRIVE_SECRET + keptWhere(where, repo) + ' for ' + CATALOG_WORKFLOW + ', which walks the whole drive; no file was written, and the drive\'s tokens are dropped from this page.' + keptNote(where), !!(where && where.note));
+      if (!(where && where.note)) closeDialog('dlg-track');
+      if (foldersRepo() === repo) loadFolders();
+    }).catch(function (e) {
+      refresh = '';
+      button.disabled = false;
+      if (e.plain) fdSay(e.message, true);
+      else if (e.status === 403) fdSay(secretsRefused(repo), true);
+      else fdSay('The secret could not be saved (' + e.message + '), so nothing was written. Press Track to try again.', true);
+    });
+  }
+  function keptWhere(where, repo) {
+    var at = where && where.where || where;
+    return at === 'org' ? ' (a secret of ' + repo.split('/')[0] + ', shared only with the repositories that track this drive)' : '';
+  }
+  function keptNote(where) { return where && where.note ? ' ' + where.note : ''; }
   function track(button) {
     if (button.disabled) return;
     var repo = foldersRepo();
     var folder = ($('fd-folder').value || '').trim();
     var d = heldDrive();
-    if (!repo) { fdSay('Choose a repository in the bar first (or make one under Make the repository).', true); return; }
-    if (!d || !d.refresh) { showConnectState(); drawBrowser(); fdSay('Connect OneDrive first: the drive\'s refresh token is what the repository keeps.', true); closeDialog('dlg-track'); $('fd-connect').focus(); return; }
+    if (!repo) { fdSay('Choose a repository in the bar first (or make one under Need a new repository?).', true); return; }
+    if (!d || !d.refresh) { showConnectState(); drawBrowser(); fdSay('Connect OneDrive first, under + Add a cloud drive: the drive\'s refresh token is what the repository keeps.', true); closeDialog('dlg-track'); ($('fd-add-tile') || $('fd-add')).focus(); return; }
+    if (walkOnly && foldersFor === repo) { trackWalk(button, repo, d); return; }
     if (!pickedOrder.length) { fdSay('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
     if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { fdSay('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
     // an item ticked from what the repository tracked under another Microsoft account is out of
@@ -9938,9 +10101,10 @@
     var account = d.login || shownLogin;
     var refresh = d.refresh;
     var config = { provider: d.provider, folder: folder, items: pickedOrder.map(function (id) { var i = picked[id]; return { id: i.id, name: i.name, drive: i.drive }; }), connected: dayOf(new Date()) };
-    var branch = '', wrote = null, saved = false;
+    var branch = '', wrote = null, saved = false, meta = null, where = '', switched = null;
     fdSay('Sealing the drive\'s refresh token in this browser and saving ' + DRIVE_SECRET + ' on ' + repo + '...');
     gh('GET', '/repos/' + repo).then(function (r) {
+      meta = r.data;
       branch = r.data.default_branch || 'main';
       // what comes down from the drive is the repository's, so a public one is tracked into only
       // once the person has ticked that they know it
@@ -9956,18 +10120,22 @@
       var already = tracked && typeof tracked.folder === 'string' ? tracked.folder.toLowerCase() : '';
       var taken = (Array.isArray(top) ? top : []).some(function (e) { var n = String(e && e.name || '').toLowerCase(); return n === folder.toLowerCase() && n !== already; });
       if (taken) throw plain(repo + ' already has ' + folder + ' at its top, which the drive would write into and its checks may run: choose a folder name of its own, such as papers.');
-      return Promise.all([loadSealer(), gh('GET', '/repos/' + repo + '/actions/secrets/public-key')]);
-    }).then(function (both) {
-      var sealed = toBase64(both[0](new TextEncoder().encode(refresh), fromBase64(both[1].data.key)));
+      var save = saveRefresh(repo, meta, refresh, d.id, account);
       refresh = '';
-      return gh('PUT', '/repos/' + repo + '/actions/secrets/' + DRIVE_SECRET, { encrypted_value: sealed, key_id: both[1].data.key_id }, undefined, false, account);
-    }).then(function () {
+      return save;
+    }).then(function (w) {
+      where = w;
       saved = true;
       fdSay('The secret is saved; writing ' + DRIVE_FILE + '...');
       return writeDriveFile(repo, branch, config, account);
     }).then(function (w) {
       wrote = w;
-      if (w.pull) return null;
+      // the half-hourly run waits for the repository's switch; one that cannot be set is said, and the
+      // first run still goes; a file waiting on a pull request leaves the switch to its merge
+      if (w.pull) { switched = true; return null; }
+      return ensureSyncOn(repo, account).then(function () { switched = true; }, function (e) { switched = e; });
+    }).then(function () {
+      if (wrote.pull) return null;
       fdSay('The file is written; starting the first sync...');
       return dispatchSync(repo, branch, account).then(function () { return true; }, function (e) { return e; });
     }).then(function (started) {
@@ -9977,11 +10145,17 @@
       showConnectState();
       drawBrowser();
       if (wrote.pull) pendingPull[repo] = wrote.pull; else delete pendingPull[repo];
-      var words = repo + ' tracks ' + plural(config.items.length, 'item') + ' of OneDrive in ' + folder + '/, and the drive\'s tokens are dropped from this page. ';
+      var words = repo + ' tracks ' + plural(config.items.length, 'item') + ' of OneDrive in ' + folder + '/' + keptWhere(where, repo) + ', and the drive\'s tokens are dropped from this page. ';
+      if (switched !== true) words += 'The repository variable ' + SYNC_SWITCH + ' could not be set to on (' + switched.message + '), so a drive-sync.yml that waits for it does not run each half hour. ';
+      words += keptNote(where);
       if (wrote.pull) words += 'Its default branch takes only pull requests: merge the one linked in Track in a repository, then press Sync now there.';
       else if (started === true) words += 'The first sync is queued.';
       else words += dispatchWords(repo, started);
-      fdSay(words, started !== true && !wrote.pull);
+      var trouble = (started !== true && !wrote.pull) || switched !== true || !!(where && where.note);
+      fdSay(words, trouble);
+      // done: the steps close by themselves, the panel's message line saying what was done; a
+      // sync that could not be started or switched on keeps them open, with its runs link
+      if (!trouble) closeDialog('dlg-track');
       if (foldersRepo() === repo) loadFolders();
     }).catch(function (e) {
       refresh = '';
