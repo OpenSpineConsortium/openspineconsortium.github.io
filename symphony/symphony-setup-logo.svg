@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="512" height="512">
   <!-- Symphony Setup's mark: the ring of eight players around a gear,, the small circles, around the conductor's point in the
-       middle, on a dark slate tile. Drawn for this extension; it borrows no other mark. The ring is the
-       Symphony orange (#D97757), the tile the dark slate (#1F2328), the point a warm white so it reads
-       on the slate at 16 px. Rasterised to public/icon/{16,32,48,128}.png by scripts/build-assets.mjs,
+       middle, on a black circle that fills the square (the owner, 2026-10-20: "a black circle that fills up the entire window"), since GitHub crops an App's logo to a circle. Drawn for this extension; it borrows no other mark. The ring is the
+       Symphony orange (#D97757), the ground black (#000000), the point a warm white so it reads
+       on the black at 16 px. Rasterised to public/icon/{16,32,48,128}.png by scripts/build-assets.mjs,
        which draws the 16 and 32 px sizes from the simpler geometry in that script's SMALL variant. -->
-  <rect x="4" y="4" width="120" height="120" rx="28" fill="#1F2328"/>
+  <circle cx="64" cy="64" r="64" fill="#000000"/>
   <g fill="#D97757">
     <circle cx="64" cy="22" r="9"/>
     <circle cx="93.7" cy="34.3" r="9"/>
@@ -16,5 +16,5 @@
     <circle cx="34.3" cy="34.3" r="9"/>
   </g>
   <polygon points="83.44,62.47 83.44,65.53 78.90,68.27 77.56,71.51 78.83,76.66 76.66,78.83 71.51,77.56 68.27,78.90 65.53,83.44 62.47,83.44 59.73,78.90 56.49,77.56 51.34,78.83 49.17,76.66 50.44,71.51 49.10,68.27 44.56,65.53 44.56,62.47 49.10,59.73 50.44,56.49 49.17,51.34 51.34,49.17 56.49,50.44 59.73,49.10 62.47,44.56 65.53,44.56 68.27,49.10 71.51,50.44 76.66,49.17 78.83,51.34 77.56,56.49 78.90,59.73" fill="#FFF4EC"/>
-  <circle cx="64" cy="64" r="6.5" fill="#1F2328"/>
+  <circle cx="64" cy="64" r="6.5" fill="#000000"/>
 </svg>
