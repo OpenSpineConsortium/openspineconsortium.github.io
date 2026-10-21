@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610211727">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610211727">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610211727">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610212022">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610212022">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610212022">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610211727">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610212022">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -173,6 +173,7 @@
           <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#10022;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
           <button type="button" role="tab" data-tab="grid" id="rail-grid" aria-controls="tab-grid"><span class="rail__icon" aria-hidden="true">&#9635;</span><span class="rail__name">Grid</span></button>
+          <button type="button" role="tab" data-tab="wandb" id="rail-wandb" aria-controls="tab-wandb"><span class="rail__icon" aria-hidden="true">&#8767;</span><span class="rail__name">W&amp;B</span></button>
           <button type="button" role="tab" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
           <button type="button" role="tab" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
           <button type="button" role="tab" data-tab="folders" id="rail-folders" aria-controls="tab-folders"><span class="rail__icon" aria-hidden="true">&#8645;</span><span class="rail__name">Folders</span></button>
@@ -416,6 +417,27 @@
           <div class="console__scroll tkwrap">
             <div id="gr-tiles" class="toks" aria-label="Claude accounts on the grid"></div>
             <aside id="gr-side" class="tkside" aria-label="The account" hidden></aside>
+          </div>
+        </section>
+
+        <!-- W&B: the person's Weights and Biases projects and runs, live, with their charts, read through
+             the sign-in service's /wandb/graphql with a key kept on this browser -->
+        <section class="console__panel" id="tab-wandb" data-tab-panel="wandb" role="tabpanel" aria-labelledby="rail-wandb" hidden>
+          <div class="console__head">
+            <h2 id="h-wandb" class="console__h">W&amp;B</h2>
+            <div id="wb-projects" class="ds-seg wb__projects" hidden></div>
+            <a id="wb-open" class="console__add" href="https://wandb.ai" target="_blank" rel="noopener" hidden>Open in W&amp;B</a>
+            <button type="button" class="chip" id="wb-refresh" hidden>Refresh</button>
+            <button type="button" class="chip" id="wb-forget" hidden>Forget W&amp;B</button>
+            <details class="console__help"><summary>How this works</summary><div>
+              <p>Your Weights and Biases runs, drawn here from W&amp;B&rsquo;s own API as you: the projects of your W&amp;B account and its teams, the newest thirty runs of the one chosen, each with its state, when it was last heard from and the last numbers it logged, and, for the run you press, a chart of each metric it logs over its steps, up to four at a time, chosen by the chips over the charts. A running run is read again every fifteen seconds while this tab is shown, and the rest every minute. Open in W&amp;B, and Open this run in W&amp;B beside a run, go to wandb.ai for everything else: media, tables, artifacts, reports and comparisons.</p>
+              <p>The key: W&amp;B reads with your API key, which <a href="https://wandb.ai/authorize" target="_blank" rel="noopener">wandb.ai/authorize</a> shows once you are signed in to W&amp;B. Paste it once; the page keeps it in this browser&rsquo;s storage under the GitHub account you are signed in as, as it keeps a drive&rsquo;s connection, until Forget W&amp;B or Forget the token, and never writes it into a repository or the address. The key can do on W&amp;B whatever you can, so keep it as you keep a password; this page only reads with it. Each read goes through Symphony&rsquo;s sign-in service, which passes the query on to W&amp;B with the key and keeps neither, and refuses anything that would change a run, so nothing pressed here changes or deletes one. A key is withdrawn at W&amp;B under API keys at <a href="https://wandb.ai/settings" target="_blank" rel="noopener">wandb.ai/settings</a>. The grid&rsquo;s SchwingNet runs log to the project SchwingNet, which is chosen first where your account has it.</p>
+            </div></details>
+          </div>
+          <p id="wb-note" class="admin__warn" hidden></p>
+          <div class="console__scroll tkwrap wb">
+            <div id="wb-runs" class="toks" aria-label="W&amp;B runs"></div>
+            <aside id="wb-side" class="tkside wb__side" aria-label="The run" hidden></aside>
           </div>
         </section>
 
@@ -735,8 +757,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610211727"></script>
+<script src="/assets/js/main.js?v=202610212022"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610211727"></script>
+<script src="/assets/js/symphony-panel.js?v=202610212022"></script>
 </body>
 </html>

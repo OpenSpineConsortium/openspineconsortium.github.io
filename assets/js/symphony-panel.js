@@ -1264,6 +1264,7 @@
     endCode();
     // Forget the token is the browser's sign-out, so every connection kept on it goes
     writeKept({});
+    wbForget(true);
     forgetToken();
     dropDrive();
     showGate();
@@ -2207,6 +2208,7 @@
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
     if (consoleTab === 'grid' && consoleOnOpen.grid) consoleOnOpen.grid();
+    if (consoleTab === 'wandb' && consoleOnOpen.wandb) consoleOnOpen.wandb();
     if (consoleTab === 'workers' && consoleOnOpen.workers) consoleOnOpen.workers();
     if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
     foldersFor = null;
@@ -8814,6 +8816,488 @@
     consoleOnOpen.grid = function () { if (gr.repo !== gridRepo() || !gr.read) loadGrid(); gridIdle(); };
   }
 
+  /* ---------- W&B: the person's Weights and Biases projects, runs and charts ---------- */
+  // The owner's ask of 2026-10-21: his W&B account in the panel's own look, with live status and
+  // charts, and wandb.ai a link away for the detail. The page reads W&B's GraphQL API, the one W&B's
+  // own Python client reads (wandb/apis/public), through the sign-in service's /wandb/graphql,
+  // which passes each reading query on with the key and keeps nothing (symphony-app's
+  // signin/README.md, the W&B route). The key is the person's own, pasted once from
+  // wandb.ai/authorize and kept on this browser under the GitHub login, as the drives' connections
+  // are, until Forget W&B or Forget the token; it is never written into a repository or the address.
+  // Polled every fifteen seconds while a run is running and the tab is shown, every minute otherwise.
+  var KEY_WANDB = 'symphony_panel_wandb';
+  var WANDB_SITE = 'https://wandb.ai';
+  var WANDB_PROJECT = 'SchwingNet';
+  var WANDB_RUNS = 30;
+  var WANDB_CHARTS = 4;
+  var WANDB_SAMPLES = 300;
+  var WANDB_LIVE_MS = 15000;
+  var WANDB_IDLE_MS = 60000;
+  var wb = { login: '', viewer: null, projects: [], entity: '', project: '', runs: null, side: '', hist: null, keys: [], picked: [], note: '', busy: false, timer: 0, era: 0 };
+  function wbLogin() { return String(shownLogin || '').toLowerCase(); }
+  function wbKeptAll() {
+    try {
+      var m = JSON.parse(localStorage.getItem(KEY_WANDB) || '{}');
+      return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+    } catch (e) { return {}; }
+  }
+  function wbKept() {
+    var k = wbKeptAll()[wbLogin()];
+    return k && typeof k === 'object' && typeof k.key === 'string' && k.key ? k : null;
+  }
+  function wbKeep(patch) {
+    var login = wbLogin();
+    if (!login) return;
+    var m = wbKeptAll(), had = m[login] && typeof m[login] === 'object' ? m[login] : {};
+    var next = {};
+    Object.keys(had).forEach(function (k) { next[k] = had[k]; });
+    Object.keys(patch).forEach(function (k) { next[k] = patch[k]; });
+    m[login] = next;
+    try { localStorage.setItem(KEY_WANDB, JSON.stringify(m)); } catch (e) { /* the key holds for this page alone */ }
+  }
+  function wbForget(all) {
+    var m = wbKeptAll();
+    if (all) m = {}; else delete m[wbLogin()];
+    try {
+      if (Object.keys(m).length) localStorage.setItem(KEY_WANDB, JSON.stringify(m));
+      else localStorage.removeItem(KEY_WANDB);
+    } catch (e) { /* nothing kept */ }
+    wb = { login: '', viewer: null, projects: [], entity: '', project: '', runs: null, side: '', hist: null, keys: [], picked: [], note: '', busy: false, timer: wb.timer, era: wb.era + 1 };
+  }
+  // one reading query through the service; W&B's own words come back as the error
+  function wbAsk(query, variables, key) {
+    if (!SIGNIN_SERVICE) return Promise.reject(new Error('The sign-in service is not set up on this page, and W&B is read through it.'));
+    var ask = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key || (wbKept() || {}).key || '', query: query, variables: variables || {} }) };
+    return fetch(SIGNIN_SERVICE + '/wandb/graphql', ask).catch(function () {
+      throw new Error('The sign-in service could not be reached; Refresh tries again.');
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        var words = data && data.errors && data.errors[0] && data.errors[0].message;
+        if (!r.ok || !data || (!data.data && words)) {
+          var e = new Error((data && data.error_description) || words || ('W&B answered ' + r.status + '.'));
+          e.status = r.status;
+          e.refused = data && data.error === 'wandb_refused_key';
+          throw e;
+        }
+        return data.data || {};
+      });
+    });
+  }
+  // W&B writes its times in UTC without a zone
+  function wbTime(t) { return typeof t === 'string' && t && !/(Z|[+-]\d\d:?\d\d)$/.test(t) ? t + 'Z' : t; }
+  function wbJson(text) { try { var v = typeof text === 'string' ? JSON.parse(text) : text; return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function wbProjectUrl(entity, project) { return WANDB_SITE + '/' + encodeURIComponent(entity) + '/' + encodeURIComponent(project); }
+  function wbRunUrl(run) { return wbProjectUrl(wb.entity, wb.project) + '/runs/' + encodeURIComponent(run.name); }
+  // W&B's own words are shown as text, never as links
+  function wbNote(text) { wb.note = text || ''; var n = $('wb-note'); if (!n) return; n.hidden = !wb.note; n.textContent = wb.note; }
+
+  var WB_VIEWER = 'query Viewer { viewer { username entity teams { edges { node { name } } } } }';
+  var WB_PROJECTS = 'query Projects($entity: String) { models(entityName: $entity, first: 100) { edges { node { name entityName } } } }';
+  var WB_RUNS = 'query Runs($entity: String!, $project: String!, $first: Int) { project(name: $project, entityName: $entity) { runCount runs(first: $first, order: "-created_at") { edges { node { name displayName state createdAt heartbeatAt historyLineCount group jobType summaryMetrics user { username } } } } } }';
+  var WB_KEYS = 'query Keys($entity: String!, $project: String!, $name: String!) { project(name: $project, entityName: $entity) { run(name: $name) { historyKeys } } }';
+  var WB_HISTORY = 'query History($entity: String!, $project: String!, $name: String!, $specs: [JSONString!]!) { project(name: $project, entityName: $entity) { run(name: $name) { sampledHistory(specs: $specs) } } }';
+
+  // the person's projects: their own entity's and each team's, the SchwingNet project first where
+  // it is there, since that is what the grid's runs log to (SchwingNet's tools/wandb_log.py)
+  function wbLoadProjects(key) {
+    return wbAsk(WB_VIEWER, {}, key).then(function (d) {
+      var v = d.viewer;
+      if (!v || !v.entity) throw new Error('W&B gave no account for this key; copy it again from ' + WANDB_SITE + '/authorize.');
+      var entities = [v.entity].concat(((v.teams && v.teams.edges) || []).map(function (e) { return e && e.node && e.node.name; }).filter(function (n) { return n && n !== v.entity; }));
+      // a team's list that will not read leaves the others; the person's own refusing is said
+      var own = null;
+      return Promise.all(entities.map(function (en, i) {
+        return wbAsk(WB_PROJECTS, { entity: en }, key).then(function (p) {
+          return ((p.models && p.models.edges) || []).map(function (e) { return { entity: e.node.entityName || en, name: e.node.name }; });
+        }).catch(function (e) { if (i === 0) own = e; return []; });
+      })).then(function (lists) {
+        if (own) throw own;
+        return { viewer: v, projects: [].concat.apply([], lists) };
+      });
+    });
+  }
+  function wbChooseProject() {
+    var kept = wbKept() || {};
+    var has = function (en, p) { return wb.projects.some(function (x) { return x.entity === en && x.name === p; }); };
+    if (kept.entity && kept.project && has(kept.entity, kept.project)) { wb.entity = kept.entity; wb.project = kept.project; return; }
+    var home = wb.projects.filter(function (x) { return x.name.toLowerCase() === WANDB_PROJECT.toLowerCase(); })[0] || wb.projects[0];
+    wb.entity = home ? home.entity : (wb.viewer ? wb.viewer.entity : '');
+    wb.project = home ? home.name : '';
+  }
+  function loadWandb() {
+    clearTimeout(wb.timer);
+    if (wb.login !== wbLogin()) { var t = wb.timer, era = wb.era; wb = { login: wbLogin(), viewer: null, projects: [], entity: '', project: '', runs: null, side: '', hist: null, keys: [], picked: [], note: '', busy: false, timer: t, era: era + 1 }; }
+    var kept = wbKept();
+    if (!kept) { drawWandb(); return Promise.resolve(); }
+    var era = wb.era;
+    wb.busy = true;
+    drawWandb();
+    var first = wb.viewer ? Promise.resolve(null) : wbLoadProjects(kept.key);
+    return first.then(function (got) {
+      if (era !== wb.era) return;
+      if (got) { wb.viewer = got.viewer; wb.projects = got.projects; wbChooseProject(); }
+      return wbLoadRuns(era);
+    }).then(function () {
+      if (era !== wb.era) return;
+      wb.busy = false;
+      wbNote('');
+      drawWandb();
+      if (wb.side) return wbLoadSide(era);
+    }).catch(function (e) {
+      if (era !== wb.era) return;
+      wb.busy = false;
+      if (e.refused) { wbForget(false); wbNote(e.message); drawWandb(); return; }
+      wbNote(e.message);
+      drawWandb();
+    }).then(function () { if (era === wb.era) wbIdle(); });
+  }
+  function wbLoadRuns(era) {
+    if (!wb.project) { wb.runs = []; return Promise.resolve(); }
+    var entity = wb.entity, project = wb.project;
+    return wbAsk(WB_RUNS, { entity: entity, project: project, first: WANDB_RUNS }).then(function (d) {
+      if (era !== wb.era || entity !== wb.entity || project !== wb.project) return;
+      var p = d.project;
+      wb.count = p ? p.runCount : 0;
+      wb.runs = p && p.runs ? (p.runs.edges || []).map(function (e) { var n = e.node; n.summary = wbJson(n.summaryMetrics); return n; }) : [];
+      wb.readAt = new Date().toISOString();
+    });
+  }
+  function wbLive() { return (wb.runs || []).some(function (r) { return r.state === 'running'; }); }
+  function wbIdle() {
+    clearTimeout(wb.timer);
+    if (!wbKept()) return;
+    wb.timer = setTimeout(function () {
+      if (consoleTab === 'wandb' && !document.hidden && !wb.busy) loadWandb();
+      else wbIdle();
+    }, wbLive() ? WANDB_LIVE_MS : WANDB_IDLE_MS);
+  }
+
+  // a run's numbers: what it last logged, and the history keys worth a chart
+  function wbNumeric(v) { return typeof v === 'number' && isFinite(v); }
+  function wbShown(name) { return name && name.charAt(0) !== '_' && name.indexOf('system/') !== 0; }
+  var WB_FIRST = [/loss/i, /acc|top1|f1|auc|dice/i, /val|test|eval/i, /lr|learning/i];
+  function wbRank(names) {
+    return names.slice().sort(function (a, b) {
+      var ra = WB_FIRST.findIndex(function (re) { return re.test(a); }), rb = WB_FIRST.findIndex(function (re) { return re.test(b); });
+      ra = ra < 0 ? WB_FIRST.length : ra; rb = rb < 0 ? WB_FIRST.length : rb;
+      return ra - rb || a.localeCompare(b);
+    });
+  }
+  function wbSummaryNames(run) { return wbRank(Object.keys(run.summary || {}).filter(function (k) { return wbShown(k) && wbNumeric(run.summary[k]); })); }
+  function wbFigure(v) {
+    if (!wbNumeric(v)) return String(v);
+    var a = Math.abs(v);
+    if (a !== 0 && (a < 0.001 || a >= 1e6)) return v.toExponential(2);
+    return String(Math.round(v * 10000) / 10000);
+  }
+  function wbState(run) {
+    var s = run.state || '';
+    if (s === 'running') return { cls: 'tok__state--go', text: 'Running' + (run.historyLineCount ? ', ' + plural(run.historyLineCount, 'step') + ' logged' : ''), dot: 'gr__dot--go' };
+    if (s === 'finished') return { cls: '', text: 'Finished', dot: '' };
+    if (s === 'crashed' || s === 'failed') return { cls: 'tok__state--warn', text: s === 'crashed' ? 'Crashed' : 'Failed', dot: 'gr__dot--warn' };
+    if (s === 'killed') return { cls: 'tok__state--warn', text: 'Stopped', dot: 'gr__dot--warn' };
+    return { cls: '', text: s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown', dot: 'gr__dot--wait' };
+  }
+
+  // a redraw, every fifteen seconds while a run runs, keeps the focus on the tile or chip it was on
+  function wbFocused() {
+    var a = document.activeElement, tab = $('tab-wandb');
+    if (!a || !tab || !tab.contains(a)) return null;
+    if (a.getAttribute('data-run') !== null) return '#wb-runs [data-run="' + cssName(a.getAttribute('data-run')) + '"]';
+    if (a.getAttribute('data-key') !== null) return '#wb-side [data-key="' + cssName(a.getAttribute('data-key')) + '"]';
+    return a.id ? '#' + cssName(a.id) : null;
+  }
+  function cssName(v) { return window.CSS && CSS.escape ? CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&'); }
+  function wbRefocus(sel) {
+    if (!sel) return;
+    var n = null;
+    try { n = document.querySelector(sel); } catch (e) { n = null; }
+    if (n && n !== document.activeElement) n.focus({ preventScroll: true });
+  }
+  function drawWandb() {
+    var focus = wbFocused();
+    wbDraw();
+    wbRefocus(focus);
+  }
+  function wbDraw() {
+    wbHead();
+    var box = $('wb-runs');
+    if (!box) return;
+    clear(box);
+    var n = $('wb-note');
+    if (n) { n.hidden = !wb.note; n.textContent = wb.note; }
+    if (!wbLogin()) { none(box, 'Sign in to the panel first; the W&B key is kept under your GitHub account on this browser.'); wbDrawSide(); return; }
+    if (!wbKept()) { add(box, wbConnectBox()); wbDrawSide(); return; }
+    if (!wb.runs) { none(box, 'Reading W&B...'); wbDrawSide(); return; }
+    if (!wb.project) { add(box, add(el('p', 'toks__note'), 'No project on W&B yet for ' + (wb.viewer ? wb.viewer.entity : 'this account') + '. A run logged with wandb.init makes one; the grid\'s SchwingNet runs log to the project ' + WANDB_PROJECT + '.')); wbDrawSide(); return; }
+    if (!wb.runs.length) add(box, add(el('p', 'toks__note'), 'No runs in ' + wb.entity + '/' + wb.project + ' yet. A run shows here as soon as it starts logging.'));
+    wb.runs.forEach(function (r) { add(box, wbTile(r)); });
+    if (wb.readAt) add(box, add(el('p', 'admin__none toks__note'), 'Read from W&B ', timeEl(wb.readAt), wb.count > wb.runs.length ? ', the newest ' + wb.runs.length + ' of ' + wb.count + ' runs; the rest are on ' : '; every run is on ', link(wbProjectUrl(wb.entity, wb.project), 'wandb.ai'), '.'));
+    wbDrawSide();
+  }
+  function wbTile(r) {
+    var wrap = el('div', 'tok wb__run' + (wb.side === r.name ? ' tok--on' : '') + (r.state === 'running' ? ' wb--live' : ''));
+    var open = el('button', 'tok__open');
+    open.type = 'button';
+    open.setAttribute('data-run', r.name);
+    var st = wbState(r);
+    var icon = add(el('span', 'tok__icon wb__icon'), el('span', 'gr__dot ' + st.dot));
+    var meta = [r.group, r.jobType].filter(Boolean).join(' / ');
+    add(open, icon, el('span', 'tok__name', r.displayName || r.name), el('span', 'tok__meta', meta || (r.user && r.user.username) || r.name));
+    var shown = wbSummaryNames(r).slice(0, 2);
+    if (shown.length) {
+      var nums = el('span', 'wb__nums');
+      shown.forEach(function (k) { add(nums, add(el('span', 'wb__num'), el('span', 'wb__k', k), el('span', 'wb__v', wbFigure(r.summary[k])))); });
+      add(open, nums);
+    }
+    var when = r.state === 'running' && r.heartbeatAt ? 'last heard ' + ago(wbTime(r.heartbeatAt)) : 'started ' + ago(wbTime(r.createdAt));
+    add(open, el('span', 'tok__state ' + st.cls, st.text + ', ' + when));
+    open.addEventListener('click', function () {
+      wb.side = wb.side === r.name ? '' : r.name;
+      wb.hist = null; wb.keys = []; wb.picked = [];
+      drawWandb();
+      // on a phone the run's panel opens under the list, so it is brought into view
+      var side = $('wb-side');
+      if (wb.side && side && phoneLayout()) side.scrollIntoView({ block: 'start' });
+      if (wb.side) wbLoadSide(wb.era);
+    });
+    return add(wrap, open);
+  }
+  function wbConnectBox() {
+    var box = el('div', 'toks__note wb__connect');
+    add(box, el('h3', 'console__boxh', 'Connect W&B'));
+    add(box, add(el('p', ''), 'Your W&B projects and runs, live, with their charts, read with your W&B API key. ',
+      'Open ', link(WANDB_SITE + '/authorize', 'wandb.ai/authorize'), ' (signed in to W&B, as with GitHub), copy the key it shows, paste it here and press Connect. ',
+      'The key stays on this browser, under your GitHub account, until Forget W&B; it is never put in a repository.'));
+    var input = el('input');
+    input.type = 'password'; input.id = 'wb-key'; input.autocomplete = 'off'; input.spellcheck = false;
+    input.placeholder = 'W&B API key';
+    input.setAttribute('aria-label', 'W&B API key');
+    var go = btn('Connect', false, function () { wbConnect(input); });
+    go.id = 'wb-connect';
+    go.disabled = wb.busy;
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); wbConnect(input); } });
+    add(box, add(el('p', 'gr__coderow'), input, go));
+    return box;
+  }
+  function wbConnect(input) {
+    var key = input.value.trim();
+    if (!/^[\x21-\x7e]{20,256}$/.test(key)) { wbNote('That is not a W&B API key: copy the whole key ' + WANDB_SITE + '/authorize shows.'); return; }
+    var era = wb.era;
+    wb.busy = true;
+    wbNote('');
+    var b = $('wb-connect');
+    if (b) b.disabled = true;
+    wbLoadProjects(key).then(function (got) {
+      if (era !== wb.era) return;
+      input.value = '';
+      wb.login = wbLogin();
+      wb.viewer = got.viewer; wb.projects = got.projects;
+      wbKeep({ key: key, connected: new Date().toISOString().slice(0, 10) });
+      wbChooseProject();
+      wb.busy = false;
+      return loadWandb();
+    }).catch(function (e) {
+      if (era !== wb.era) return;
+      wb.busy = false;
+      wbNote(e.message);
+      drawWandb();
+    });
+  }
+  function wbHead() {
+    var seg = $('wb-projects'), open = $('wb-open'), forget = $('wb-forget'), refresh = $('wb-refresh');
+    var on = !!wbKept();
+    if (forget) forget.hidden = !on;
+    if (refresh) { refresh.hidden = !on; refresh.disabled = wb.busy; }
+    if (open) {
+      open.hidden = !(on && wb.project);
+      if (wb.project) open.href = wbProjectUrl(wb.entity, wb.project);
+    }
+    if (!seg) return;
+    clear(seg);
+    if (!on || wb.projects.length < 2) { seg.hidden = true; return; }
+    seg.hidden = false;
+    var sel = el('select');
+    sel.id = 'wb-project';
+    sel.setAttribute('aria-label', 'W&B project');
+    wb.projects.forEach(function (p) {
+      var o = el('option', '', (p.entity !== (wb.viewer && wb.viewer.entity) ? p.entity + '/' : '') + p.name);
+      o.value = p.entity + '/' + p.name;
+      if (p.entity === wb.entity && p.name === wb.project) o.selected = true;
+      add(sel, o);
+    });
+    sel.addEventListener('change', function () {
+      var i = sel.value.indexOf('/');
+      wb.entity = sel.value.slice(0, i); wb.project = sel.value.slice(i + 1);
+      wbKeep({ entity: wb.entity, project: wb.project });
+      // what is still on its way for the project left behind is dropped when it lands
+      wb.era++;
+      wb.busy = false;
+      wb.runs = null; wb.side = ''; wb.hist = null; wb.keys = []; wb.picked = [];
+      loadWandb();
+    });
+    add(seg, sel);
+  }
+
+  // the run's side panel: its state, its last numbers, and a chart for each picked history key
+  function wbLoadSide(era) {
+    var name = wb.side;
+    if (!name) return Promise.resolve();
+    var keys = wb.keys.length ? Promise.resolve(wb.keys) : wbAsk(WB_KEYS, { entity: wb.entity, project: wb.project, name: name }).then(function (d) {
+      var hk = wbJson(d.project && d.project.run && d.project.run.historyKeys);
+      var all = hk.keys && typeof hk.keys === 'object' ? hk.keys : {};
+      return wbRank(Object.keys(all).filter(function (k) {
+        var tc = (all[k] && all[k].typeCounts) || [];
+        return wbShown(k) && tc.some(function (t) { return t && t.type === 'number'; });
+      }));
+    });
+    return keys.then(function (list) {
+      if (era !== wb.era || wb.side !== name) return;
+      wb.keys = list;
+      if (!wb.picked.length) wb.picked = list.slice(0, WANDB_CHARTS);
+      var picked = wb.picked.slice();
+      var specs = picked.map(function (k) { return JSON.stringify({ keys: ['_step', k], samples: WANDB_SAMPLES }); });
+      if (!specs.length) { wb.hist = []; drawWandbSide(); return; }
+      return wbAsk(WB_HISTORY, { entity: wb.entity, project: wb.project, name: name, specs: specs }).then(function (d) {
+        // an answer for charts since changed is left for the one asked after it
+        if (era !== wb.era || wb.side !== name || picked.join('\n') !== wb.picked.join('\n')) return;
+        var lists = (d.project && d.project.run && d.project.run.sampledHistory) || [];
+        wb.hist = picked.map(function (k, i) {
+          var rows = Array.isArray(lists[i]) ? lists[i] : [];
+          // a history logged with no step of its own is counted in the order it came
+          return { key: k, points: rows.filter(function (row) { return row && wbNumeric(row[k]); }).map(function (row, j) { return [wbNumeric(row._step) ? row._step : j, row[k]]; }) };
+        });
+        drawWandbSide();
+      });
+    }).catch(function (e) { if (era === wb.era && wb.side === name) { wb.hist = []; wbNote(e.message); drawWandbSide(); } });
+  }
+  function drawWandbSide() {
+    var focus = wbFocused();
+    wbDrawSide();
+    wbRefocus(focus);
+  }
+  function wbDrawSide() {
+    var side = $('wb-side');
+    if (!side) return;
+    var r = (wb.runs || []).filter(function (x) { return x.name === wb.side; })[0];
+    if (!r) { side.hidden = true; clear(side); return; }
+    clear(side);
+    side.hidden = false;
+    var close = el('button', 'tkside__close', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function () { wb.side = ''; drawWandb(); });
+    var st = wbState(r);
+    add(side, close, el('h3', 'console__boxh', r.displayName || r.name));
+    add(side, add(el('p', 'tok__owner'), link(wbRunUrl(r), 'Open this run in W&B')));
+    add(side, el('p', 'tok__state ' + st.cls, st.text));
+    add(side, add(el('p', 'tkdlg__fact tkdlg__faint'), 'Started ', timeEl(wbTime(r.createdAt)), r.heartbeatAt ? ', last heard ' : '', r.heartbeatAt ? timeEl(wbTime(r.heartbeatAt)) : '', r.user && r.user.username ? ', by ' + r.user.username : ''));
+    if (wb.keys.length > 1) add(side, wbPicker());
+    var charts = el('div', 'wb__charts');
+    charts.id = 'wb-charts';
+    if (!wb.hist) none(charts, 'Reading the run\'s history...');
+    else if (!wb.hist.length) none(charts, 'This run has logged no numbers to chart yet.');
+    else wb.hist.forEach(function (h) { add(charts, wbChart(h)); });
+    add(side, charts);
+    var names = wbSummaryNames(r).slice(0, 12);
+    if (names.length) {
+      var t = el('table', 'ds-table wb__summary');
+      var body = el('tbody');
+      names.forEach(function (k) { add(body, add(el('tr'), el('th', '', k), el('td', '', wbFigure(r.summary[k])))); });
+      add(side, el('h4', 'wb__h', 'Last logged'), add(t, add(el('thead'), add(el('tr'), el('th', '', 'Metric'), el('th', '', 'Value'))), body));
+    }
+  }
+  function wbPicker() {
+    var box = el('div', 'ds-seg wb__picker');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', 'Charts');
+    wb.keys.slice(0, 24).forEach(function (k) {
+      var on = wb.picked.indexOf(k) >= 0;
+      var c = btn(k, true, function () {
+        if (on) wb.picked = wb.picked.filter(function (x) { return x !== k; });
+        else wb.picked = wb.picked.concat(k).slice(-WANDB_CHARTS);
+        wb.hist = null;
+        drawWandbSide();
+        wbLoadSide(wb.era);
+      });
+      c.className = 'chip';
+      c.setAttribute('data-key', k);
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      add(box, c);
+    });
+    return box;
+  }
+  // one metric's line over the steps: one series, so no legend; the heading names it, the axes
+  // carry its range, and a pointer over it reads the nearest step
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function svg(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    return e;
+  }
+  function wbChart(h) {
+    var fig = el('figure', 'wb__chart');
+    var cap = el('figcaption', 'wb__cap');
+    var last = h.points.length ? h.points[h.points.length - 1] : null;
+    add(cap, el('span', 'wb__k', h.key), el('span', 'wb__v', last ? wbFigure(last[1]) : ''));
+    add(fig, cap);
+    if (h.points.length < 2) { add(fig, el('p', 'admin__none', h.points.length ? 'One step logged so far.' : 'Nothing logged yet.')); return fig; }
+    var W = 300, H = 120, L = 4, R = 4, T = 6, B = 16;
+    var xs = h.points.map(function (p) { return p[0]; }), ys = h.points.map(function (p) { return p[1]; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    // the words say the logged range; a flat line is drawn in the middle of a padded one
+    var span = 'min ' + wbFigure(y0) + ', max ' + wbFigure(y1);
+    if (x1 === x0) x1 = x0 + 1;
+    if (y1 === y0) { y1 += Math.abs(y1) * 0.05 || 1; y0 -= Math.abs(y0) * 0.05 || 1; }
+    var px = function (x) { return L + (x - x0) / (x1 - x0) * (W - L - R); };
+    var py = function (y) { return T + (1 - (y - y0) / (y1 - y0)) * (H - T - B); };
+    var s = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'wb__svg', role: 'img', 'aria-label': h.key + ' over ' + h.points.length + ' steps, from ' + wbFigure(ys[0]) + ' to ' + wbFigure(ys[ys.length - 1]) + ', ' + span });
+    s.appendChild(svg('line', { x1: L, x2: W - R, y1: H - B, y2: H - B, class: 'wb__axis' }));
+    s.appendChild(svg('polyline', { points: h.points.map(function (p) { return px(p[0]).toFixed(1) + ',' + py(p[1]).toFixed(1); }).join(' '), class: 'wb__line' }));
+    var lo = svg('text', { x: W - R, y: H - 3, class: 'wb__tick', 'text-anchor': 'end' }); lo.textContent = 'step ' + x1;
+    var st = svg('text', { x: L, y: H - 3, class: 'wb__tick' }); st.textContent = String(x0);
+    s.appendChild(lo); s.appendChild(st);
+    var cross = svg('line', { y1: T, y2: H - B, class: 'wb__cross', visibility: 'hidden' });
+    var dot = svg('circle', { r: 4, class: 'wb__dot', visibility: 'hidden' });
+    s.appendChild(cross); s.appendChild(dot);
+    add(fig, s);
+    var range = el('p', 'wb__range', span);
+    add(fig, range);
+    var read = function (e) {
+      var box = s.getBoundingClientRect();
+      if (!box.width) return;
+      var x = x0 + ((e.clientX - box.left) / box.width * W - L) / (W - L - R) * (x1 - x0);
+      var best = h.points[0];
+      h.points.forEach(function (p) { if (Math.abs(p[0] - x) < Math.abs(best[0] - x)) best = p; });
+      cross.setAttribute('x1', px(best[0])); cross.setAttribute('x2', px(best[0]));
+      dot.setAttribute('cx', px(best[0])); dot.setAttribute('cy', py(best[1]));
+      cross.setAttribute('visibility', 'visible'); dot.setAttribute('visibility', 'visible');
+      range.textContent = 'step ' + best[0] + ': ' + wbFigure(best[1]);
+    };
+    s.addEventListener('pointermove', read);
+    s.addEventListener('pointerdown', read);
+    s.addEventListener('pointerleave', function () {
+      cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden');
+      range.textContent = span;
+    });
+    return fig;
+  }
+  // a reload on #wandb opens the tab before GitHub has named the account, and the repository's
+  // opening, which follows the naming, opens it again
+  function wbOpen() {
+    if (wb.login !== wbLogin() || !wb.runs) return loadWandb();
+    drawWandb();
+    wbIdle();
+  }
+  function initWandbTab() {
+    consoleOnOpen.wandb = wbOpen;
+    var r = $('wb-refresh');
+    if (r) r.addEventListener('click', function () { wb.viewer = null; loadWandb(); });
+    var f = $('wb-forget');
+    if (f) f.addEventListener('click', function () { wbForget(false); wbNote('W&B is forgotten on this browser. The key itself stays valid at W&B until you delete it under API keys at ' + WANDB_SITE + '/settings.'); drawWandb(); });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && consoleTab === 'wandb' && wbKept() && !wb.busy) loadWandb(); });
+  }
+
   /* ---------- the leaderboard: the issues each token worked, by the label token:<id> ---------- */
   // A worker's run labels the issue it worked token:<id> (symphony-template's workers.yml), and the
   // token's settings name its owner, so GitHub's issue search over the organization, or the personal
@@ -13247,5 +13731,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
 })();
