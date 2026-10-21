@@ -8197,7 +8197,16 @@
   var GRID_IDLE_MS = 30000;
   var GRID_PRESS_MS = 6 * 60 * 1000;
   var gr = { repo: '', rec: null, read: false, missing: false, side: '', busy: null, sign: null, timer: 0 };
-  function gridRepo() { return tokensRepo(); }
+  // The grid is one place whatever repository the panel has open: its gate is set up for one
+  // repository (docs/setup/grid.md), the owner's symphony-template, or the one this browser keeps
+  // under symphony_grid_repo for a lab whose gate names another (the owner, 2026-10-21, after the tab
+  // followed an open repository with no gate)
+  var GRID_HOME = 'OpenSpineConsortium/symphony-template';
+  function gridRepo() {
+    var kept = '';
+    try { kept = localStorage.getItem('symphony_grid_repo') || ''; } catch (e) { kept = ''; }
+    return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(kept) ? kept : GRID_HOME;
+  }
   function gridFile(repo, name) {
     return gh('GET', '/repos/' + repo + '/contents/' + name + '?ref=' + GRID_BRANCH + '&at=' + Date.now(), undefined, RAW, true)
       .then(function (r) { try { return JSON.parse(r.data); } catch (e) { return null; } })
@@ -8427,7 +8436,7 @@
     plus.disabled = !n || !!gr.busy;
     plus.addEventListener('click', function () { gr.side = n; gridPress('login', n, 'Signing in account ' + n); });
     add(box, add(el('div', 'tok'), plus));
-    if (gr.rec.at) add(box, add(el('p', 'admin__none toks__note'), 'Read from the grid ', timeEl(gr.rec.at), '.'));
+    if (gr.rec.at) add(box, add(el('p', 'admin__none toks__note'), 'Read from the grid ', timeEl(gr.rec.at), ', through ' + gr.repo + '.'));
     drawGridSide();
   }
   function toksNote() { return null; }
