@@ -1745,11 +1745,7 @@
       var out = btn('Output', true, function () { showTab('grid'); gridLog('', w.name); });
       out.id = 'cp-live-log-' + w.name;
       out.disabled = !!gr.busy;
-      var stop = btn('Stop', true, function () {
-        if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
-        showTab('grid');
-        gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
-      });
+      var stop = btn('Stop', true, function () { gridStop(w, function () { showTab('grid'); }); });
       stop.id = 'cp-live-stop-' + w.name;
       stop.disabled = !!gr.busy;
       add(p, ' ', out, ' ', stop);
@@ -8655,10 +8651,7 @@
     if (w.link && !ended) add(p, ' ', link(w.link, 'Open the session'));
     if (w.name) add(p, el('span', 'tkdlg__faint', ' claims as grid-' + w.name));
     if (!ended && w.name && GRID_NAME.test(w.name)) {
-      var stop = btn('Stop', true, function () {
-        if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
-        gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
-      });
+      var stop = btn('Stop', true, function () { gridStop(w); });
       stop.id = 'gr-stop-' + w.name;
       stop.disabled = !!gr.busy;
       add(p, ' ', stop);
@@ -8671,6 +8664,12 @@
       add(p, ' ', out);
     }
     return p;
+  }
+  // asks first, from either tab, and sends the name alone
+  function gridStop(w, first) {
+    if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
+    if (first) first();
+    gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
   }
   function drawGrid() {
     gridBarButtons();
