@@ -494,32 +494,63 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .folders__head .console__h { margin: 0; }
 /* whose drive it is takes what the head's buttons and the room kept for the Claude button leave,
    wrapping its own words rather than pushing How it works onto a second row */
-#tab-folders .folders__who { flex: 1 1 12em; min-width: 0; margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
 #tab-folders .folders__head button { margin: 0; }
 #tab-folders .folders__browser { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 /* the start, as + Add repository draws its own: a dashed tile opening the drives to choose from,
    and, once one is connected, its cloud beside the words that say whose it is */
-#tab-folders .folders__head button.folders__add { padding: 4px 12px; border-radius: 100px; border: 1px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
-#tab-folders .folders__head button.folders__add:hover { border-color: var(--teal); color: var(--teal); }
-#tab-folders .folders__head button.folders__forget { padding: 4px 10px; border: 0; background: transparent; color: var(--ink-soft); font-size: 0.82rem; text-decoration: underline; white-space: nowrap; }
-#tab-folders .folders__head button.folders__forget:hover { color: var(--teal); }
-#tab-folders .folders__who--on { display: flex; align-items: center; gap: 8px; }
-#tab-folders .folders__who--on::before { content: ""; flex: 0 0 auto; width: 26px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E") center / contain no-repeat; }
-#tab-folders .folders__start { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 8px 0; }
-#tab-folders .folders__addtile { margin: 0; width: 180px; height: 140px; border-radius: 10px; border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 1rem; font-weight: 600; }
-#tab-folders .folders__addtile:hover, #tab-folders .folders__addtile:focus-visible { border-color: var(--teal); color: var(--teal); }
-#tab-folders .folders__startnote { flex: 1 1 240px; margin: 0; align-self: center; color: var(--ink-soft); }
-.clouds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 8px; }
-.clouds .clouds__tile { position: relative; margin: 0; min-height: 120px; padding: 62px 10px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper-card); color: var(--ink); font-size: 0.95rem; font-weight: 600; text-align: center; box-sizing: border-box; }
-.clouds .clouds__tile::before { content: ""; position: absolute; top: 14px; left: 50%; width: 40px; height: 40px; margin-left: -20px; background: center / contain no-repeat; }
+/* the drives mounted on this browser: a strip of cards in the head, each in the shape the Workers
+   tab's cards have (the console's card radius, line and inset accent), the one shown lit in the
+   theme's teal, the other dimmed until pressed; the eject on the lit card forgets it, as a volume is
+   ejected, and the dashed card adds a drive; the strip takes the room the head leaves and scrolls
+   sideways on a narrow screen rather than wrapping the head */
+#tab-folders .folders__accounts { flex: 1 1 16em; min-width: 0; display: flex; align-items: stretch; gap: 8px; overflow-x: auto; scrollbar-width: thin; padding: 2px 0; }
+#tab-folders .folders__accounts[hidden] { display: none; }
+#tab-folders .acct { position: relative; flex: 0 0 auto; display: flex; min-width: 0; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius, 12px); background: var(--ds-surface, var(--paper)); box-shadow: inset 3px 0 0 var(--card-accent, rgba(233, 230, 218, 0.2)); }
+#tab-folders .acct[data-provider="microsoft"] { --card-accent: #0F78D4; }
+#tab-folders .acct[data-provider="globus"] { --card-accent: #4F7FC2; }
+#tab-folders .acct.acct--on { border-color: var(--teal); --card-accent: var(--teal); }
+#tab-folders .acct:not(.acct--on) .acct__pick { opacity: 0.72; }
+#tab-folders .acct:not(.acct--on):hover { border-color: var(--ds-hover-border, rgba(60, 194, 177, 0.45)); }
+#tab-folders .acct:not(.acct--on):hover .acct__pick { opacity: 1; }
+#tab-folders .folders__accounts button.acct__pick { margin: 0; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 40px 6px 12px; border: 0; border-radius: var(--ds-radius, 12px); background: transparent; color: var(--ink); text-align: left; font-weight: 400; cursor: pointer; }
+#tab-folders .acct--on button.acct__pick { cursor: default; }
+#tab-folders .acct__icon { flex: 0 0 auto; width: 30px; height: 30px; border-radius: var(--ds-radius-sm, 8px); background: rgba(233, 230, 218, 0.06) center / 22px 22px no-repeat; }
+#tab-folders .acct[data-provider="microsoft"] .acct__icon { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E"); }
+#tab-folders .acct[data-provider="globus"] .acct__icon { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%234F7FC2' stroke-width='2'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9' fill='none' stroke='%234F7FC2' stroke-width='1.5'/%3E%3Cpath d='M3 12h18M5 7.5h14M5 16.5h14' fill='none' stroke='%234F7FC2' stroke-width='1.5'/%3E%3C/svg%3E"); }
+#tab-folders .acct__words { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+#tab-folders .acct__name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16em; }
+#tab-folders .acct__sub { font-size: 0.76rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16em; }
+/* the eject: the card__gear's round control, in the card's corner, drawn as the eject mark */
+#tab-folders .folders__accounts button.folders__forget { position: absolute; top: 50%; right: 6px; margin: -14px 0 0; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint); font-size: 1rem; line-height: 1; }
+#tab-folders .folders__accounts button.folders__forget::before { content: "\23CF"; }
+#tab-folders .folders__accounts button.folders__forget:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
+#tab-folders .folders__accounts button.folders__add { flex: 0 0 auto; margin: 0; padding: 6px 14px; border-radius: var(--ds-radius, 12px); border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+#tab-folders .folders__accounts button.folders__add:hover { border-color: var(--teal); color: var(--teal); background: var(--ds-hover-bg, rgba(60, 194, 177, 0.06)); }
+/* whose drive it is, in words: its own line of the head, small, when it has something the cards
+   do not say; read aloud and out of sight while the cards say the same, so the head stays one line */
+#tab-folders p.folders__who { flex: 1 1 100%; margin: 0; font-size: 0.8rem; color: var(--ink-faint); }
+#tab-folders p.folders__who:empty { display: none; }
+#tab-folders p.folders__who--quiet { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+/* nothing connected: the add card, centred, with its one line */
+#tab-folders .folders__start { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; flex: 1 1 auto; padding: 32px 16px; text-align: center; }
+#tab-folders .folders__addtile { margin: 0; width: 220px; min-height: 120px; padding: 16px; border-radius: var(--ds-radius, 12px); border: 2px dashed var(--line); background: transparent; color: var(--ink-soft); font-size: 1rem; font-weight: 600; }
+#tab-folders .folders__addtile:hover, #tab-folders .folders__addtile:focus-visible { border-color: var(--teal); color: var(--teal); background: var(--ds-hover-bg, rgba(60, 194, 177, 0.06)); }
+#tab-folders .folders__startnote { max-width: 34em; margin: 0; color: var(--ink-soft); }
+/* the drives to add, one row each as a system's add-account sheet lists them: the drive's mark,
+   its name and a word on it, a chevron on the ones that can be pressed */
+.clouds { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.clouds .clouds__tile { position: relative; margin: 0; min-height: 0; padding: 10px 36px 10px 60px; border-radius: var(--ds-radius, 12px); border: var(--ds-border, 1px solid var(--line)); background: var(--ds-surface, var(--paper)); color: var(--ink); font-size: 0.95rem; font-weight: 600; text-align: left; box-sizing: border-box; width: 100%; }
+.clouds .clouds__tile::before { content: ""; position: absolute; top: 50%; left: 12px; width: 36px; height: 36px; margin: -18px 0 0; border-radius: var(--ds-radius-sm, 8px); background: rgba(233, 230, 218, 0.06) center / 24px 24px no-repeat; }
+.clouds button.clouds__tile:not(:disabled)::after { content: "\203A"; position: absolute; top: 50%; right: 14px; margin-top: -0.6em; font-size: 1.2rem; line-height: 1; color: var(--ink-faint); }
+.clouds button.clouds__tile.console__primary { color: var(--ink); background: var(--ds-surface, var(--paper)); border: var(--ds-border, 1px solid var(--line)); }
 .clouds .clouds__tile--onedrive::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F78D4' d='M19 18H7a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1 1 9z'/%3E%3C/svg%3E"); }
 .clouds .clouds__tile--gdrive::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230F9D58' d='M8 3h8l7 12h-8z'/%3E%3Cpath fill='%23FFC107' d='M8 3L1 15l4 6 7-12z'/%3E%3Cpath fill='%234285F4' d='M5 21h14l4-6H9z'/%3E%3C/svg%3E"); }
 .clouds .clouds__tile--globus::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23335C97' stroke-width='2'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3Cpath d='M3 12h18M5 7.5h14M5 16.5h14' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3C/svg%3E"); }
 .clouds button.clouds__tile:disabled { color: var(--ink-faint); opacity: 0.7; }
 .clouds .clouds__tile--dropbox::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230061FE' d='M7 3l5 3.2L7 9.4 2 6.2zm10 0l5 3.2-5 3.2-5-3.2zM2 12.6l5-3.2 5 3.2-5 3.2zm15-3.2l5 3.2-5 3.2-5-3.2zM7 17l5-3.2 5 3.2-5 3.2z'/%3E%3C/svg%3E"); }
-.clouds button.clouds__tile:hover:not(:disabled) { border-color: var(--teal); }
+.clouds button.clouds__tile:hover:not(:disabled) { border-color: var(--ds-hover-border, rgba(60, 194, 177, 0.45)); background: var(--ds-hover-bg, rgba(60, 194, 177, 0.08)); }
 .clouds .clouds__tile--later { color: var(--ink-faint); opacity: 0.7; }
-.clouds .clouds__sub { display: block; margin-top: 2px; font-size: 0.78rem; font-weight: 400; }
+.clouds .clouds__sub { display: block; margin-top: 1px; font-size: 0.78rem; font-weight: 400; color: var(--ink-soft); }
 #fd-cloud-note:empty { display: none; }
 .folders__new > summary { cursor: pointer; }
 #tab-folders .fx { border: 1px solid var(--line); border-radius: 6px; background: var(--paper-card); display: flex; flex-direction: column; flex: 1 1 auto; min-height: 240px; }
@@ -599,13 +630,11 @@ html.graph--held body { overflow: hidden; }
 #tab-folders .fx__pvtext { margin: 0; max-height: 100%; overflow: auto; font-size: 0.78rem; white-space: pre-wrap; word-break: break-word; }
 #tab-folders .fx__notick { display: inline-block; width: 13px; }
 #tab-folders .fx__otherroot { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 6px; }
-#tab-folders .folders__who--globus { display: flex; align-items: center; gap: 8px; }
 /* what to press when a collection will not read here: the links in the theme's own colours, scaled with the text size like the rest of the console */
 #tab-folders .fx__trouble { line-height: 1.5; }
 #tab-folders .fx__trouble a { color: var(--teal); border-bottom: 1px solid var(--line); }
 #tab-folders .fx__trouble strong { color: var(--ink); font-weight: 600; }
 #tab-folders .fx__trouble button { margin: 0 2px; padding: 1px 8px; font-size: 0.9em; }
-#tab-folders .folders__who--globus::before { content: ""; flex: 0 0 auto; width: 26px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23335C97' stroke-width='2'/%3E%3Cellipse cx='12' cy='12' rx='4' ry='9' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3Cpath d='M3 12h18M5 7.5h14M5 16.5h14' fill='none' stroke='%23335C97' stroke-width='1.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 #tab-folders .fx__thumb { width: var(--s); height: var(--s); object-fit: contain; display: block; flex: 0 0 auto; }
 #tab-folders [data-item].fx__cutitem { opacity: 0.5; }
 #tab-folders [data-item].fx__focus { outline: 1px dotted var(--teal); outline-offset: -1px; }
