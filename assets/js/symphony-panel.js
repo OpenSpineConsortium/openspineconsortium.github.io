@@ -2098,6 +2098,7 @@
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
+    if (consoleTab === 'grid' && consoleOnOpen.grid) consoleOnOpen.grid();
     if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
     foldersFor = null;
     if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
@@ -8182,6 +8183,331 @@
     if ($('lb-people')) consoleOnOpen.leaders = function () { if (leadersFor !== tokensRepo()) loadLeaders(); };
   }
 
+  /* ---------- the grid's Claude accounts (hpcworker framework 21, symphony-template grid-accounts.yml) ---------- */
+  // The Claude accounts signed in on the WSU grid for the owner's Beethoven worker, one in use at a
+  // time (the owner, 2026-10-21: "see my account usage, reset, initiate claude swap, turn on auto mode,
+  // all from the control board"). Every press dispatches grid-accounts.yml with a name of the page's
+  // own (request), and the page reads the answer the run writes on the branch grid: accounts.json, the
+  // list with e-mails masked, and for a sign-in link.json, Anthropic's link sealed for an RSA-OAEP key
+  // this page made for that one press and keeps only in memory. Polled every two seconds while a press
+  // is under way, every thirty while the tab is open.
+  var GRID_BRANCH = 'grid';
+  var GRID_WORKFLOW = 'grid-accounts.yml';
+  var GRID_POLL_MS = 2000;
+  var GRID_IDLE_MS = 30000;
+  var GRID_PRESS_MS = 6 * 60 * 1000;
+  var gr = { repo: '', rec: null, read: false, missing: false, side: '', busy: null, sign: null, timer: 0 };
+  function gridRepo() { return tokensRepo(); }
+  function gridFile(repo, name) {
+    return gh('GET', '/repos/' + repo + '/contents/' + name + '?ref=' + GRID_BRANCH + '&at=' + Date.now(), undefined, RAW, true)
+      .then(function (r) { try { return JSON.parse(r.data); } catch (e) { return null; } })
+      .catch(function (e) { if (e.status === 404) return null; throw e; });
+  }
+  function gridNote(text) { var n = $('gr-note'); if (!n) return; n.hidden = !text; richText(n, text || ''); }
+  function loadGrid() {
+    var repo = gridRepo();
+    if (!repo) return Promise.resolve();
+    if (gr.repo !== repo) { gr = { repo: repo, rec: null, read: false, missing: false, side: '', busy: null, sign: null, timer: gr.timer }; drawGrid(); }
+    return gridFile(repo, 'accounts.json').then(function (rec) {
+      if (gr.repo !== repo) return;
+      gr.read = true;
+      gr.missing = !rec;
+      if (rec && rec.list) gr.rec = rec;
+      else if (rec && !gr.rec) gr.rec = rec;
+      drawGrid();
+      return rec;
+    }).catch(function (e) { if (gr.repo === repo) { gr.read = true; gridNote(e.message); drawGrid(); } });
+  }
+  function gridIdle() {
+    clearTimeout(gr.timer);
+    gr.timer = setTimeout(function () {
+      if (consoleTab === 'grid' && !gr.busy && !document.hidden) loadGrid();
+      if (consoleTab === 'grid') gridIdle();
+    }, GRID_IDLE_MS);
+  }
+  function requestName() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function b64(buf) { var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); }
+  function unb64(text) { var s = atob(text), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+  // the key a sign-in's link is sealed for: made for the one press, never stored or sent but its public half
+  function gridKeys() {
+    return crypto.subtle.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, false, ['decrypt'])
+      .then(function (pair) { return crypto.subtle.exportKey('spki', pair.publicKey).then(function (spki) { return { priv: pair.privateKey, pub: b64(spki) }; }); });
+  }
+  function unseal(sealed, priv) {
+    return crypto.subtle.decrypt({ name: 'RSA-OAEP' }, priv, unb64(sealed.key)).then(function (raw) {
+      return crypto.subtle.importKey('raw', raw, { name: 'AES-CBC' }, false, ['decrypt']);
+    }).then(function (aes) {
+      return crypto.subtle.decrypt({ name: 'AES-CBC', iv: unb64(sealed.iv) }, aes, unb64(sealed.data));
+    }).then(function (plain) {
+      var url = new TextDecoder().decode(plain);
+      // only Anthropic's own sign-in pages are ever opened from here
+      return /^https:\/\/(claude\.ai|claude\.com)\//.test(url) ? url : '';
+    });
+  }
+  // one press: the workflow started, then the branch read until the run's answer for this request is there
+  function gridPress(action, slot, label, extra) {
+    var repo = gridRepo();
+    if (!repo || gr.busy) return;
+    var request = requestName();
+    var inputs = { action: action, slot: slot || '', request: request };
+    Object.keys(extra || {}).forEach(function (k) { inputs[k] = extra[k]; });
+    gr.busy = { action: action, slot: slot || '', label: label, request: request, since: Date.now() };
+    gridNote('');
+    drawGrid();
+    var keyed = action === 'login' ? gridKeys() : Promise.resolve(null);
+    keyed.then(function (keys) {
+      if (keys) { inputs.key = keys.pub; gr.sign = { slot: slot, request: request, priv: keys.priv, url: '', state: 'waiting' }; }
+      return gh('GET', '/repos/' + repo).then(function (r) {
+        return gh('POST', '/repos/' + repo + '/actions/workflows/' + GRID_WORKFLOW + '/dispatches', { ref: r.data.default_branch || 'main', inputs: inputs });
+      });
+    }).then(function () { gridFollow(repo, request); }, function (e) {
+      gr.busy = null;
+      if (gr.sign && gr.sign.request === request) gr.sign = null;
+      gridNote(e.status === 404 ? repo + ' has no workflow Grid accounts (.github/workflows/grid-accounts.yml); choose the repository whose grid gate is set up, as OpenSpineConsortium/symphony-template.' : e.message + (e.status === 403 ? ' Starting it needs Actions: read and write, and the run itself an admin of ' + repo + '.' : ''));
+      drawGrid();
+    });
+  }
+  function gridDone(rec, busy) {
+    if (!rec || rec.request !== busy.request) return false;
+    var list = rec.list || {};
+    if (busy.action === 'usage') return list.usage_job !== 'running' || rec.rc !== 0;
+    if (busy.action === 'login') {
+      var st = loginOf(list, busy.slot).state;
+      return (gr.sign && gr.sign.url) || st === 'failed' || st === 'signed-in' || rec.rc !== 0;
+    }
+    if (busy.action === 'code') return loginOf(list, busy.slot).state !== 'code';
+    return true;
+  }
+  function gridFollow(repo, request) {
+    var busy = gr.busy;
+    if (!busy || busy.request !== request || gr.repo !== repo) return;
+    if (Date.now() - busy.since > GRID_PRESS_MS) {
+      gr.busy = null;
+      gridNote('No answer from the grid in six minutes. The run is under Runs (workflow Grid accounts), where its log says why.');
+      drawGrid(); return;
+    }
+    var reads = [gridFile(repo, 'accounts.json')];
+    if (gr.sign && gr.sign.request === request && !gr.sign.url) reads.push(gridFile(repo, 'link.json'));
+    Promise.all(reads).then(function (got) {
+      if (gr.busy !== busy) return;
+      var rec = got[0], sealed = got[1];
+      var opened = sealed && sealed.request === request && sealed.sealed && gr.sign && !gr.sign.url
+        ? unseal(sealed.sealed, gr.sign.priv).then(function (url) { if (url && gr.sign) gr.sign.url = url; }, function () { gridNote('The sign-in link could not be opened on this page; press Sign in again.'); })
+        : Promise.resolve();
+      return opened.then(function () {
+        if (rec && rec.request === request) {
+          if (rec.list) gr.rec = rec;
+          if (rec.rc && !rec.list) gridNote((rec.said || []).slice(-1)[0] || 'The grid did not take that; the run under Runs says why.');
+        }
+        if (gridDone(rec, busy)) {
+          gr.busy = null;
+          var said = rec && (rec.said || []).filter(function (l) { return /^HPCW-ACCOUNTS /.test(l); }).slice(-1)[0];
+          if (said && rec.rc) gridNote(said.replace(/^HPCW-ACCOUNTS /, ''));
+          else say(busy.label + ': done.');
+        }
+        drawGrid();
+        if (gr.busy === busy) setTimeout(function () { gridFollow(repo, request); }, GRID_POLL_MS);
+      });
+    }).catch(function () { if (gr.busy === busy) setTimeout(function () { gridFollow(repo, request); }, GRID_POLL_MS * 2); });
+  }
+  function loginOf(list, slot) {
+    var a = ((list && list.accounts) || []).filter(function (x) { return x && x.slot === slot; })[0];
+    return (a && a.login) || { state: 'none', line: '' };
+  }
+  function gridAccounts() { return (gr.rec && gr.rec.list && Array.isArray(gr.rec.list.accounts)) ? gr.rec.list.accounts : []; }
+  function untilWords(iso) {
+    var t = moment(iso);
+    if (t == null) return '';
+    var s = (t - Date.now()) / 1000;
+    if (s <= 0) return 'reset';
+    if (s < 5400) return 'resets in ' + Math.max(1, Math.round(s / 60)) + ' min';
+    if (s < 172800) return 'resets in ' + Math.round(s / 3600) + ' h';
+    return 'resets in ' + Math.round(s / 86400) + ' days';
+  }
+  function gridWindow(use, key) {
+    var each = use && use.windows && use.windows[key];
+    if (!each) return null;
+    var out = { utilization: each.utilization, resetsAt: each.resetsAt };
+    var r = moment(each.resetsAt);
+    if (r != null && r <= Date.now()) { out.utilization = 0; out.reset = true; }
+    return out;
+  }
+  function gridBars(use) {
+    var box = el('span', 'tok__use');
+    [['five_hour', '5h'], ['seven_day', '7d']].forEach(function (p) {
+      var each = gridWindow(use, p[0]), u = each ? used(each.utilization) : null;
+      var bar = el('span', 'tok__bar' + (u != null && u >= POOL_THRESHOLD ? ' tok__bar--full' : ''));
+      bar.title = (p[0] === 'five_hour' ? 'Five hours' : 'Seven days') + ': ' + (u == null ? 'not read yet' : percent(u) + ' used' + (each.resetsAt ? ', ' + untilWords(each.resetsAt) : ''));
+      var fill = el('span', 'tok__fill');
+      fill.style.width = (u == null ? 0 : Math.round(Math.min(u, 1) * 100)) + '%';
+      add(box, add(el('span', 'tok__window'), el('span', 'tok__wname', p[1]), add(bar, fill), el('span', 'gr__pct', u == null ? '' : percent(u))));
+    });
+    return box;
+  }
+  function gridAccountName(a) {
+    var who = a.who || {};
+    return who.signed_in ? (who.email || 'Account ' + a.slot) : 'Account ' + a.slot;
+  }
+  function gridAccountState(a) {
+    var busy = gr.busy && gr.busy.slot === a.slot ? gr.busy : null;
+    var login = a.login || {};
+    if (busy) return { text: busy.label + '...', cls: 'tok__state--warn' };
+    if (login.state && login.state !== 'none' && login.state !== 'signed-in') return { text: login.line || login.state, cls: login.state === 'failed' ? 'tok__state--warn' : '' };
+    if (a.current) return { text: 'In use', cls: 'tok__state--go' };
+    if (a.who && a.who.signed_in === false) return { text: 'Not signed in', cls: 'tok__state--warn' };
+    if (a.use && a.use.status === 'rejected') return { text: 'At its limit', cls: 'tok__state--warn' };
+    return { text: a.who ? 'Ready' : 'Not read yet', cls: '' };
+  }
+  function gridTile(a) {
+    var wrap = el('div', 'tok' + (gr.side === a.slot ? ' tok--on' : '') + (a.current ? ' gr--current' : ''));
+    var open = el('button', 'tok__open');
+    open.type = 'button';
+    open.id = 'gr-tile-' + a.slot;
+    var who = a.who || {}, st = gridAccountState(a);
+    add(open, el('span', 'tok__icon', a.slot), el('span', 'tok__name', gridAccountName(a)),
+        el('span', 'tok__meta', who.plan ? 'Claude ' + who.plan : who.signed_in === false ? 'signed out' : ''),
+        gridBars(a.use), el('span', 'tok__state ' + st.cls, st.text));
+    open.addEventListener('click', function () { gr.side = gr.side === a.slot ? '' : a.slot; drawGrid(); });
+    return add(wrap, open);
+  }
+  function freeSlot() {
+    var taken = gridAccounts().map(function (a) { return a.slot; });
+    for (var n = 1; n <= 32; n++) if (taken.indexOf(String(n)) < 0) return String(n);
+    return '';
+  }
+  function gridBarButtons() {
+    var bar = $('gr-bar');
+    if (!bar) return;
+    clear(bar);
+    var list = (gr.rec && gr.rec.list) || {};
+    var auto = !!list.auto;
+    var refresh = el('button', 'chip', 'Refresh');
+    refresh.type = 'button'; refresh.id = 'gr-refresh';
+    refresh.addEventListener('click', function () { gridPress('list', '', 'Refreshing'); });
+    var usage = el('button', 'chip', list.usage_job === 'running' ? 'Reading usage...' : 'Read usage');
+    usage.type = 'button'; usage.id = 'gr-usage';
+    usage.title = 'Asks each account for one word on Haiku, which spends that word of its window';
+    usage.addEventListener('click', function () { gridPress('usage', '', 'Reading usage'); });
+    var autoB = el('button', 'chip' + (auto ? ' chip--go' : ''), auto ? 'Auto mode: on' : 'Auto mode: off');
+    autoB.type = 'button'; autoB.id = 'gr-auto';
+    autoB.setAttribute('aria-pressed', auto ? 'true' : 'false');
+    autoB.title = 'On: your worker moves to the signed-in account with the most room when its account reaches 90% of a window';
+    autoB.addEventListener('click', function () { gridPress(auto ? 'auto-off' : 'auto-on', '', auto ? 'Turning auto mode off' : 'Turning auto mode on'); });
+    [refresh, usage, autoB].forEach(function (b) { b.disabled = !!gr.busy; add(bar, b); });
+    if (gr.busy) add(bar, el('span', 'gr__busy', gr.busy.label + '...'));
+  }
+  function workerLine(w) {
+    if (!w) return null;
+    var p = el('p', 'gr__worker');
+    var state = w.state === 'online' ? 'online' : w.state || 'unknown';
+    add(p, el('span', 'gr__dot gr__dot--' + (state === 'online' ? 'go' : state === 'need_login' || state === 'error' ? 'warn' : 'wait')),
+        'Worker ' + (w.name || '') + ': ' + state.replace(/_/g, ' ') + (w.account ? ', on account ' + w.account : '') + (w.node ? ', ' + w.node : ''));
+    if (w.link) add(p, ' ', link(w.link, 'Open the session'));
+    return p;
+  }
+  function drawGrid() {
+    gridBarButtons();
+    var box = $('gr-tiles');
+    if (!box) return;
+    clear(box);
+    if (!gr.read) { none(box, 'Reading the grid\'s accounts...'); drawGridSide(); return; }
+    var list = gr.rec && gr.rec.list;
+    if (!list) {
+      none(box, gr.missing ? 'Nothing read from the grid yet for ' + gr.repo + '. Refresh asks it now (the repository needs the workflow Grid accounts and the grid gate, docs/setup/grid.md).' : 'The grid gave no list last time; Refresh asks again.');
+      add(box, toksNote());
+      drawGridSide(); return;
+    }
+    var wl = workerLine(list.worker);
+    if (wl) add(box, add(el('div', 'toks__note'), wl));
+    gridAccounts().forEach(function (a) { add(box, gridTile(a)); });
+    var plus = el('button', 'tok__open tok--add');
+    plus.type = 'button'; plus.id = 'gr-add';
+    var n = freeSlot();
+    add(plus, el('span', 'tok__plus', '+'), el('span', 'tok__name', 'Sign in another'));
+    plus.disabled = !n || !!gr.busy;
+    plus.addEventListener('click', function () { gr.side = n; gridPress('login', n, 'Signing in account ' + n); });
+    add(box, add(el('div', 'tok'), plus));
+    if (gr.rec.at) add(box, add(el('p', 'admin__none toks__note'), 'Read from the grid ', timeEl(gr.rec.at), '.'));
+    drawGridSide();
+  }
+  function toksNote() { return null; }
+  function drawGridSide() {
+    var side = $('gr-side');
+    if (!side) return;
+    var slot = gr.side;
+    var a = gridAccounts().filter(function (x) { return x.slot === slot; })[0];
+    var signing = gr.sign && gr.sign.slot === slot ? gr.sign : null;
+    if (!slot || (!a && !signing)) { side.hidden = true; clear(side); return; }
+    clear(side);
+    side.hidden = false;
+    a = a || { slot: slot, login: { state: 'waiting' } };
+    var close = el('button', 'tkside__close', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function () { gr.side = ''; drawGrid(); });
+    var who = a.who || {};
+    add(side, close, el('h3', 'console__boxh', gridAccountName(a)), el('p', 'tok__owner', 'Account ' + slot + (who.plan ? ', Claude ' + who.plan : '')));
+    var st = gridAccountState(a);
+    add(side, el('p', 'tok__state ' + st.cls, st.text));
+    [['five_hour', 'Five hours'], ['seven_day', 'Seven days']].forEach(function (p) {
+      var each = gridWindow(a.use, p[0]);
+      var m = sideMeter(p[1], each);
+      if (each && each.resetsAt && !each.reset) add(m, el('p', 'tkside__reset', untilWords(each.resetsAt)));
+      add(side, m);
+    });
+    ((a.use && a.use.scoped) || []).forEach(function (x) { add(side, sideMeter(x.name + ' weekly', gridWindow({ windows: { w: x } }, 'w'))); });
+    if (a.use && a.use.read_at) add(side, add(el('p', 'tkdlg__fact tkdlg__faint'), 'Usage read ', timeEl(a.use.read_at)));
+    if (a.use && a.use.error) add(side, el('p', 'tkdlg__fact admin__warn', a.use.error));
+    var login = a.login || {};
+    if (signing || ['waiting', 'link', 'code'].indexOf(login.state) >= 0) add(side, signInBox(slot, signing, login));
+    var bar = el('p', 'admin__bar');
+    if (!a.current && who.signed_in) {
+      var use = btn('Use this account', false, function () { gridPress('use', slot, 'Moving to account ' + slot); });
+      use.id = 'gr-use';
+      use.title = 'Your running worker moves to this account now; its session then shows in this account on claude.ai';
+      add(bar, use);
+    }
+    var again = btn(who.signed_in ? 'Sign in again' : 'Sign in', true, function () { gridPress('login', slot, 'Signing in account ' + slot); });
+    again.id = 'gr-signin';
+    add(bar, again);
+    if (!a.current && a.who !== undefined) {
+      var forget = btn('Forget', true, function () {
+        if (!window.confirm('Forget account ' + slot + ' on the grid? Its folder is moved aside there, never deleted.')) return;
+        gridPress('forget', slot, 'Forgetting account ' + slot);
+      });
+      forget.id = 'gr-forget';
+      add(bar, forget);
+    }
+    Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) { b.disabled = !!gr.busy; });
+    add(side, bar);
+  }
+  function signInBox(slot, signing, login) {
+    var box = el('div', 'gr__sign');
+    add(box, el('p', 'tkdlg__fact', login.line || 'Waiting for a computer on the grid and for Claude Code\'s link.'));
+    if (signing && signing.url) {
+      var go = link(signing.url, 'Open Anthropic\'s sign-in');
+      go.className = 'button gr__go';
+      go.id = 'gr-link';
+      add(box, add(el('p', ''), go));
+      add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Sign in there with the account to add. If the page shows a code, paste it here; if it says you are signed in, nothing more is needed.'));
+    } else if (signing) add(box, el('p', 'tkdlg__fact tkdlg__faint', 'The link comes here, for this page alone, as soon as the grid prints it.'));
+    var input = el('input');
+    input.type = 'text'; input.id = 'gr-code'; input.autocomplete = 'off'; input.spellcheck = false; input.placeholder = 'Code from Anthropic\'s page';
+    var send = btn('Send code', false, function () {
+      var code = input.value.trim();
+      if (!/^[A-Za-z0-9_#.~-]{8,512}$/.test(code)) { gridNote('That is not a code Anthropic\'s page shows.'); return; }
+      input.value = '';
+      gridPress('code', slot, 'Checking the code', { code: code });
+    });
+    send.id = 'gr-send';
+    send.disabled = !!gr.busy && gr.busy.action !== 'login';
+    add(box, add(el('p', 'gr__coderow'), input, send));
+    return box;
+  }
+  function initGridTab() {
+    consoleOnOpen.grid = function () { if (gr.repo !== gridRepo() || !gr.read) loadGrid(); gridIdle(); };
+  }
+
   /* ---------- the leaderboard: the issues each token worked, by the label token:<id> ---------- */
   // A worker's run labels the issue it worked token:<id> (symphony-template's workers.yml), and the
   // token's settings name its owner, so GitHub's issue search over the organization, or the personal
@@ -12615,5 +12941,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
 })();

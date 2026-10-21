@@ -1291,6 +1291,20 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 /* a column of items aligned to their start would shrink the tiles' grid to one tile: stretched, it fills the row;
    the column comes with the console's phone rules, where the grip that sets the panel's width is hidden, so a
    width kept from a wider window never squeezes the tiles, and the half-width cap stands in for it above them */
+/* The Grid tab (grid-accounts.yml): the Claude accounts on the grid as the Tokens tab's tiles,
+   the account the worker runs on ringed, and a sign-in box in the side panel */
+.gr__pct { flex: none; min-width: 2.4em; text-align: right; }
+.gr__busy { font-size: 0.86rem; color: var(--ochre); }
+.gr__worker { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 0.9rem; }
+.gr__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-faint); }
+.gr__dot--go { background: var(--go); }
+.gr__dot--warn { background: var(--ochre); }
+.gr__dot--wait { background: var(--ink-faint); }
+.gr--current .tok__open { border-color: var(--go); box-shadow: 0 0 0 2px var(--go) inset; }
+.gr__sign { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
+.gr__coderow { display: flex; gap: 6px; }
+.gr__coderow input { flex: 1; min-width: 0; }
+.console .gr__go { align-self: flex-start; }
 @media (max-width: 900px), (max-height: 520px) { .tkwrap { flex-direction: column; align-items: stretch; } .tkside { position: relative; width: auto; max-width: none; align-self: stretch; } }
 /* the Notebooks tab: the Tokens tab's tiles and side panel in shape; a card's kinds as small
    chips, the side panel's files one under another, and the dialog's list of the catalog's files */
