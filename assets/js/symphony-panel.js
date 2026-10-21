@@ -8316,7 +8316,7 @@
     var request = requestName();
     var inputs = { action: action, slot: slot || '', request: request };
     Object.keys(extra || {}).forEach(function (k) { inputs[k] = extra[k]; });
-    gr.busy = { action: action, slot: slot || '', label: label, request: request, since: Date.now() };
+    gr.busy = { action: action, slot: slot || '', label: label, request: request, since: Date.now(), logfile: logFileOf(action, slot, extra) };
     gridNote('');
     drawGrid();
     var keyed = action === 'login' ? gridKeys() : Promise.resolve(null);
@@ -8331,6 +8331,60 @@
       gridNote(e.status === 404 ? repo + ' has no workflow Grid accounts (.github/workflows/grid-accounts.yml); choose the repository whose grid gate is set up, as OpenSpineConsortium/symphony-template.' : e.message + (e.status === 403 ? ' Starting it needs Actions: read and write, and the run itself an admin of ' + repo + '.' : ''));
       drawGrid();
     });
+  }
+  // the Console: what a grid job printed, its stdout and stderr cleaned on the grid and again in the
+  // workflow, written to the branch grid as logs/<what>.json by the action log (hpcworker framework 23)
+  function logFileOf(action, slot, extra) {
+    if (action !== 'log') return '';
+    if (slot) return 'login-' + slot;
+    return extra && extra.name ? 'worker-' + extra.name : 'usage';
+  }
+  function logTitle(file) {
+    var m = /^login-(\d+)$/.exec(file);
+    if (m) return 'Sign-in of account ' + m[1];
+    m = /^worker-(.+)$/.exec(file);
+    return m ? 'Worker ' + m[1] : 'Usage job';
+  }
+  function gridLog(slot, name) {
+    var extra = name ? { name: name } : {};
+    var file = logFileOf('log', slot, extra);
+    gridPress('log', slot || '', 'Reading the output: ' + logTitle(file), extra);
+  }
+  function gridLogRead(repo, busy) {
+    return gridFile(repo, 'logs/' + busy.logfile + '.json').then(function (rec) {
+      if (gr.repo !== repo) return;
+      if (!rec || rec.request !== busy.request) { gridNote('The grid\'s answer for ' + logTitle(busy.logfile).toLowerCase() + ' was not on the branch grid; the run under Runs (workflow Grid accounts) says why. The grid needs framework 23 for this.'); return; }
+      gr.log = { file: busy.logfile, rec: rec };
+      drawGrid();
+      var c = $('gr-console'); if (c) { c.open = true; c.scrollIntoView({ block: 'nearest' }); }
+    }).catch(function (e) { gridNote(e.message); });
+  }
+  function consoleBox() {
+    var box = el('details', 'gr__console');
+    box.id = 'gr-console';
+    box.open = !!gr.log;
+    add(box, el('summary', '', 'Console: what grid jobs printed'));
+    var bar = el('p', 'admin__bar');
+    var usage = btn('Usage job', true, function () { gridLog('', ''); });
+    usage.id = 'gr-log-usage';
+    usage.title = 'The output of the job that reads each account\'s use';
+    add(bar, usage);
+    if (gr.log) {
+      var again = btn('Read again', true, function () { var f = gr.log.file, m = /^login-(\d+)$/.exec(f), w = /^worker-(.+)$/.exec(f); gridLog(m ? m[1] : '', w ? w[1] : ''); });
+      again.id = 'gr-log-again';
+      add(bar, again);
+    }
+    Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) { b.disabled = !!gr.busy; });
+    add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Each account\'s Output button shows its sign-in job, each worker\'s its terminal and Slurm output (stdout and stderr). Long strings that could be a token are hidden on the grid before anything leaves it.'), bar);
+    if (gr.log) {
+      var rec = gr.log.rec;
+      add(box, add(el('p', 'tkdlg__fact'), logTitle(gr.log.file) + ', read ', timeEl(rec.at)));
+      var pre = el('pre', 'gr__log');
+      pre.id = 'gr-log';
+      pre.textContent = (rec.lines || []).length ? rec.lines.join('\n') : 'The grid printed nothing for it.';
+      add(box, pre);
+    }
+    return box;
   }
   function gridDone(rec, busy) {
     if (!rec || rec.request !== busy.request) return false;
@@ -8370,6 +8424,7 @@
         }
         if (gridDone(rec, busy)) {
           gr.busy = null;
+          if (busy.action === 'log') gridLogRead(repo, busy);
           var said = rec && (rec.said || []).filter(function (l) { return /^HPCW-ACCOUNTS /.test(l); }).slice(-1)[0];
           if (said && rec.rc) gridNote(said.replace(/^HPCW-ACCOUNTS /, ''));
           else say(busy.label + ': done.');
@@ -8515,6 +8570,13 @@
       stop.disabled = !!gr.busy;
       add(p, ' ', stop);
     }
+    if (w.name && GRID_NAME.test(w.name)) {
+      var out = btn('Output', true, function () { gridLog('', w.name); });
+      out.id = 'gr-log-' + w.name;
+      out.title = 'What this worker\'s job printed: Claude Code\'s terminal and the Slurm output';
+      out.disabled = !!gr.busy;
+      add(p, ' ', out);
+    }
     return p;
   }
   function drawGrid() {
@@ -8545,6 +8607,7 @@
     plus.addEventListener('click', function () { gr.side = n; gridPress('login', n, 'Signing in account ' + n); });
     add(box, add(el('div', 'tok'), plus));
     if (gr.rec.at) add(box, add(el('p', 'admin__none toks__note'), 'Read from the grid ', timeEl(gr.rec.at), ', through ' + gr.repo + '.'));
+    add(box, consoleBox());
     drawGridSide();
   }
   function toksNote() { return null; }
@@ -8588,6 +8651,10 @@
     var again = btn(who.signed_in ? 'Sign in again' : 'Sign in', true, function () { gridPress('login', slot, 'Signing in account ' + slot); });
     again.id = 'gr-signin';
     add(bar, again);
+    var output = btn('Sign-in output', true, function () { gridLog(slot, ''); });
+    output.id = 'gr-log-slot';
+    output.title = 'What this account\'s last sign-in job printed, stdout and stderr';
+    add(bar, output);
     if (!a.current && a.who !== undefined) {
       var forget = btn('Forget', true, function () {
         if (!window.confirm('Forget account ' + slot + ' on the grid? Its folder is moved aside there, never deleted.')) return;
