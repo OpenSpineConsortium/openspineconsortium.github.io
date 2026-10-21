@@ -2668,6 +2668,38 @@
   function revealTab(node) {
     var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
     if (panel && panel.hidden) showTab(panel.getAttribute('data-tab-panel'));
+    revealTaskList(node);
+  }
+  // The Tasks tab shows one list at a time, or All side by side (the owner, 2026-10-21: "tasks can be
+  // split into tabs so you dont need all the nav to jump across a long row of tasks"); the chips in
+  // its head are the sub-tabs, and the choice is kept in this browser
+  var KEY_TASK_VIEW = 'symphony_panel_tasks_view';
+  var TASK_VIEWS = ['queue', 'given', 'claimed', 'review', 'blocked', 'epics', 'all'];
+  function taskBoard() { return document.querySelector('#tab-tasks .console__kanban'); }
+  function taskView(view, keep) {
+    var board = taskBoard();
+    if (!board || TASK_VIEWS.indexOf(view) < 0) return;
+    board.setAttribute('data-view', view);
+    Array.prototype.forEach.call(document.querySelectorAll('#tab-tasks [data-taskview]'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-taskview') === view ? 'true' : 'false');
+    });
+    if (keep) {
+      try { localStorage.setItem(KEY_TASK_VIEW, view); } catch (e) { /* the choice lasts while the page is open */ }
+    }
+  }
+  function keptTaskView() {
+    var v = '';
+    try { v = localStorage.getItem(KEY_TASK_VIEW) || ''; } catch (e) { v = ''; }
+    return TASK_VIEWS.indexOf(v) >= 0 ? v : 'queue';
+  }
+  // a row or list shown from elsewhere (a readout, the assistant's focus, Centre its row) brings its
+  // own list up, unless All already shows it, and leaves the person's own choice kept for next time
+  function revealTaskList(node) {
+    var board = taskBoard();
+    if (!board || !node || !node.closest || !board.contains(node)) return;
+    var col = node.closest('[data-col]');
+    var view = board.getAttribute('data-view');
+    if (col && view !== 'all' && view !== col.getAttribute('data-col')) taskView(col.getAttribute('data-col'));
   }
   // scrollIntoView moves every box around the node, the window too, which would carry the header and
   // the strip out of sight; while the deck holds the window, the window is put back where it was
@@ -2731,7 +2763,8 @@
     var head = wrap.previousElementSibling && /^H[1-6]$/.test(wrap.previousElementSibling.tagName) ? wrap.previousElementSibling : wrap;
     var box = wrap.closest('.console__scroll');
     if (!box) return;
-    // the task board lays its lists side by side, so the jump is sideways there
+    // the task board shows the list's own sub-tab (revealTab, above), or, under All, lays the lists
+    // side by side, so the jump is sideways there
     if (box.classList.contains('console__kanban') && getComputedStyle(box).display === 'grid') {
       box.scrollLeft = head.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft;
       head.classList.remove('console__flash');
@@ -3389,6 +3422,7 @@
     initFullScreen();
     initTiles();
     initLayout();
+    taskView(keptTaskView());
     // the note over the screen's foot holds the page's message; Clear empties it. A task under way
     // there is only hidden, its work going on, and the button that started it shows it again, the
     // step the person was in the middle of (the code box of Add Token) kept as it was; the focus goes
@@ -3437,7 +3471,7 @@
     });
     // the readouts, the launch buttons that open a tab, and the chips that press a button elsewhere
     c.addEventListener('click', function (e) {
-      var b = e.target && e.target.closest ? e.target.closest('[data-goto],[data-jump],[data-press],[data-open],[data-focus]') : null;
+      var b = e.target && e.target.closest ? e.target.closest('[data-goto],[data-jump],[data-taskview],[data-press],[data-open],[data-focus]') : null;
       if (!b || b.getAttribute('role') === 'tab') return;
       if (b.hasAttribute('data-press')) {
         var target = $(b.getAttribute('data-press'));
@@ -3446,6 +3480,7 @@
       }
       if (b.hasAttribute('data-goto')) showTab(b.getAttribute('data-goto'));
       if (b.hasAttribute('data-jump')) jumpTo(b.getAttribute('data-jump'));
+      if (b.hasAttribute('data-taskview')) taskView(b.getAttribute('data-taskview'), true);
       if (b.hasAttribute('data-open')) openDialog(b.getAttribute('data-open'));
       var f = b.getAttribute('data-focus');
       // Ask Claude is the floating button's press, wherever it is made from
@@ -4043,7 +4078,8 @@
   function assistantFilter(kind) {
     assistant.filter = kind;
     var r = assistantRedraw();
-    if (kind !== 'none') revealTab($('cp-queue'));
+    // a filter reaches across every list, so All shows them side by side
+    if (kind !== 'none') { taskView('all'); revealTab($('cp-queue')); } else taskView(keptTaskView());
     return kind === 'none' ? 'Showing every task again.' : 'Filtered the task tables to ' + assistantFilterWords() + ': ' + r.shown + ' of ' + r.total + '; Show all tasks, above the tables, clears it.';
   }
   // the Dependencies tab is the page's own, drawn from GitHub as the person, and opens at its first
