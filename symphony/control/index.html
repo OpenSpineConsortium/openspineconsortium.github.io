@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610210207">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610210207">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610210207">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610210419">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610210419">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610210419">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610210207">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610210419">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -172,6 +172,7 @@
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
           <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#10022;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
+          <button type="button" role="tab" data-tab="grid" id="rail-grid" aria-controls="tab-grid"><span class="rail__icon" aria-hidden="true">&#9635;</span><span class="rail__name">Grid</span></button>
           <button type="button" role="tab" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
           <button type="button" role="tab" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
           <button type="button" role="tab" data-tab="folders" id="rail-folders" aria-controls="tab-folders"><span class="rail__icon" aria-hidden="true">&#8645;</span><span class="rail__name">Folders</span></button>
@@ -306,29 +307,33 @@
           <div class="console__scroll"><div id="cp-graph" class="control__graph"></div></div>
         </section>
 
-        <!-- Explore: the project as a map, from the repository down to a step's log -->
-        <section class="console__panel explore" id="tab-explore" data-tab-panel="explore" role="tabpanel" aria-labelledby="rail-explore" hidden>
+        <!-- Explore: a planning canvas over the epics' tasks and their native links, where Claude
+             proposes links and new tasks and the person pushes what they accept to GitHub (the
+             owner, 2026-10-21; symphony-template docs/research/explore-dependency-brainstorm.md) -->
+        <section class="console__panel bs" id="tab-explore" data-tab-panel="explore" role="tabpanel" aria-labelledby="rail-explore" hidden>
           <div class="console__head">
             <h2 id="h-explore" class="console__h">Explore</h2>
-            <details class="console__help"><summary>How to move through it and what it reads</summary><div>
-              <p>The whole project as a map, one level at a time: the repository, its goals and epics, each epic&rsquo;s tasks, the pull requests of a task (or its claim branch where it has none), the GitHub Actions runs on that branch, each run&rsquo;s jobs, each job&rsquo;s steps and, at the bottom, the lines of a step&rsquo;s log, where the steps that run Claude are marked. Click a card to go into it; press Backspace or Escape, or pick a level in the trail at the top, to come back out. Nothing here scrolls: the whole level is drawn to fit, and you zoom instead, with a pinch, the scroll wheel, the &minus; and + buttons or keys, or a double click, then drag to move around; Whole, or 0, draws it whole again, and zooming out past the whole level comes out of it, one level for each turn of the wheel. A swipe sideways, or the left and right arrows while the map itself has the keyboard, goes to the level beside this one, the next task of the same epic or the next run on the same branch. With a card in hand the arrow keys move between the cards and Enter goes in. A log opens at a size to read, on its first error or else at its end, and the wheel or a drag moves along it. While you use this tab it takes most of the panel: the side column folds to its icons, and on a phone the tab takes the whole screen; Panel, or a press on the folded column, brings it back. The outline button shows every level read on your way down and what sits beside each; click a name to go there.</p>
-              <p>The repository, its goals, epics and tasks come from what the console has already read (the Dependencies tab&rsquo;s reads). Everything below a task is read from GitHub as you, only when you go into it: the runs on a branch, a run&rsquo;s jobs and steps, and a job&rsquo;s log, one read each, none once GitHub says the token has fewer than a hundred calls left this hour. What is read stays in this tab&rsquo;s memory until you choose another repository, the logs of the last three jobs only, and is written nowhere; Read again reads a level or a log afresh, for a run still going. GitHub hands a job&rsquo;s log over from its own storage; where your browser may not read it from there, the step says so and links the log on GitHub.</p>
+            <button type="button" class="console__add" id="bs-ideas">&#10022; Ask Claude for ideas</button>
+            <button type="button" class="chip" id="bs-node">+ Task</button>
+            <button type="button" class="chip" id="bs-connect" aria-pressed="false">Connect</button>
+            <details class="console__help"><summary>How it works</summary><div>
+              <p>One epic at a time: its tasks as cards, with the issues outside it that block one of them, and a line from each task to the tasks it blocks, as GitHub holds them (sub-issues and &ldquo;blocked by&rdquo;). Ask Claude for ideas opens the Claude box with a question about the epic; the answer&rsquo;s ideas are drawn here dashed, a new task with Accept, Edit and Dismiss, a new link with Accept and Dismiss. + Task adds a task of your own, and Connect joins two cards: press the task that must be done first, then the task it blocks; a pair already joined on GitHub is added to the changes as a link to remove, and the same pair again takes a waiting change back. A task still Claude&rsquo;s idea is accepted before it is connected.</p>
+              <p>What you accept waits under Changes to push, and nothing reaches GitHub until you press Push. The push writes, as you: each new task as an issue labelled <code>todo</code> and made a sub-issue of the epic, then each link as a native &ldquo;blocked by&rdquo;. A link that would close a loop is refused, since a task that waits on itself is never free. Undo the last push removes the links it made and closes the issues it opened, as not planned. Claude writes nothing: its ideas come from the assistant issue&rsquo;s answer, and only your presses act.</p>
             </div></details>
           </div>
-          <div class="ex__bar">
-            <button type="button" id="ex-out" class="ex__tool ex__icon" title="Come out one level (Backspace)" aria-label="Come out one level">&#8592;</button>
-            <button type="button" id="ex-outline" class="ex__tool ex__icon" aria-expanded="false" aria-controls="ex-tree" title="The outline of every level read so far" aria-label="Outline">&#9776;</button>
-            <nav id="ex-path" class="ex__path" aria-label="Where you are"></nav>
-            <span class="ex__zoom" role="group" aria-label="Zoom"><button type="button" id="ex-zoom-out" class="ex__tool ex__icon" title="Zoom out (-); past the whole level, come out of it" aria-label="Zoom out">&minus;</button><button type="button" id="ex-zoom-whole" class="ex__tool" title="The whole level (0)">Whole</button><button type="button" id="ex-zoom-in" class="ex__tool ex__icon" title="Zoom in (+)" aria-label="Zoom in">+</button></span>
-            <a id="ex-github" class="ex__tool ex__link" href="#" target="_blank" rel="noopener" hidden>Open on GitHub</a>
-            <button type="button" id="ex-wide" class="ex__tool ex__wide" aria-pressed="true" title="Bring back the side column"><span aria-hidden="true">&#x26F6;</span> <span class="ex__wideword">Panel</span></button>
+          <div id="bs-epics" class="bs__epics ds-seg" role="group" aria-label="Epic"></div>
+          <div class="bs__body">
+            <div id="bs-canvas" class="bs__canvas" tabindex="0" aria-label="The epic's tasks and links"></div>
+            <aside class="bs__tray" aria-labelledby="bs-tray-h">
+              <h3 id="bs-tray-h" class="bs__trayh">Changes to push <span id="bs-count" class="bs__count">0</span></h3>
+              <ol id="bs-pending" class="bs__list"></ol>
+              <div class="bs__foot">
+                <button type="button" class="console__add" id="bs-push" disabled>Push to GitHub</button>
+                <button type="button" class="chip" id="bs-undo" hidden>Undo the last push</button>
+              </div>
+            </aside>
           </div>
-          <div id="ex-head" class="ex__head"></div>
-          <div class="ex__body">
-            <nav id="ex-tree" class="ex__tree" aria-label="Outline" hidden></nav>
-            <div id="ex-stage" class="ex__stage" tabindex="0"></div>
-          </div>
-          <p id="ex-status" class="ex__status" aria-live="polite">Nothing to explore yet: no repository is chosen.</p>
+          <p id="bs-status" class="bs__status" aria-live="polite">Nothing to plan yet: no repository is chosen.</p>
         </section>
 
         <!-- Pull requests -->
@@ -397,14 +402,33 @@
           </div>
         </section>
 
+        <!-- Grid: the Claude accounts signed in on the WSU grid, through grid-accounts.yml and the grid's ssh gate -->
+        <section class="console__panel" id="tab-grid" data-tab-panel="grid" role="tabpanel" aria-labelledby="rail-grid" hidden>
+          <div class="console__head">
+            <h2 id="h-grid" class="console__h">Grid</h2>
+            <p class="console__jumps" id="gr-bar"></p>
+            <details class="console__help"><summary>How this works</summary><div>
+              <p>The Claude accounts signed in on the grid for your Beethoven worker, one in use at a time. The tab is the same whatever repository the panel has open: each press runs the workflow Grid accounts in OpenSpineConsortium/symphony-template, where the gridEach press runs this repository&rsquo;s workflow Grid accounts,rsquo;s gate is set up, which only an admin may start, and says one word to the grid&rsquo;s ssh gate; the answer comes back in a few seconds to half a minute. Use moves your running worker to another account at once: its session then shows in that account on claude.ai. Auto mode moves it when its account reaches 90% of a window. Read usage asks each account for one word on Haiku, which spends that word. A sign-in link is sealed for this page alone and opened here with a key that is never stored; e-mails are shown masked.</p>
+            </div></details>
+          </div>
+          <p id="gr-note" class="admin__warn" hidden></p>
+          <div class="console__scroll tkwrap">
+            <div id="gr-tiles" class="toks" aria-label="Claude accounts on the grid"></div>
+            <aside id="gr-side" class="tkside" aria-label="The account" hidden></aside>
+          </div>
+        </section>
+
         <!-- Folders: a repository that tracks files and folders of your OneDrive -->
         <!-- Folders: the person's OneDrive as Windows' File Explorer draws it, filling the tab; the
              repository steps that track what is ticked open from "Track in a repository" -->
         <section class="console__panel folders" id="tab-folders" data-tab-panel="folders" role="tabpanel" aria-labelledby="rail-folders" hidden>
           <div class="console__head folders__head">
             <h2 id="h-folders" class="console__h">Folders</h2>
-            <p class="folders__who" id="fd-connect-note"></p>
-            <button type="button" class="folders__forget" id="fd-forget" hidden>Forget OneDrive</button>
+            <!-- the drives mounted on this browser, one card each as the Workers tab draws its cards:
+                 the one shown is lit, a press on the other switches, its eject forgets it, and the
+                 dashed card adds one; the script fills the strip and moves the two buttons into it -->
+            <div id="fd-accounts" class="folders__accounts" role="group" aria-label="Your drives"></div>
+            <button type="button" class="folders__forget" id="fd-forget" hidden><span class="admin__sr">Forget OneDrive</span></button>
             <button type="button" class="folders__add" data-open="dlg-cloud" id="fd-add">+ Add a cloud drive</button>
             <button type="button" class="console__add folders__trackopen" data-open="dlg-track" id="fd-track-open">Track in a repository</button>
             <details class="console__help"><summary>How it works</summary><div>
@@ -415,6 +439,9 @@
               <p>The repository: GitHub&rsquo;s own form makes it from the template, named by you, so its first commit stays yours and no App needs to administer it. While the template is internal to OpenSpineConsortium&rsquo;s enterprise, that form works only for the enterprise&rsquo;s members; anyone else makes the repository through the front door: install <a href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">SymphonyBoard</a> and press Create on the form its install leads to, which brings a new or empty repository the whole template, <code>drive-sync.yml</code> with it, by a pull request to merge. The form opens in a new tab; name the repository, press &ldquo;Create repository&rdquo;, come back here and press &ldquo;Find the repository I just made&rdquo;, which lists it in the bar&rsquo;s Repository and chooses it. Signed in with GitHub, the page reaches it once SymphonyBoard is installed on it (an installation on all your repositories covers it); a fine-grained token reaches what it was made for, and Track needs it to hold Contents, Secrets and Actions, each Read and write.</p>
               <p>Track writes, as you: the drive&rsquo;s refresh token, sealed in this browser with GitHub&rsquo;s public key the way GitHub&rsquo;s own secrets page seals one, as the secret <code>SYMPHONY_DRIVE_REFRESH</code>, in the repository, or, for a private repository of an organization on a paid plan whose secret no other drive holds, as the organization&rsquo;s secret, which every private and internal repository of the organization reads, so one Track covers the whole organization, with the variable <code>SYMPHONY_DRIVE_ID</code> beside it naming the drive; the file <code>.github/symphony/drive.json</code> naming the drive, the folder and what you ticked; the repository variable <code>SYMPHONY_DRIVE</code>, set to on, which the half-hourly sync waits for; and the first run of the sync. A repository that only walks the drive, with <code>drive-catalog.yml</code> and no sync, gets the secret alone. On a personal account, which has no secret all its repositories read, Track also renews the secret in each of your other repositories that holds one and tracks the same drive by its file, where that file is dated earlier than the connection; their files keep their date, so their tabs may ask for Connect again sooner than needed. Track dates the file by the day the connection was made, not the day of the press. OneDrive stays connected on this browser after Track. Opening the tab on a repository that already tracks a drive, with its secret set and its connection not known to have run out, sets <code>SYMPHONY_DRIVE</code> to on too, as you, where it was never set, and says so; one set to off is left off. In a public repository the files you tick, their names and the comments in them become readable by anyone, so the tab asks you to confirm before it tracks into one. Where the default branch takes only pull requests, the file waits on a pull request; until it merges, the half-hourly sync runs with the new secret on the file the default branch already holds. Whoever can run a workflow on the repository, anyone who may write to it, can read that secret and, through the sign-in service, reach every file of your OneDrive with it, not only what you ticked, until it lapses or you withdraw Symphony&rsquo;s access at Microsoft: at <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener">account.live.com/consent/Manage</a> for a personal account, or in <a href="https://myapps.microsoft.com" target="_blank" rel="noopener">My Apps</a> for a work or school account, where its administrator may have to. Deleting the secret withdraws nothing at Microsoft. A Microsoft refresh token lasts 90 days, and the run cannot keep the newer one Microsoft issues on each sync, so the tab says when to press Connect OneDrive again, then Track, which replaces the secret and the date; what the repository tracks is ticked already.</p>
             </div></details>
+            <!-- whose drive it is, in words: read aloud while the cards say the same, shown when
+                 something needs saying (no drive, a drive that cannot be connected) -->
+            <p class="folders__who" id="fd-connect-note"></p>
           </div>
           <div id="fd-browser" class="folders__browser"></div>
         </section>
@@ -482,6 +509,15 @@
 
     <!-- The dialogs every + and every gear opens: nothing on the tabs is a form. Each opens over the
          console (showModal), so the tab under it stays as it was. -->
+    <dialog id="dlg-bs-node" class="tkdlg cpdlg" aria-labelledby="dlg-bs-node-h">
+      <form method="dialog" class="tkdlg__form">
+        <h3 id="dlg-bs-node-h" class="console__boxh">A task for the epic</h3>
+        <div class="tkdlg__field"><label for="bs-node-title">Title</label><input id="bs-node-title" maxlength="200" autocomplete="off"></div>
+        <div class="tkdlg__field"><label for="bs-node-why">What is true when it is done</label><textarea id="bs-node-why" rows="3"></textarea></div>
+        <p class="tkdlg__bar"><button id="bs-node-save" type="button" class="console__primary">Add to the changes</button> <button type="submit" class="quiet">Cancel</button></p>
+        <p class="tkdlg__note admin__lead">The task waits under Changes to push; Push opens it as an issue labelled <code>todo</code> under the epic.</p>
+      </form>
+    </dialog>
     <dialog id="dlg-task" class="tkdlg cpdlg" aria-labelledby="dlg-task-h">
       <form method="dialog" class="tkdlg__form">
         <h3 id="dlg-task-h" class="console__boxh">Add a task</h3>
@@ -698,8 +734,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610210207"></script>
+<script src="/assets/js/main.js?v=202610210419"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610210207"></script>
+<script src="/assets/js/symphony-panel.js?v=202610210419"></script>
 </body>
 </html>

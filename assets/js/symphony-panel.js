@@ -2098,6 +2098,7 @@
     fillRepoSelect($('cp-repo'), name);
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
+    if (consoleTab === 'grid' && consoleOnOpen.grid) consoleOnOpen.grid();
     if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
     foldersFor = null;
     if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
@@ -2619,8 +2620,8 @@
       try { d.close(); } catch (e) { d.removeAttribute('open'); }
     });
     c.classList.add('console--home');
-    // no tab is shown under the home screen, so nothing a tab sets for itself (Explore's wide
-    // fold) reaches it; showTab shows the tab again
+    // no tab is shown under the home screen, so nothing a tab sets for itself reaches it; showTab
+    // shows the tab again
     Array.prototype.forEach.call(document.querySelectorAll('[data-tab-panel]'), function (p) { p.hidden = true; });
     if (location.hash) {
       try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) { /* the address stays */ }
@@ -2932,7 +2933,7 @@
   // whose id is above the newest before the press, the one the signed-in person started where
   // several are; one that is not listed within two minutes is left to the Runs tab. While it runs,
   // its jobs' steps are read every few seconds; once a job has ended, the last lines of its log are
-  // read once, with the token alone, as the Explore tab reads one (exLog), and a log the browser
+  // read once, with the token alone and none of GitHub's headers, and a log the browser
   // may not read across origins is left out.
   var RUN_FIND_MS = 5000, RUN_FIND_FOR_MS = 2 * 60 * 1000, RUN_STEPS_MS = 6000, RUN_LOG_LINES = 12;
   var RUN_LOG_HEADERS = { 'Accept': null, 'X-GitHub-Api-Version': null };
@@ -4004,7 +4005,7 @@
     var box = $('cp-as-actions');
     clear(box);
     var lines = assistantBlock(body);
-    if (!lines.length) return;
+    if (!lines.length) { if (consoleTab === 'explore') exploreAfterDraw(); return; }
     lines.forEach(function (line, i) {
       var m, said;
       if ((m = /^focus\s+#([0-9]{1,9})$/i.exec(line))) said = assistantFocus(Number(m[1]));
@@ -4017,10 +4018,13 @@
       else if ((m = /^merge\s+#([0-9]{1,9})$/i.exec(line))) said = assistantMergeOffer(Number(m[1]));
       else if ((m = /^task:?\s+(.{1,200})$/i.exec(line))) said = assistantTaskOffer(m[1].trim());
       else if ((m = /^ask(?:\s+#([0-9]{1,9}))?\s*:?\s+(.{1,2000})$/i.exec(line))) said = assistantAskOffer(m[1] || '', m[2].trim());
+      else if (BS_LINK.test(line) || BS_NODE.test(line)) said = bsOffer(line);
       else said = 'Not acted on, shown as written: ' + line;
       if (i) add(box, ' ');
       add(box, said);
     });
+    // the ideas are drawn on Explore as the answer comes, where the tab is open
+    if (consoleTab === 'explore') exploreAfterDraw();
   }
   // a link the person presses, since a page may not open a tab by itself from a read; GitHub takes
   // an issue's address to the pull request where the number is one
@@ -4292,8 +4296,7 @@
     var name = rail ? (rail.textContent || '').trim() : tab;
     lines.push('I am looking at the Symphony control panel' + (s.repo ? ' for ' + s.repo + ' (https://github.com/' + s.repo + ')' : '') + ', on its ' + name + ' tab.');
     if (tab === 'explore') {
-      var here = exCurrent();
-      if (here && explore.path.length > 1) lines.push('I am at ' + explore.path.slice(1).map(function (n) { return ownQuote(n.title); }).join(' > ') + (here.url ? ' (' + here.url + ')' : '') + '.');
+      if (bs.epic) lines.push('I am planning epic #' + bs.epic + ' on the Explore tab' + (bs.pending.length ? ', with ' + plural(bs.pending.length, 'change') + ' waiting to be pushed' : '') + '.');
     } else if (tab === 'folders') {
       var last = crumbs[crumbs.length - 1];
       var it = explorer.items.filter(function (x) { return String(x.id) === explorer.selected; })[0];
@@ -5218,7 +5221,7 @@
       if (!graphLive(draw)) return;
       draw.claimed = graphClaimed(s.pulls, repo);
       graphRender(draw);
-      // Explore builds its tree from the latest draw, and redraws while it is open
+      // Explore plans from the latest draw, and redraws while it is open
       s.graphLast = draw;
       s.graphFailed = '';
       exploreAfterDraw();
@@ -8216,6 +8219,389 @@
     if ($('lb-people')) consoleOnOpen.leaders = function () { if (leadersFor !== tokensRepo()) loadLeaders(); };
   }
 
+  /* ---------- the grid's Claude accounts (hpcworker framework 21, symphony-template grid-accounts.yml) ---------- */
+  // The Claude accounts signed in on the WSU grid for the owner's Beethoven worker, one in use at a
+  // time (the owner, 2026-10-21: "see my account usage, reset, initiate claude swap, turn on auto mode,
+  // all from the control board"). Every press dispatches grid-accounts.yml with a name of the page's
+  // own (request), and the page reads the answer the run writes on the branch grid: accounts.json, the
+  // list with e-mails masked, and for a sign-in link.json, Anthropic's link sealed for an RSA-OAEP key
+  // this page made for that one press and keeps only in memory. Polled every two seconds while a press
+  // is under way, every thirty while the tab is open.
+  var GRID_BRANCH = 'grid';
+  var GRID_WORKFLOW = 'grid-accounts.yml';
+  var GRID_POLL_MS = 2000;
+  var GRID_IDLE_MS = 30000;
+  var GRID_PRESS_MS = 6 * 60 * 1000;
+  var gr = { repo: '', rec: null, read: false, missing: false, side: '', busy: null, sign: null, timer: 0 };
+  // The grid is one place whatever repository the panel has open: its gate is set up for one
+  // repository (docs/setup/grid.md), the owner's symphony-template, or the one this browser keeps
+  // under symphony_grid_repo for a lab whose gate names another (the owner, 2026-10-21, after the tab
+  // followed an open repository with no gate)
+  var GRID_HOME = 'OpenSpineConsortium/symphony-template';
+  function gridRepo() {
+    var kept = '';
+    try { kept = localStorage.getItem('symphony_grid_repo') || ''; } catch (e) { kept = ''; }
+    return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(kept) ? kept : GRID_HOME;
+  }
+  function gridFile(repo, name) {
+    return gh('GET', '/repos/' + repo + '/contents/' + name + '?ref=' + GRID_BRANCH + '&at=' + Date.now(), undefined, RAW, true)
+      .then(function (r) { try { return JSON.parse(r.data); } catch (e) { return null; } })
+      .catch(function (e) { if (e.status === 404) return null; throw e; });
+  }
+  function gridNote(text) { var n = $('gr-note'); if (!n) return; n.hidden = !text; richText(n, text || ''); }
+  function loadGrid() {
+    var repo = gridRepo();
+    if (!repo) return Promise.resolve();
+    if (gr.repo !== repo) { gr = { repo: repo, rec: null, read: false, missing: false, side: '', busy: null, sign: null, timer: gr.timer }; drawGrid(); }
+    return gridFile(repo, 'accounts.json').then(function (rec) {
+      if (gr.repo !== repo) return;
+      gr.read = true;
+      gr.missing = !rec;
+      if (rec && rec.list) gr.rec = rec;
+      else if (rec && !gr.rec) gr.rec = rec;
+      drawGrid();
+      return rec;
+    }).catch(function (e) { if (gr.repo === repo) { gr.read = true; gridNote(e.message); drawGrid(); } });
+  }
+  function gridIdle() {
+    clearTimeout(gr.timer);
+    gr.timer = setTimeout(function () {
+      if (consoleTab === 'grid' && !gr.busy && !document.hidden) loadGrid();
+      if (consoleTab === 'grid') gridIdle();
+    }, GRID_IDLE_MS);
+  }
+  function requestName() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function b64(buf) { var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s); }
+  function unb64(text) { var s = atob(text), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+  // the key a sign-in's link is sealed for: made for the one press, never stored or sent but its public half
+  function gridKeys() {
+    return crypto.subtle.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, false, ['decrypt'])
+      .then(function (pair) { return crypto.subtle.exportKey('spki', pair.publicKey).then(function (spki) { return { priv: pair.privateKey, pub: b64(spki) }; }); });
+  }
+  function unseal(sealed, priv) {
+    return crypto.subtle.decrypt({ name: 'RSA-OAEP' }, priv, unb64(sealed.key)).then(function (raw) {
+      return crypto.subtle.importKey('raw', raw, { name: 'AES-CBC' }, false, ['decrypt']);
+    }).then(function (aes) {
+      return crypto.subtle.decrypt({ name: 'AES-CBC', iv: unb64(sealed.iv) }, aes, unb64(sealed.data));
+    }).then(function (plain) {
+      var url = new TextDecoder().decode(plain);
+      // only Anthropic's own sign-in pages are ever opened from here
+      return /^https:\/\/(claude\.ai|claude\.com)\//.test(url) ? url : '';
+    });
+  }
+  // one press: the workflow started, then the branch read until the run's answer for this request is there
+  function gridPress(action, slot, label, extra) {
+    var repo = gridRepo();
+    if (!repo || gr.busy) return;
+    var request = requestName();
+    var inputs = { action: action, slot: slot || '', request: request };
+    Object.keys(extra || {}).forEach(function (k) { inputs[k] = extra[k]; });
+    gr.busy = { action: action, slot: slot || '', label: label, request: request, since: Date.now() };
+    gridNote('');
+    drawGrid();
+    var keyed = action === 'login' ? gridKeys() : Promise.resolve(null);
+    keyed.then(function (keys) {
+      if (keys) { inputs.key = keys.pub; gr.sign = { slot: slot, request: request, priv: keys.priv, url: '', state: 'waiting' }; }
+      return gh('GET', '/repos/' + repo).then(function (r) {
+        return gh('POST', '/repos/' + repo + '/actions/workflows/' + GRID_WORKFLOW + '/dispatches', { ref: r.data.default_branch || 'main', inputs: inputs });
+      });
+    }).then(function () { gridFollow(repo, request); }, function (e) {
+      gr.busy = null;
+      if (gr.sign && gr.sign.request === request) gr.sign = null;
+      gridNote(e.status === 404 ? repo + ' has no workflow Grid accounts (.github/workflows/grid-accounts.yml); choose the repository whose grid gate is set up, as OpenSpineConsortium/symphony-template.' : e.message + (e.status === 403 ? ' Starting it needs Actions: read and write, and the run itself an admin of ' + repo + '.' : ''));
+      drawGrid();
+    });
+  }
+  function gridDone(rec, busy) {
+    if (!rec || rec.request !== busy.request) return false;
+    var list = rec.list || {};
+    if (busy.action === 'usage') return list.usage_job !== 'running' || rec.rc !== 0;
+    if (busy.action === 'login') {
+      var st = loginOf(list, busy.slot).state;
+      return (gr.sign && gr.sign.url) || st === 'failed' || st === 'signed-in' || rec.rc !== 0;
+    }
+    if (busy.action === 'code') return loginOf(list, busy.slot).state !== 'code';
+    return true;
+  }
+  function gridFollow(repo, request) {
+    var busy = gr.busy;
+    if (!busy || busy.request !== request || gr.repo !== repo) return;
+    if (Date.now() - busy.since > GRID_PRESS_MS) {
+      gr.busy = null;
+      gridNote('No answer from the grid in six minutes. The run is under Runs (workflow Grid accounts), where its log says why.');
+      drawGrid(); return;
+    }
+    var reads = [gridFile(repo, 'accounts.json')];
+    if (gr.sign && gr.sign.request === request && !gr.sign.url) reads.push(gridFile(repo, 'link.json'));
+    Promise.all(reads).then(function (got) {
+      if (gr.busy !== busy) return;
+      var rec = got[0], sealed = got[1];
+      var opened = sealed && sealed.request === request && sealed.sealed && gr.sign && !gr.sign.url
+        ? unseal(sealed.sealed, gr.sign.priv).then(function (url) { if (url && gr.sign) gr.sign.url = url; }, function () { gridNote('The sign-in link could not be opened on this page; press Sign in again.'); })
+        : Promise.resolve();
+      return opened.then(function () {
+        if (rec && rec.request === request) {
+          if (rec.list) gr.rec = rec;
+          if (rec.rc && !rec.list) gridNote((rec.said || []).slice(-1)[0] || 'The grid did not take that; the run under Runs says why.');
+        }
+        if (gridDone(rec, busy)) {
+          gr.busy = null;
+          var said = rec && (rec.said || []).filter(function (l) { return /^HPCW-ACCOUNTS /.test(l); }).slice(-1)[0];
+          if (said && rec.rc) gridNote(said.replace(/^HPCW-ACCOUNTS /, ''));
+          else say(busy.label + ': done.');
+        }
+        drawGrid();
+        if (gr.busy === busy) setTimeout(function () { gridFollow(repo, request); }, GRID_POLL_MS);
+      });
+    }).catch(function () { if (gr.busy === busy) setTimeout(function () { gridFollow(repo, request); }, GRID_POLL_MS * 2); });
+  }
+  function loginOf(list, slot) {
+    var a = ((list && list.accounts) || []).filter(function (x) { return x && x.slot === slot; })[0];
+    return (a && a.login) || { state: 'none', line: '' };
+  }
+  function gridAccounts() { return (gr.rec && gr.rec.list && Array.isArray(gr.rec.list.accounts)) ? gr.rec.list.accounts : []; }
+  function untilWords(iso) {
+    var t = moment(iso);
+    if (t == null) return '';
+    var s = (t - Date.now()) / 1000;
+    if (s <= 0) return 'reset';
+    if (s < 5400) return 'resets in ' + Math.max(1, Math.round(s / 60)) + ' min';
+    if (s < 172800) return 'resets in ' + Math.round(s / 3600) + ' h';
+    return 'resets in ' + Math.round(s / 86400) + ' days';
+  }
+  function gridWindow(use, key) {
+    var each = use && use.windows && use.windows[key];
+    if (!each) return null;
+    var out = { utilization: each.utilization, resetsAt: each.resetsAt };
+    var r = moment(each.resetsAt);
+    if (r != null && r <= Date.now()) { out.utilization = 0; out.reset = true; }
+    return out;
+  }
+  function gridBars(use) {
+    var box = el('span', 'tok__use');
+    [['five_hour', '5h'], ['seven_day', '7d']].forEach(function (p) {
+      var each = gridWindow(use, p[0]), u = each ? used(each.utilization) : null;
+      var bar = el('span', 'tok__bar' + (u != null && u >= POOL_THRESHOLD ? ' tok__bar--full' : ''));
+      bar.title = (p[0] === 'five_hour' ? 'Five hours' : 'Seven days') + ': ' + (u == null ? 'not read yet' : percent(u) + ' used' + (each.resetsAt ? ', ' + untilWords(each.resetsAt) : ''));
+      var fill = el('span', 'tok__fill');
+      fill.style.width = (u == null ? 0 : Math.round(Math.min(u, 1) * 100)) + '%';
+      add(box, add(el('span', 'tok__window'), el('span', 'tok__wname', p[1]), add(bar, fill), el('span', 'gr__pct', u == null ? '' : percent(u))));
+    });
+    return box;
+  }
+  function gridAccountName(a) {
+    var who = a.who || {};
+    return who.signed_in ? (who.email || 'Account ' + a.slot) : 'Account ' + a.slot;
+  }
+  function gridAccountState(a) {
+    var busy = gr.busy && gr.busy.slot === a.slot ? gr.busy : null;
+    var login = a.login || {};
+    if (busy) return { text: busy.label + '...', cls: 'tok__state--warn' };
+    if (login.state && login.state !== 'none' && login.state !== 'signed-in') return { text: login.line || login.state, cls: login.state === 'failed' ? 'tok__state--warn' : '' };
+    if (a.current) return { text: 'In use', cls: 'tok__state--go' };
+    if (a.who && a.who.signed_in === false) return { text: 'Not signed in', cls: 'tok__state--warn' };
+    if (a.use && a.use.status === 'rejected') return { text: 'At its limit', cls: 'tok__state--warn' };
+    return { text: a.who ? 'Ready' : 'Not read yet', cls: '' };
+  }
+  function gridTile(a) {
+    var wrap = el('div', 'tok' + (gr.side === a.slot ? ' tok--on' : '') + (a.current ? ' gr--current' : ''));
+    var open = el('button', 'tok__open');
+    open.type = 'button';
+    open.id = 'gr-tile-' + a.slot;
+    var who = a.who || {}, st = gridAccountState(a);
+    add(open, el('span', 'tok__icon', a.slot), el('span', 'tok__name', gridAccountName(a)),
+        el('span', 'tok__meta', who.plan ? 'Claude ' + who.plan : who.signed_in === false ? 'signed out' : ''),
+        gridBars(a.use), el('span', 'tok__state ' + st.cls, st.text));
+    open.addEventListener('click', function () { gr.side = gr.side === a.slot ? '' : a.slot; drawGrid(); });
+    return add(wrap, open);
+  }
+  function freeSlot() {
+    var taken = gridAccounts().map(function (a) { return a.slot; });
+    for (var n = 1; n <= 32; n++) if (taken.indexOf(String(n)) < 0) return String(n);
+    return '';
+  }
+  function gridBarButtons() {
+    var bar = $('gr-bar');
+    if (!bar) return;
+    clear(bar);
+    var list = (gr.rec && gr.rec.list) || {};
+    var auto = !!list.auto;
+    var refresh = el('button', 'chip', 'Refresh');
+    refresh.type = 'button'; refresh.id = 'gr-refresh';
+    refresh.addEventListener('click', function () { gridPress('list', '', 'Refreshing'); });
+    var usage = el('button', 'chip', list.usage_job === 'running' ? 'Reading usage...' : 'Read usage');
+    usage.type = 'button'; usage.id = 'gr-usage';
+    usage.title = 'Asks each account for one word on Haiku, which spends that word of its window';
+    usage.addEventListener('click', function () { gridPress('usage', '', 'Reading usage'); });
+    var autoB = el('button', 'chip' + (auto ? ' chip--go' : ''), auto ? 'Auto mode: on' : 'Auto mode: off');
+    autoB.type = 'button'; autoB.id = 'gr-auto';
+    autoB.setAttribute('aria-pressed', auto ? 'true' : 'false');
+    autoB.title = 'On: your worker moves to the signed-in account with the most room when its account reaches 90% of a window';
+    autoB.addEventListener('click', function () { gridPress(auto ? 'auto-off' : 'auto-on', '', auto ? 'Turning auto mode off' : 'Turning auto mode on'); });
+    [refresh, usage, autoB].forEach(function (b) { b.disabled = !!gr.busy; add(bar, b); });
+    if (gr.busy) add(bar, el('span', 'gr__busy', gr.busy.label + '...'));
+  }
+  var GRID_NAME = /^[A-Za-z0-9_-]{1,24}$/;
+  // every worker of the last day, the main one and each kept to an account of its own (framework 22)
+  function gridWorkers(list) {
+    if (Array.isArray(list.workers)) return list.workers.filter(function (w) { return w && w.name; });
+    return list.worker ? [list.worker] : [];
+  }
+  function workerLine(w) {
+    if (!w) return null;
+    var p = el('p', 'gr__worker');
+    p.id = 'gr-worker-' + w.name;
+    var state = w.state === 'online' ? 'online' : w.state || 'unknown';
+    var ended = state === 'stopped' || state === 'error';
+    add(p, el('span', 'gr__dot gr__dot--' + (state === 'online' ? 'go' : state === 'need_login' || state === 'error' ? 'warn' : 'wait')),
+        'Worker ' + (w.name || '') + ': ' + state.replace(/_/g, ' ') + (w.account ? ', on account ' + w.account : '') +
+        (w.pinned ? ' (kept there)' : '') + (w.node ? ', ' + w.node : ''));
+    if (w.link && !ended) add(p, ' ', link(w.link, 'Open the session'));
+    if (w.name) add(p, el('span', 'tkdlg__faint', ' claims as grid-' + w.name));
+    if (!ended && w.name && GRID_NAME.test(w.name)) {
+      var stop = btn('Stop', true, function () {
+        if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
+        gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
+      });
+      stop.id = 'gr-stop-' + w.name;
+      stop.disabled = !!gr.busy;
+      add(p, ' ', stop);
+    }
+    return p;
+  }
+  function drawGrid() {
+    gridBarButtons();
+    var box = $('gr-tiles');
+    if (!box) return;
+    clear(box);
+    if (!gr.read) { none(box, 'Reading the grid\'s accounts...'); drawGridSide(); return; }
+    var list = gr.rec && gr.rec.list;
+    if (!list) {
+      none(box, gr.missing ? 'Nothing read from the grid yet for ' + gr.repo + '. Refresh asks it now (the repository needs the workflow Grid accounts and the grid gate, docs/setup/grid.md).' : 'The grid gave no list last time; Refresh asks again.');
+      add(box, toksNote());
+      drawGridSide(); return;
+    }
+    var workers = gridWorkers(list);
+    if (workers.length) {
+      var wbox = el('div', 'toks__note');
+      wbox.id = 'gr-workers';
+      workers.forEach(function (w) { add(wbox, workerLine(w)); });
+      add(box, wbox);
+    }
+    gridAccounts().forEach(function (a) { add(box, gridTile(a)); });
+    var plus = el('button', 'tok__open tok--add');
+    plus.type = 'button'; plus.id = 'gr-add';
+    var n = freeSlot();
+    add(plus, el('span', 'tok__plus', '+'), el('span', 'tok__name', 'Sign in another'));
+    plus.disabled = !n || !!gr.busy;
+    plus.addEventListener('click', function () { gr.side = n; gridPress('login', n, 'Signing in account ' + n); });
+    add(box, add(el('div', 'tok'), plus));
+    if (gr.rec.at) add(box, add(el('p', 'admin__none toks__note'), 'Read from the grid ', timeEl(gr.rec.at), ', through ' + gr.repo + '.'));
+    drawGridSide();
+  }
+  function toksNote() { return null; }
+  function drawGridSide() {
+    var side = $('gr-side');
+    if (!side) return;
+    var slot = gr.side;
+    var a = gridAccounts().filter(function (x) { return x.slot === slot; })[0];
+    var signing = gr.sign && gr.sign.slot === slot ? gr.sign : null;
+    if (!slot || (!a && !signing)) { side.hidden = true; clear(side); return; }
+    clear(side);
+    side.hidden = false;
+    a = a || { slot: slot, login: { state: 'waiting' } };
+    var close = el('button', 'tkside__close', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close');
+    close.addEventListener('click', function () { gr.side = ''; drawGrid(); });
+    var who = a.who || {};
+    add(side, close, el('h3', 'console__boxh', gridAccountName(a)), el('p', 'tok__owner', 'Account ' + slot + (who.plan ? ', Claude ' + who.plan : '')));
+    var st = gridAccountState(a);
+    add(side, el('p', 'tok__state ' + st.cls, st.text));
+    [['five_hour', 'Five hours'], ['seven_day', 'Seven days']].forEach(function (p) {
+      var each = gridWindow(a.use, p[0]);
+      var m = sideMeter(p[1], each);
+      if (each && each.resetsAt && !each.reset) add(m, el('p', 'tkside__reset', untilWords(each.resetsAt)));
+      add(side, m);
+    });
+    ((a.use && a.use.scoped) || []).forEach(function (x) { add(side, sideMeter(x.name + ' weekly', gridWindow({ windows: { w: x } }, 'w'))); });
+    if (a.use && a.use.read_at) add(side, add(el('p', 'tkdlg__fact tkdlg__faint'), 'Usage read ', timeEl(a.use.read_at)));
+    if (a.use && a.use.error) add(side, el('p', 'tkdlg__fact admin__warn', a.use.error));
+    var login = a.login || {};
+    if (signing || ['waiting', 'link', 'code'].indexOf(login.state) >= 0) add(side, signInBox(slot, signing, login));
+    var bar = el('p', 'admin__bar');
+    if (!a.current && who.signed_in) {
+      var use = btn('Use this account', false, function () { gridPress('use', slot, 'Moving to account ' + slot); });
+      use.id = 'gr-use';
+      use.title = 'Your running worker moves to this account now; its session then shows in this account on claude.ai';
+      add(bar, use);
+    }
+    if (who.signed_in) add(side, startBox(slot));
+    var again = btn(who.signed_in ? 'Sign in again' : 'Sign in', true, function () { gridPress('login', slot, 'Signing in account ' + slot); });
+    again.id = 'gr-signin';
+    add(bar, again);
+    if (!a.current && a.who !== undefined) {
+      var forget = btn('Forget', true, function () {
+        if (!window.confirm('Forget account ' + slot + ' on the grid? Its folder is moved aside there, never deleted.')) return;
+        gridPress('forget', slot, 'Forgetting account ' + slot);
+      });
+      forget.id = 'gr-forget';
+      add(bar, forget);
+    }
+    Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) { b.disabled = !!gr.busy; });
+    add(side, bar);
+  }
+  // a worker of its own on this account: its own Slurm job and its own Remote Control session there
+  function startBox(slot) {
+    var box = el('div', 'gr__start');
+    var running = gridWorkers((gr.rec && gr.rec.list) || {}).filter(function (w) {
+      return w.pinned === slot && w.state !== 'stopped' && w.state !== 'error';
+    })[0];
+    if (running) {
+      add(box, el('p', 'tkdlg__fact', 'Worker ' + running.name + ' runs on this account; it shows above with its Stop button.'));
+      return box;
+    }
+    var input = el('input');
+    input.type = 'text'; input.id = 'gr-wname'; input.autocomplete = 'off'; input.spellcheck = false;
+    input.placeholder = 'account' + slot; input.maxLength = 24;
+    var go = btn('Start a worker on this account', false, function () {
+      var name = input.value.trim() || 'account' + slot;
+      if (!GRID_NAME.test(name)) { gridNote('A worker\'s name is up to 24 letters, digits, _ or -.'); return; }
+      gridPress('worker-start', slot, 'Starting worker ' + name, { name: name });
+    });
+    go.id = 'gr-start';
+    go.title = 'A Claude Code worker of its own on this account, as its own Slurm job; it claims issues as grid-<name> and spends allocation like your main worker';
+    go.disabled = !!gr.busy;
+    add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Runs beside your main worker, kept to this account, and claims its own issues as grid-<name>.'), add(el('p', 'gr__coderow'), input, go));
+    return box;
+  }
+  function signInBox(slot, signing, login) {
+    var box = el('div', 'gr__sign');
+    add(box, el('p', 'tkdlg__fact', login.line || 'Waiting for a computer on the grid and for Claude Code\'s link.'));
+    if (signing && signing.url) {
+      var go = link(signing.url, 'Open Anthropic\'s sign-in');
+      go.className = 'button gr__go';
+      go.id = 'gr-link';
+      add(box, add(el('p', ''), go));
+      add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Sign in there with the account to add. If the page shows a code, paste it here; if it says you are signed in, nothing more is needed.'));
+    } else if (signing) add(box, el('p', 'tkdlg__fact tkdlg__faint', 'The link comes here, for this page alone, as soon as the grid prints it.'));
+    var input = el('input');
+    input.type = 'text'; input.id = 'gr-code'; input.autocomplete = 'off'; input.spellcheck = false; input.placeholder = 'Code from Anthropic\'s page';
+    var send = btn('Send code', false, function () {
+      var code = input.value.trim();
+      if (!/^[A-Za-z0-9_#.~-]{8,512}$/.test(code)) { gridNote('That is not a code Anthropic\'s page shows.'); return; }
+      input.value = '';
+      gridPress('code', slot, 'Checking the code', { code: code });
+    });
+    send.id = 'gr-send';
+    send.disabled = !!gr.busy && gr.busy.action !== 'login';
+    add(box, add(el('p', 'gr__coderow'), input, send));
+    return box;
+  }
+  function initGridTab() {
+    consoleOnOpen.grid = function () { if (gr.repo !== gridRepo() || !gr.read) loadGrid(); gridIdle(); };
+  }
+
   /* ---------- the leaderboard: the issues each token worked, by the label token:<id> ---------- */
   // A worker's run labels the issue it worked token:<id> (symphony-template's workers.yml), and the
   // token's settings name its owner, so GitHub's issue search over the organization, or the personal
@@ -8533,7 +8919,7 @@
       var tokens = {};
       Object.keys(k.tokens && typeof k.tokens === 'object' ? k.tokens : {}).forEach(function (rs) { if (k.tokens[rs] && typeof k.tokens[rs].refresh === 'string') tokens[rs] = { access: '', refresh: k.tokens[rs].refresh, expiresAt: 0 }; });
       if (!tokens[GLOBUS_RS]) tokens[GLOBUS_RS] = { access: '', refresh: k.refresh, expiresAt: 0 };
-      return { provider: 'globus', access: '', refresh: k.refresh, expiresAt: 0, tokens: tokens, connected: String(k.connected || ''), owner: String(k.owner || ''), id: String(k.id || ''), type: 'globus', name: String(k.name || ''), https: httpsOnly(k.https), home: String(k.home || ''), login: login };
+      return { provider: 'globus', access: '', refresh: k.refresh, expiresAt: 0, tokens: tokens, connected: String(k.connected || ''), owner: String(k.owner || ''), id: String(k.id || ''), type: 'globus', name: String(k.name || ''), https: httpsOnly(k.https), home: globusHomeOf(k.home), login: login };
     }
     var end = daysAfter(String(k.connected || ''), MS_REFRESH_DAYS);
     if (!end || end <= dayOf(new Date())) { forgetKept(login); return null; }
@@ -8633,6 +9019,9 @@
   }
   function drawConnectState() {
     var button = $('fd-connect'), note = $('fd-connect-note');
+    // where the keyboard is, read before any button is hidden or moved, since hiding the one it
+    // is on takes it to the page's body at once
+    var keyboard = keyboardOnStrip();
     // the next step's button is the one filled: Connect until a drive is held, then Track
     heldDrive();
     button.classList.toggle('console__primary', !drive);
@@ -8642,21 +9031,29 @@
     // with no drive the tab's own tile is the one + Add; the head's comes once one is connected
     $('fd-add').hidden = !drive;
     $('fd-forget').hidden = !drive;
-    $('fd-forget').textContent = 'Forget ' + (drive ? driveName(drive.provider) : 'OneDrive');
+    var forget = 'Forget ' + (drive ? driveName(drive.provider) : 'OneDrive');
+    $('fd-forget').textContent = '';
+    add($('fd-forget'), el('span', 'admin__sr', forget));
+    $('fd-forget').title = forget;
     var other = otherKept();
+    drawAccounts(other, keyboard);
     if (drive && drive.provider === 'globus') {
       var held = !signinAvailable() ? 'Connecting OneDrive goes through the sign-in service, which the page does not name yet.' : driveConfig && (!driveConfig.microsoft || !driveConfig.microsoft.client_id) ? 'The owner has not set OneDrive up on the sign-in service yet.' : '';
       button.disabled = !!held;
       button.textContent = other ? 'Connect OneDrive again' : 'Connect OneDrive';
-      note.textContent = 'Connected to Globus' + (drive.name ? ', ' + drive.name : '') + (drive.owner ? ', as ' + drive.owner : '') + ', read-only, kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' OneDrive is connected too: press it in the folder tree.' : '') + (held ? ' ' + held : '');
+      note.textContent = 'Connected to Globus' + (drive.name ? ', ' + drive.name : '') + (drive.owner ? ', as ' + drive.owner : '') + ', read-only, kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' OneDrive is connected too: press its card to switch.' : '') + (held ? ' ' + held : '');
+      // the cards say the same, so the words are read aloud and shown only with something to add
+      note.classList.toggle('folders__who--quiet', !held);
       return;
     }
     if (drive) {
       button.disabled = false;
       button.textContent = 'Connect OneDrive again';
-      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' Globus is connected too: press ' + (other.name || 'Globus') + ' in the folder tree.' : '');
+      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' Globus is connected too: press ' + (other.name || 'Globus') + ' to switch.' : '');
+      note.classList.add('folders__who--quiet');
       return;
     }
+    note.classList.remove('folders__who--quiet');
     button.textContent = 'Connect OneDrive';
     if (!signinAvailable()) { button.disabled = true; note.textContent = 'Connecting a drive goes through the sign-in service, which the page does not name yet.'; return; }
     if (!driveConfig) { button.disabled = false; note.textContent = ''; return; }
@@ -8664,6 +9061,58 @@
     button.disabled = false;
     note.textContent = '';
   }
+  // The drives mounted on this browser, drawn in the head as the Workers tab draws its cards: the
+  // drive shown is lit, a press on the other switches to it, the eject on the lit one forgets it,
+  // and the dashed card adds a drive. The eject and the dashed card are the head's own two
+  // buttons, moved into the strip, so their ids and listeners stay.
+  // which card's press or eject the keyboard is on, by the card's drive, or the dashed card
+  function keyboardOnStrip() {
+    var strip = $('fd-accounts'), active = document.activeElement;
+    if (!strip || !active) return '';
+    if (active === $('fd-add')) return 'add';
+    if (active === $('fd-forget')) return 'eject';
+    var card = strip.contains(active) && active.closest ? active.closest('.acct') : null;
+    return card ? 'card:' + (card.getAttribute('data-provider') || '') : '';
+  }
+  function drawAccounts(other, held) {
+    var strip = $('fd-accounts'), eject = $('fd-forget'), plus = $('fd-add');
+    if (!strip) return;
+    // redrawn only when a card would change, so the owner's name arriving, or any other redraw of
+    // the state, never takes the keyboard's place from a card
+    var key = [drive, other].map(function (d) { return d ? [d.provider, d.name || '', d.owner || '', d.login || ''].join('\t') : ''; }).join('\n');
+    if (strip.getAttribute('data-drawn') === key) return;
+    strip.setAttribute('data-drawn', key);
+    // the two buttons go back to the head before the strip is cleared, so a clear never drops them
+    add(strip.parentNode, eject, plus);
+    clear(strip);
+    strip.hidden = !drive;
+    if (!drive) { if (held) focusLater($('fd-add-tile') || plus); return; }
+    function card(d, on) {
+      var box = el('div', 'acct' + (on ? ' acct--on' : ''));
+      box.setAttribute('data-provider', d.provider);
+      var pick = btn('', true, function () { if (!on) switchDrive(d); });
+      pick.className = 'acct__pick';
+      if (on) pick.setAttribute('aria-current', 'true');
+      pick.title = on ? 'Shown now' : 'Switch to ' + accountName(d);
+      var sub = d.provider === 'globus' ? [d.owner, 'read-only'].filter(Boolean).join(' \u00B7 ') : (d.owner || 'Connected');
+      add(pick, el('span', 'acct__icon'), add(el('span', 'acct__words'), el('span', 'acct__name', accountName(d)), el('span', 'acct__sub', sub)));
+      add(box, pick);
+      return box;
+    }
+    var lit = card(drive, true);
+    add(lit, eject);
+    add(strip, lit);
+    if (other) add(strip, card(other, false));
+    add(strip, plus);
+    // the keyboard goes back where it was: the same drive's card where it still stands, else
+    // the lit card, which is the one a switch lit or a forget left
+    if (held === 'add') focusLater(plus);
+    else if (held) { var same = strip.querySelector('.acct[data-provider="' + held.slice(5) + '"] .acct__pick'); focusLater(held.indexOf('card:') === 0 && same ? same : lit.firstChild); }
+  }
+  function focusLater(node) {
+    if (node && node.focus) node.focus();
+  }
+  function accountName(d) { return d.provider === 'globus' ? (d.name || 'Globus') : driveName(d.provider); }
   // the Globus tile needs no service: it is pressable once the page is registered at Globus
   function drawGlobusTile() {
     var tile = $('fd-globus');
@@ -8684,6 +9133,7 @@
       driveConfig = null;
       driveAsked = false;
       showConnectState();
+      $('fd-connect-note').classList.remove('folders__who--quiet');
       richText($('fd-connect-note'), 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.');
     });
   }
@@ -8825,7 +9275,7 @@
       var tokens = globusTokensOf(answer, was ? was.tokens : {});
       if (!tokens[GLOBUS_RS]) throw new Error('Globus Auth gave no token for the Transfer API.');
       if (!tokens[GLOBUS_RS].refresh) throw new Error('Globus Auth gave no refresh token, so the connection could not be kept: the sign-in did not include keeping access when you are away.');
-      drive = { provider: 'globus', access: '', refresh: tokens[GLOBUS_RS].refresh, expiresAt: 0, tokens: tokens, connected: was && was.connected ? was.connected : dayOf(new Date()), owner: was ? was.owner : '', id: kept.collection || (was ? was.id : ''), type: 'globus', name: was ? was.name : '', https: was ? was.https : '', home: was ? was.home : '', login: typeof kept.login === 'string' ? kept.login : '', fresh: true };
+      drive = { provider: 'globus', access: '', refresh: tokens[GLOBUS_RS].refresh, expiresAt: 0, tokens: tokens, connected: was && was.connected ? was.connected : dayOf(new Date()), owner: was ? was.owner : '', id: kept.collection || (was ? was.id : ''), type: 'globus', name: was ? was.name : '', https: was ? was.https : '', home: globusHomeOf(was && was.home), login: typeof kept.login === 'string' ? kept.login : '', fresh: true };
       keepDrive(drive);
       setActiveProvider(drive.login || shownLogin, 'globus');
       say('Globus is connected, and stays connected on this browser for your GitHub account until you press Forget Globus.');
@@ -8903,11 +9353,18 @@
         d.id = id;
         d.name = String(c.display_name || (GLOBUS_KNOWN[0] && GLOBUS_KNOWN[0].label) || 'Globus');
         d.https = httpsOnly(c.https_server);
-        d.home = typeof c.default_directory === 'string' ? c.default_directory : '';
+        d.home = globusHomeOf(c.default_directory);
         keepDrive(d);
         showConnectState();
       });
     });
+  }
+  // a collection's default folder is a path only when Globus gives one: '/~/' and a placeholder
+  // such as {server_default} say that the server decides, and the first listing's absolute_path
+  // then says where that is
+  function globusHomeOf(p) {
+    p = typeof p === 'string' ? p : '';
+    return p && p !== '/~/' && p.indexOf('{') < 0 ? p : '';
   }
   // a Globus folder path as the tab keeps it: absolute, ending in a slash
   function globusPath(p) {
@@ -8930,7 +9387,7 @@
     drawBrowser();
     return (d.id && d.name ? Promise.resolve() : globusSetup()).then(function () {
       if (drive !== d) return;
-      var home = d.home && d.home !== '/~/' ? d.home : '';
+      var home = globusHomeOf(d.home);
       return (home ? Promise.resolve(home) : transfer('/operation/endpoint/' + encodeURIComponent(d.id) + '/ls?limit=1').then(function (r) { return typeof r.absolute_path === 'string' ? r.absolute_path : '/'; }).catch(function (e) { if (e.code === 'ConsentRequired') throw e; return '/'; })).then(function (abs) {
         if (drive !== d) return;
         d.home = globusPath(abs);
@@ -10965,7 +11422,7 @@
     if (!repo) { fdSay('Choose a repository in the bar first (or make one under Need a new repository?).', true); return; }
     if (!d || !d.refresh) { showConnectState(); drawBrowser(); fdSay('Connect OneDrive first, under + Add a cloud drive: the drive\'s refresh token is what the repository keeps.', true); closeDialog('dlg-track'); ($('fd-add-tile') || $('fd-add')).focus(); return; }
     // a Globus collection is read here and never synced: Track is OneDrive's
-    if (d.provider === 'globus') { fdSay('Track records folders of OneDrive for the repository\'s sync. ' + (d.name || 'The Globus collection') + ' is read here only; press OneDrive in the folder tree, or Connect OneDrive, to track a drive.', true); closeDialog('dlg-track'); return; }
+    if (d.provider === 'globus') { fdSay('Track records folders of OneDrive for the repository\'s sync. ' + (d.name || 'The Globus collection') + ' is read here only; press OneDrive\'s card, or Connect OneDrive, to track a drive.', true); closeDialog('dlg-track'); return; }
     if (walkOnly && foldersFor === repo) { trackWalk(button, repo, d); return; }
     if (!pickedOrder.length) { fdSay('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
     if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { fdSay('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }
@@ -11995,177 +12452,8 @@
     consoleOnOpen.notebooks = openNotebooks;
   }
 
-  /* ---------- Explore: the project as a map to go into ---------- */
-  // The repository at the top, then its goals and epics, each epic's tasks, a task's pull requests
-  // (or its claim branch where it has none), the runs on that branch, a run's jobs, a job's steps and,
-  // at the bottom, the lines of a step's log. One level is drawn at a time, its children as cards on
-  // a stage that zooms and never scrolls (below, drawing): a click goes into a card; zooming out past
-  // the whole level, Backspace, Escape or a crumb comes back out. Goals, epics and tasks are what the
-  // console read already;
-  // the levels below a task are read as the person, one read each, only when the person goes into
-  // them, kept in the tab's memory for the repository chosen and written nowhere.
-  var EXPLORE_KINDS = { repo: 'Repository', goal: 'Goal', epic: 'Epic', group: 'Group', issue: 'Task', pull: 'Pull request', branch: 'Branch', run: 'Run', job: 'Job', step: 'Step', log: 'Log' };
-  var EXPLORE_LOG_LINES = 5000;
-  // a wheel event this long after the one before starts a new gesture, and one gesture moves one
-  // level at most, so a trackpad's glide never carries on into the next level
-  var EXPLORE_GESTURE_GAP = 250;
-  var EXPLORE_LOGS_KEPT = 3;
-  var explore = { s: null, issues: null, pulls: null, draw: null, failed: '', root: null, path: [], wheelLast: 0, wheelMoved: false, wheeling: false, keying: false, wide: true, era: 0, logs: [] };
-
-  // the repository changed: nothing of the last one is kept, its logs included
-  function exploreForget() {
-    explore.era++;
-    explore.s = null; explore.root = null; explore.path = []; explore.logs = [];
-  }
-  // a draw of the Dependencies tab ended, drawn or not; a fault here is Explore's, never the draw's
-  function exploreAfterDraw() {
-    if (consoleTab !== 'explore') return;
-    try { openExplore(); } catch (e) { exStatus('Explore could not be drawn: ' + e.message); }
-  }
-
-  function exNode(kind, key, title, more) {
-    var n = { kind: kind, key: kind + ':' + key, title: title, sub: '', state: '', url: '', claude: false, children: null, load: null, reading: null, failed: '', step: null, job: null };
-    var k;
-    for (k in (more || {})) if (Object.prototype.hasOwnProperty.call(more, k)) n[k] = more[k];
-    return n;
-  }
+  // an address that is https, or none: a link the page draws from what GitHub or a drive says
   function exHttps(url) { return typeof url === 'string' && /^https:\/\//.test(url) ? url : ''; }
-  function exRepo(s) { return s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo; }
-  function exAssistant(it) { return labelsOf(it).indexOf(ASSISTANT_LABEL) >= 0 && /^Assistant: /.test(String(it.title || '')); }
-
-  // the tree down to the tasks, from the open issues and the Dependencies tab's latest draw; an
-  // issue already on the path is not drawn under itself again, whatever GitHub's lists say
-  function exBuild(s) {
-    var repo = exRepo(s), draw = s.graphLast || null;
-    // without a finished draw the epics' sub-issues are unknown, which the tab says rather than
-    // calling an epic empty
-    var unread = draw ? '' : (s.graphFailed ? 'Its sub-issues could not be read: ' + s.graphFailed : 'Its sub-issues are not read yet; they come with the Dependencies tab\'s next read.');
-    var listed = {}, subs = draw ? draw.subIssues : {};
-    var open = s.issues.filter(function (it) { return !it.pull_request && !exAssistant(it); });
-    open.forEach(function (it) { listed[Number(it.number)] = graphIssue(it); });
-    var claimed = graphClaimed(s.pulls || [], repo);
-    function rec(n) { return listed[n] || (draw && (draw.listed[n] || draw.others[n])) || null; }
-    var under = {};
-    Object.keys(subs).forEach(function (k) { subs[k].forEach(function (n) { under[n] = true; }); });
-    function issueNode(r, seen) {
-      var goal = r.labels.indexOf('goal') >= 0, planned = graphPlanned(r);
-      var n = exNode(planned ? (goal ? 'goal' : 'epic') : 'issue', r.number, '#' + r.number + ' ' + r.title, { state: graphClass(r, claimed) || 'open', url: exHttps(r.html_url), number: r.number });
-      if (r.progress) n.sub = r.progress[0] + ' of ' + r.progress[1] + ' closed';
-      var mine = seen.concat([r.number]);
-      if (planned && unread) { n.children = []; n.unread = unread; }
-      else if (planned) n.children = (subs[r.number] || []).filter(function (c) { return mine.indexOf(c) < 0; }).map(rec).filter(Boolean).map(function (c) { return issueNode(c, mine); });
-      else n.load = function () { return exBranches(s, repo, r); };
-      return n;
-    }
-    var root = exNode('repo', repo, repo, { url: exHttps(s.meta && s.meta.html_url), state: 'open' });
-    root.sub = s.meta && typeof s.meta.description === 'string' ? s.meta.description : '';
-    var planned = open.map(function (it) { return listed[Number(it.number)]; }).filter(graphPlanned).sort(function (a, b) { return a.number - b.number; });
-    var goals = planned.filter(function (r) { return r.labels.indexOf('goal') >= 0; });
-    var epics = planned.filter(function (r) { return r.labels.indexOf('goal') < 0 && !under[r.number]; });
-    var loose = open.map(function (it) { return listed[Number(it.number)]; }).filter(function (r) { return !graphPlanned(r) && !under[r.number]; }).sort(function (a, b) { return a.number - b.number; });
-    root.children = goals.concat(epics).map(function (r) { return issueNode(r, []); });
-    if (loose.length) {
-      var group = exNode('group', 'loose', unread ? 'Open tasks' : 'Not in an epic', { state: 'open', sub: plural(loose.length, 'open task') });
-      group.children = loose.map(function (r) { return issueNode(r, []); });
-      root.children.push(group);
-    }
-    root.sub = root.sub || plural(open.length, 'open issue');
-    return root;
-  }
-
-  // a task's open pull requests, by its claim branch or by a body that closes it; where it has none,
-  // its claim branch, whose runs may still be there
-  function exBranches(s, repo, r) {
-    var closes = new RegExp('\\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?\\s+(' + repo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')?#' + r.number + '\\b', 'i');
-    var pulls = (s.pulls || []).filter(function (p) {
-      var head = p && p.head ? p.head : {};
-      var ours = head.repo && head.repo.full_name === repo;
-      return (ours && head.ref === 'claude/' + r.number) || closes.test(String(p.body || ''));
-    });
-    var out = pulls.map(function (p) {
-      var head = p.head || {}, ref = String(head.ref || '');
-      var n = exNode('pull', p.number, '#' + p.number + ' ' + String(p.title || ''), { state: p.draft ? 'draft' : 'review', url: exHttps(p.html_url), sub: ref });
-      // a fork's pull request runs here under its branch's name, so the runs are told apart by the
-      // repository their head came from
-      var from = head.repo && typeof head.repo.full_name === 'string' ? head.repo.full_name : '';
-      n.load = function () { return exRuns(repo, ref, from); };
-      return n;
-    });
-    if (!out.length) {
-      var b = exNode('branch', r.number, 'claude/' + r.number, { state: 'open', sub: 'No open pull request; the runs on its claim branch' });
-      b.load = function () { return exRuns(repo, 'claude/' + r.number, repo); };
-      out.push(b);
-    }
-    return Promise.resolve(out);
-  }
-
-  // one read of GitHub, refused while the token is under the reserve the Dependencies tab keeps
-  function exRead(path, raw, headers) {
-    if (rateLatest !== null && rateLatest < GRAPH_RESERVE) return Promise.reject(new Error('GitHub says this token has ' + rateLatest + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console. Try again once the hour has reset.'));
-    return gh('GET', path, undefined, headers, raw);
-  }
-  function exOutcome(status, conclusion) {
-    if (status && status !== 'completed') return 'running';
-    if (conclusion === 'success') return 'done';
-    if (conclusion === 'skipped' || conclusion === 'neutral') return 'skipped';
-    if (conclusion === 'cancelled') return 'cancelled';
-    return conclusion ? 'failed' : 'open';
-  }
-  function exRuns(repo, branch, from) {
-    return exRead('/repos/' + repo + '/actions/runs?branch=' + encodeURIComponent(branch) + '&per_page=20').then(function (r) {
-      var runs = r.data && Array.isArray(r.data.workflow_runs) ? r.data.workflow_runs : [];
-      return runs.filter(isPlain).filter(function (run) {
-        var h = isPlain(run.head_repository) ? run.head_repository.full_name : '';
-        return !h || !from || h === from;
-      }).map(function (run) {
-        var n = exNode('run', run.id, String(run.name || 'Run') + ' #' + String(run.run_number || ''), { state: exOutcome(run.status, run.conclusion), url: exHttps(run.html_url) });
-        n.sub = String(run.event || '') + (run.created_at ? ', ' + ago(run.created_at) : '');
-        n.load = function () { return exJobs(repo, run.id); };
-        return n;
-      });
-    });
-  }
-  function exJobs(repo, id) {
-    return exRead('/repos/' + repo + '/actions/runs/' + encodeURIComponent(id) + '/jobs?per_page=50').then(function (r) {
-      var jobs = r.data && Array.isArray(r.data.jobs) ? r.data.jobs : [];
-      var total = r.data && typeof r.data.total_count === 'number' ? r.data.total_count : jobs.length;
-      var out = jobs.filter(isPlain).map(function (job) {
-        var steps = Array.isArray(job.steps) ? job.steps.filter(isPlain) : [];
-        var n = exNode('job', job.id, String(job.name || 'Job'), { state: exOutcome(job.status, job.conclusion), url: exHttps(job.html_url), sub: plural(steps.length, 'step') });
-        n.repo = repo;
-        n.children = steps.map(function (st) {
-          var c = exNode('step', job.id + '.' + st.number, String(st.number) + '. ' + String(st.name || ''), { state: exOutcome(st.status, st.conclusion), url: n.url, step: st, job: n });
-          c.claude = /claude/i.test(String(st.name || ''));
-          if (c.claude) n.claude = true;
-          return c;
-        });
-        n.children.push(exNode('log', job.id, 'The whole log', { state: 'open', url: n.url, job: n, sub: 'Every line of the job' }));
-        return n;
-      });
-      if (total > out.length) out.more = 'The first ' + out.length + ' of ' + total + ' jobs; the rest are on GitHub.';
-      return out;
-    });
-  }
-  // a job's log, read once and kept with the job; GitHub answers with a redirect to its own storage,
-  // which the browser follows and may refuse to read across origins
-  // The read carries the token alone: the browser drops it on the redirect to another origin, and a
-  // request with no header of GitHub's own needs no permission asked of the storage first. The
-  // lines are kept for the last few jobs read, not every one.
-  var EXPLORE_LOG_HEADERS = { 'Accept': null, 'X-GitHub-Api-Version': null };
-  function exLog(job) {
-    if (!job.logRead) {
-      explore.logs = explore.logs.filter(function (j) { return j !== job; }).concat([job]);
-      while (explore.logs.length > EXPLORE_LOGS_KEPT) explore.logs.shift().logRead = null;
-    }
-    if (!job.logRead) job.logRead = exRead('/repos/' + job.repo + '/actions/jobs/' + encodeURIComponent(job.key.slice(4)) + '/logs', true, EXPLORE_LOG_HEADERS).then(function (r) {
-      return exLines(typeof r.data === 'string' ? r.data : '');
-    }).catch(function (e) {
-      job.logRead = null;
-      if (e && e.name === 'TypeError') throw new Error('GitHub keeps this log where your browser may not read it from this page.');
-      throw e;
-    });
-    return job.logRead;
-  }
   // the lines of a log, each with its time, the colour codes taken out
   function exLines(text) {
     return String(text).split(/\r?\n/).map(function (line) {
@@ -12174,488 +12462,569 @@
       return { at: m ? Date.parse(m[1] + (m[2] ? m[2].slice(0, 4) : '') + 'Z') : NaN, text: body };
     });
   }
-  // a step's lines, by the times GitHub gives the steps, to the second: a skipped step printed
-  // nothing, so it takes none; a line in the second a step starts stays with the step before unless
-  // it opens the new step's group, since a step's last lines and the next one's first share a second;
-  // a line with no time goes with the line before it, and lines before the first start with the first
-  function exStepLines(lines, job, step) {
-    var starts = job.children.filter(function (c) { return c.step && c.step.started_at && c.step.conclusion !== 'skipped'; })
-      .map(function (c) { return { n: c.step.number, at: Math.floor(Date.parse(c.step.started_at) / 1000) }; })
-      .filter(function (b) { return !isNaN(b.at); }).sort(function (a, b) { return a.at - b.at; });
-    if (!starts.length) return [];
-    var cur = 0, out = [];
-    lines.forEach(function (l) {
-      if (!isNaN(l.at)) {
-        var sec = Math.floor(l.at / 1000);
-        while (cur + 1 < starts.length && (sec > starts[cur + 1].at || (sec === starts[cur + 1].at && /^##\[group\]Run /.test(l.text)))) cur++;
+
+  /* ---------- Explore: plan an epic with Claude ---------- */
+  // The owner, 2026-10-21: Explore should "have claude suggest new connections between the
+  // dependency", "suggest new nodes for a graphical representation of brainstorming/code planning",
+  // and "push the alterations in the dependencies to the actual tasks". One epic at a time is drawn
+  // as cards from the Dependencies tab's latest draw (its sub-issues and the issues blocking them,
+  // with GitHub's own blocked-by links), so the tab makes no read of its own. Claude's ideas come
+  // from the assistant's answer, as `link` and `node` lines of its symphony block, and are drawn
+  // dashed; the person's own cards and links join them. Nothing reaches GitHub until Push, which
+  // writes as the person, in order: the new issues, their sub-issue links, then the blocked-by
+  // links. Nothing is stored but on GitHub: the ideas live in the answer, and a reload draws them
+  // again from it.
+  var BS_CARD_W = 228, BS_CARD_H = 96, BS_GAP_X = 84, BS_GAP_Y = 22, BS_PAD = 24;
+  var bs = { repo: '', epic: 0, ideas: [], answer: null, pending: [], seq: 0, from: null, connecting: false, pushing: false, last: null };
+
+  // the repository changed: the ideas, the changes and the last push belong to the one before
+  function exploreForget() {
+    bs.repo = ''; bs.epic = 0; bs.ideas = []; bs.answer = null; bs.pending = []; bs.from = null; bs.last = null;
+    bsConnect(false);
+  }
+  // a draw of the Dependencies tab ended, drawn or not; a fault here is Explore's, never the draw's
+  function exploreAfterDraw() {
+    if (consoleTab !== 'explore') return;
+    try { openExplore(); } catch (e) { bsStatus('Explore could not be drawn: ' + e.message, true); }
+  }
+  function bsStatus(text, warn) {
+    var p = $('bs-status');
+    if (!p) return;
+    p.textContent = text;
+    p.classList.toggle('bs__warn', !!warn);
+  }
+  function bsDraw() { var s = state; return s && s.graphLast && s.graphLast.s === s ? s.graphLast : null; }
+  // the open epics the draw found sub-issues for, in number order
+  function bsEpics(draw) { return draw ? graphWithSubIssues(draw, 'epic') : []; }
+
+  // a key names a card: an issue by its number, a task not yet pushed by its ref
+  function bsKey(x) { return typeof x === 'number' ? 'i' + x : String(x); }
+  function bsTask(ref) { return bs.pending.filter(function (p) { return p.kind === 'task' && p.ref === ref; })[0] || null; }
+  function bsIdea(ref) { return bs.ideas.filter(function (p) { return p.kind === 'task' && p.ref === ref; })[0] || null; }
+
+  // what the canvas draws for the epic: the cards and the links among them, each said by where it
+  // stands (on GitHub, waiting to be pushed, or Claude's idea), an unlink waiting crossing out a
+  // link on GitHub
+  function bsModel(draw, epic) {
+    var cards = {}, order = [], edges = [];
+    function card(key, c) { if (!cards[key]) { cards[key] = c; order.push(key); } return cards[key]; }
+    var chart = graphEpic(draw, epic);
+    chart.nodes.forEach(function (it) { card(bsKey(it.number), { key: bsKey(it.number), issue: it, where: 'github' }); });
+    graphNumbers(draw.blockedBy).forEach(function (blocked) {
+      if (!cards[bsKey(blocked)]) return;
+      draw.blockedBy[blocked].forEach(function (blocker) {
+        var gone = bs.pending.some(function (p) { return p.kind === 'unlink' && p.blocker === blocker && p.blocked === blocked; });
+        edges.push({ from: bsKey(blocker), to: bsKey(blocked), where: gone ? 'unlink' : 'github', closed: graphIssueOf(draw, blocker).closed });
+      });
+    });
+    bs.pending.concat(bs.ideas).forEach(function (p) {
+      var where = bs.pending.indexOf(p) >= 0 ? 'pending' : 'idea';
+      if (p.kind === 'task' && p.epic === epic) card(p.ref, { key: p.ref, task: p, where: where });
+    });
+    bs.pending.concat(bs.ideas).forEach(function (p) {
+      if (p.kind !== 'link') return;
+      var where = bs.pending.indexOf(p) >= 0 ? 'pending' : 'idea';
+      var a = bsKey(p.blocker), b = bsKey(p.blocked);
+      // a link that touches a card here brings in the issue at its other end, as a blocker does; a
+      // link that touches none belongs to another epic's canvas
+      if (!cards[a] && !cards[b]) return;
+      [p.blocker, p.blocked].forEach(function (x) {
+        if (typeof x === 'number' && !cards[bsKey(x)]) card(bsKey(x), { key: bsKey(x), issue: graphIssueOf(draw, x), where: 'github' });
+      });
+      if (cards[a] && cards[b]) edges.push({ from: a, to: b, where: where, item: p });
+    });
+    return { cards: cards, order: order, edges: edges };
+  }
+  // columns by the longest chain of blockers before a card, so every link runs left to right; a
+  // loop, which GitHub does not refuse, is cut where it closes, and rows go by key within a column
+  function bsLayout(model) {
+    var col = {}, incoming = {};
+    model.order.forEach(function (k) { col[k] = 0; incoming[k] = []; });
+    model.edges.forEach(function (e) { if (e.where !== 'unlink') incoming[e.to].push(e.from); });
+    for (var round = 0; round < model.order.length; round++) {
+      var moved = false;
+      model.order.forEach(function (k) {
+        incoming[k].forEach(function (f) { if (col[f] + 1 > col[k] && col[f] + 1 < model.order.length) { col[k] = col[f] + 1; moved = true; } });
+      });
+      if (!moved) break;
+    }
+    var rows = {}, at = {};
+    model.order.forEach(function (k) { (rows[col[k]] = rows[col[k]] || []).push(k); });
+    var height = 0, width = 0;
+    Object.keys(rows).forEach(function (c) {
+      rows[c].forEach(function (k, r) {
+        at[k] = { x: BS_PAD + Number(c) * (BS_CARD_W + BS_GAP_X), y: BS_PAD + r * (BS_CARD_H + BS_GAP_Y) };
+        width = Math.max(width, at[k].x + BS_CARD_W + BS_PAD);
+        height = Math.max(height, at[k].y + BS_CARD_H + BS_PAD);
+      });
+    });
+    return { at: at, width: width, height: height };
+  }
+  // whether a link from blocker to blocked would close a loop: blocked already comes before blocker
+  // among the links on GitHub and those waiting, less the unlinks waiting
+  function bsLoops(draw, blocker, blocked) {
+    var next = {};
+    function edge(a, b) { (next[a] = next[a] || []).push(b); }
+    graphNumbers(draw.blockedBy).forEach(function (b) {
+      draw.blockedBy[b].forEach(function (a) {
+        if (!bs.pending.some(function (p) { return p.kind === 'unlink' && p.blocker === a && p.blocked === b; })) edge(bsKey(a), bsKey(b));
+      });
+    });
+    bs.pending.forEach(function (p) { if (p.kind === 'link') edge(bsKey(p.blocker), bsKey(p.blocked)); });
+    var seen = {}, todo = [bsKey(blocked)];
+    while (todo.length) {
+      var k = todo.pop();
+      if (k === bsKey(blocker)) return true;
+      if (seen[k]) continue;
+      seen[k] = true;
+      (next[k] || []).forEach(function (n) { todo.push(n); });
+    }
+    return false;
+  }
+
+  function openExplore() {
+    var s = state, draw = bsDraw();
+    if (!s || !s.repo) { bsClear(); bsStatus('Nothing to plan yet: no repository is chosen.'); return; }
+    // the first visit keeps the epic a "Show it on Explore" press chose; a switch of repository forgets it
+    if (bs.repo !== s.repo) { var keep = bs.repo ? 0 : bs.epic; exploreForget(); bs.repo = s.repo; bs.epic = keep; }
+    bsIdeasFromAnswer();
+    bsPrune(draw);
+    var epics = bsEpics(draw);
+    if (!draw) { bsClear(); bsStatus(s.graphFailed ? 'Nothing to draw: the Dependencies tab could not read the epics (' + s.graphFailed + ').' : 'Reading the epics and their tasks...', !!s.graphFailed); return; }
+    if (!epics.length) { bsClear(); bsStatus('Nothing to plan yet: no open issue labelled epic has sub-issues. An epic the coordinator planned, or one you make with sub-issues on GitHub, is drawn here.'); return; }
+    if (!epics.some(function (e) { return e.number === bs.epic; })) bs.epic = epics[0].number;
+    bsEpicChips(epics);
+    bsRender(draw);
+  }
+  function bsClear() { clear($('bs-canvas')); clear($('bs-epics')); bsTray(); }
+  function bsEpicChips(epics) {
+    var box = $('bs-epics');
+    clear(box);
+    epics.forEach(function (e) {
+      var b = btn('#' + e.number + ' ' + e.title, false, function () { bs.epic = e.number; bs.from = null; openExplore(); });
+      b.className = 'chip';
+      b.setAttribute('aria-pressed', e.number === bs.epic ? 'true' : 'false');
+      b.title = e.title;
+      add(box, b);
+    });
+  }
+  function bsRender(draw) {
+    var model = bsModel(draw, bs.epic), lay = bsLayout(model);
+    var box = $('bs-canvas');
+    clear(box);
+    var plane = el('div', 'bs__plane');
+    plane.style.width = lay.width + 'px';
+    plane.style.height = lay.height + 'px';
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'bs__edges');
+    svg.setAttribute('width', String(lay.width));
+    svg.setAttribute('height', String(lay.height));
+    svg.setAttribute('aria-hidden', 'true');
+    model.edges.forEach(function (e) {
+      var a = lay.at[e.from], b = lay.at[e.to];
+      if (!a || !b) return;
+      var x1 = a.x + BS_CARD_W, y1 = a.y + BS_CARD_H / 2, x2 = b.x, y2 = b.y + BS_CARD_H / 2;
+      // a link between cards of one column, which a loop leaves, bends out to the right
+      var bend = x2 > x1 ? (x2 - x1) / 2 : 60;
+      var path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', x2 > x1 ? 'M' + x1 + ' ' + y1 + ' C ' + (x1 + bend) + ' ' + y1 + ', ' + (x2 - bend) + ' ' + y2 + ', ' + x2 + ' ' + y2
+        : 'M' + x1 + ' ' + y1 + ' C ' + (x1 + bend) + ' ' + y1 + ', ' + (x2 + BS_CARD_W + bend) + ' ' + y2 + ', ' + (x2 + BS_CARD_W) + ' ' + y2);
+      path.setAttribute('class', 'bs__edge bs__edge--' + e.where + (e.closed ? ' bs__edge--closed' : ''));
+      path.setAttribute('data-from', e.from);
+      path.setAttribute('data-to', e.to);
+      svg.appendChild(path);
+    });
+    plane.appendChild(svg);
+    model.order.forEach(function (k) {
+      var c = bsCard(draw, model.cards[k]);
+      c.style.left = lay.at[k].x + 'px';
+      c.style.top = lay.at[k].y + 'px';
+      plane.appendChild(c);
+    });
+    // the ideas of links are said in words too, beside the canvas's lines, each with its presses
+    var linkIdeas = bs.ideas.filter(function (p) { return p.kind === 'link' && model.cards[bsKey(p.blocker)] && model.cards[bsKey(p.blocked)]; });
+    add(box, plane);
+    if (linkIdeas.length) {
+      var list = el('ul', 'bs__ideas');
+      add(list, el('li', 'bs__ideash', 'Claude\'s links'));
+      linkIdeas.forEach(function (p) { add(list, bsLinkIdea(p)); });
+      add(box, list);
+    }
+    bsFit();
+    bsTray();
+    var counts = { github: 0, pending: 0, idea: 0 };
+    model.order.forEach(function (k) { counts[model.cards[k].where]++; });
+    var ideas = bs.ideas.filter(function (p) { return p.kind === 'link' ? linkIdeas.indexOf(p) >= 0 : p.epic === bs.epic; }).length;
+    bsStatus(bs.connecting ? bsConnectWords() : plural(counts.github, 'task') + ' on GitHub' + (counts.pending ? ', ' + plural(counts.pending, 'new task') + ' to push' : '') + (ideas ? ', ' + plural(ideas, 'idea') + ' from Claude to decide' : '') + '.');
+  }
+  // the plane shrinks to the canvas, never below half its size, so a small epic reads at its own
+  // size and a large one fits; past half, the canvas scrolls
+  function bsFit() {
+    var box = $('bs-canvas'), plane = box && box.querySelector('.bs__plane');
+    if (!plane) return;
+    var w = parseFloat(plane.style.width) || 1, h = parseFloat(plane.style.height) || 1;
+    var k = Math.max(0.5, Math.min(1, (box.clientWidth - 4) / w, (box.clientHeight - 4) / h));
+    plane.style.transform = k < 1 ? 'scale(' + k + ')' : '';
+    plane.style.marginBottom = k < 1 ? (h * k - h) + 'px' : '';
+    plane.style.marginRight = k < 1 ? (w * k - w) + 'px' : '';
+  }
+  function bsCard(draw, c) {
+    var card = el('div', 'ds-card bs__card bs__card--' + c.where);
+    card.setAttribute('data-key', c.key);
+    var head = el('div', 'bs__kind'), foot = el('div', 'bs__foot');
+    add(card, head, el('div', 'bs__title', c.issue ? c.issue.title || 'Issue #' + c.issue.number : c.task.title));
+    if (c.issue) {
+      var it = c.issue, cls = graphClass(it, draw.claimed) || 'open';
+      card.classList.add('bs__card--' + cls);
+      add(head, el('span', 'bs__dot'), '#' + it.number + ' ' + bsStateWords(cls));
+      if (it.blockedByTotal) add(foot, el('span', 'bs__pill', (it.blockedByTotal - it.blockedByOpen) + ' of ' + it.blockedByTotal + ' met'));
+      if (it.html_url) add(foot, link(it.html_url, 'Open'));
+    } else {
+      add(head, el('span', 'bs__dot'), c.where === 'idea' ? '\u2726 New task, Claude\'s idea' : 'New task, to push');
+      if (c.task.why) add(card, el('div', 'bs__why', c.task.why));
+    }
+    if (c.where === 'idea') {
+      add(foot, bsPress('Accept', 'bs__ok', function () { bsAccept(c.task); }), bsPress('Edit', '', function () { bsEdit(c.task); }), bsPress('Dismiss', '', function () { bsDismiss(c.task); }));
+    } else if (c.where === 'pending') {
+      add(foot, bsPress('Edit', '', function () { bsEdit(c.task); }), bsPress('Remove', '', function () { bsRemove(c.task); }));
+    }
+    add(card, foot);
+    // in Connect, the card itself is the press; a card's own buttons and links keep theirs
+    card.addEventListener('click', function (e) {
+      if (!bs.connecting || (e.target.closest && e.target.closest('button, a'))) return;
+      bsPick(c.key);
+    });
+    if (bs.connecting) { card.tabIndex = 0; card.setAttribute('role', 'button'); card.addEventListener('keydown', function (e) { if (e.target === card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); bsPick(c.key); } }); }
+    if (bs.from === c.key) card.classList.add('bs__card--from');
+    return card;
+  }
+  function bsPress(label, cls, run) { var b = btn(label, false, run); b.className = 'chip bs__press' + (cls ? ' ' + cls : ''); return b; }
+  function bsStateWords(cls) { return { todo: 'to do', claimed: 'claimed', review: 'in review', blocked: 'blocked', closed: 'closed' }[cls] || 'open'; }
+  function bsLinkIdea(p) {
+    var li = el('li', 'bs__idea');
+    add(li, el('b', '', bsName(p.blocker) + ' blocks ' + bsName(p.blocked)), p.why ? ' ' + p.why : '', ' ',
+      bsPress('Accept', 'bs__ok', function () { bsAccept(p); }), bsPress('Dismiss', '', function () { bsDismiss(p); }));
+    return li;
+  }
+  function bsName(x) {
+    if (typeof x === 'number') return '#' + x;
+    var t = bsTask(x) || bsIdea(x);
+    return t ? '"' + t.title + '"' : 'a new task';
+  }
+
+  // the ideas of the assistant's latest answer, read again only when the answer changes, so a
+  // dismissed idea stays dismissed until Claude answers anew
+  function bsIdeasFromAnswer() {
+    var a = assistant, ans = a && a.answer && !a.failed && a.repo === state.repo && a.login === shownLogin ? a.answer : null;
+    if (!ans) { if (bs.answer) { bs.answer = null; bs.ideas = []; } return; }
+    if (bs.answer && bs.answer.id === ans.id && bs.answer.body === ans.body) return;
+    bs.answer = { id: ans.id, body: ans.body };
+    bs.ideas = bsParse(assistantBlock(ans.body));
+  }
+  // what GitHub already holds is no idea any more, so an answer read again after a push or a reload
+  // offers it no second time: a task of that title under its epic, or a link on GitHub; and a link
+  // whose new task is neither an idea nor waiting goes with it, as a dismissed task's links do
+  function bsTitleKey(x) { return String(x || '').replace(/^Task:\s*/i, '').trim().toLowerCase(); }
+  function bsPrune(draw) {
+    if (!draw) return;
+    var have = {};
+    bsEpics(draw).forEach(function (e) {
+      graphEpic(draw, e.number).nodes.forEach(function (it) { have[e.number + ' ' + bsTitleKey(it.title)] = true; });
+    });
+    bs.ideas = bs.ideas.filter(function (x) { return !(x.kind === 'task' && have[x.epic + ' ' + bsTitleKey(x.title)]); });
+    bs.ideas = bs.ideas.filter(function (x) { return x.kind !== 'link' || (!bsHasLink(x) && bsRefsLive(x)); });
+    bs.pending = bs.pending.filter(function (x) { return x.kind === 'task' || bsRefsLive(x); });
+  }
+  function bsRefsLive(x) {
+    return [x.blocker, x.blocked].every(function (y) { return typeof y === 'number' || bsTask(y) || bsIdea(y); });
+  }
+  // `link #A blocks #B [why TEXT]` and `node TITLE under #E [blocks #X] [after #Y] [why TEXT]`; a
+  // node's blocks and after become links of the new task's own
+  var BS_LINK = /^link\s+#([1-9][0-9]{0,8})\s+blocks\s+#([1-9][0-9]{0,8})(?:\s+why\s+(.{1,300}))?$/i;
+  var BS_NODE = /^node:?\s+(.{1,200}?)\s+under\s+#([1-9][0-9]{0,8})((?:\s+(?:blocks|after)\s+#[1-9][0-9]{0,8})*)(?:\s+why\s+(.{1,300}))?$/i;
+  function bsParse(lines) {
+    var out = [];
+    lines.forEach(function (line) {
+      var m;
+      if ((m = BS_LINK.exec(line))) {
+        if (Number(m[1]) !== Number(m[2])) out.push({ kind: 'link', blocker: Number(m[1]), blocked: Number(m[2]), why: (m[3] || '').trim(), from: 'claude' });
+      } else if ((m = BS_NODE.exec(line))) {
+        var ref = 'c' + (++bs.seq), task = { kind: 'task', ref: ref, title: m[1].trim(), epic: Number(m[2]), why: (m[4] || '').trim(), from: 'claude' };
+        out.push(task);
+        var re = /(blocks|after)\s+#([1-9][0-9]{0,8})/gi, r;
+        while ((r = re.exec(m[3] || ''))) {
+          var n = Number(r[2]);
+          out.push(r[1].toLowerCase() === 'blocks' ? { kind: 'link', blocker: ref, blocked: n, why: '', from: 'claude', with: ref } : { kind: 'link', blocker: n, blocked: ref, why: '', from: 'claude', with: ref });
+        }
       }
-      if (starts[cur].n === step.number) out.push(l);
     });
     return out;
   }
+  // what the assistant's line says, beside its answer: the idea is drawn on Explore, opened by a press
+  function bsOffer(line) {
+    var span = el('span');
+    add(span, 'An idea for the plan, drawn on the Explore tab: ' + line + ' ', btn('Show it on Explore', true, function () {
+      closeDialog('dlg-claude');
+      var m = BS_NODE.exec(line);
+      if (m) bs.epic = Number(m[2]);
+      showTab('explore');
+    }));
+    return span;
+  }
 
-  /* drawing */
-  // The owner, 2026-10-19: "the explorer looks janky so work on modernizing it and making it take up
-  // most of the panel when using it". A level is drawn as cards on the console's zoom stage
-  // (stageMake), as the Dependencies tab draws its charts, so nothing in the tab scrolls: the whole
-  // level fitted to the box, its cards laid out in the number of columns that draws them largest, and
-  // a level of few cards grown up to EXPLORE_GROW times its size so it fills the box. Pinch, the
-  // wheel, + and - zoom about a point, a drag pans once zoomed in, and zooming out past the whole
-  // level comes out of it, one level for one turn of the wheel. A swipe, or an arrow key while the
-  // stage itself has the keyboard, steps to the level beside this one under the same parent; with a
-  // card in hand the arrows move between the cards. A log is drawn on the same stage at a size to
-  // read, opened on its first error or else at its end, and the wheel moves along it.
-  var EXPLORE_GROW = 1.6, EXPLORE_COLS = 24;
-  function exCurrent() { return explore.path[explore.path.length - 1] || null; }
-  function exStatus(text) { $('ex-status').textContent = text; }
-  function exKids(n) { return Array.isArray(n.children) ? n.children : []; }
-  function exTile(n, i) {
-    var t = el('button', 'ex__tile ex__tile--' + n.kind + ' ex__s--' + (n.state || 'open'));
-    t.type = 'button';
-    t.setAttribute('data-ex', String(i));
-    var top = add(t, el('span', 'ex__top')).lastChild;
-    var kind = add(top, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind)).lastChild;
-    if (n.claude) add(kind, ' ', el('span', 'ex__claude', 'Claude'));
-    var pill = add(top, el('span', 'ex__pill', n.state || 'open')).lastChild;
-    pill.setAttribute('aria-hidden', 'true');
-    add(t, el('span', 'ex__title', n.title));
-    if (n.sub) add(t, el('span', 'ex__sub', n.sub));
-    var foot = add(t, el('span', 'ex__foot')).lastChild;
-    var kids = exKids(n);
-    if (kids.length) {
-      var dots = add(foot, el('span', 'ex__dots')).lastChild;
-      kids.slice(0, 40).forEach(function (k) { var d = add(dots, el('span', 'ex__dot ex__s--' + (k.state || 'open'))).lastChild; d.title = k.title; });
-      if (kids.length > 40) add(dots, el('span', 'ex__more', '+' + (kids.length - 40)));
-      add(foot, el('span', 'ex__count', String(kids.length) + ' inside'));
-    } else if (n.load && !n.children) add(foot, el('span', 'ex__hint', 'Go in to read'));
-    t.setAttribute('aria-label', (EXPLORE_KINDS[n.kind] || n.kind) + ': ' + n.title + (n.sub ? ', ' + n.sub : '') + ', ' + (n.state || 'open'));
-    return t;
+  function bsAccept(p) {
+    var draw = bsDraw();
+    if (!draw) return;
+    var group = p.kind === 'task' ? bs.ideas.filter(function (x) { return x === p || x.with === p.ref; }) : [p];
+    // a link Claude named that would close a loop is refused here, as one drawn by hand is, the
+    // links of one new task taken together
+    var saved = bs.pending, loop = null;
+    group.forEach(function (x) {
+      if (x.kind !== 'link' || loop) return;
+      if (bsLoops(draw, x.blocker, x.blocked)) loop = x; else bs.pending = bs.pending.concat([x]);
+    });
+    bs.pending = saved;
+    if (loop) { say('Not accepted: ' + bsName(loop.blocker) + ' blocking ' + bsName(loop.blocked) + ' would close a loop, a task waiting on itself.', true, true); return; }
+    // a link to a task still only an idea waits for that task to be accepted too
+    if (p.kind === 'link' && [p.blocker, p.blocked].some(function (x) { return typeof x === 'string' && !bsTask(x); })) { say('Accept the new task first; its links come with it.', true); return; }
+    group.forEach(function (x) {
+      bs.ideas.splice(bs.ideas.indexOf(x), 1);
+      if (!bsHasLink(x)) bs.pending.push(x);
+    });
+    openExplore();
   }
-  // the stage emptied: its picture gone, so the zoom has nothing to move until the next is put there
-  function exClearStage() {
-    var stage = $('ex-stage'), st = stageOf(stage);
-    clear(stage);
-    stage.classList.remove('ex__stage--log');
-    if (st) {
-      st.svg = null; st.faces = []; st.whole = true;
-      // a drag, a pinch or a tap held across a level would move or zoom the next level's picture
-      st.pointers = {}; st.drag = null; st.pinch = null; st.lastTap = null; st.outBy = 1;
-      clearTimeout(st.tapTimer);
-    }
+  function bsHasLink(x) {
+    if (x.kind !== 'link') return false;
+    var draw = bsDraw();
+    if (typeof x.blocker === 'number' && typeof x.blocked === 'number' && draw && (draw.blockedBy[x.blocked] || []).indexOf(x.blocker) >= 0) return true;
+    return bs.pending.some(function (q) { return q.kind === 'link' && q.blocker === x.blocker && q.blocked === x.blocked; });
   }
-  // words in the middle of the stage, in place of a picture
-  function exNote(text) {
-    var box = add($('ex-stage'), el('div', 'ex__note')).lastChild;
-    none(box, text);
-    return box;
+  function bsDismiss(p) {
+    bs.ideas = bs.ideas.filter(function (x) { return x !== p && !(p.kind === 'task' && x.with === p.ref); });
+    openExplore();
   }
-  // the level's own card above the stage: what it is, its name, its line, and its tools
-  function exHead(n) {
-    var head = $('ex-head');
-    clear(head);
-    head.className = 'ex__head ex__s--' + (n && n.state || 'open');
-    if (!n) return;
-    var words = add(head, el('div', 'ex__words')).lastChild;
-    add(words, el('span', 'ex__kind', EXPLORE_KINDS[n.kind] || n.kind), el('h3', 'ex__name', n.title));
-    if (n.sub) add(words, el('p', 'ex__sub', n.sub));
-    add(head, el('div', 'ex__acts'));
+  function bsRemove(p) {
+    bs.pending = bs.pending.filter(function (x) { return x !== p && !(p.kind === 'task' && (x.blocker === p.ref || x.blocked === p.ref)); });
+    openExplore();
   }
-  function exActs() { return $('ex-head').querySelector('.ex__acts'); }
-  function exDraw() {
-    var stage = $('ex-stage'), n = exCurrent();
-    exClearStage();
-    exPath();
-    exTree();
-    exHead(n);
-    var gh2 = $('ex-github');
-    if (n && n.url) { gh2.href = n.url; gh2.hidden = false; } else { gh2.hidden = true; gh2.removeAttribute('href'); }
-    $('ex-out').disabled = explore.path.length <= 1;
-    if (!n) { exNote('Nothing to explore yet: no repository is chosen.'); exStatus('Choose a repository in the side column.'); return; }
-    if (n.kind === 'step' || n.kind === 'log') return exDrawLog(stage, n);
-    if (n.failed) {
-      var note = exNote(n.failed);
-      var again = add(note, el('button', 'ex__tool', 'Try again')).lastChild;
-      again.type = 'button';
-      again.addEventListener('click', function () { n.failed = ''; exGo(explore.path.slice()); });
-      exStatus('This level could not be read.');
-      return;
-    }
-    if (!n.children) { exNote('Reading from GitHub...'); exStatus('Reading...'); return; }
-    var kids = exKids(n);
-    if (n.load) add(exActs(), exAgain('Read again', function () { n.children = null; }));
-    if (!kids.length) {
-      exNote(n.unread || exEmpty(n));
-      exStatus('Nothing below this level.');
-      return;
-    }
-    var sheet = add(stage, el('div', 'ex__sheet')).lastChild;
-    var grid = add(sheet, el('div', 'ex__grid')).lastChild;
-    kids.forEach(function (k, i) { grid.appendChild(exTile(k, i)); });
-    exFit();
-    exStatus(plural(kids.length, 'item') + (kids.more ? ' (' + kids.more + ')' : '') + '. Click a card to go in; pinch, the wheel or + and - zoom, and zooming out past the whole level comes out of it; swipe for the level beside this one.');
+  var bsEditing = null;
+  function bsEdit(task) {
+    bsEditing = task;
+    $('bs-node-title').value = task ? task.title : '';
+    $('bs-node-why').value = task ? task.why : '';
+    openDialog('dlg-bs-node');
+    $('bs-node-title').focus();
   }
-  // the cards laid out in the number of columns that draws them largest in the stage, and put on it;
-  // a zoom the person made is kept, as the Dependencies tab keeps one
-  function exFit() {
-    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet:not(.ex__sheet--log)');
-    var grid = sheet && sheet.querySelector('.ex__grid');
-    if (!st || !grid || !stage.clientWidth || !stage.clientHeight || (st.svg === sheet && !st.whole)) return;
-    var W = Math.max(1, stage.clientWidth - 2 * STAGE_PAD), H = Math.max(1, stage.clientHeight - 2 * STAGE_PAD);
-    var n = grid.children.length, best = null;
-    for (var c = 1; c <= Math.min(n, EXPLORE_COLS); c++) {
-      grid.style.setProperty('--ex-cols', String(c));
-      var k = Math.min(W / sheet.offsetWidth, H / sheet.offsetHeight);
-      if (!best || k > best.k + 1e-3) best = { c: c, k: k };
-    }
-    grid.style.setProperty('--ex-cols', String(best.c));
-    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], EXPLORE_GROW);
+  function bsSaveNode() {
+    var title = ($('bs-node-title').value || '').trim().replace(/\s+/g, ' '), why = ($('bs-node-why').value || '').trim();
+    if (!title) { say('A task needs a title.', true); return; }
+    if (bsEditing) { bsEditing.title = title; bsEditing.why = why; }
+    else if (!bs.epic) { say('Choose an epic first.', true); return; }
+    else bs.pending.push({ kind: 'task', ref: 'n' + (++bs.seq), title: title, epic: bs.epic, why: why, from: 'you' });
+    bsEditing = null;
+    closeDialog('dlg-bs-node');
+    openExplore();
   }
-  // what a run still going shows changes, so a level read below a task can be read again by hand
-  function exAgain(words, forget) {
-    var b = el('button', 'ex__tool ex__again', words);
-    b.type = 'button';
-    b.addEventListener('click', function () { forget(); exGo(explore.path.slice()); });
-    return b;
+
+  // Connect: the first press is the task that must be done first, the second the task it blocks
+  function bsConnect(on) {
+    bs.connecting = on;
+    bs.from = null;
+    var b = $('bs-connect');
+    if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
-  function exEmpty(n) {
-    if (n.kind === 'repo') return explore.s && !explore.s.ready ? 'The issues are still being read.' : 'No open issue yet. Tasks, epics and goals appear here as they are opened.';
-    if (n.kind === 'pull' || n.kind === 'branch') return 'No GitHub Actions run on this branch.';
-    if (n.kind === 'run') return 'This run has no job.';
-    if (n.kind === 'epic' || n.kind === 'goal') return 'No sub-issue: add tasks on the issue\'s page under Sub-issues.';
-    return 'Nothing here.';
+  function bsConnectWords() { return bs.from ? 'Now press the task that ' + bsCardName(bs.from) + ' blocks, or Connect again to stop.' : 'Press the task that must be done first, or Connect again to stop.'; }
+  function bsCardName(key) { return /^i[0-9]+$/.test(key) ? '#' + key.slice(1) : bsName(key); }
+  function bsPick(key) {
+    var draw = bsDraw();
+    if (!draw) return;
+    // a task still only Claude's idea is accepted first, so no link waits on a card that may go
+    if (bsIdea(key) && !bsTask(key)) { say('Accept the new task first, then connect it.', true); return; }
+    if (!bs.from) { bs.from = key; openExplore(); return; }
+    var from = bs.from;
+    bs.from = null;
+    if (from === key) { openExplore(); return; }
+    var blocker = /^i[0-9]+$/.test(from) ? Number(from.slice(1)) : from, blocked = /^i[0-9]+$/.test(key) ? Number(key.slice(1)) : key;
+    var onGitHub = typeof blocker === 'number' && typeof blocked === 'number' && (draw.blockedBy[blocked] || []).indexOf(blocker) >= 0;
+    var waiting = bs.pending.filter(function (p) { return (p.kind === 'link' || p.kind === 'unlink') && p.blocker === blocker && p.blocked === blocked; })[0];
+    if (waiting) bs.pending.splice(bs.pending.indexOf(waiting), 1);
+    else if (onGitHub) bs.pending.push({ kind: 'unlink', blocker: blocker, blocked: blocked, from: 'you' });
+    else if (bsLoops(draw, blocker, blocked)) say('Not joined: ' + bsName(blocker) + ' blocking ' + bsName(blocked) + ' would close a loop, a task waiting on itself.', true, true);
+    else bs.pending.push({ kind: 'link', blocker: blocker, blocked: blocked, why: '', from: 'you' });
+    openExplore();
   }
-  function exDrawLog(stage, n) {
-    var job = n.job;
-    function gitHub() {
-      if (!n.url) return null;
-      var a = el('a', 'ex__tool ex__link', 'Open the log on GitHub');
-      a.href = n.url; a.target = '_blank'; a.rel = 'noopener';
-      return a;
-    }
-    // the stage pans on a drag, so the lines are copied whole from a button, never selected
-    function copyLog(lines) {
-      var b = btn('Copy the lines', true, function () {
-        var text = lines.map(function (l) { return l.text.replace(/^##\[(group|endgroup|error|warning)\]/, ''); }).join('\n');
-        if (!navigator.clipboard) { exStatus('This browser gives the page no clipboard.'); return; }
-        navigator.clipboard.writeText(text).then(function () { exStatus('Copied ' + plural(lines.length, 'line') + '.'); }, function () { exStatus('The browser refused the clipboard.'); });
+
+  function bsItemWords(p) {
+    if (p.kind === 'task') return ['New task under #' + p.epic, '"' + p.title + '"' + (p.from === 'claude' ? ', Claude\'s idea' : ', yours')];
+    if (p.kind === 'link') return [bsName(p.blocker) + ' blocks ' + bsName(p.blocked), p.from === 'claude' ? 'Accepted from Claude' + (p.why ? ': ' + p.why : '') : 'Drawn by you'];
+    return ['Remove: ' + bsName(p.blocker) + ' blocks ' + bsName(p.blocked), 'The link GitHub holds goes'];
+  }
+  function bsTray() {
+    var list = $('bs-pending');
+    if (!list) return;
+    clear(list);
+    bs.pending.forEach(function (p) {
+      var w = bsItemWords(p), li = el('li', 'ds-card bs__item bs__item--' + p.kind);
+      var rm = bsPress('Remove', '', function () { if (!bs.pushing) bsRemove(p); });
+      rm.disabled = bs.pushing;
+      add(li, el('b', '', w[0]), el('small', '', w[1]), rm);
+      add(list, li);
+    });
+    if (!bs.pending.length) add(list, el('li', 'ds-note bs__empty', 'Nothing yet: accept an idea, add a task or connect two cards.'));
+    $('bs-count').textContent = String(bs.pending.length);
+    $('bs-push').disabled = bs.pushing || !bs.pending.length;
+    $('bs-push').textContent = bs.pending.length ? 'Push ' + plural(bs.pending.length, 'change') + ' to GitHub' : 'Push to GitHub';
+    $('bs-undo').hidden = !(bs.last && state && bs.last.repo === state.repo && bs.last.account === shownLogin && bs.last.undo.length);
+    $('bs-undo').disabled = bs.pushing;
+  }
+
+  // the id GitHub's sub-issue and blocked-by calls take, which is the issue's id and not its number
+  function bsIdOf(repo, n, made) {
+    if (made[n]) return Promise.resolve(made[n]);
+    var it = (state.issues || []).filter(function (x) { return Number(x.number) === n && !x.pull_request; })[0];
+    if (it && typeof it.id === 'number') return Promise.resolve(it.id);
+    return gh('GET', '/repos/' + repo + '/issues/' + n).then(function (r) { return r.data.id; });
+  }
+  // the push, in order, each write as the person: the issues, then each one's place under its epic,
+  // then the links; it stops at the first refusal and keeps what is left to push, and records each
+  // write done so Undo can take it back
+  function bsPush() {
+    var s = state, repo = s.repo, account = shownLogin;
+    if (bs.pushing || !bs.pending.length) return;
+    var draw = bsDraw();
+    var loop = draw && bs.pending.filter(function (p) { return p.kind === 'link'; }).some(function (p) {
+      var saved = bs.pending;
+      bs.pending = saved.filter(function (q) { return q !== p; });
+      var closes = bsLoops(draw, p.blocker, p.blocked);
+      bs.pending = saved;
+      return closes;
+    });
+    if (loop) { say('Not pushed: the links waiting would close a loop, a task waiting on itself. Remove one first.', true); return; }
+    bs.pushing = true;
+    bsTray();
+    var made = {}, numbers = {}, undo = [], done = 0;
+    var order = bs.pending.filter(function (p) { return p.kind === 'task'; })
+      .concat(bs.pending.filter(function (p) { return p.kind === 'unlink'; }), bs.pending.filter(function (p) { return p.kind === 'link'; }));
+    function num(x) { return typeof x === 'number' ? x : numbers[x]; }
+    function step(p) {
+      if (stale(s) || account !== shownLogin) return Promise.reject(new Error('the page moved to another repository or sign-in'));
+      // a change removed while the push ran is not written
+      if (bs.pending.indexOf(p) < 0) return Promise.resolve(false);
+      if (p.kind === 'task') {
+        // a task an earlier push opened and could not place under its epic is placed, not opened again
+        if (p.number) { made[p.number] = p.id; return bsPlace(p); }
+        bsStatus('Opening "' + p.title + '"...');
+        return gh('POST', '/repos/' + repo + '/issues', {
+          title: /^Task: /.test(p.title) ? p.title : 'Task: ' + p.title,
+          body: formBody([['Goal', p.why || p.title], ['Planned', 'On the control panel\'s Explore tab, under #' + p.epic + (p.from === 'claude' ? ', from an idea of Claude\'s the person accepted' : '') + '.']]),
+          labels: ['todo']
+        }, undefined, false, account).then(function (r) {
+          numbers[p.ref] = r.data.number;
+          made[r.data.number] = r.data.id;
+          p.number = r.data.number;
+          p.id = r.data.id;
+          // the links that named the task by its ref name it by its number from now on, so a push
+          // that stops later leaves them pushable
+          bs.pending.concat(bs.ideas).forEach(function (q) {
+            if (q.blocker === p.ref) q.blocker = r.data.number;
+            if (q.blocked === p.ref) q.blocked = r.data.number;
+          });
+          undo.push({ kind: 'close', number: r.data.number });
+          return bsPlace(p);
+        });
+      }
+      var blocker = num(p.blocker), blocked = num(p.blocked);
+      if (!blocker || !blocked) return Promise.reject(new Error('a new task its link names was not opened'));
+      bsStatus((p.kind === 'link' ? 'Linking' : 'Unlinking') + ' #' + blocker + ' and #' + blocked + '...');
+      return bsIdOf(repo, blocker, made).then(function (id) {
+        // a link GitHub holds already, or no longer holds for an unlink, is done, with nothing to undo
+        if (p.kind === 'link') return gh('POST', '/repos/' + repo + '/issues/' + blocked + '/dependencies/blocked_by', { issue_id: id }, undefined, false, account).then(function () { undo.unshift({ kind: 'unlink', blocked: blocked, id: id }); }, function (e) { if (!(e && e.status === 422 && /already/i.test(JSON.stringify(e.data || '')))) throw e; });
+        return gh('DELETE', '/repos/' + repo + '/issues/' + blocked + '/dependencies/blocked_by/' + id, undefined, undefined, false, account).then(function () { undo.unshift({ kind: 'link', blocked: blocked, id: id }); }, function (e) { if (!(e && e.status === 404)) throw e; });
       });
-      b.classList.add('ex__tool');
-      return b;
     }
-    var box = exNote('Reading the log...');
-    exStatus('Reading the log...');
-    var era = explore.era;
-    exLog(job).then(function (all) {
-      if (era !== explore.era || exCurrent() !== n) return;
-      var lines = n.kind === 'step' ? exStepLines(all, job, n.step) : all;
-      add(exActs(), exAgain('Read again', function () { job.logRead = null; }));
-      if (!lines.length || (lines.length === 1 && !lines[0].text)) { clear(box); none(box, 'No line of the log falls in this step.'); add(box, gitHub()); exStatus('An empty step.'); return; }
-      exClearStage();
-      stage.classList.add('ex__stage--log');
-      var sheet = add(stage, el('div', 'ex__sheet ex__sheet--log')).lastChild;
-      sheet.style.width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
-      var pre = add(sheet, el('pre', 'ex__lines')).lastChild, first = null;
-      lines.slice(0, EXPLORE_LOG_LINES).forEach(function (l) {
-        var cls = /^##\[group\]/.test(l.text) ? 'ex__group' : /^##\[error\]/.test(l.text) ? 'ex__error' : /^##\[warning\]/.test(l.text) ? 'ex__warning' : '';
-        add(pre, el('span', cls ? 'ex__line ' + cls : 'ex__line', l.text.replace(/^##\[(group|endgroup|error|warning)\]/, '')));
-        if (!first && cls === 'ex__error') first = pre.lastChild;
+    function bsPlace(p) {
+      return gh('POST', '/repos/' + repo + '/issues/' + p.epic + '/sub_issues', { sub_issue_id: p.id }, undefined, false, account).then(function () {
+        undo.unshift({ kind: 'unsub', epic: p.epic, id: p.id });
       });
-      if (lines.length > EXPLORE_LOG_LINES) add(sheet, el('p', 'admin__none', 'The first ' + EXPLORE_LOG_LINES + ' of ' + lines.length + ' lines; the rest are on GitHub.'));
-      add(exActs(), copyLog(lines.slice(0, EXPLORE_LOG_LINES)), gitHub());
-      stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
-      exLogAt(stageOf(stage), first);
-      exStatus(plural(Math.min(lines.length, EXPLORE_LOG_LINES), 'line') + (n.claude ? ' of the step that runs Claude.' : '.') + ' The wheel or a drag moves along it; Backspace comes back out.');
-    }).catch(function (e) {
-      if (era !== explore.era || exCurrent() !== n) return;
-      clear(box);
-      none(box, 'The log could not be read: ' + e.message);
-      add(box, gitHub());
-      exStatus('The log could not be read here; GitHub shows it.');
+    }
+    order.reduce(function (pr, p) {
+      return pr.then(function () { return step(p).then(function (wrote) { if (wrote !== false) done++; bs.pending = bs.pending.filter(function (x) { return x !== p; }); }); });
+    }, Promise.resolve()).then(function () {
+      bsPushed(s, repo, account, undo, 'Pushed ' + plural(done, 'change') + ' to GitHub as ' + account + '.', false);
+    }, function (e) {
+      bsPushed(s, repo, account, undo, 'Pushed ' + plural(done, 'change') + ', then stopped: ' + e.message + ' What is left waits under Changes to push.', true);
     });
   }
-  // the box changed size under a log (Panel, a rotation, the window): its lines wrap to the new width
-  // and the reading place is kept
-  function exLogFit() {
-    var stage = $('ex-stage'), st = stageOf(stage), sheet = stage.querySelector('.ex__sheet--log');
-    if (!st || !sheet || st.svg !== sheet) return;
-    var width = Math.max(320, stage.clientWidth - 2 * STAGE_PAD) + 'px';
-    if (sheet.style.width === width) return;
-    var y = st.y, whole = st.whole;
-    sheet.style.width = width;
-    stageShow(stage, [{ svg: sheet, w: sheet.offsetWidth, h: sheet.offsetHeight }], 1);
-    if (whole) { exLogAt(st, null); return; }
-    st.k = 1; st.x = STAGE_PAD; st.y = y; st.whole = false;
-    stageClamp(st, false);
-    stageApply(st, false);
+  // a push after one that stopped adds its writes to the same Undo, the newest first, so the part
+  // written before the stop can still be taken back; Undo writes as the account that pushed
+  function bsPushed(s, repo, account, undo, words, warn) {
+    bs.pushing = false;
+    if (undo.length) {
+      var older = bs.last && bs.last.repo === repo && bs.last.account === account ? bs.last.undo : [];
+      bs.last = { repo: repo, account: account, undo: undo.concat(older) };
+    }
+    say(words, warn);
+    bsStatus(words, warn);
+    bsTray();
+    if (!stale(s)) loadIssues(s);
   }
-  // a log taller than its box is drawn at its own size, a size to read, and opened on its first
-  // error, else at its end, where a failed step says why; the rest is a drag or the wheel away
-  function exLogAt(st, line) {
-    if (!st || !st.svg) return;
-    // a log that fits is read from its top, as a page is
-    if (st.fit >= 0.999) { st.y = STAGE_PAD; stageApply(st, false); return; }
-    var r = stageRoom(st), y = line ? line.offsetTop + line.offsetHeight / 2 : st.h;
-    st.k = 1;
-    st.x = STAGE_PAD;
-    st.y = r.h / 2 - y;
-    st.whole = false;
-    stageClamp(st, false);
-    stageApply(st, false);
-  }
-  function exPath() {
-    var nav = $('ex-path');
-    clear(nav);
-    explore.path.forEach(function (n, i) {
-      if (i) add(nav, el('span', 'ex__sep', '›'));
-      var last = i === explore.path.length - 1;
-      var b = add(nav, el(last ? 'span' : 'button', last ? 'ex__here' : 'ex__crumb', n.title)).lastChild;
-      b.title = n.title;
-      if (!last) { b.type = 'button'; b.addEventListener('click', function () { exGo(explore.path.slice(0, i + 1)); }); }
-      else b.setAttribute('aria-current', 'location');
+  function bsUndo() {
+    var s = state, last = bs.last, account = shownLogin;
+    if (!last || !s || last.repo !== s.repo || last.account !== account || bs.pushing) return;
+    bs.pushing = true;
+    bsTray();
+    var left = last.undo.slice();
+    function next() {
+      if (!left.length) return Promise.resolve();
+      var u = left[0], r = '/repos/' + last.repo + '/issues/';
+      var call = u.kind === 'close' ? gh('PATCH', r + u.number, { state: 'closed', state_reason: 'not_planned' }, undefined, false, account)
+        : u.kind === 'unsub' ? gh('DELETE', r + u.epic + '/sub_issue', { sub_issue_id: u.id }, undefined, false, account)
+        : u.kind === 'unlink' ? gh('DELETE', r + u.blocked + '/dependencies/blocked_by/' + u.id, undefined, undefined, false, account)
+        : gh('POST', r + u.blocked + '/dependencies/blocked_by', { issue_id: u.id }, undefined, false, account);
+      return call.then(function () { left.shift(); return next(); });
+    }
+    next().then(function () {
+      bs.last = null;
+      bsPushed(s, last.repo, account, [], 'The last push is undone.', false);
+    }, function (e) {
+      last.undo = left;
+      bsPushed(s, last.repo, account, [], 'Undo stopped: ' + e.message + ' Press Undo again for the rest.', true);
+      bs.last = last;
+      bsTray();
     });
   }
-  // the outline: every level read so far, open along the path, drawn on a stage of its own so a long
-  // one is zoomed rather than scrolled; it is shown when the person opens it
-  function exTree() {
-    var box = $('ex-tree');
-    clear(box);
-    var st = stageOf(box);
-    if (st) { st.svg = null; st.faces = []; st.whole = true; }
-    if (!explore.root) return;
-    var list = add(box, el('div', 'ex__treebox')).lastChild;
-    (function walk(n, chain, depth) {
-      var on = explore.path.indexOf(n) >= 0;
-      var row = add(list, el('div', 'ex__node' + (n === exCurrent() ? ' ex__current' : ''))).lastChild;
-      row.style.paddingLeft = (depth * 12 + 4) + 'px';
-      var b = add(row, el('button', 'ex__nodename ex__s--' + (n.state || 'open'), n.title)).lastChild;
-      b.type = 'button';
-      b.title = n.title;
-      if (n === exCurrent()) b.setAttribute('aria-current', 'location');
-      b.addEventListener('click', function () { exGo(chain); });
-      if (on) exKids(n).forEach(function (k) { walk(k, chain.concat([k]), depth + 1); });
-    })(explore.root, [explore.root], 0);
-    exTreeFit();
+
+  // the question Ask Claude for ideas puts in the Claude box, naming the epic and the words it
+  // answers in; the person reads it and presses Ask
+  function bsQuestion() {
+    var draw = bsDraw(), epic = draw ? graphIssueOf(draw, bs.epic) : null;
+    if (!epic || !bs.epic) return 'Which epic should I plan next, and which tasks are missing?';
+    return 'Help me plan epic #' + bs.epic + ' (' + epic.title + '). Read its tasks and the code, then suggest what is missing: new links where one task must wait for another, as lines "link #A blocks #B why ...", and new tasks, as lines "node TITLE under #' + bs.epic + ' blocks #X why ...". Say why for each.';
   }
-  function exTreeFit() {
-    var box = $('ex-tree'), list = box.querySelector('.ex__treebox');
-    if (!list || box.hidden || !box.clientWidth || !box.clientHeight) return;
-    stageShow(box, [{ svg: list, w: list.offsetWidth, h: list.offsetHeight }], 1);
-  }
-  function exOutline(on) {
-    $('ex-tree').hidden = !on;
-    $('ex-outline').setAttribute('aria-expanded', on ? 'true' : 'false');
-    if (on) exTreeFit();
+  function bsAskIdeas() {
+    if (!$('cp-as-q')) return;
+    assistant.focus = bs.epic || assistant.focus;
+    $('cp-as-q').value = bsQuestion();
+    pressClaude();
   }
 
-  // going to a level: its children read where they are not yet, then drawn
-  // the keys stay with the tab: a person who went in from inside it is left on the new level's
-  // first card, or on the level itself where it has none; one who stepped sideways from the stage
-  // itself is left on the stage, so the next arrow steps again
-  function exGo(path) {
-    var n = path[path.length - 1];
-    var held = $('tab-explore').contains(document.activeElement) ? (document.activeElement === $('ex-stage') ? 'stage' : 'card') : '';
-    explore.path = path;
-    exDraw();
-    if (n && !n.children && n.load && !n.failed) {
-      var era = explore.era;
-      if (!n.reading) n.reading = n.load().then(function (kids) { n.children = kids; }).catch(function (e) { n.failed = 'Not read: ' + e.message; }).then(function () { n.reading = null; });
-      n.reading.then(function () { if (era === explore.era && exCurrent() === n) { held = held || (document.activeElement === document.body ? 'card' : ''); exDraw(); exFocus(held); } });
-    } else exFocus(held);
-  }
-  function exIn(i) {
-    var n = exCurrent(), k = n && exKids(n)[i];
-    if (k) exGo(explore.path.concat([k]));
-  }
-  function exOut() { if (explore.path.length > 1) exGo(explore.path.slice(0, -1)); }
-  function exFocus(held) {
-    if (!held) return;
-    var tile = held === 'card' ? $('ex-stage').querySelector('.ex__tile') : null;
-    (tile || $('ex-stage')).focus({ preventScroll: true });
-  }
-  // the way a swipe or an arrow key goes: from a card in hand, to the card that way; otherwise to
-  // the level beside this one under the same parent, the next for a swipe to the left or the right
-  // arrow, the one before for the other way
-  function exWay(dx, dy) {
-    var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
-    var at = explore.keying ? tiles.indexOf(document.activeElement) : -1;
-    if (at >= 0) {
-      var grid = $('ex-stage').querySelector('.ex__grid');
-      var across = Math.max(1, Number(grid && grid.style.getPropertyValue('--ex-cols')) || 1);
-      var to = Math.max(0, Math.min(tiles.length - 1, at + dx + dy * across));
-      tiles[to].focus();
-      return true;
-    }
-    if (!dx || explore.path.length < 2) return false;
-    // a key held down steps to the next level once, never through every level it passes, each a read
-    if (explore.keying && explore.repeat) return true;
-    var kids = exKids(explore.path[explore.path.length - 2]), i = kids.indexOf(exCurrent()), j = i + (dx > 0 ? 1 : -1);
-    if (i < 0 || j < 0 || j >= kids.length) return false;
-    exGo(explore.path.slice(0, -1).concat([kids[j]]));
-    return true;
-  }
-  // zooming out past the whole level comes out of it: from the keys, a pinch or the buttons at once,
-  // and from the wheel once a gesture, so a trackpad's glide never carries on into the next level
-  function exZoomOut() {
-    if (explore.path.length <= 1) return false;
-    if (explore.wheeling) {
-      if (explore.wheelMoved) return true;
-      explore.wheelMoved = true;
-    }
-    exOut();
-    return true;
-  }
-  // a wheel event this long after the one before starts a new gesture; a log's wheel, which no
-  // pinch holds, moves along it as reading does
-  function exWheelBefore(e) {
-    var now = Date.now();
-    if (now - explore.wheelLast > EXPLORE_GESTURE_GAP) explore.wheelMoved = false;
-    explore.wheelLast = now;
-    explore.wheeling = true;
-    var stage = $('ex-stage'), st = stageOf(stage);
-    if (st && !st.svg && explore.path.length > 1 && e.deltaY > 0) {
-      // words in place of a picture: nothing to zoom, so turning the wheel out comes out at once
-      e.preventDefault();
-      exZoomOut();
-      return;
-    }
-    if (e.ctrlKey || !st || !st.svg || !stage.classList.contains('ex__stage--log')) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    explore.wheeling = false;
-    st.y -= e.deltaY * (e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? stage.clientHeight : 1));
-    stageClamp(st, false);
-    stageApply(st, false);
-  }
-  function exKey(e) {
-    if (e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
-    var tiles = Array.prototype.slice.call($('ex-stage').querySelectorAll('.ex__tile'));
-    var at = tiles.indexOf(document.activeElement);
-    if (e.key === 'Backspace' || e.key === 'Escape') { if (explore.path.length > 1) { e.preventDefault(); exOut(); } return; }
-    if (!tiles.length || at < 0) return;
-    if (e.key === 'Enter') { e.preventDefault(); exIn(at); return; }
-    var to = { Home: 0, End: tiles.length - 1 }[e.key];
-    if (to === undefined) return;
-    e.preventDefault();
-    tiles[to].focus();
-  }
-
-  // While the tab is shown it takes most of the panel (the owner, 2026-10-19: "making it take up most
-  // of the panel when using it"): the side column folds to its icons, and on a phone the tab takes
-  // the whole screen (control.css, console--exwide). The Panel button, or a press on the folded side
-  // column, brings it back, and its grip sizes it as before; the choice lasts while the page is open
-  // and is stored nowhere.
-  function exWide(on) {
-    explore.wide = on;
-    $('console').classList.toggle('console--exwide', on);
-    var b = $('ex-wide');
-    b.setAttribute('aria-pressed', on ? 'false' : 'true');
-    b.title = on ? 'Bring back the side column' : 'Give Explore the whole panel';
-  }
-  function exUnfold(e) {
-    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest) return;
-    if (!e.target.closest('.console__side, .console__split[data-split="side"]')) return;
-    // the rail's tabs, and what a message offers, keep their own presses; a grip's press only unfolds
-    if (!e.target.closest('[data-split]') && e.target.closest('button, a, input, select, textarea, [role="tab"]')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    explore.unfolded = Date.now();
-    exWide(false);
-  }
-  // the second press of a double click that unfolded is no grip's double click, which would forget
-  // the width the person set; a key on a folded grip unfolds as a press does
-  function exUnfoldKeys(e) {
-    if (e.type === 'dblclick') {
-      if (Date.now() - (explore.unfolded || 0) < 600 && e.target.closest && e.target.closest('[data-split]')) { e.preventDefault(); e.stopPropagation(); }
-      return;
-    }
-    if (!explore.wide || consoleTab !== 'explore' || !e.target.closest || !e.target.closest('.console__split[data-split="side"]')) return;
-    if (!/^(Arrow|Home|End|Enter| )/.test(e.key)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    exWide(false);
-  }
-
-  // the tab opened, or the issues were read again while it is open: the tree built afresh from what
-  // the console holds, the path kept as far as its levels are still there
-  function openExplore() {
-    var s = state;
-    if (!s.repo) { explore.root = null; explore.path = []; explore.s = s; exDraw(); return; }
-    if (explore.s === s && explore.issues === s.issues && explore.pulls === s.pulls && explore.draw === (s.graphLast || null) && explore.failed === (s.graphFailed || '') && explore.root) {
-      // nothing changed: the level stays as the person left it, zoom and keyboard alike
-      if (!$('ex-stage').firstChild) exDraw();
-      return;
-    }
-    var keys = explore.s && explore.s.repo === s.repo ? explore.path.map(function (n) { return n.key; }) : [];
-    var old = explore.s && explore.s.repo === s.repo ? explore.path.slice() : [];
-    explore.era++;
-    explore.s = s;
-    explore.issues = s.issues;
-    explore.pulls = s.pulls;
-    explore.failed = s.graphFailed || '';
-    explore.draw = s.graphLast || null;
-    explore.root = exBuild(s);
-    var path = [explore.root];
-    for (var i = 1; i < keys.length; i++) {
-      var here = path[path.length - 1], kids = exKids(here), next = null;
-      kids.forEach(function (k) { if (k.key === keys[i]) next = k; });
-      // a level read below a task is carried over as it was, since the issues' read did not touch it
-      if (!next && here.load && !here.children && old[i - 1] && old[i - 1].key === here.key && old[i - 1].children) { here.children = old[i - 1].children; kids = here.children; kids.forEach(function (k) { if (k.key === keys[i]) next = k; }); }
-      if (!next) break;
-      path.push(next);
-    }
-    exGo(path);
-  }
   function initExploreTab() {
-    $('ex-out').addEventListener('click', exOut);
-    $('ex-stage').addEventListener('click', function (e) {
-      var tile = e.target.closest ? e.target.closest('.ex__tile') : null;
-      // a double click's second press lands on the next level's card: it goes one level, not two
-      if (tile && e.detail <= 1) exIn(Number(tile.getAttribute('data-ex')));
-    });
-    // the stage's own listeners come between these: the wheel's gesture is marked before the zoom
-    // reads it and let go after, and a key is marked as a key while the stage turns it into a way
-    var stage = $('ex-stage');
-    stage.addEventListener('wheel', exWheelBefore, { passive: false });
-    stage.addEventListener('keydown', function (e) {
-      explore.keying = true;
-      explore.repeat = !!e.repeat;
-      // with a card in hand the arrows move between the cards, zoomed in or not
-      var a = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-      if (!a || e.altKey || e.ctrlKey || e.metaKey || !document.activeElement.classList.contains('ex__tile')) return;
+    $('bs-ideas').addEventListener('click', bsAskIdeas);
+    $('bs-node').addEventListener('click', function () { if (!bs.epic) { say('Choose an epic first.', true); return; } bsEdit(null); });
+    $('bs-connect').addEventListener('click', function () { bsConnect(!bs.connecting); openExplore(); });
+    $('bs-push').addEventListener('click', bsPush);
+    $('bs-undo').addEventListener('click', bsUndo);
+    $('bs-node-save').addEventListener('click', bsSaveNode);
+    // Escape stops Connect wherever the focus is, since a pick draws the cards anew and the card
+    // pressed, with the focus, goes with them; a dialog open over the tab keeps its own Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !bs.connecting || consoleTab !== 'explore' || document.querySelector('dialog[open]')) return;
       e.preventDefault();
-      e.stopImmediatePropagation();
-      exWay(a[0], a[1]);
-      explore.keying = false;
+      bsConnect(false);
+      openExplore();
     });
-    stageMake(stage, {
-      zooms: function () { return true; },
-      wheel: function () { return true; },
-      go: exWay,
-      out: exZoomOut,
-      tap: function () {}
-    });
-    stage.addEventListener('wheel', function () { explore.wheeling = false; });
-    stage.addEventListener('keydown', function () { explore.keying = false; });
-    stageMake($('ex-tree'), { zooms: function () { return true; }, wheel: function () { return true; } });
-    if (typeof ResizeObserver === 'function') {
-      new ResizeObserver(function () { if (consoleTab === 'explore') { exFit(); exLogFit(); } }).observe(stage);
-      new ResizeObserver(function () { var st = stageOf($('ex-tree')); if (consoleTab === 'explore' && (!st || st.whole)) exTreeFit(); }).observe($('ex-tree'));
-    }
-    $('ex-zoom-in').addEventListener('click', function () { stageStep(stage, 1.4); });
-    $('ex-zoom-out').addEventListener('click', function () { var st = stageOf(stage); if (st && !st.svg) exZoomOut(); else stageStep(stage, 1 / 1.4); });
-    $('ex-zoom-whole').addEventListener('click', function () { var st = stageOf(stage); if (st) stageWhole(st, true); });
-    $('ex-outline').addEventListener('click', function () { exOutline($('ex-tree').hidden); });
-    $('ex-wide').addEventListener('click', function () { exWide(!explore.wide); });
-    $('console').addEventListener('pointerdown', exUnfold, true);
-    $('console').addEventListener('dblclick', exUnfoldKeys, true);
-    $('console').addEventListener('keydown', exUnfoldKeys, true);
-    $('tab-explore').addEventListener('keydown', exKey);
-    // folded, the rail shows its icons alone, so each says its name when pointed at
-    Array.prototype.forEach.call(document.querySelectorAll('.console__rail [data-tab]'), function (b) {
-      var name = b.querySelector('.rail__name');
-      if (name && !b.title) b.title = name.textContent;
-    });
-    exWide(true);
+    if (window.ResizeObserver) new ResizeObserver(function () { if (consoleTab === 'explore') bsFit(); }).observe($('bs-canvas'));
     consoleOnOpen.explore = openExplore;
   }
 
@@ -12666,5 +13035,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('ex-stage')) initExploreTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
 })();
