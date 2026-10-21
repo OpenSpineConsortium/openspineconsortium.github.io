@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610210311">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610210311">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610210311">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610210333">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610210333">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610210333">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610210311">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610210333">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -172,6 +172,7 @@
           <button type="button" role="tab" data-tab="workers" id="rail-workers" aria-controls="tab-workers"><span class="rail__icon" aria-hidden="true">&#9881;</span><span class="rail__name">Workers</span><span class="rail__count" data-count="cp-workers"></span></button>
           <button type="button" role="tab" data-tab="agents" id="rail-agents" aria-controls="tab-agents"><span class="rail__icon" aria-hidden="true">&#10022;</span><span class="rail__name">Agents</span><span class="rail__count" data-count="cp-agents"></span></button>
           <button type="button" role="tab" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
+          <button type="button" role="tab" data-tab="grid" id="rail-grid" aria-controls="tab-grid"><span class="rail__icon" aria-hidden="true">&#9635;</span><span class="rail__name">Grid</span></button>
           <button type="button" role="tab" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
           <button type="button" role="tab" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
           <button type="button" role="tab" data-tab="folders" id="rail-folders" aria-controls="tab-folders"><span class="rail__icon" aria-hidden="true">&#8645;</span><span class="rail__name">Folders</span></button>
@@ -394,6 +395,22 @@
             <div id="tk-tiles" class="toks" aria-label="Claude tokens"></div>
             <aside id="tk-side" class="tkside" aria-label="The token's use" hidden></aside>
             <dialog id="tk-dialog" class="tkdlg" aria-label="A Claude token's settings"></dialog>
+          </div>
+        </section>
+
+        <!-- Grid: the Claude accounts signed in on the WSU grid, through grid-accounts.yml and the grid's ssh gate -->
+        <section class="console__panel" id="tab-grid" data-tab-panel="grid" role="tabpanel" aria-labelledby="rail-grid" hidden>
+          <div class="console__head">
+            <h2 id="h-grid" class="console__h">Grid</h2>
+            <p class="console__jumps" id="gr-bar"></p>
+            <details class="console__help"><summary>How this works</summary><div>
+              <p>The Claude accounts signed in on the grid for your Beethoven worker, one in use at a time. Each press runs this repository&rsquo;s workflow Grid accounts, which only an admin may start, and says one word to the grid&rsquo;s ssh gate; the answer comes back in a few seconds to half a minute. Use moves your running worker to another account at once: its session then shows in that account on claude.ai. Auto mode moves it when its account reaches 90% of a window. Read usage asks each account for one word on Haiku, which spends that word. A sign-in link is sealed for this page alone and opened here with a key that is never stored; e-mails are shown masked.</p>
+            </div></details>
+          </div>
+          <p id="gr-note" class="admin__warn" hidden></p>
+          <div class="console__scroll tkwrap">
+            <div id="gr-tiles" class="toks" aria-label="Claude accounts on the grid"></div>
+            <aside id="gr-side" class="tkside" aria-label="The account" hidden></aside>
           </div>
         </section>
 
@@ -711,8 +728,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610210311"></script>
+<script src="/assets/js/main.js?v=202610210333"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610210311"></script>
+<script src="/assets/js/symphony-panel.js?v=202610210333"></script>
 </body>
 </html>
