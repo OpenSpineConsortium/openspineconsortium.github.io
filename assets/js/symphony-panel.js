@@ -1892,7 +1892,7 @@
       s.runs = runs;
       clear(body);
       note.textContent = '';
-      if (!runs.length) { var tr = el('tr'); add(tr, el('td', 'admin__none', 'No run yet.')).firstChild.colSpan = 6; body.appendChild(tr); }
+      if (!runs.length) { var tr = el('tr'); add(tr, el('td', 'admin__none', 'No run yet.')).firstChild.colSpan = 7; body.appendChild(tr); }
       runs.forEach(function (run) {
         var tr = el('tr');
         add(tr, add(el('td'), link(run.html_url, run.name || run.display_title || 'run')));
@@ -1902,8 +1902,9 @@
         add(tr, el('td', '', w)).lastChild.className = w === 'success' ? 'admin__tag admin__tag--ok' : (w === 'failure' ? 'admin__tag admin__tag--wait' : 'admin__tag admin__tag--mid');
         add(tr, el('td', '', run.actor && run.actor.login ? run.actor.login : ''));
         add(tr, add(el('td'), timeEl(run.run_started_at || run.created_at)));
+        add(tr, runControl(s, run));
         tr.setAttribute('data-outcome', outcomeOf(w));
-        body.appendChild(cardCells(tr, ['name', 'event', 'branch', 'outcome', 'who', 'when']));
+        body.appendChild(cardCells(tr, ['name', 'event', 'branch', 'outcome', 'who', 'when', 'ctl']));
       });
     }).catch(function (e) {
       if (stale(s)) return;
@@ -1916,6 +1917,25 @@
       failed(s, 'the Actions runs', e);
       var tr = el('tr'); add(tr, el('td', 'admin__none', e.message)).firstChild.colSpan = 6; body.appendChild(tr);
     });
+  }
+  // a run still going can be cancelled from here, as GitHub's own Cancel workflow does: a worker in
+  // the cloud is stopped the same way it was started, with no machinery of ours
+  function runControl(s, run) {
+    var td = el('td');
+    if (run.status === 'completed') return td;
+    var stop = btn('Cancel', true, function () {
+      if (!window.confirm('Cancel the run ' + (run.name || run.display_title || run.id) + '? Its jobs stop where they are.')) return;
+      stop.disabled = true;
+      gh('POST', '/repos/' + s.repo + '/actions/runs/' + encodeURIComponent(run.id) + '/cancel').then(function () {
+        say('Cancelling ' + (run.name || 'the run') + '.');
+        setTimeout(function () { if (!stale(s)) loadRuns(s); }, 3000);
+      }, function (e) {
+        stop.disabled = false;
+        say(e.status === 403 || e.status === 404 ? 'Cancelling a run needs Actions: read and write (' + e.status + ').' : e.message);
+      });
+    });
+    stop.id = 'cp-run-cancel-' + run.id;
+    return add(td, stop);
   }
   function checkRunsFallback(s, body) {
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
