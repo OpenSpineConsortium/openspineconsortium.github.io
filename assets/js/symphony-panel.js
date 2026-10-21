@@ -8324,7 +8324,9 @@
   // the collections the page knows by name: the first is looked up and connected on Connect Globus,
   // so the person chooses nothing; its id, once known, lets the one sign-in carry the
   // collection's consents too, and a blank one costs one more consent page the first time
-  var GLOBUS_KNOWN = [{ name: 'wsugrid#globus', label: 'WSU grid', id: '' }];
+  // the collection's id, given by the owner on 2026-10-21, so the first sign-in carries its consents
+  // and no search is needed; the name is still checked against what Globus answers for the id
+  var GLOBUS_KNOWN = [{ name: 'wsugrid#globus', label: 'WSU grid', id: 'ddb59d22-6d04-11e5-ba46-22000b92c6ec' }];
   // how many entries of a folder the list takes; the grid has folders of a million files
   var GLOBUS_PAGE = 2000;
   // a preview fetched into the page is this large at most; a bigger file opens in its own tab
