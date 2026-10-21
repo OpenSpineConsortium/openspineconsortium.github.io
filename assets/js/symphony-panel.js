@@ -8426,12 +8426,15 @@
   // the Console: what a grid job printed, its stdout and stderr cleaned on the grid and again in the
   // workflow, written to the branch grid as logs/<what>.json by the action log (hpcworker framework 23)
   function logFileOf(action, slot, extra) {
+    if (action === 'job') return 'job-' + extra.job;
     if (action !== 'log') return '';
     if (slot) return 'login-' + slot;
     return extra && extra.name ? 'worker-' + extra.name : 'usage';
   }
   function logTitle(file) {
-    var m = /^login-(\d+)$/.exec(file);
+    var m = /^job-(.+)$/.exec(file);
+    if (m) return 'Grid job ' + jobWords(m[1]);
+    m = /^login-(\d+)$/.exec(file);
     if (m) return 'Sign-in of account ' + m[1];
     m = /^worker-(.+)$/.exec(file);
     return m ? 'Worker ' + m[1] : 'Usage job';
@@ -8440,6 +8443,36 @@
     var extra = name ? { name: name } : {};
     var file = logFileOf('log', slot, extra);
     gridPress('log', slot || '', 'Reading the output: ' + logTitle(file), extra);
+  }
+  // the gate's fixed job words (hpcworker #23, #24), sent through grid-accounts.yml's action job so
+  // nobody types them at the grid's shell; a start or stop asks first, as a worker's Stop does
+  var GRID_JOBS = [
+    { job: 'promoter-status', label: 'Promoter status' },
+    { job: 'promoter-start', label: 'Start the promoter', ask: 'Start spine-datasets\' promoter chain on the grid at the head of its main?' },
+    { job: 'promoter-stop', label: 'Stop the promoter', ask: 'Stop spine-datasets\' promoter chain on the grid? Nothing it has promoted is touched.' },
+    { job: 'schwingnet-status', label: 'SchwingNet status' },
+    { job: 'schwingnet-start', label: 'Start SchwingNet', ask: 'Start SchwingNet\'s grid run (grid/gate.sh start) at the head of its main?' },
+    { job: 'schwingnet-stop', label: 'Stop SchwingNet', ask: 'Stop SchwingNet\'s grid jobs (grid/gate.sh stop)?' },
+    { job: 'update', label: 'Update the gate', ask: 'Bring the grid gate\'s hpcworker clone to its main?' }
+  ];
+  function jobWords(job) {
+    return job === 'update' ? 'update' : job.replace(/^(promoter|schwingnet)-fetch-/, '$1 fetch ').replace(/^(promoter|schwingnet)-/, '$1 ');
+  }
+  function gridJob(j) {
+    if (j.ask && !window.confirm(j.ask)) return;
+    gridPress('job', '', j.label, { job: j.job });
+  }
+  function jobsBar() {
+    var bar = el('p', 'admin__bar');
+    bar.id = 'gr-jobs';
+    GRID_JOBS.forEach(function (j) {
+      var b = btn(j.label, true, function () { gridJob(j); });
+      b.id = 'gr-job-' + j.job;
+      b.title = 'Sends the gate the word "' + jobWords(j.job) + '"; what it printed opens below';
+      b.disabled = !!gr.busy;
+      add(bar, b);
+    });
+    return bar;
   }
   function gridLogRead(repo, busy) {
     return gridFile(repo, 'logs/' + busy.logfile + '.json').then(function (rec) {
@@ -8460,13 +8493,14 @@
     usage.id = 'gr-log-usage';
     usage.title = 'The output of the job that reads each account\'s use';
     add(bar, usage);
-    if (gr.log) {
+    if (gr.log && !/^job-/.test(gr.log.file)) {
       var again = btn('Read again', true, function () { var f = gr.log.file, m = /^login-(\d+)$/.exec(f), w = /^worker-(.+)$/.exec(f); gridLog(m ? m[1] : '', w ? w[1] : ''); });
       again.id = 'gr-log-again';
       add(bar, again);
     }
     Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) { b.disabled = !!gr.busy; });
     add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Each account\'s Output button shows its sign-in job, each worker\'s its terminal and Slurm output (stdout and stderr). Long strings that could be a token are hidden on the grid before anything leaves it.'), bar);
+    add(box, el('p', 'tkdlg__fact', 'Lab jobs: the grid\'s standing jobs, run through the gate in your place. What each printed shows here.'), jobsBar());
     if (gr.log) {
       var rec = gr.log.rec;
       add(box, add(el('p', 'tkdlg__fact'), logTitle(gr.log.file) + ', read ', timeEl(rec.at)));
@@ -8515,7 +8549,7 @@
         }
         if (gridDone(rec, busy)) {
           gr.busy = null;
-          if (busy.action === 'log') gridLogRead(repo, busy);
+          if (busy.action === 'log' || busy.action === 'job') gridLogRead(repo, busy);
           var said = rec && (rec.said || []).filter(function (l) { return /^HPCW-ACCOUNTS /.test(l); }).slice(-1)[0];
           if (said && rec.rc) gridNote(said.replace(/^HPCW-ACCOUNTS /, ''));
           else say(busy.label + ': done.');
