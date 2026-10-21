@@ -8434,10 +8434,22 @@
     open.id = 'gr-tile-' + a.slot;
     var who = a.who || {}, st = gridAccountState(a);
     add(open, el('span', 'tok__icon', a.slot), el('span', 'tok__name', gridAccountName(a)),
-        el('span', 'tok__meta', who.plan ? 'Claude ' + who.plan : who.signed_in === false ? 'signed out' : ''),
+        el('span', 'tok__meta', (who.plan ? 'Claude ' + who.plan : who.signed_in === false ? 'signed out' : '') + workersOnWords(a)),
         gridBars(a.use), el('span', 'tok__state ' + st.cls, st.text));
     open.addEventListener('click', function () { gr.side = gr.side === a.slot ? '' : a.slot; drawGrid(); });
     return add(wrap, open);
+  }
+  // the live workers an account carries: those kept to it, and the main worker on the account in use;
+  // they share its five-hour window, so the tile says how many
+  function workersOn(a) {
+    return gridWorkers((gr.rec && gr.rec.list) || {}).filter(function (w) {
+      if (w.state === 'stopped' || w.state === 'error') return false;
+      return w.pinned ? w.pinned === a.slot : (w.account ? w.account === a.slot : !!a.current);
+    });
+  }
+  function workersOnWords(a) {
+    var n = workersOn(a).length;
+    return n ? ', ' + n + (n === 1 ? ' worker' : ' workers') : '';
   }
   function freeSlot() {
     var taken = gridAccounts().map(function (a) { return a.slot; });
@@ -8593,10 +8605,7 @@
     var running = gridWorkers((gr.rec && gr.rec.list) || {}).filter(function (w) {
       return w.pinned === slot && w.state !== 'stopped' && w.state !== 'error';
     })[0];
-    if (running) {
-      add(box, el('p', 'tkdlg__fact', 'Worker ' + running.name + ' runs on this account; it shows above with its Stop button.'));
-      return box;
-    }
+    if (running) add(box, el('p', 'tkdlg__fact', 'Worker ' + running.name + ' runs on this account; it shows above with its Stop button. Another started here shares this account\'s five-hour window with it.'));
     var input = el('input');
     input.type = 'text'; input.id = 'gr-wname'; input.autocomplete = 'off'; input.spellcheck = false;
     input.placeholder = 'account' + slot; input.maxLength = 24;
