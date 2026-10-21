@@ -2083,7 +2083,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
    fits; the gear and the X keep the corner (before, a narrow card squeezed the name into one letter
    a line beside where it runs) */
 .console #cp-workers tr:not(:has(td.admin__none)):not(.card--add) { column-gap: 12px; }
-.console #cp-workers td.cell--name { flex: 1 1 calc(100% - var(--ds-icon) - 12px); }
 .console #cp-workers td.cell--runs { flex: 1 1 100%; margin: -8px 0 0 calc(var(--ds-icon) + 12px); }
 .console #cp-agents td.cell--name { flex: 1 1 8em; }
 

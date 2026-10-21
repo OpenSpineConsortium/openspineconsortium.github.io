@@ -2762,9 +2762,8 @@
     var head = wrap.previousElementSibling && /^H[1-6]$/.test(wrap.previousElementSibling.tagName) ? wrap.previousElementSibling : wrap;
     var box = wrap.closest('.console__scroll');
     if (!box) return;
-    // the task board shows the list's own sub-tab, or, under All, lays the lists side by side, so the
-    // jump is sideways there
-    if (box.classList.contains('console__kanban')) revealTaskList(wrap);
+    // the task board shows the list's own sub-tab (revealTab, above), or, under All, lays the lists
+    // side by side, so the jump is sideways there
     if (box.classList.contains('console__kanban') && getComputedStyle(box).display === 'grid') {
       box.scrollLeft = head.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft;
       head.classList.remove('console__flash');
