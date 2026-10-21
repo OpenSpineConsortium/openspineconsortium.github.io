@@ -1299,6 +1299,9 @@ body.console-full .console__barstrip, body.console-full .console__barhandle { di
 .gr__console summary { cursor: pointer; font-weight: 600; }
 .gr__log { max-height: 420px; overflow: auto; margin: 8px 0 0; padding: 10px 12px; background: var(--code-bg, rgba(127,127,127,0.12)); border-radius: 6px; font: 0.8rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .gr__worker { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 0.9rem; }
+.cp-live { margin: 0 0 14px; }
+.cp-live .gr__worker { flex-wrap: wrap; }
+.gr__h { font-size: 1rem; margin: 0 0 8px; }
 .gr__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-faint); }
 .gr__dot--go { background: var(--go); }
 .gr__dot--warn { background: var(--ochre); }

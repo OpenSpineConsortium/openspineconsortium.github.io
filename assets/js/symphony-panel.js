@@ -1697,8 +1697,96 @@
         body.appendChild(cardCells(tr, ['name', 'runs', 'about', 'area', 'lands', 'model', 'turns', 'rounds', 'ctl']));
       });
       body.appendChild(addTileRow('+ Add worker', 'cp-worker-tile', function () { openDialog('dlg-worker'); }, 9));
-      return loadIssues(s);
+      return loadIssues(s).then(function () { if (!stale(s)) drawLive(); });
     });
+  }
+  /* ---------- running now: the grid's workers and the cloud's in one list ---------- */
+  // A worker in the cloud is a run of workers.yml; one on the grid is a Slurm job the branch grid
+  // lists (the Grid tab). Both claim by the same protocol, so the Workers tab shows them side by
+  // side, each with what it holds and the one way it is stopped, rather than in two tabs that each
+  // know half (the review's rank 9, symphony-template's docs/research/grid-and-cloud-workers-review.md).
+  var liveRuns = { repo: '', runs: [], read: false, error: '' };
+  function loadLive(s) {
+    return gh('GET', '/repos/' + s.repo + '/actions/workflows/workers.yml/runs?per_page=10').then(function (r) {
+      if (stale(s)) return;
+      var runs = r.data && r.data.workflow_runs ? r.data.workflow_runs : [];
+      liveRuns = { repo: s.repo, runs: runs.filter(function (run) { return run.status !== 'completed'; }), read: true, error: '' };
+      drawLive();
+    }).catch(function (e) {
+      if (stale(s)) return;
+      liveRuns = { repo: s.repo, runs: [], read: true, error: e.status === 404 ? '' : e.message };
+      drawLive();
+    });
+  }
+  // the open issues a worker holds, by its label; a grid worker claims as grid-NAME
+  function heldBy(name) {
+    return (state.issues || []).filter(function (it) {
+      return !it.pull_request && workerOf(labelsOf(it)).split(', ').indexOf(name) >= 0;
+    });
+  }
+  function heldWords(name) {
+    var held = heldBy(name);
+    if (!held.length) return el('span', 'tkdlg__faint', ' holds no open issue');
+    var span = el('span', '', ' holds ');
+    held.forEach(function (it, i) { add(span, i ? ', ' : '', link(it.html_url, '#' + it.number)); });
+    return span;
+  }
+  function liveGridLine(w) {
+    var p = el('p', 'gr__worker');
+    p.id = 'cp-live-grid-' + w.name;
+    var quiet = workerQuietMin(w);
+    var st = w.state === 'online' ? 'online' : w.state || 'unknown';
+    add(p, el('span', 'gr__dot gr__dot--' + (st === 'online' && !quiet ? 'go' : quiet || st === 'need_login' ? 'warn' : 'wait')),
+        'Grid: ' + w.name + ', ' + st.replace(/_/g, ' ') + (w.node ? ' on ' + w.node : '') + (w.account ? ', account ' + w.account : '') +
+        (quiet ? ', not heard from in ' + (quiet < 120 ? quiet + ' min' : Math.round(quiet / 60) + ' h') : ''));
+    add(p, heldWords('grid-' + w.name));
+    if (w.link) add(p, ' ', link(w.link, 'Open the session'));
+    if (GRID_NAME.test(w.name)) {
+      var out = btn('Output', true, function () { showTab('grid'); gridLog('', w.name); });
+      out.id = 'cp-live-log-' + w.name;
+      out.disabled = !!gr.busy;
+      var stop = btn('Stop', true, function () { gridStop(w, function () { showTab('grid'); }); });
+      stop.id = 'cp-live-stop-' + w.name;
+      stop.disabled = !!gr.busy;
+      add(p, ' ', out, ' ', stop);
+    }
+    return p;
+  }
+  function liveCloudLine(run) {
+    var p = el('p', 'gr__worker');
+    p.id = 'cp-live-run-' + run.id;
+    var going = run.status === 'in_progress';
+    add(p, el('span', 'gr__dot gr__dot--' + (going ? 'go' : 'wait')),
+        'Cloud: ' + (run.display_title || run.name || 'a workers run') + ', ' + String(run.status || '').replace(/_/g, ' ') + ' since ', timeEl(run.run_started_at || run.created_at));
+    add(p, ' ', link(run.html_url, 'Its run'));
+    var cancel = runControl(state, run).firstChild;
+    if (cancel) { cancel.id = 'cp-live-cancel-' + run.id; add(p, ' ', cancel); }
+    return p;
+  }
+  function drawLive() {
+    var box = $('cp-live');
+    if (!box) return;
+    clear(box);
+    var grid = gr.rec && gr.rec.list ? gridWorkers(gr.rec.list).filter(function (w) { return w.state !== 'stopped' && w.state !== 'error'; }) : [];
+    var cloud = liveRuns.repo === state.repo ? liveRuns.runs : [];
+    add(box, el('h3', 'gr__h', 'Running now'));
+    grid.forEach(function (w) { add(box, liveGridLine(w)); });
+    cloud.forEach(function (run) { add(box, liveCloudLine(run)); });
+    if (!grid.length && !cloud.length) {
+      var waiting = !gr.read || (liveRuns.repo !== state.repo && state.repo);
+      add(box, el('p', 'admin__none', waiting ? 'Asking the grid and GitHub Actions...' : 'No worker is running on the grid or in the cloud. The Grid tab starts one on the grid; the workers workflow starts the cloud\'s.'));
+    }
+    var said = [];
+    if (gr.rec && gr.rec.at) said.push(add(el('span'), 'grid read ', timeEl(gr.rec.at), ' through ' + gr.repo));
+    if (liveRuns.error) said.push('the cloud\'s runs could not be read (' + liveRuns.error + ')');
+    if (said.length) { var n = el('p', 'admin__none toks__note'); said.forEach(function (x, i) { add(n, i ? '; ' : '', x); }); add(n, '.'); add(box, n); }
+  }
+  function initLive() {
+    consoleOnOpen.workers = function () {
+      if (gr.repo !== gridRepo() || !gr.read) loadGrid();
+      if (state.repo) loadLive(state);
+      drawLive();
+    };
   }
   /* ---------- the Agents tab ---------- */
   // The agents are .github/symphony/agents.json and the files under .claude/agents/ it names
@@ -2119,6 +2207,7 @@
     assistantRepo(s);
     if (consoleTab === 'tokens' && consoleOnOpen.tokens) consoleOnOpen.tokens();
     if (consoleTab === 'grid' && consoleOnOpen.grid) consoleOnOpen.grid();
+    if (consoleTab === 'workers' && consoleOnOpen.workers) consoleOnOpen.workers();
     if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
     foldersFor = null;
     if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
@@ -8562,10 +8651,7 @@
     if (w.link && !ended) add(p, ' ', link(w.link, 'Open the session'));
     if (w.name) add(p, el('span', 'tkdlg__faint', ' claims as grid-' + w.name));
     if (!ended && w.name && GRID_NAME.test(w.name)) {
-      var stop = btn('Stop', true, function () {
-        if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
-        gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
-      });
+      var stop = btn('Stop', true, function () { gridStop(w); });
       stop.id = 'gr-stop-' + w.name;
       stop.disabled = !!gr.busy;
       add(p, ' ', stop);
@@ -8578,6 +8664,12 @@
       add(p, ' ', out);
     }
     return p;
+  }
+  // asks first, from either tab, and sends the name alone
+  function gridStop(w, first) {
+    if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
+    if (first) first();
+    gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
   }
   function drawGrid() {
     gridBarButtons();
@@ -8609,6 +8701,7 @@
     if (gr.rec.at) add(box, add(el('p', 'admin__none toks__note'), 'Read from the grid ', timeEl(gr.rec.at), ', through ' + gr.repo + '.'));
     add(box, consoleBox());
     drawGridSide();
+    drawLive();
   }
   function toksNote() { return null; }
   function drawGridSide() {
@@ -13154,5 +13247,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
 })();
