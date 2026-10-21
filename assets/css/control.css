@@ -1536,133 +1536,70 @@ body.console-dragging--x, body.console-dragging--x * { cursor: col-resize !impor
 .console button.repos__name:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
 .repos__list { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
 
-/* Explore (#tab-explore): one level of the project at a time as cards on a stage that zooms and
-   never scrolls (symphony-panel.js, the stage), the trail of levels and the tools in a bar above,
-   the level's own card under it, and an outline that opens over the stage's left. The state
-   colours are the Dependencies charts' (--st-*): green todo or done, yellow claimed, running or
-   draft, blue in review, red blocked or failed, grey closed or skipped, pale grey open. */
-#tab-explore { --ex-r: 14px; }
-#tab-explore .ex__bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 6px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--paper-card) 88%, #fff 3%); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset; }
-.console #tab-explore .ex__tool { flex: 0 0 auto; margin: 0; padding: 4px 12px; min-height: 32px; font-size: 0.88rem; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); line-height: 1.2; }
-.console #tab-explore .ex__tool:hover:not(:disabled) { border-color: var(--teal); color: var(--teal-bright); }
-.console #tab-explore .ex__tool:disabled { opacity: 0.35; }
-.console #tab-explore .ex__icon { width: 34px; padding: 0; font-size: 1rem; }
-.console #tab-explore .ex__tool[aria-pressed="true"], .console #tab-explore .ex__tool[aria-expanded="true"] { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal-bright); }
-#tab-explore .ex__zoom { display: inline-flex; gap: 0; flex: 0 0 auto; }
-.console #tab-explore .ex__zoom .ex__tool { border-radius: 0; margin-left: -1px; }
-.console #tab-explore .ex__zoom .ex__tool:first-child { border-radius: 9px 0 0 9px; margin-left: 0; }
-.console #tab-explore .ex__zoom .ex__tool:last-child { border-radius: 0 9px 9px 0; }
-#tab-explore .ex__link { display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap; }
-#tab-explore .ex__link::after { content: "\2197"; margin-left: 5px; font-size: 0.85em; }
-#tab-explore .ex__link[hidden] { display: none; }
-/* the trail keeps to one row: the levels above shrink to a few letters each, the one shown last */
-#tab-explore .ex__path { flex: 1 1 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; min-width: 0; overflow: hidden; font-size: 0.88rem; }
-.console #tab-explore .ex__crumb { flex: 0 1 auto; min-width: 2.6em; max-width: 16em; margin: 0; padding: 3px 7px; font-size: 0.88rem; border: 0; border-radius: 7px; background: none; color: var(--teal-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console #tab-explore .ex__crumb:hover { background: color-mix(in srgb, var(--teal) 14%, transparent); }
-#tab-explore .ex__here { flex: 0 1 auto; min-width: 3em; padding: 3px 7px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
-#tab-explore .ex__sep { flex: 0 0 auto; color: var(--ink-faint); }
-/* the level's own card: a bar of its state's colour, its kind, its name and line, and its tools */
-#tab-explore .ex__head { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 12px 8px 14px; border-radius: 12px; background: linear-gradient(90deg, color-mix(in srgb, var(--ex-c) 14%, transparent), transparent 70%); box-shadow: inset 4px 0 0 var(--ex-c); }
-#tab-explore .ex__head:empty { display: none; }
-#tab-explore .ex__words { flex: 1 1 auto; min-width: 0; }
-#tab-explore .ex__name { margin: 1px 0 0; font-size: 1.12rem; font-family: var(--font-body); letter-spacing: 0; text-transform: none; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#tab-explore .ex__head .ex__sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#tab-explore .ex__acts { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
-#tab-explore .ex__acts:empty { display: none; }
-#tab-explore .ex__body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
-/* the stage: the console's dotted ground, held still, the picture moved inside it */
-#tab-explore .ex__stage { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; outline: none; border: 1px solid rgba(233, 230, 218, 0.09); border-radius: 14px; background-color: #0F1916; background-image: radial-gradient(rgba(233, 230, 218, 0.07) 1px, transparent 1.4px); background-size: 18px 18px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: contain; }
-#tab-explore .ex__stage:focus-visible { box-shadow: inset 0 0 0 2px var(--teal); }
-#tab-explore .ex__stage.stage--touched:focus-visible { box-shadow: none; }
-#tab-explore .ex__sheet { position: absolute; left: 0; top: 0; width: max-content; transform-origin: 0 0; }
-#tab-explore .ex__grid { display: grid; grid-template-columns: repeat(var(--ex-cols, 3), 232px); gap: 14px; animation: ex-in 0.22s ease-out; }
-@keyframes ex-in { from { opacity: 0; transform: scale(0.96); } }
-#tab-explore .ex__note { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; user-select: text; -webkit-user-select: text; }
-#tab-explore .ex__note .admin__none { max-width: 36em; margin: 0; }
-/* a card: a soft panel tinted by its state, its kind and state on top, its name, its line, and at
-   its foot a dot for each thing inside it */
-.console #tab-explore .ex__tile { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 232px; min-height: 128px; margin: 0; padding: 12px 14px 12px; text-align: left; border: 1px solid color-mix(in srgb, var(--ex-c) 30%, var(--line)); border-radius: var(--ex-r); background: linear-gradient(180deg, color-mix(in srgb, var(--ex-c) 11%, var(--paper-card)), var(--paper-card) 65%); color: var(--ink); cursor: pointer; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 22px rgba(0, 0, 0, 0.28); transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease; font-weight: 400; }
-.console #tab-explore .ex__tile::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--ex-c); }
-.console #tab-explore .ex__tile:hover, .console #tab-explore .ex__tile:focus-visible { transform: translateY(-3px); border-color: var(--ex-c); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 14px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px color-mix(in srgb, var(--ex-c) 40%, transparent); outline: none; }
-#tab-explore .ex__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-#tab-explore .ex__kind { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
-#tab-explore .ex__pill { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 600; padding: 2px 8px 2px 7px; border-radius: 999px; color: var(--ex-c); background: color-mix(in srgb, var(--ex-c) 16%, transparent); text-transform: lowercase; }
-#tab-explore .ex__pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ex-c); }
-#tab-explore .ex__s--running .ex__pill::before { animation: ex-pulse 1.2s ease-in-out infinite; }
-@keyframes ex-pulse { 50% { opacity: 0.25; } }
-#tab-explore .ex__title { font-weight: 600; font-size: 0.98rem; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-#tab-explore .ex__sub { font-size: 0.8rem; color: var(--ink-soft); margin: 0; overflow-wrap: anywhere; }
-#tab-explore .ex__tile .ex__sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-#tab-explore .ex__foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; min-height: 12px; }
-#tab-explore .ex__hint { font-size: 0.76rem; color: var(--ink-faint); }
-#tab-explore .ex__count { flex: 0 0 auto; font-size: 0.74rem; color: var(--ink-faint); white-space: nowrap; }
-#tab-explore .ex__count::after { content: " \203A"; }
-#tab-explore .ex__dots { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
-#tab-explore .ex__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ex-c); }
-#tab-explore .ex__more { font-size: 0.7rem; color: var(--ink-faint); }
-#tab-explore .ex__claude { display: inline-block; margin-left: 4px; font-size: 0.64rem; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 999px; background: var(--ochre); color: var(--paper); text-transform: none; vertical-align: 1px; }
-/* the outline opens over the stage's left, a stage of its own that zooms when it is long */
-#tab-explore .ex__tree { position: absolute; z-index: 4; left: 8px; top: 8px; bottom: 8px; width: min(280px, 60%); overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-deep); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); touch-action: none; }
-#tab-explore .ex__tree[hidden] { display: none; }
-#tab-explore .ex__treebox { position: absolute; left: 0; top: 0; width: 260px; padding: 6px 0; transform-origin: 0 0; }
-#tab-explore .ex__node { white-space: nowrap; }
-.console #tab-explore .ex__nodename { display: block; width: 100%; margin: 0; padding: 4px 8px 4px 16px; border: 0; border-radius: 6px; background: none; color: var(--ink); text-align: left; overflow: hidden; text-overflow: ellipsis; font-size: 0.84rem; font-weight: 400; position: relative; }
-#tab-explore .ex__nodename::before { content: ""; position: absolute; left: 4px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ex-c); }
-.console #tab-explore .ex__current > .ex__nodename { background: color-mix(in srgb, var(--teal) 22%, transparent); font-weight: 600; }
-/* a log: dark paper, its groups, errors and warnings coloured */
-#tab-explore .ex__sheet--log { padding: 0; }
-#tab-explore .ex__lines { margin: 0; padding: 10px 12px; font-size: 0.8rem; line-height: 1.5; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
-#tab-explore .ex__line { display: block; }
-#tab-explore .ex__group { color: var(--teal-bright); font-weight: 600; }
-#tab-explore .ex__error { color: var(--st-blocked); background: color-mix(in srgb, var(--st-blocked) 10%, transparent); }
-#tab-explore .ex__warning { color: var(--st-claimed); }
-#tab-explore .ex__status { flex: 0 0 auto; margin: 0; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#tab-explore .ex__s--todo, #tab-explore .ex__s--done { --ex-c: var(--st-todo); }
-#tab-explore .ex__s--claimed, #tab-explore .ex__s--running, #tab-explore .ex__s--draft { --ex-c: var(--st-claimed); }
-#tab-explore .ex__s--review { --ex-c: var(--st-review); }
-#tab-explore .ex__s--blocked, #tab-explore .ex__s--failed { --ex-c: var(--st-blocked); }
-#tab-explore .ex__s--closed, #tab-explore .ex__s--skipped, #tab-explore .ex__s--cancelled { --ex-c: var(--st-closed); }
-#tab-explore .ex__s--open { --ex-c: var(--st-open); }
-@media (prefers-reduced-motion: reduce) {
-  .console #tab-explore .ex__tile { transition: none; }
-  #tab-explore .ex__grid, #tab-explore .ex__s--running .ex__pill::before { animation: none; }
-}
-
-/* Explore takes most of the panel while it is shown (symphony-panel.js, exWide): the side column
-   folds to its rail of icons, the repository's box and who is signed in with it; a press on it
-   brings them back. */
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__body { grid-template-columns: 58px 10px minmax(0, 1fr); }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__id { display: none; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__side { cursor: e-resize; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail button { justify-content: center; padding-left: 0; padding-right: 0; cursor: pointer; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__rail :is(.rail__name, .rail__count) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__split[data-split="side"] { cursor: e-resize; }
-.console--exwide:has(#cp-app:not(.hidden) #tab-explore:not([hidden])) .console__me { display: none; }
-#tab-explore .ex__wideword { font-size: 0.85rem; }
-/* a phone: the tab is the stage, the zoom's buttons give way to a pinch and a double tap, and,
-   folded, the tab takes the whole screen over the page, which is held still beneath it */
+/* Explore (#tab-explore): an epic's tasks as cards on a plane, links as lines from a blocker to what
+   it blocks, Claude's ideas dashed in violet, what waits to be pushed dashed in teal, and the tray of
+   changes at the right. The cards take the design system's card (.ds-card, the Workers tab's shape),
+   with its tokens' fallbacks until that lands. */
+#tab-explore { --bs-idea: #C792EA; --bs-wait: var(--teal); }
+#tab-explore .bs__epics { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 10px; }
+#tab-explore .bs__epics .chip { max-width: 22em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tab-explore .bs__epics .chip[aria-pressed="true"] { border-color: var(--teal); background: rgba(60, 194, 177, 0.12); color: var(--ink); }
+#bs-connect[aria-pressed="true"] { border-color: var(--teal); background: rgba(60, 194, 177, 0.16); color: var(--ink); }
+#tab-explore .bs__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 12px; }
+#tab-explore .bs__canvas { position: relative; min-height: 0; overflow: auto; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius, 12px); background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 22px 22px, var(--paper); }
+#tab-explore .bs__canvas:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: -2px; }
+#tab-explore .bs__plane { position: relative; transform-origin: 0 0; }
+#tab-explore .bs__edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+#tab-explore .bs__edge { fill: none; stroke: #8A9E97; stroke-width: 2; }
+#tab-explore .bs__edge--closed { stroke-dasharray: 2 4; opacity: 0.6; }
+#tab-explore .bs__edge--pending { stroke: var(--bs-wait); stroke-dasharray: 7 5; }
+#tab-explore .bs__edge--idea { stroke: var(--bs-idea); stroke-dasharray: 6 5; }
+#tab-explore .bs__edge--unlink { stroke: var(--st-blocked, #F85149); stroke-dasharray: 3 5; opacity: 0.75; }
+#tab-explore .bs__card { position: absolute; width: 228px; min-height: 96px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 9px 12px 9px 15px; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius, 12px); background: var(--ds-raised, var(--paper-card)); box-shadow: inset 3px 0 0 var(--card-accent, var(--line)), 0 6px 18px rgba(0, 0, 0, 0.3); }
+#tab-explore .bs__card--todo { --card-accent: var(--st-todo, #3FB950); }
+#tab-explore .bs__card--claimed { --card-accent: var(--st-claimed, #E3B341); }
+#tab-explore .bs__card--review { --card-accent: var(--st-review, #58A6FF); }
+#tab-explore .bs__card--blocked { --card-accent: var(--st-blocked, #F85149); }
+#tab-explore .bs__card--closed { --card-accent: var(--st-closed, #6F7D78); opacity: 0.75; }
+#tab-explore .bs__card--closed .bs__title { text-decoration: line-through; }
+#tab-explore .bs__card--idea { --card-accent: transparent; border: 1.5px dashed var(--bs-idea); background: rgba(199, 146, 234, 0.07); }
+#tab-explore .bs__card--pending { --card-accent: transparent; border: 1.5px dashed var(--bs-wait); background: rgba(60, 194, 177, 0.07); }
+#tab-explore .bs__card--from { outline: 2px solid var(--teal-bright); outline-offset: 2px; }
+#tab-explore .bs__card[role="button"] { cursor: pointer; }
+#tab-explore .bs__card[role="button"]:hover { border-color: var(--teal); }
+#tab-explore .bs__card[role="button"]:focus-visible { outline: 2px solid var(--teal-bright); outline-offset: 2px; }
+#tab-explore .bs__kind { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--ink-faint); }
+#tab-explore .bs__card--idea .bs__kind { color: #DCC4EE; }
+#tab-explore .bs__dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--card-accent, var(--ink-faint)); }
+#tab-explore .bs__card--idea .bs__dot { background: var(--bs-idea); }
+#tab-explore .bs__card--pending .bs__dot { background: var(--bs-wait); }
+#tab-explore .bs__title { font-weight: 600; font-size: 0.9rem; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#tab-explore .bs__why { font-size: 0.78rem; color: #DCC4EE; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#tab-explore .bs__card--pending .bs__why { color: var(--ink-faint); }
+#tab-explore .bs__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: auto; font-size: 0.76rem; }
+#tab-explore .bs__foot a { color: var(--teal); }
+#tab-explore .bs__pill { padding: 1px 8px; border: 1px solid var(--line); border-radius: var(--ds-pill, 999px); color: var(--ink-faint); }
+.console #tab-explore button.bs__press { margin: 0; padding: 2px 10px; min-height: 0; font-size: 0.76rem; }
+.console #tab-explore button.bs__ok { background: var(--bs-idea); border-color: var(--bs-idea); color: #1A0F22; font-weight: 600; }
+#tab-explore .bs__ideas { position: sticky; left: 0; bottom: 0; margin: 0; padding: 8px 12px; list-style: none; display: flex; flex-direction: column; gap: 6px; background: color-mix(in srgb, var(--paper) 92%, transparent); border-top: 1px dashed var(--bs-idea); font-size: 0.82rem; }
+#tab-explore .bs__ideash { color: #DCC4EE; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; }
+#tab-explore .bs__idea { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#tab-explore .bs__tray { min-height: 0; display: flex; flex-direction: column; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius, 12px); background: var(--ds-surface, var(--paper)); }
+#tab-explore .bs__trayh { display: flex; align-items: center; justify-content: space-between; margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; }
+#tab-explore .bs__count { padding: 0 8px; border: 1px solid var(--line); border-radius: var(--ds-pill, 999px); font-size: 0.76rem; letter-spacing: 0; }
+#tab-explore .bs__list { flex: 1 1 auto; min-height: 0; overflow: auto; margin: 0; padding: 10px; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+#tab-explore .bs__item { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px 9px 15px; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius, 12px); background: var(--ds-raised, var(--paper-card)); box-shadow: inset 3px 0 0 var(--bs-wait); font-size: 0.84rem; }
+#tab-explore .bs__item small { color: var(--ink-faint); }
+#tab-explore .bs__item--unlink { box-shadow: inset 3px 0 0 var(--st-blocked, #F85149); }
+#tab-explore .bs__item button.bs__press { align-self: flex-start; margin-top: 4px; }
+#tab-explore .bs__empty { color: var(--ink-faint); font-size: 0.84rem; padding: 6px 4px; }
+#tab-explore .bs__tray > .bs__foot { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-top: 1px solid var(--line); font-size: 0.84rem; }
+.console #tab-explore .bs__tray > .bs__foot button { width: 100%; margin: 0; }
+#tab-explore .bs__status { margin: 8px 2px 0; font-size: 0.84rem; color: var(--ink-faint); }
+#tab-explore .bs__status.bs__warn { color: var(--ochre); }
 @media (max-width: 900px), (max-height: 520px) {
-  #tab-explore .ex__body { flex: 0 0 auto; height: min(72vh, 680px); }
-  #tab-explore .ex__zoom { display: none; }
-  /* the status is still said aloud on a phone, out of sight */
-  #tab-explore .ex__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  #tab-explore .ex__head { padding: 6px 10px 6px 12px; }
-  #tab-explore .ex__name { font-size: 1rem; }
-  #tab-explore .ex__head .ex__sub { display: none; }
-  .console #tab-explore .ex__link { width: 34px; padding: 0; justify-content: center; font-size: 0; }
-  .console #tab-explore .ex__link::after { margin: 0; font-size: 1rem; }
-  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) { position: fixed; z-index: 50; inset: 0; padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px) calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px); background: var(--paper); gap: 6px; }
-  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) .console__head { display: none; }
-  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) .ex__body { flex: 1 1 auto; height: auto; }
-  html:has(.console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden])) body { overflow: hidden; overscroll-behavior: none; }
-}
-/* the site bar's handle stays above the tab's own bar, so no press meant for the tab lands on it */
-@media (max-width: 900px) and (hover: none), (max-width: 900px) and (any-pointer: coarse), (max-height: 520px) and (hover: none), (max-height: 520px) and (any-pointer: coarse) {
-  body.console-bar-auto .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) { padding-top: calc(env(safe-area-inset-top, 0px) + 26px); }
-}
-@media (max-width: 900px) and (pointer: coarse), (max-height: 520px) and (pointer: coarse) {
-  .console #tab-explore .ex__tool { min-height: 38px; }
-  .console #tab-explore .ex__icon { width: 40px; }
+  #tab-explore .bs__body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
+  #tab-explore .bs__list { max-height: 30vh; }
 }
 
 /* The phone's rules that must win over unconditional rules above them (.console__me, the run rows,
@@ -1865,13 +1802,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
     overscroll-behavior: contain;
   }
   .tkdlg::backdrop { background: var(--paper-card, #161E1C); }
-  /* Explore, folded wide, took the whole screen over the page on its own; every tab does that here
-     now, so it stays in the stage under the back bar like the others */
-  .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]),
-  body.page-console.console-bar-auto .console--exwide #cp-app:not(.hidden) #tab-explore:not([hidden]) { position: static; z-index: auto; padding: 0; background: transparent; }
-  /* and its level fills the tab, folded or not, as it filled the screen, rather than a height of
-     its own made for a page that scrolled */
-  .console #cp-app:not(.hidden) #tab-explore:not([hidden]) .ex__body { flex: 1 1 auto; height: auto; min-height: 0; }
 }
 /* the site bar's handle stands at the top centre over the console where a finger is the pointer, so
    the screen's first row starts under it */
