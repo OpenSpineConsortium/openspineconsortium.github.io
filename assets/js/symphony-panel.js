@@ -8354,6 +8354,10 @@
     var reads = [gridFile(repo, 'accounts.json')];
     if (gr.sign && gr.sign.request === request && !gr.sign.url) reads.push(gridFile(repo, 'link.json'));
     Promise.all(reads).then(function (got) {
+      // another run may have written accounts.json since this one; each run also keeps its own answer
+      if (got[0] && got[0].request === request) return got;
+      return gridFile(repo, 'answers/' + request + '.json').then(function (own) { return [own || got[0], got[1]]; });
+    }).then(function (got) {
       if (gr.busy !== busy) return;
       var rec = got[0], sealed = got[1];
       var opened = sealed && sealed.request === request && sealed.sealed && gr.sign && !gr.sign.url
@@ -8467,15 +8471,27 @@
     if (Array.isArray(list.workers)) return list.workers.filter(function (w) { return w && w.name; });
     return list.worker ? [list.worker] : [];
   }
+  // a running worker rewrites its status every few seconds; one silent for a quarter of an hour, counted
+  // to now from when the grid last answered, has likely lost its job or its node
+  var GRID_QUIET_MIN = 15;
+  function workerQuietMin(w) {
+    var at = gr.rec && moment(gr.rec.at);
+    var age = Number(w.age_s);
+    if (at == null || !isFinite(age) || age < 0) return 0;
+    var min = Math.floor((Date.now() - at + age * 1000) / 60000);
+    return min >= GRID_QUIET_MIN ? min : 0;
+  }
   function workerLine(w) {
     if (!w) return null;
     var p = el('p', 'gr__worker');
     p.id = 'gr-worker-' + w.name;
     var state = w.state === 'online' ? 'online' : w.state || 'unknown';
     var ended = state === 'stopped' || state === 'error';
-    add(p, el('span', 'gr__dot gr__dot--' + (state === 'online' ? 'go' : state === 'need_login' || state === 'error' ? 'warn' : 'wait')),
+    var quiet = ended ? 0 : workerQuietMin(w);
+    add(p, el('span', 'gr__dot gr__dot--' + (state === 'online' && !quiet ? 'go' : quiet || state === 'need_login' || state === 'error' ? 'warn' : 'wait')),
         'Worker ' + (w.name || '') + ': ' + state.replace(/_/g, ' ') + (w.account ? ', on account ' + w.account : '') +
-        (w.pinned ? ' (kept there)' : '') + (w.node ? ', ' + w.node : ''));
+        (w.pinned ? ' (kept there)' : '') + (w.node ? ', ' + w.node : '') +
+        (quiet ? ', not heard from in ' + (quiet < 120 ? quiet + ' min' : Math.round(quiet / 60) + ' h') : ''));
     if (w.link && !ended) add(p, ' ', link(w.link, 'Open the session'));
     if (w.name) add(p, el('span', 'tkdlg__faint', ' claims as grid-' + w.name));
     if (!ended && w.name && GRID_NAME.test(w.name)) {
@@ -8584,15 +8600,22 @@
     var input = el('input');
     input.type = 'text'; input.id = 'gr-wname'; input.autocomplete = 'off'; input.spellcheck = false;
     input.placeholder = 'account' + slot; input.maxLength = 24;
+    // several at once take NAME-1 to NAME-N, so the stem leaves room for the number (the gate's 24)
+    var count = el('select');
+    count.id = 'gr-wcount';
+    count.title = 'How many workers to start; several are named NAME-1, NAME-2 and so on, and share this account\'s five-hour window';
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (n) { var o = el('option', '', String(n)); o.value = String(n); add(count, o); });
     var go = btn('Start a worker on this account', false, function () {
       var name = input.value.trim() || 'account' + slot;
-      if (!GRID_NAME.test(name)) { gridNote('A worker\'s name is up to 24 letters, digits, _ or -.'); return; }
-      gridPress('worker-start', slot, 'Starting worker ' + name, { name: name });
+      var n = Number(count.value) || 1;
+      if (!GRID_NAME.test(name) || (n > 1 && name.length > 21)) { gridNote(n > 1 ? 'A name for several workers is up to 21 letters, digits, _ or -.' : 'A worker\'s name is up to 24 letters, digits, _ or -.'); return; }
+      if (n > 1) gridPress('worker-start', slot, 'Starting ' + n + ' workers ' + name + '-1 to ' + name + '-' + n, { name: name, count: String(n) });
+      else gridPress('worker-start', slot, 'Starting worker ' + name, { name: name });
     });
     go.id = 'gr-start';
     go.title = 'A Claude Code worker of its own on this account, as its own Slurm job; it claims issues as grid-<name> and spends allocation like your main worker';
     go.disabled = !!gr.busy;
-    add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Runs beside your main worker, kept to this account, and claims its own issues as grid-<name>.'), add(el('p', 'gr__coderow'), input, go));
+    add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Runs beside your main worker, kept to this account, and claims its own issues as grid-<name>. Several at once start a minute apart and share this account\'s five-hour window.'), add(el('p', 'gr__coderow'), input, count, go));
     return box;
   }
   function signInBox(slot, signing, login) {
