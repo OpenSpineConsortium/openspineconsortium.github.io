@@ -8316,7 +8316,7 @@
   // nothing to a Globus collection: the grid's files are read here, never changed. The client id
   // is the owner's registration of this page at Globus (app.globus.org/settings/developers, a
   // "thick client" with this console's address as its redirect); '' until it is registered.
-  var GLOBUS_CLIENT = '';
+  var GLOBUS_CLIENT = '478419be-5bc2-436e-ac71-ca8920101271';
   var GLOBUS_AUTH = 'https://auth.globus.org/v2/oauth2';
   var GLOBUS_TRANSFER = 'https://transfer.api.globus.org/v0.10';
   var GLOBUS_RS = 'transfer.api.globus.org';
