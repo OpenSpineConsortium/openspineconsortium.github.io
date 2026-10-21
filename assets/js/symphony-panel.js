@@ -8497,7 +8497,7 @@
       var tokens = {};
       Object.keys(k.tokens && typeof k.tokens === 'object' ? k.tokens : {}).forEach(function (rs) { if (k.tokens[rs] && typeof k.tokens[rs].refresh === 'string') tokens[rs] = { access: '', refresh: k.tokens[rs].refresh, expiresAt: 0 }; });
       if (!tokens[GLOBUS_RS]) tokens[GLOBUS_RS] = { access: '', refresh: k.refresh, expiresAt: 0 };
-      return { provider: 'globus', access: '', refresh: k.refresh, expiresAt: 0, tokens: tokens, connected: String(k.connected || ''), owner: String(k.owner || ''), id: String(k.id || ''), type: 'globus', name: String(k.name || ''), https: httpsOnly(k.https), home: String(k.home || ''), login: login };
+      return { provider: 'globus', access: '', refresh: k.refresh, expiresAt: 0, tokens: tokens, connected: String(k.connected || ''), owner: String(k.owner || ''), id: String(k.id || ''), type: 'globus', name: String(k.name || ''), https: httpsOnly(k.https), home: globusHomeOf(k.home), login: login };
     }
     var end = daysAfter(String(k.connected || ''), MS_REFRESH_DAYS);
     if (!end || end <= dayOf(new Date())) { forgetKept(login); return null; }
@@ -8597,6 +8597,9 @@
   }
   function drawConnectState() {
     var button = $('fd-connect'), note = $('fd-connect-note');
+    // where the keyboard is, read before any button is hidden or moved, since hiding the one it
+    // is on takes it to the page's body at once
+    var keyboard = keyboardOnStrip();
     // the next step's button is the one filled: Connect until a drive is held, then Track
     heldDrive();
     button.classList.toggle('console__primary', !drive);
@@ -8606,21 +8609,29 @@
     // with no drive the tab's own tile is the one + Add; the head's comes once one is connected
     $('fd-add').hidden = !drive;
     $('fd-forget').hidden = !drive;
-    $('fd-forget').textContent = 'Forget ' + (drive ? driveName(drive.provider) : 'OneDrive');
+    var forget = 'Forget ' + (drive ? driveName(drive.provider) : 'OneDrive');
+    $('fd-forget').textContent = '';
+    add($('fd-forget'), el('span', 'admin__sr', forget));
+    $('fd-forget').title = forget;
     var other = otherKept();
+    drawAccounts(other, keyboard);
     if (drive && drive.provider === 'globus') {
       var held = !signinAvailable() ? 'Connecting OneDrive goes through the sign-in service, which the page does not name yet.' : driveConfig && (!driveConfig.microsoft || !driveConfig.microsoft.client_id) ? 'The owner has not set OneDrive up on the sign-in service yet.' : '';
       button.disabled = !!held;
       button.textContent = other ? 'Connect OneDrive again' : 'Connect OneDrive';
-      note.textContent = 'Connected to Globus' + (drive.name ? ', ' + drive.name : '') + (drive.owner ? ', as ' + drive.owner : '') + ', read-only, kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' OneDrive is connected too: press it in the folder tree.' : '') + (held ? ' ' + held : '');
+      note.textContent = 'Connected to Globus' + (drive.name ? ', ' + drive.name : '') + (drive.owner ? ', as ' + drive.owner : '') + ', read-only, kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' OneDrive is connected too: press its card to switch.' : '') + (held ? ' ' + held : '');
+      // the cards say the same, so the words are read aloud and shown only with something to add
+      note.classList.toggle('folders__who--quiet', !held);
       return;
     }
     if (drive) {
       button.disabled = false;
       button.textContent = 'Connect OneDrive again';
-      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' Globus is connected too: press ' + (other.name || 'Globus') + ' in the folder tree.' : '');
+      note.textContent = 'Connected to ' + driveName(drive.provider) + (drive.owner ? ' as ' + drive.owner : '') + ', kept on this browser for ' + (drive.login || 'this GitHub account') + '.' + (other ? ' Globus is connected too: press ' + (other.name || 'Globus') + ' to switch.' : '');
+      note.classList.add('folders__who--quiet');
       return;
     }
+    note.classList.remove('folders__who--quiet');
     button.textContent = 'Connect OneDrive';
     if (!signinAvailable()) { button.disabled = true; note.textContent = 'Connecting a drive goes through the sign-in service, which the page does not name yet.'; return; }
     if (!driveConfig) { button.disabled = false; note.textContent = ''; return; }
@@ -8628,6 +8639,58 @@
     button.disabled = false;
     note.textContent = '';
   }
+  // The drives mounted on this browser, drawn in the head as the Workers tab draws its cards: the
+  // drive shown is lit, a press on the other switches to it, the eject on the lit one forgets it,
+  // and the dashed card adds a drive. The eject and the dashed card are the head's own two
+  // buttons, moved into the strip, so their ids and listeners stay.
+  // which card's press or eject the keyboard is on, by the card's drive, or the dashed card
+  function keyboardOnStrip() {
+    var strip = $('fd-accounts'), active = document.activeElement;
+    if (!strip || !active) return '';
+    if (active === $('fd-add')) return 'add';
+    if (active === $('fd-forget')) return 'eject';
+    var card = strip.contains(active) && active.closest ? active.closest('.acct') : null;
+    return card ? 'card:' + (card.getAttribute('data-provider') || '') : '';
+  }
+  function drawAccounts(other, held) {
+    var strip = $('fd-accounts'), eject = $('fd-forget'), plus = $('fd-add');
+    if (!strip) return;
+    // redrawn only when a card would change, so the owner's name arriving, or any other redraw of
+    // the state, never takes the keyboard's place from a card
+    var key = [drive, other].map(function (d) { return d ? [d.provider, d.name || '', d.owner || '', d.login || ''].join('\t') : ''; }).join('\n');
+    if (strip.getAttribute('data-drawn') === key) return;
+    strip.setAttribute('data-drawn', key);
+    // the two buttons go back to the head before the strip is cleared, so a clear never drops them
+    add(strip.parentNode, eject, plus);
+    clear(strip);
+    strip.hidden = !drive;
+    if (!drive) { if (held) focusLater($('fd-add-tile') || plus); return; }
+    function card(d, on) {
+      var box = el('div', 'acct' + (on ? ' acct--on' : ''));
+      box.setAttribute('data-provider', d.provider);
+      var pick = btn('', true, function () { if (!on) switchDrive(d); });
+      pick.className = 'acct__pick';
+      if (on) pick.setAttribute('aria-current', 'true');
+      pick.title = on ? 'Shown now' : 'Switch to ' + accountName(d);
+      var sub = d.provider === 'globus' ? [d.owner, 'read-only'].filter(Boolean).join(' \u00B7 ') : (d.owner || 'Connected');
+      add(pick, el('span', 'acct__icon'), add(el('span', 'acct__words'), el('span', 'acct__name', accountName(d)), el('span', 'acct__sub', sub)));
+      add(box, pick);
+      return box;
+    }
+    var lit = card(drive, true);
+    add(lit, eject);
+    add(strip, lit);
+    if (other) add(strip, card(other, false));
+    add(strip, plus);
+    // the keyboard goes back where it was: the same drive's card where it still stands, else
+    // the lit card, which is the one a switch lit or a forget left
+    if (held === 'add') focusLater(plus);
+    else if (held) { var same = strip.querySelector('.acct[data-provider="' + held.slice(5) + '"] .acct__pick'); focusLater(held.indexOf('card:') === 0 && same ? same : lit.firstChild); }
+  }
+  function focusLater(node) {
+    if (node && node.focus) node.focus();
+  }
+  function accountName(d) { return d.provider === 'globus' ? (d.name || 'Globus') : driveName(d.provider); }
   // the Globus tile needs no service: it is pressable once the page is registered at Globus
   function drawGlobusTile() {
     var tile = $('fd-globus');
@@ -8648,6 +8711,7 @@
       driveConfig = null;
       driveAsked = false;
       showConnectState();
+      $('fd-connect-note').classList.remove('folders__who--quiet');
       richText($('fd-connect-note'), 'The sign-in service could not say whether OneDrive is set up (' + e.message + '); press Connect OneDrive to ask it again.');
     });
   }
@@ -8789,7 +8853,7 @@
       var tokens = globusTokensOf(answer, was ? was.tokens : {});
       if (!tokens[GLOBUS_RS]) throw new Error('Globus Auth gave no token for the Transfer API.');
       if (!tokens[GLOBUS_RS].refresh) throw new Error('Globus Auth gave no refresh token, so the connection could not be kept: the sign-in did not include keeping access when you are away.');
-      drive = { provider: 'globus', access: '', refresh: tokens[GLOBUS_RS].refresh, expiresAt: 0, tokens: tokens, connected: was && was.connected ? was.connected : dayOf(new Date()), owner: was ? was.owner : '', id: kept.collection || (was ? was.id : ''), type: 'globus', name: was ? was.name : '', https: was ? was.https : '', home: was ? was.home : '', login: typeof kept.login === 'string' ? kept.login : '', fresh: true };
+      drive = { provider: 'globus', access: '', refresh: tokens[GLOBUS_RS].refresh, expiresAt: 0, tokens: tokens, connected: was && was.connected ? was.connected : dayOf(new Date()), owner: was ? was.owner : '', id: kept.collection || (was ? was.id : ''), type: 'globus', name: was ? was.name : '', https: was ? was.https : '', home: globusHomeOf(was && was.home), login: typeof kept.login === 'string' ? kept.login : '', fresh: true };
       keepDrive(drive);
       setActiveProvider(drive.login || shownLogin, 'globus');
       say('Globus is connected, and stays connected on this browser for your GitHub account until you press Forget Globus.');
@@ -8867,11 +8931,18 @@
         d.id = id;
         d.name = String(c.display_name || (GLOBUS_KNOWN[0] && GLOBUS_KNOWN[0].label) || 'Globus');
         d.https = httpsOnly(c.https_server);
-        d.home = typeof c.default_directory === 'string' ? c.default_directory : '';
+        d.home = globusHomeOf(c.default_directory);
         keepDrive(d);
         showConnectState();
       });
     });
+  }
+  // a collection's default folder is a path only when Globus gives one: '/~/' and a placeholder
+  // such as {server_default} say that the server decides, and the first listing's absolute_path
+  // then says where that is
+  function globusHomeOf(p) {
+    p = typeof p === 'string' ? p : '';
+    return p && p !== '/~/' && p.indexOf('{') < 0 ? p : '';
   }
   // a Globus folder path as the tab keeps it: absolute, ending in a slash
   function globusPath(p) {
@@ -8894,7 +8965,7 @@
     drawBrowser();
     return (d.id && d.name ? Promise.resolve() : globusSetup()).then(function () {
       if (drive !== d) return;
-      var home = d.home && d.home !== '/~/' ? d.home : '';
+      var home = globusHomeOf(d.home);
       return (home ? Promise.resolve(home) : transfer('/operation/endpoint/' + encodeURIComponent(d.id) + '/ls?limit=1').then(function (r) { return typeof r.absolute_path === 'string' ? r.absolute_path : '/'; }).catch(function (e) { if (e.code === 'ConsentRequired') throw e; return '/'; })).then(function (abs) {
         if (drive !== d) return;
         d.home = globusPath(abs);
@@ -10929,7 +11000,7 @@
     if (!repo) { fdSay('Choose a repository in the bar first (or make one under Need a new repository?).', true); return; }
     if (!d || !d.refresh) { showConnectState(); drawBrowser(); fdSay('Connect OneDrive first, under + Add a cloud drive: the drive\'s refresh token is what the repository keeps.', true); closeDialog('dlg-track'); ($('fd-add-tile') || $('fd-add')).focus(); return; }
     // a Globus collection is read here and never synced: Track is OneDrive's
-    if (d.provider === 'globus') { fdSay('Track records folders of OneDrive for the repository\'s sync. ' + (d.name || 'The Globus collection') + ' is read here only; press OneDrive in the folder tree, or Connect OneDrive, to track a drive.', true); closeDialog('dlg-track'); return; }
+    if (d.provider === 'globus') { fdSay('Track records folders of OneDrive for the repository\'s sync. ' + (d.name || 'The Globus collection') + ' is read here only; press OneDrive\'s card, or Connect OneDrive, to track a drive.', true); closeDialog('dlg-track'); return; }
     if (walkOnly && foldersFor === repo) { trackWalk(button, repo, d); return; }
     if (!pickedOrder.length) { fdSay('Tick at least one file or folder to track, in the list of your OneDrive.', true); return; }
     if (!FOLDER_NAME.test(folder) || folder.indexOf('..') >= 0) { fdSay('The folder is one name of up to 80 letters, digits, dots, dashes, underscores and blanks, ending in a letter or digit, as drive-sync.yml takes it; "papers" is the default.', true); return; }

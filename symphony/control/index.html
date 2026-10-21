@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610210112">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610210112">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610210112">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610210303">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610210303">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610210303">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610210112">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610210303">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -399,8 +399,11 @@
         <section class="console__panel folders" id="tab-folders" data-tab-panel="folders" role="tabpanel" aria-labelledby="rail-folders" hidden>
           <div class="console__head folders__head">
             <h2 id="h-folders" class="console__h">Folders</h2>
-            <p class="folders__who" id="fd-connect-note"></p>
-            <button type="button" class="folders__forget" id="fd-forget" hidden>Forget OneDrive</button>
+            <!-- the drives mounted on this browser, one card each as the Workers tab draws its cards:
+                 the one shown is lit, a press on the other switches, its eject forgets it, and the
+                 dashed card adds one; the script fills the strip and moves the two buttons into it -->
+            <div id="fd-accounts" class="folders__accounts" role="group" aria-label="Your drives"></div>
+            <button type="button" class="folders__forget" id="fd-forget" hidden><span class="admin__sr">Forget OneDrive</span></button>
             <button type="button" class="folders__add" data-open="dlg-cloud" id="fd-add">+ Add a cloud drive</button>
             <button type="button" class="console__add folders__trackopen" data-open="dlg-track" id="fd-track-open">Track in a repository</button>
             <details class="console__help"><summary>How it works</summary><div>
@@ -411,6 +414,9 @@
               <p>The repository: GitHub&rsquo;s own form makes it from the template, named by you, so its first commit stays yours and no App needs to administer it. While the template is internal to OpenSpineConsortium&rsquo;s enterprise, that form works only for the enterprise&rsquo;s members; anyone else makes the repository through the front door: install <a href="https://github.com/apps/symphonyboard/installations/new" target="_blank" rel="noopener">SymphonyBoard</a> and press Create on the form its install leads to, which brings a new or empty repository the whole template, <code>drive-sync.yml</code> with it, by a pull request to merge. The form opens in a new tab; name the repository, press &ldquo;Create repository&rdquo;, come back here and press &ldquo;Find the repository I just made&rdquo;, which lists it in the bar&rsquo;s Repository and chooses it. Signed in with GitHub, the page reaches it once SymphonyBoard is installed on it (an installation on all your repositories covers it); a fine-grained token reaches what it was made for, and Track needs it to hold Contents, Secrets and Actions, each Read and write.</p>
               <p>Track writes, as you: the drive&rsquo;s refresh token, sealed in this browser with GitHub&rsquo;s public key the way GitHub&rsquo;s own secrets page seals one, as the secret <code>SYMPHONY_DRIVE_REFRESH</code>, in the repository, or, for a private repository of an organization on a paid plan whose secret no other drive holds, as the organization&rsquo;s secret, which every private and internal repository of the organization reads, so one Track covers the whole organization, with the variable <code>SYMPHONY_DRIVE_ID</code> beside it naming the drive; the file <code>.github/symphony/drive.json</code> naming the drive, the folder and what you ticked; the repository variable <code>SYMPHONY_DRIVE</code>, set to on, which the half-hourly sync waits for; and the first run of the sync. A repository that only walks the drive, with <code>drive-catalog.yml</code> and no sync, gets the secret alone. On a personal account, which has no secret all its repositories read, Track also renews the secret in each of your other repositories that holds one and tracks the same drive by its file, where that file is dated earlier than the connection; their files keep their date, so their tabs may ask for Connect again sooner than needed. Track dates the file by the day the connection was made, not the day of the press. OneDrive stays connected on this browser after Track. Opening the tab on a repository that already tracks a drive, with its secret set and its connection not known to have run out, sets <code>SYMPHONY_DRIVE</code> to on too, as you, where it was never set, and says so; one set to off is left off. In a public repository the files you tick, their names and the comments in them become readable by anyone, so the tab asks you to confirm before it tracks into one. Where the default branch takes only pull requests, the file waits on a pull request; until it merges, the half-hourly sync runs with the new secret on the file the default branch already holds. Whoever can run a workflow on the repository, anyone who may write to it, can read that secret and, through the sign-in service, reach every file of your OneDrive with it, not only what you ticked, until it lapses or you withdraw Symphony&rsquo;s access at Microsoft: at <a href="https://account.live.com/consent/Manage" target="_blank" rel="noopener">account.live.com/consent/Manage</a> for a personal account, or in <a href="https://myapps.microsoft.com" target="_blank" rel="noopener">My Apps</a> for a work or school account, where its administrator may have to. Deleting the secret withdraws nothing at Microsoft. A Microsoft refresh token lasts 90 days, and the run cannot keep the newer one Microsoft issues on each sync, so the tab says when to press Connect OneDrive again, then Track, which replaces the secret and the date; what the repository tracks is ticked already.</p>
             </div></details>
+            <!-- whose drive it is, in words: read aloud while the cards say the same, shown when
+                 something needs saying (no drive, a drive that cannot be connected) -->
+            <p class="folders__who" id="fd-connect-note"></p>
           </div>
           <div id="fd-browser" class="folders__browser"></div>
         </section>
@@ -692,8 +698,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610210112"></script>
+<script src="/assets/js/main.js?v=202610210303"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610210112"></script>
+<script src="/assets/js/symphony-panel.js?v=202610210303"></script>
 </body>
 </html>
