@@ -8604,6 +8604,8 @@
     if (login.state && login.state !== 'none' && login.state !== 'signed-in') return { text: login.line || login.state, cls: login.state === 'failed' ? 'tok__state--warn' : '' };
     if (a.current) return { text: 'In use', cls: 'tok__state--go' };
     if (a.who && a.who.signed_in === false) return { text: 'Not signed in', cls: 'tok__state--warn' };
+    // hpcworker 24: a check that got no answer is not a sign-out; say what it printed instead
+    if (a.who && a.who.sign_in === 'unread') return { text: 'Not checked: ' + (a.who.error || 'the check got no answer'), cls: 'tok__state--warn' };
     if (a.use && a.use.status === 'rejected') return { text: 'At its limit', cls: 'tok__state--warn' };
     return { text: a.who ? 'Ready' : 'Not read yet', cls: '' };
   }
@@ -8614,7 +8616,7 @@
     open.id = 'gr-tile-' + a.slot;
     var who = a.who || {}, st = gridAccountState(a);
     add(open, el('span', 'tok__icon', a.slot), el('span', 'tok__name', gridAccountName(a)),
-        el('span', 'tok__meta', (who.plan ? 'Claude ' + who.plan : who.signed_in === false ? 'signed out' : '') + workersOnWords(a)),
+        el('span', 'tok__meta', (who.plan ? 'Claude ' + who.plan : who.signed_in === false ? 'signed out' : who.sign_in === 'unread' ? 'not checked' : '') + workersOnWords(a)),
         gridBars(a.use), el('span', 'tok__state ' + st.cls, st.text));
     open.addEventListener('click', function () { gr.side = gr.side === a.slot ? '' : a.slot; drawGrid(); });
     return add(wrap, open);
