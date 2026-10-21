@@ -2011,6 +2011,8 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 /* the buttons: one pill, in three weights. Filled teal is the head's main action (+ Add ...), an
    outline the rest, and a chip the head's smaller ones; a pressed chip is a chosen sub-tab */
 .console a.console__add { border-radius: var(--ds-pill); }
+/* a head button the page hides keeps hidden: the display below would otherwise show it */
+.console button.chip[hidden], .console button.console__add[hidden], .console a.console__add[hidden] { display: none; }
 .console button.chip, .console button.console__add, .console a.console__add, .console .console__help > summary {
   min-height: 30px; padding: 4px 14px; font-size: 0.84rem; line-height: 1.2; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--ds-pill);
 }
@@ -2024,6 +2026,8 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 
 /* every tab's head: its name, its main action, its chips, its help at the end */
 .console__panel > .console__head { gap: 8px 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+/* the Folders tab's head holds its drives' cards over the explorer's own frame, in one line it is held to */
+#tab-folders.console__panel > .console__head { padding-bottom: 0; border-bottom: 0; }
 
 /* the tables that stay tables (the Board's, the Leaderboard's): a card with a quiet heading row */
 .console .ds-table, .console .control__board table, .console #lb-people, .console #lb-tokens {
