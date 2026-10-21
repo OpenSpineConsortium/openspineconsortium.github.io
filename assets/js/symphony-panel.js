@@ -2692,13 +2692,13 @@
     return TASK_VIEWS.indexOf(v) >= 0 ? v : 'queue';
   }
   // a row or list shown from elsewhere (a readout, the assistant's focus, Centre its row) brings its
-  // own list up, unless All already shows it
+  // own list up, unless All already shows it, and leaves the person's own choice kept for next time
   function revealTaskList(node) {
     var board = taskBoard();
     if (!board || !node || !node.closest || !board.contains(node)) return;
     var col = node.closest('[data-col]');
     var view = board.getAttribute('data-view');
-    if (col && view !== 'all' && view !== col.getAttribute('data-col')) taskView(col.getAttribute('data-col'), true);
+    if (col && view !== 'all' && view !== col.getAttribute('data-col')) taskView(col.getAttribute('data-col'));
   }
   // scrollIntoView moves every box around the node, the window too, which would carry the header and
   // the strip out of sight; while the deck holds the window, the window is put back where it was
@@ -4075,7 +4075,7 @@
     assistant.filter = kind;
     var r = assistantRedraw();
     // a filter reaches across every list, so All shows them side by side
-    if (kind !== 'none') { taskView('all'); revealTab($('cp-queue')); }
+    if (kind !== 'none') { taskView('all'); revealTab($('cp-queue')); } else taskView(keptTaskView());
     return kind === 'none' ? 'Showing every task again.' : 'Filtered the task tables to ' + assistantFilterWords() + ': ' + r.shown + ' of ' + r.total + '; Show all tasks, above the tables, clears it.';
   }
   // the Dependencies tab is the page's own, drawn from GitHub as the person, and opens at its first

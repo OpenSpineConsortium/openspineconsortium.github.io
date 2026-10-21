@@ -1984,7 +1984,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   border-radius: var(--ds-radius); border: var(--ds-border); background: var(--ds-surface);
   box-shadow: inset 3px 0 0 var(--card-accent, transparent), var(--ds-shadow);
 }
-.console table.console__cards tr:not(.card--add) { --card-accent: rgba(233, 230, 218, 0.2); }
 /* what a press opens lifts under the pointer, its edge lit, as the Workers card does */
 .console .ds-card--press, .console table.console__cards tr.card--open,
 .console button.launch, .console button.readout, .console button.tok__open:not(.tok--add), .console .wtile, .console .repos__card {
@@ -2002,7 +2001,10 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 .console .wtile[aria-pressed="true"], .console .repos__card--on, .tok--on .tok__open {
   border-color: var(--ds-on-border); background: var(--ds-on-bg); box-shadow: inset 0 0 0 1px var(--ds-on-border);
 }
-.console button.launch--go { --card-accent: var(--go); background: rgba(47, 179, 106, 0.08); }
+.console button.launch--go { --card-accent: var(--go); border-color: rgba(47, 179, 106, 0.6); background: rgba(47, 179, 106, 0.1); }
+.console button.launch--go:hover { border-color: var(--go); background: rgba(47, 179, 106, 0.2); }
+/* a button that cannot be pressed does not lift */
+.console button.launch:disabled:hover, .console button.readout:disabled:hover, .console button.tok__open:disabled:hover, .console .wtile:disabled:hover { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .console .ds-card--press, .console table.console__cards tr.card--open, .console button.launch, .console button.readout,
   .console button.tok__open, .console .wtile { transition: none; transform: none !important; }
@@ -2087,15 +2089,18 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 .console #cp-agents td.cell--name { flex: 1 1 8em; }
 
 /* the Tasks tab: one list at a time, chosen by its head's chips, or All side by side */
-.console .console__kanban[data-view]:not([data-view="all"]) { display: flex; flex-direction: column; gap: 8px; overflow-x: hidden; overflow-y: auto; }
-.console .console__kanban[data-view]:not([data-view="all"]) > #cp-other { display: none; }
+/* on a computer the chosen list fills the tab and scrolls in it; a phone keeps its own layout, the
+   whole tab scrolling, and only hides the lists not chosen */
+@media (min-width: 901px) and (min-height: 521px) {
+  .console .console__kanban[data-view]:not([data-view="all"]) { display: flex; flex-direction: column; gap: 8px; overflow-x: hidden; overflow-y: auto; }
+  .console .console__kanban[data-view]:not([data-view="all"]) > .table-scroll { flex: 1 1 auto; overflow: visible; padding: 0 2px 6px; }
+}
 .console .console__kanban[data-view="queue"] > [data-col]:not([data-col="queue"]),
 .console .console__kanban[data-view="given"] > [data-col]:not([data-col="given"]),
 .console .console__kanban[data-view="claimed"] > [data-col]:not([data-col="claimed"]),
 .console .console__kanban[data-view="review"] > [data-col]:not([data-col="review"]),
 .console .console__kanban[data-view="blocked"] > [data-col]:not([data-col="blocked"]),
 .console .console__kanban[data-view="epics"] > [data-col]:not([data-col="epics"]) { display: none; }
-.console .console__kanban[data-view]:not([data-view="all"]) > .table-scroll { flex: 1 1 auto; overflow: visible; padding: 0 2px 6px; }
 .console .console__kanban[data-view]:not([data-view="all"]) table.console__cards tbody { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 .console .console__kanban[data-view]:not([data-view="all"]) > h3 .console__colgrip { display: none; }
 
