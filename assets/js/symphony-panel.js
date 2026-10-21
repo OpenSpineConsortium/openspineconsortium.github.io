@@ -8405,13 +8405,32 @@
     [refresh, usage, autoB].forEach(function (b) { b.disabled = !!gr.busy; add(bar, b); });
     if (gr.busy) add(bar, el('span', 'gr__busy', gr.busy.label + '...'));
   }
+  var GRID_NAME = /^[A-Za-z0-9_-]{1,24}$/;
+  // every worker of the last day, the main one and each kept to an account of its own (framework 22)
+  function gridWorkers(list) {
+    if (Array.isArray(list.workers)) return list.workers.filter(function (w) { return w && w.name; });
+    return list.worker ? [list.worker] : [];
+  }
   function workerLine(w) {
     if (!w) return null;
     var p = el('p', 'gr__worker');
+    p.id = 'gr-worker-' + w.name;
     var state = w.state === 'online' ? 'online' : w.state || 'unknown';
+    var ended = state === 'stopped' || state === 'error';
     add(p, el('span', 'gr__dot gr__dot--' + (state === 'online' ? 'go' : state === 'need_login' || state === 'error' ? 'warn' : 'wait')),
-        'Worker ' + (w.name || '') + ': ' + state.replace(/_/g, ' ') + (w.account ? ', on account ' + w.account : '') + (w.node ? ', ' + w.node : ''));
-    if (w.link) add(p, ' ', link(w.link, 'Open the session'));
+        'Worker ' + (w.name || '') + ': ' + state.replace(/_/g, ' ') + (w.account ? ', on account ' + w.account : '') +
+        (w.pinned ? ' (kept there)' : '') + (w.node ? ', ' + w.node : ''));
+    if (w.link && !ended) add(p, ' ', link(w.link, 'Open the session'));
+    if (w.name) add(p, el('span', 'tkdlg__faint', ' claims as grid-' + w.name));
+    if (!ended && w.name && GRID_NAME.test(w.name)) {
+      var stop = btn('Stop', true, function () {
+        if (!window.confirm('Stop worker ' + w.name + ' on the grid? Its job ends and queues no successor; its session and files stay.')) return;
+        gridPress('worker-stop', '', 'Stopping worker ' + w.name, { name: w.name });
+      });
+      stop.id = 'gr-stop-' + w.name;
+      stop.disabled = !!gr.busy;
+      add(p, ' ', stop);
+    }
     return p;
   }
   function drawGrid() {
@@ -8426,8 +8445,13 @@
       add(box, toksNote());
       drawGridSide(); return;
     }
-    var wl = workerLine(list.worker);
-    if (wl) add(box, add(el('div', 'toks__note'), wl));
+    var workers = gridWorkers(list);
+    if (workers.length) {
+      var wbox = el('div', 'toks__note');
+      wbox.id = 'gr-workers';
+      workers.forEach(function (w) { add(wbox, workerLine(w)); });
+      add(box, wbox);
+    }
     gridAccounts().forEach(function (a) { add(box, gridTile(a)); });
     var plus = el('button', 'tok__open tok--add');
     plus.type = 'button'; plus.id = 'gr-add';
@@ -8476,6 +8500,7 @@
       use.title = 'Your running worker moves to this account now; its session then shows in this account on claude.ai';
       add(bar, use);
     }
+    if (who.signed_in) add(side, startBox(slot));
     var again = btn(who.signed_in ? 'Sign in again' : 'Sign in', true, function () { gridPress('login', slot, 'Signing in account ' + slot); });
     again.id = 'gr-signin';
     add(bar, again);
@@ -8489,6 +8514,30 @@
     }
     Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) { b.disabled = !!gr.busy; });
     add(side, bar);
+  }
+  // a worker of its own on this account: its own Slurm job and its own Remote Control session there
+  function startBox(slot) {
+    var box = el('div', 'gr__start');
+    var running = gridWorkers((gr.rec && gr.rec.list) || {}).filter(function (w) {
+      return w.pinned === slot && w.state !== 'stopped' && w.state !== 'error';
+    })[0];
+    if (running) {
+      add(box, el('p', 'tkdlg__fact', 'Worker ' + running.name + ' runs on this account; it shows above with its Stop button.'));
+      return box;
+    }
+    var input = el('input');
+    input.type = 'text'; input.id = 'gr-wname'; input.autocomplete = 'off'; input.spellcheck = false;
+    input.placeholder = 'account' + slot; input.maxLength = 24;
+    var go = btn('Start a worker on this account', false, function () {
+      var name = input.value.trim() || 'account' + slot;
+      if (!GRID_NAME.test(name)) { gridNote('A worker\'s name is up to 24 letters, digits, _ or -.'); return; }
+      gridPress('worker-start', slot, 'Starting worker ' + name, { name: name });
+    });
+    go.id = 'gr-start';
+    go.title = 'A Claude Code worker of its own on this account, as its own Slurm job; it claims issues as grid-<name> and spends allocation like your main worker';
+    go.disabled = !!gr.busy;
+    add(box, el('p', 'tkdlg__fact tkdlg__faint', 'Runs beside your main worker, kept to this account, and claims its own issues as grid-<name>.'), add(el('p', 'gr__coderow'), input, go));
+    return box;
   }
   function signInBox(slot, signing, login) {
     var box = el('div', 'gr__sign');
