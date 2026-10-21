@@ -1941,3 +1941,180 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 @media (max-height: 520px) {
   body.console-bar-auto .console > .console__claude, .console > .console__claude { top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 10px); width: 32px; height: 32px; }
 }
+
+/* ============================================================
+   The design system (the owner, 2026-10-21: "consolidate these stylistic elements into a common
+   set of objects to obtain consistency"; "i like the shape of the buttons for workers, make sure
+   all panels are shaped like that"). One set of tokens on the deck, and every tab's surfaces,
+   buttons, chips, tables and notices drawn from them, so no tab has a look of its own: a card is
+   the Workers card (a 12px corner, a hairline edge, the deck's darker ground, an accent down its
+   left side where it has a state, a lift on hover); a button is a pill; a control on a card is a
+   round 28px button. The Folders and Explore tabs build on the same names (.ds-card, .ds-icon,
+   .ds-ctl, .ds-seg, .ds-table, .ds-note). These rules stand last so they win over the older
+   per-tab ones, which they restyle rather than relayout.
+   ============================================================ */
+.console {
+  --ds-radius: 12px; --ds-radius-sm: 8px; --ds-pill: 999px;
+  --ds-surface: var(--paper); --ds-raised: var(--paper-card);
+  --ds-border: 1px solid var(--line);
+  --ds-hover-border: rgba(60, 194, 177, 0.45); --ds-hover-bg: rgba(60, 194, 177, 0.06);
+  --ds-on-border: var(--teal); --ds-on-bg: rgba(60, 194, 177, 0.14);
+  --ds-icon: 44px; --ds-gap: 10px;
+  --ds-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --ds-shadow-lift: 0 8px 22px rgba(0, 0, 0, 0.35);
+  --ds-fs-title: 0.96rem; --ds-fs-body: 0.88rem; --ds-fs-meta: 0.78rem; --ds-fs-tag: 0.74rem;
+  --ds-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* the frame: on a computer the side column and the stage are the deck's two large cards (a phone
+   keeps its own full-screen frame) */
+@media (min-width: 901px) and (min-height: 521px) {
+  .console .console__side, .console .console__stage { border-radius: calc(var(--ds-radius) + 4px); border: var(--ds-border); background: var(--ds-raised); }
+}
+.console .console__rail button { border-radius: var(--ds-radius-sm); }
+
+/* the card: every list's card, the launch buttons, the readouts, the token and notebook tiles, the
+   worker tiles, the repositories, the side panels and the task lists' headings */
+.console .ds-card,
+.console table.console__cards tr:not(.card--add),
+.console button.launch, .console button.readout,
+.console button.tok__open:not(.tok--add),
+.console .wtile, .console .repos__card, .console .tkside,
+.console .console__kanban > h3 {
+  border-radius: var(--ds-radius); border: var(--ds-border); background: var(--ds-surface);
+  box-shadow: inset 3px 0 0 var(--card-accent, transparent), var(--ds-shadow);
+}
+.console table.console__cards tr:not(.card--add) { --card-accent: rgba(233, 230, 218, 0.2); }
+/* what a press opens lifts under the pointer, its edge lit, as the Workers card does */
+.console .ds-card--press, .console table.console__cards tr.card--open,
+.console button.launch, .console button.readout, .console button.tok__open:not(.tok--add), .console .wtile, .console .repos__card {
+  transition: transform 0.14s var(--ds-ease), border-color 0.14s, background-color 0.14s, box-shadow 0.14s;
+}
+.console .ds-card--press:hover, .console table.console__cards tr:not(.card--add):hover,
+.console button.launch:hover, .console button.readout:hover, .console button.tok__open:not(.tok--add):hover, .console .wtile:hover, .console .repos__card:hover {
+  border-color: var(--ds-hover-border); background: var(--ds-hover-bg); color: var(--ink);
+  box-shadow: inset 3px 0 0 var(--card-accent, transparent), var(--ds-shadow-lift);
+}
+.console .ds-card--press:hover, .console table.console__cards tr.card--open:hover, .console button.launch:hover,
+.console button.readout:hover, .console button.tok__open:not(.tok--add):hover, .console .wtile:hover { transform: translateY(-1px); }
+.console .ds-card--press:active, .console table.console__cards tr.card--open:active, .console button.launch:active,
+.console button.readout:active, .console button.tok__open:not(.tok--add):active, .console .wtile:active { transform: translateY(0); }
+.console .wtile[aria-pressed="true"], .console .repos__card--on, .tok--on .tok__open {
+  border-color: var(--ds-on-border); background: var(--ds-on-bg); box-shadow: inset 0 0 0 1px var(--ds-on-border);
+}
+.console button.launch--go { --card-accent: var(--go); background: rgba(47, 179, 106, 0.08); }
+@media (prefers-reduced-motion: reduce) {
+  .console .ds-card--press, .console table.console__cards tr.card--open, .console button.launch, .console button.readout,
+  .console button.tok__open, .console .wtile { transition: none; transform: none !important; }
+}
+
+/* the dashed + card, wherever a list ends in one */
+.console .ds-card--add, .console button.card__add, .console button.tok--add, .console button.console__addrepo {
+  border-radius: var(--ds-radius); border: 1.5px dashed rgba(233, 230, 218, 0.22); background: transparent; color: var(--ink-soft); box-shadow: none;
+}
+.console .ds-card--add:hover, .console button.card__add:hover, .console button.tok--add:hover, .console button.console__addrepo:hover {
+  border-color: var(--teal); color: var(--teal); background: var(--ds-hover-bg);
+}
+
+/* the icon tile: a rounded square tinted by the card's accent, as the Workers card's emblem */
+.console .ds-icon, .launch__icon, .tok__icon, .console .wtile__icon {
+  border-radius: calc(var(--ds-radius) - 2px);
+}
+.console .ds-icon { display: grid; place-items: center; width: var(--ds-icon); height: var(--ds-icon); flex: 0 0 auto; background: rgba(60, 194, 177, 0.14); color: var(--teal); font-size: 1.3rem; }
+.console #cp-workers tr::before, .console #cp-runs tr::before { border-radius: calc(var(--ds-radius) - 2px); }
+
+/* the round control on a card: the gear, the X, a side panel's close */
+.console .ds-ctl, .console button.card__gear, .console button.card__x, .console button.tok__gear, .console button.tok__x, .console button.tkside__close {
+  border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--ink-faint);
+}
+.console .ds-ctl { display: grid; place-items: center; width: 28px; height: 28px; margin: 0; padding: 0; font-size: 1.1rem; line-height: 1; }
+.console .ds-ctl:hover, .console button.card__gear:hover, .console button.tok__gear:hover, .console button.tkside__close:hover {
+  color: var(--teal); background: rgba(60, 194, 177, 0.12); border-color: rgba(60, 194, 177, 0.5);
+}
+.console button.card__x:hover, .console button.tok__x:hover { color: var(--ochre); background: rgba(240, 164, 92, 0.12); border-color: rgba(240, 164, 92, 0.5); }
+
+/* the buttons: one pill, in three weights. Filled teal is the head's main action (+ Add ...), an
+   outline the rest, and a chip the head's smaller ones; a pressed chip is a chosen sub-tab */
+.console a.console__add { border-radius: var(--ds-pill); }
+.console button.chip, .console button.console__add, .console a.console__add, .console .console__help > summary {
+  min-height: 30px; padding: 4px 14px; font-size: 0.84rem; line-height: 1.2; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--ds-pill);
+}
+.console button.chip { border: var(--ds-border); background: transparent; color: var(--ink-soft); }
+.console button.chip:hover { border-color: var(--teal); color: var(--teal); background: var(--ds-hover-bg); }
+.console button.chip[aria-pressed="true"] { border-color: var(--ds-on-border); background: var(--ds-on-bg); color: var(--ink); font-weight: 600; }
+.console .console__help > summary { padding: 4px 12px; }
+
+/* sub-tabs: a row of chips that choose what the tab shows, one pressed at a time */
+.console .ds-seg { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+
+/* every tab's head: its name, its main action, its chips, its help at the end */
+.console__panel > .console__head { gap: 8px 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+
+/* the tables that stay tables (the Board's, the Leaderboard's): a card with a quiet heading row */
+.console .ds-table, .console .control__board table, .console #lb-people, .console #lb-tokens {
+  border-collapse: separate; border-spacing: 0; border: var(--ds-border); border-radius: var(--ds-radius); background: var(--ds-surface); overflow: hidden;
+}
+.console .ds-table th, .console .control__board th, .console #lb-people th, .console #lb-tokens th {
+  background: var(--ds-raised); color: var(--ink-faint); font-size: var(--ds-fs-tag); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: var(--ds-border);
+}
+.console .ds-table td, .console .control__board td, .console #lb-people td, .console #lb-tokens td { border-bottom: 1px solid var(--line-soft); }
+.console .ds-table tr:last-child td, .console .control__board tr:last-child td, .console #lb-people tr:last-child td, .console #lb-tokens tr:last-child td { border-bottom: 0; }
+
+/* a box of words in a tab (the Board, About) is a card too, on the deck's darker ground */
+.console .control__board.admin__box { border-radius: var(--ds-radius); border: var(--ds-border); background: var(--ds-surface); box-shadow: var(--ds-shadow); }
+#tab-about > .console__scroll { padding: 16px 20px; border-radius: var(--ds-radius); border: var(--ds-border); background: var(--ds-surface); }
+#tab-about > .console__scroll > p { max-width: 82ch; }
+
+/* a notice or an empty list: a quiet card with its words, never bare text on the stage */
+.console .ds-note, .console .toks__note, .console #cp-agents-note {
+  margin: 0 0 10px; padding: 12px 14px; border-radius: var(--ds-radius); border: 1px dashed rgba(233, 230, 218, 0.18);
+  background: transparent; color: var(--ink-soft); font-size: var(--ds-fs-body); line-height: 1.5;
+}
+.console .ds-note:empty, .console .toks__note:empty, .console #cp-agents-note:empty { display: none; }
+
+/* the labels and settings on a card: one tag, whatever card it is on */
+.console .lchip, .console #cp-workers td.cell--area, .console #cp-workers td.cell--lands, .console #cp-workers td.cell--model,
+.console #cp-workers td.cell--turns, .console #cp-workers td.cell--rounds,
+.console #cp-agents td.cell--tools, .console #cp-agents td.cell--runs, .console #cp-agents td.cell--from, .console .repos__tag {
+  border-radius: var(--ds-pill); font-size: var(--ds-fs-tag); line-height: 1.5; padding: 0 9px;
+}
+
+/* a worker's card: its emblem beside its name and where it runs, the name on one line where it
+   fits; the gear and the X keep the corner (before, a narrow card squeezed the name into one letter
+   a line beside where it runs) */
+.console #cp-workers tr:not(:has(td.admin__none)):not(.card--add) { column-gap: 12px; }
+.console #cp-workers td.cell--name { flex: 1 1 calc(100% - var(--ds-icon) - 12px); }
+.console #cp-workers td.cell--runs { flex: 1 1 100%; margin: -8px 0 0 calc(var(--ds-icon) + 12px); }
+.console #cp-agents td.cell--name { flex: 1 1 8em; }
+
+/* the Tasks tab: one list at a time, chosen by its head's chips, or All side by side */
+.console .console__kanban[data-view]:not([data-view="all"]) { display: flex; flex-direction: column; gap: 8px; overflow-x: hidden; overflow-y: auto; }
+.console .console__kanban[data-view]:not([data-view="all"]) > #cp-other { display: none; }
+.console .console__kanban[data-view="queue"] > [data-col]:not([data-col="queue"]),
+.console .console__kanban[data-view="given"] > [data-col]:not([data-col="given"]),
+.console .console__kanban[data-view="claimed"] > [data-col]:not([data-col="claimed"]),
+.console .console__kanban[data-view="review"] > [data-col]:not([data-col="review"]),
+.console .console__kanban[data-view="blocked"] > [data-col]:not([data-col="blocked"]),
+.console .console__kanban[data-view="epics"] > [data-col]:not([data-col="epics"]) { display: none; }
+.console .console__kanban[data-view]:not([data-view="all"]) > .table-scroll { flex: 1 1 auto; overflow: visible; padding: 0 2px 6px; }
+.console .console__kanban[data-view]:not([data-view="all"]) table.console__cards tbody { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.console .console__kanban[data-view]:not([data-view="all"]) > h3 .console__colgrip { display: none; }
+
+/* the Claude mark: Claude's orange starburst on the floating button, the Ask Claude tile and the
+   Claude dialog's heading (the owner, 2026-10-21: "the icon for ask claude should be the orange
+   splat icon") */
+.claudemark { display: block; width: 1em; height: 1em; fill: #D97757; }
+.console__claudeicon { display: inline-grid; place-items: center; vertical-align: -0.15em; }
+.console > .console__claude .console__claudeicon { font-size: 1.45rem; }
+.console > .console__claude { border-color: rgba(217, 119, 87, 0.55); }
+.console > .console__claude:hover, .console > .console__claude:focus-visible { border-color: #D97757; }
+.console button.launch .launch__icon--claude { background: rgba(217, 119, 87, 0.16); font-size: 1.15rem; }
+/* a list of cards needs no box round it: the cards are the surface (site.css boxes every table's
+   scroller, which drew a frame round each tab's cards and a stray line under an empty list) */
+.console .table-scroll { border: 0; border-radius: 0; background: transparent; }
+/* on a phone the back bar names the tab, so a head that holds nothing but the name gives its room
+   to the tab, and one with buttons keeps them without the name again */
+@media (max-width: 900px), (max-height: 520px) {
+  .console:not(.console--home) .console__panel > .console__head > .console__h { display: none; }
+  .console:not(.console--home) .console__panel > .console__head:not(:has(> :not(.console__h))) { display: none; }
+}
