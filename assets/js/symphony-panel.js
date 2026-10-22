@@ -774,7 +774,7 @@
     if (status === 403) return byApp
       ? 'The sign-in may not do this (403' + (m ? ': ' + m : '') + '): it acts within SymphonyBoard\'s permissions and your own access, on the repositories the App is installed on. An administrator accepts the App\'s newest permissions at ' + fix.accept + ' (Configure beside SymphonyBoard).'
       : 'The token may not do this (403' + (m ? ': ' + m : '') + '). A fine-grained token needs the permission the sign-in box names for it; make one at https://github.com/settings/personal-access-tokens/new.';
-    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it, since SymphonyBoard is not installed there; install it at ' + fix.install + '.' : 'the token does not reach it.');
+    if (status === 404) return 'GitHub has nothing at ' + path + ' (404): the repository, the branch or the file is not there, or ' + (byApp ? 'the sign-in does not reach it, as when SymphonyBoard is not installed there (it installs at ' + fix.install + ').' : 'the token does not reach it.');
     if (status === 422) return 'GitHub refused the request (422' + (m ? ': ' + m : '') + ').';
     return 'GitHub answered ' + status + (m ? ': ' + m : '') + '.';
   }
@@ -849,11 +849,17 @@
   function gh(method, path, body, headers, raw, account) {
     return call(method, path, body, headers, raw, account === undefined ? shownLogin : account, false);
   }
+  // GitHub answers a read with Cache-Control: private, max-age=60, so the browser may hand back an
+  // answer up to a minute old; a read that follows the page's own change asks GitHub again (with
+  // the ETag it holds, which GitHub answers 304 for free), or the change seems not to have happened
+  function ghFresh(path) {
+    return call('GET', path, undefined, undefined, false, shownLogin, false, true);
+  }
   // the calls GitHub said the token has left this hour on its latest answer to any call of the page,
   // so the Dependencies tab's reserve is held to the newest count and not to the one its draw began
   // from, which the console's other reads made in parallel may have spent since
   var rateLatest = null;
-  function call(method, path, body, headers, raw, account, again) {
+  function call(method, path, body, headers, raw, account, again, fresh) {
     var sent = '', byApp = false, era = ends;
     return ready(method, path, account).then(function () {
       sent = token;
@@ -865,6 +871,7 @@
       // a header given as null is left off, for a read that must go out with no header of GitHub's own
       for (k in (headers || {})) if (Object.prototype.hasOwnProperty.call(headers, k)) { if (headers[k] === null) delete h[k]; else h[k] = headers[k]; }
       var ask = { method: method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) };
+      if (fresh) ask.cache = 'no-cache';
       // the calls that wait to know whose the token is all wait on this one question, so GitHub not
       // answering it must not hold them for good
       if (path === '/user') ask.signal = within(20000);
@@ -881,7 +888,7 @@
         // GitHub turned the request away unread, so it is made once more with a token stored
         // meanwhile, where there is one; a write, only for the account it was asked for
         if (r.status === 401) return refused(sent, byApp).then(function (retry) {
-          if (retry && !again) return call(method, path, body, headers, raw, account, true);
+          if (retry && !again) return call(method, path, body, headers, raw, account, true, fresh);
           throw failure(r.status, data, path, byApp);
         });
         if (!r.ok) throw failure(r.status, data, path, byApp);
@@ -901,10 +908,10 @@
     return m ? m[1].replace(API, '') : '';
   }
   // the pages of a list, up to a number of them; the array says .more when GitHub had another page
-  function ghList(path, pages) {
+  function ghList(path, pages, fresh) {
     var out = [];
     function step(p, left) {
-      return gh('GET', p).then(function (r) {
+      return (fresh ? ghFresh(p) : gh('GET', p)).then(function (r) {
         if (Array.isArray(r.data)) out = out.concat(r.data);
         var n = nextPage(r.headers);
         if (n && left <= 1) { out.more = true; return out; }
@@ -12337,6 +12344,7 @@
       if (!inst.permissions || inst.permissions.administration !== 'write') {
         return 'GitHub refused ' + doing + ': SymphonyBoard\'s installation has not accepted the Administration permission yet. Accept it once at ' + shareInstallationPage(inst) + ' (Review request, then Accept).';
       }
+      if (e.status === 404) return 'GitHub answered 404 to ' + doing + ', although you administer ' + repo + ' and SymphonyBoard holds Administration there. GitHub answers 404 both for what is not there and for what a sign-in may not reach, so press Refresh and try again, or do it on GitHub\'s own page at https://github.com/' + repo + '/settings/access.';
       return 'GitHub refused ' + doing + ' (' + e.status + ') although you administer ' + repo + ' and SymphonyBoard holds Administration there: ' + e.message;
     }, function () {
       return 'GitHub refused ' + doing + ' (' + e.status + '): it needs you to administer ' + repo + ' and SymphonyBoard\'s Administration permission accepted on its installation, at ' + installationsPage(repo) + '.';
@@ -12399,8 +12407,8 @@
     if (!state.meta) { $('sh-state').textContent = 'Reading ' + repo + '...'; return; }
     var org = shareInOrg();
     $('sh-state').textContent = 'Reading who has access to ' + repo + '...';
-    var people = ghList('/repos/' + repo + '/collaborators?affiliation=' + (org ? 'direct' : 'all') + '&per_page=100', 2);
-    var waiting = ghList('/repos/' + repo + '/invitations?per_page=100', 1).catch(function () { return null; });
+    var people = ghList('/repos/' + repo + '/collaborators?affiliation=' + (org ? 'direct' : 'all') + '&per_page=100', 2, true);
+    var waiting = ghList('/repos/' + repo + '/invitations?per_page=100', 1, true).catch(function () { return null; });
     var asking = accessRequests(repo).catch(function () { return null; });
     Promise.all([people, waiting, whoAmI().catch(function () { return ''; }), asking]).then(function (r) {
       if (mine !== shareSeq || state.repo !== repo) return;
@@ -12503,6 +12511,10 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
+      if (pending && e.status === 404) return shareInvitationGone(repo, p, e, 'the role change').then(function (r) {
+        if (r.gone) closeDialog('dlg-item'); else richText(said, r.words);
+        say(r.words, !r.gone);
+      });
       return shareRefused(repo, e, 'the role change').then(function (words) { richText(said, words); say(words, true); });
     });
   }
@@ -12518,8 +12530,38 @@
       if (state.repo === repo) sharePeople();
     }).catch(function (e) {
       button.disabled = false;
+      if (pending && e.status === 404) return shareInvitationGone(repo, p, e, 'withdrawing the invitation').then(function (r) { say(r.words, !r.gone); });
       return shareRefused(repo, e, pending ? 'withdrawing the invitation' : 'taking the access away').then(function (words) { say(words, true); });
     });
+  }
+  // GitHub answers 404 for an invitation that is no longer waiting, accepted, declined or withdrawn
+  // already (perhaps from another tab or GitHub's own page), and also for one the sign-in may not
+  // reach. So the page reads the invitations again: one still listed goes to shareRefused as any
+  // refusal does; one gone is said as gone, with who has access now where GitHub shows it, and the
+  // list is read again so the row goes.
+  function shareInvitationGone(repo, p, e, doing) {
+    var id = p.invitation && p.invitation.id;
+    return ghList('/repos/' + repo + '/invitations?per_page=100', 1, true).then(function (list) {
+      return !list.more && !list.some(function (inv) { return inv.id === id; });
+    }, function () { return false; }).then(function (gone) {
+      if (!gone) return shareRefused(repo, e, doing).then(function (words) { return { gone: false, words: words }; });
+      return shareGoneWords(repo, p).then(function (words) {
+        if (state.repo === repo) sharePeople();
+        return { gone: true, words: words };
+      });
+    });
+  }
+  // the people added by name, since a member of the repository's organization reaches it through
+  // the organization whether or not they took the invitation
+  function shareGoneWords(repo, p) {
+    var login = p.invitation && p.invitation.invitee && p.invitation.invitee.login;
+    var gone = 'The invitation of ' + p.login + ' is no longer waiting';
+    if (!login) return Promise.resolve(gone + ': it was accepted, declined or withdrawn already.');
+    return ghList('/repos/' + repo + '/collaborators?affiliation=direct&per_page=100', 2, true).then(function (list) {
+      var lower = login.toLowerCase();
+      if (list.some(function (c) { return String(c.login).toLowerCase() === lower; })) return gone + ': ' + login + ' accepted it and has access to ' + repo + '. The X on their row takes the access away.';
+      return list.more ? gone + '.' : gone + ', and ' + login + ' has no access by name: it was withdrawn already or declined, or taken and the access since removed.';
+    }, function () { return gone + '.'; });
   }
   // A request to join is an issue whose first line is ACCESS_MARK, opened by the person asking, which
   // anyone who may open an issue can do with no role at all (the owner, 2026-10-19). Its author is who
