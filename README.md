@@ -19,6 +19,8 @@ dry run: it touches nothing here, and `diff -r` against DIR shows what a real bu
 
 ## Publishing (read this before every push)
 
+Every pull request runs the required check "check" (`.github/workflows/ci.yml`, `bash scripts/check.sh`): the build's `--check-only`, the tests and the review record (`CONTRIBUTING.md`). Master takes changes only by pull request.
+
 1. **Rebuild once, then push once.** `python -X utf8 tools/build_site.py` rewrites every
    page, stamps every stylesheet, script, image, video and document reference with one new
    `?v=<yyyymmddHHMM>` (UTC), and runs its checks. Push the whole tree it wrote in one commit,
