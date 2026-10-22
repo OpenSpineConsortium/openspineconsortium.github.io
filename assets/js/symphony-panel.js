@@ -2731,7 +2731,7 @@
   function consoleAtHome() { var c = $('console'); return !!c && c.classList.contains('console--home'); }
   function showHome() {
     var c = $('console');
-    if (!c || !phoneLayout()) return;
+    if (!c || !homeLayout()) return;
     // a tab's own dialog open over it (a token's, a notebook's) closes with the tab, never left
     // open and unseen with the page held behind it
     Array.prototype.forEach.call(c.querySelectorAll('.console__stage dialog[open]'), function (d) {
@@ -2750,24 +2750,26 @@
     if (chosen) chosen.tabIndex = 0;
     if (chosen && c.contains(document.activeElement)) chosen.focus();
   }
-  // the console left the phone's layout (a window widened, a tablet turned): the tab it showed
-  // before the home screen comes back, as a computer's console always shows one
+  // the console left the home screen's layout (a window widened, a tablet turned, Legacy chosen on a
+  // computer): the tab it showed before the home screen comes back, as the side rail always shows one
   function leftPhone() {
     var c = $('console');
-    if (!c || !c.classList.contains('console--home') || phoneLayout()) return;
+    if (!c || !c.classList.contains('console--home') || homeLayout()) return;
     c.classList.remove('console--home');
     var name = consoleTab;
     consoleTab = '';
     showTab(name);
   }
   // the home screen's arrows move among the buttons as a grid, a row being the buttons level with
-  // the first, and open nothing; Enter or Space presses the one in focus
+  // the first, and open nothing; Enter or Space presses the one in focus; with Alt held the arrows,
+  // Home and End move the button itself to that place, as a drag does (homeMove)
   function homeArrow(e, i, all) {
     var across = all.filter(function (t) { return t.offsetTop === all[0].offsetTop; }).length || 1;
     var step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: across, ArrowUp: -across }[e.key];
     var to = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : step === undefined ? -1 : Math.min(all.length - 1, Math.max(0, i + step));
     if (to < 0) return;
     e.preventDefault();
+    if (e.altKey) { homeMove(all[i], to); return; }
     all[i].tabIndex = -1;
     all[to].tabIndex = 0;
     all[to].focus();
@@ -2782,6 +2784,252 @@
   }
   function leaveTab() {
     if (history.state && history.state.consoleHome) history.back(); else showHome();
+  }
+
+  // The button home screen is every screen's home (the owner, 2026-10-21: "the mobile view with the
+  // buttons should be the default for both pc/browser and mobile view"); Legacy, under the tabs,
+  // gives a computer the side rail back, while a phone always has the buttons. The buttons are
+  // dragged to new places, or moved with Alt and the arrow keys, and the rail keeps the same order.
+  // The choice and the order are kept in this browser's localStorage under one key, as the sizes
+  // and the last repository are, so the same Chrome profile finds them again; Forget the token and
+  // a sign-in as someone else leave them, as they leave the sizes.
+  var KEY_HOME = 'symphony_panel_home';
+  var homeKept = null;
+  var homeDefault = [];
+  function readHomePrefs() {
+    var kept;
+    try { kept = JSON.parse(localStorage.getItem(KEY_HOME) || '{}'); } catch (e) { kept = {}; }
+    if (!kept || typeof kept !== 'object' || Array.isArray(kept)) kept = {};
+    var order = Array.isArray(kept.order) ? kept.order.filter(function (n) { return typeof n === 'string'; }) : [];
+    return { layout: kept.layout === 'legacy' ? 'legacy' : 'buttons', order: order };
+  }
+  function homePrefs() {
+    if (!homeKept) homeKept = readHomePrefs();
+    return homeKept;
+  }
+  function keepHomePrefs() {
+    var prefs = homePrefs(), m = {};
+    if (prefs.layout === 'legacy') m.layout = 'legacy';
+    if (prefs.order.length) m.order = prefs.order;
+    try {
+      if (Object.keys(m).length) localStorage.setItem(KEY_HOME, JSON.stringify(m));
+      else localStorage.removeItem(KEY_HOME);
+    } catch (e) { /* the choice lasts while the page is open */ }
+  }
+  function buttonsChosen() { return homePrefs().layout !== 'legacy'; }
+  function homeLayout() { return phoneLayout() || buttonsChosen(); }
+  function tabName(t) { return t.getAttribute('data-tab'); }
+  function sameOrder(a, b) { return a.length === b.length && a.every(function (n, i) { return n === b[i]; }); }
+  // the rail's buttons in the order given: the names it lists first, then the rest as the page has
+  // them, so a tab added since the order was kept still shows
+  function applyOrder(order) {
+    var rail = document.querySelector('.console__rail');
+    if (!rail) return;
+    var tabs = consoleTabs(), byName = {};
+    tabs.forEach(function (t) { byName[tabName(t)] = t; });
+    var placed = [];
+    order.forEach(function (n) { if (byName[n] && placed.indexOf(byName[n]) < 0) placed.push(byName[n]); });
+    homeDefault.forEach(function (n) { if (byName[n] && placed.indexOf(byName[n]) < 0) placed.push(byName[n]); });
+    tabs.forEach(function (t) { if (placed.indexOf(t) < 0) placed.push(t); });
+    placed.forEach(function (t) { rail.appendChild(t); });
+  }
+  function keepOrder() {
+    var now = consoleTabs().map(tabName);
+    homePrefs().order = sameOrder(now, homeDefault) ? [] : now;
+    keepHomePrefs();
+    drawHomeSettings();
+  }
+  function drawHomeSettings() {
+    var legacy = !buttonsChosen();
+    if ($('cp-layout-buttons')) $('cp-layout-buttons').setAttribute('aria-pressed', legacy ? 'false' : 'true');
+    if ($('cp-layout-legacy')) $('cp-layout-legacy').setAttribute('aria-pressed', legacy ? 'true' : 'false');
+    if ($('cp-order-reset')) $('cp-order-reset').hidden = !homePrefs().order.length;
+  }
+  function applyHomeLayout() {
+    var c = $('console');
+    if (!c) return;
+    c.classList.toggle('console--buttons', buttonsChosen());
+    drawHomeSettings();
+    if (homeLayout()) { if (!consoleAtHome() && !location.hash) showHome(); } else leftPhone();
+  }
+  function chooseHomeLayout(layout) {
+    homePrefs().layout = layout === 'legacy' ? 'legacy' : 'buttons';
+    keepHomePrefs();
+    applyHomeLayout();
+    // Buttons, pressed beside a tab in the side rail, shows the home screen it chose at once
+    if (homeLayout() && !consoleAtHome()) showHome();
+  }
+  function sayHome(text) {
+    var live = $('cp-home-live');
+    if (live) live.textContent = text;
+  }
+  function sayPlace(t) {
+    var all = consoleTabs(), named = t.querySelector('.rail__name');
+    sayHome((named ? named.textContent : tabName(t)) + ': place ' + (all.indexOf(t) + 1) + ' of ' + all.length + '.');
+  }
+  // the other buttons glide from where they were to where the move put them, unless less motion is asked
+  function glide(before) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    before.forEach(function (was, t) {
+      var dx = was.left - t.offsetLeft, dy = was.top - t.offsetTop;
+      if (!dx && !dy) return;
+      t.style.transition = 'none';
+      t.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+      void t.offsetWidth;
+      requestAnimationFrame(function () {
+        t.style.transition = 'transform 0.16s ease-out';
+        t.style.transform = '';
+        t.addEventListener('transitionend', function done() { t.removeEventListener('transitionend', done); if (!t.style.transform) t.style.transition = ''; });
+      });
+    });
+  }
+  function placesOf(skip) {
+    var m = new Map();
+    consoleTabs().forEach(function (t) { if (t !== skip) m.set(t, { left: t.offsetLeft, top: t.offsetTop }); });
+    return m;
+  }
+  // a button moved to place `to` (from 0), by a drag or by Alt and an arrow
+  function moveButton(t, to) {
+    var all = consoleTabs(), from = all.indexOf(t);
+    if (from < 0 || to === from || to < 0 || to >= all.length) return false;
+    var before = placesOf(t), rail = t.parentNode;
+    rail.insertBefore(t, to > from ? all[to].nextSibling : all[to]);
+    glide(before);
+    return true;
+  }
+  function homeMove(t, to) {
+    if (!moveButton(t, to)) return;
+    keepOrder();
+    t.focus();
+    sayPlace(t);
+  }
+  // A drag: a mouse or a pen moves a button once it has gone a few pixels, a finger once it has held
+  // it still for a moment, since a finger moving at once scrolls the buttons; the button follows the
+  // pointer, the others make room, and Escape puts every button back as it was. The press that ends a
+  // drag opens no tab.
+  var HOLD_MS = 500;
+  var homeDragging = function () { return null; };
+  function initHomeDrag() {
+    var rail = document.querySelector('.console__rail');
+    if (!rail) return;
+    var drag = null, swallow = null;
+    homeDragging = function () { return drag && drag.on ? drag : null; };
+    // the pointer in the rail's own pixels, which A- and A+ scale (control.css, --console-zoom)
+    // while the pointer's stay the screen's
+    function inRail(e) {
+      var r = rail.getBoundingClientRect(), k = rail.offsetWidth ? r.width / rail.offsetWidth : 1;
+      return { x: (e.clientX - r.left) / k - rail.clientLeft + rail.scrollLeft, y: (e.clientY - r.top) / k - rail.clientTop + rail.scrollTop };
+    }
+    function follow(at) {
+      var b = drag.b;
+      b.style.transform = 'translate(' + (at.x - drag.grab.x - b.offsetLeft) + 'px, ' + (at.y - drag.grab.y - b.offsetTop) + 'px)';
+    }
+    function begin() {
+      drag.on = true;
+      clearTimeout(drag.timer);
+      var b = drag.b;
+      try { b.setPointerCapture(drag.id); } catch (e) { /* the rail still hears the pointer */ }
+      drag.grab = { x: drag.at.x - b.offsetLeft, y: drag.at.y - b.offsetTop };
+      b.style.transition = 'none';
+      b.classList.add('rail--dragging');
+      rail.classList.add('console__rail--arranging');
+      sayHome('Moving ' + (b.querySelector('.rail__name') || b).textContent + '. Escape puts it back.');
+    }
+    function over(at) {
+      var hit = null;
+      consoleTabs().forEach(function (t) {
+        if (t === drag.b || !t.offsetWidth) return;
+        if (at.x >= t.offsetLeft && at.x < t.offsetLeft + t.offsetWidth && at.y >= t.offsetTop && at.y < t.offsetTop + t.offsetHeight) hit = t;
+      });
+      return hit;
+    }
+    function edgeScroll(e) {
+      var r = rail.getBoundingClientRect();
+      if (e.clientY < r.top + 32) rail.scrollTop -= 10;
+      else if (e.clientY > r.bottom - 32) rail.scrollTop += 10;
+    }
+    function end(keep) {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      clearTimeout(d.timer);
+      if (!d.on) return;
+      if (!keep) applyOrder(d.start);
+      if (d.later) { homeKept = readHomePrefs(); applyOrder(homePrefs().order); }
+      var moved = !sameOrder(consoleTabs().map(tabName), d.start);
+      consoleTabs().forEach(function (t) { t.style.transform = ''; t.style.transition = ''; });
+      d.b.classList.remove('rail--dragging');
+      rail.classList.remove('console__rail--arranging');
+      // the press that ended a drag opens nothing (and is the dragged button's alone, since moving
+      // it may have kept the browser from calling it a click); a finger held long and let go where
+      // it was is a slow tap, and opens the tab
+      if (moved || !d.finger) swallow = { b: d.b, until: Date.now() + 500 };
+      if (d.later) { applyHomeLayout(); return; }
+      keepOrder();
+      sayPlace(d.b);
+    }
+    rail.addEventListener('pointerdown', function (e) {
+      if (drag || !consoleAtHome() || !homeLayout()) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      var b = e.target && e.target.closest ? e.target.closest('[data-tab]') : null;
+      if (!b || b.parentNode !== rail) return;
+      drag = { b: b, id: e.pointerId, x0: e.clientX, y0: e.clientY, at: inRail(e), on: false, finger: e.pointerType === 'touch', start: consoleTabs().map(tabName), timer: 0 };
+      // a mouse or a pen let go outside the rail still ends the press; a finger is the browser's
+      // until it has held, so it may still scroll
+      if (!drag.finger) { try { b.setPointerCapture(e.pointerId); } catch (err) { /* window listeners below */ } }
+      if (drag.finger) drag.timer = setTimeout(function () { if (drag && !drag.on) begin(); }, HOLD_MS);
+    });
+    rail.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (!drag.finger && e.buttons === 0) { end(true); return; }
+      var far = Math.max(Math.abs(e.clientX - drag.x0), Math.abs(e.clientY - drag.y0));
+      if (!drag.on) {
+        // a finger that moves before the hold scrolls; a mouse that moves far enough drags
+        if (drag.finger) { if (far > 10) end(false); return; }
+        if (far < 6) return;
+        begin();
+      }
+      e.preventDefault();
+      edgeScroll(e);
+      var at = inRail(e), hit = over(at);
+      if (hit) moveButton(drag.b, consoleTabs().indexOf(hit));
+      follow(at);
+    });
+    window.addEventListener('pointerup', function (e) { if (drag && e.pointerId === drag.id) end(true); });
+    window.addEventListener('pointercancel', function (e) { if (drag && e.pointerId === drag.id) end(true); });
+    // a finger holding a button moves it rather than scrolling the page or opening the phone's menu
+    rail.addEventListener('touchmove', function (e) { if (drag && drag.on && e.cancelable) e.preventDefault(); }, { passive: false });
+    rail.addEventListener('contextmenu', function (e) { if (drag && drag.finger) e.preventDefault(); });
+    rail.addEventListener('click', function (e) {
+      var s = swallow;
+      swallow = null;
+      if (s && Date.now() < s.until && s.b.contains(e.target)) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+    document.addEventListener('keydown', function (e) { if (drag && drag.on && e.key === 'Escape') { e.preventDefault(); end(false); } }, true);
+  }
+  function initHome() {
+    homeDefault = consoleTabs().map(tabName);
+    if (homePrefs().order.length) applyOrder(homePrefs().order);
+    $('console').classList.toggle('console--buttons', buttonsChosen());
+    drawHomeSettings();
+    if ($('cp-layout-buttons')) $('cp-layout-buttons').addEventListener('click', function () { chooseHomeLayout('buttons'); });
+    if ($('cp-layout-legacy')) $('cp-layout-legacy').addEventListener('click', function () { chooseHomeLayout('legacy'); });
+    if ($('cp-order-reset')) $('cp-order-reset').addEventListener('click', function () {
+      var before = placesOf(null);
+      applyOrder(homeDefault);
+      glide(before);
+      keepOrder();
+      sayHome('The buttons are back in their first order.');
+    });
+    // another tab of this browser chose or moved too
+    window.addEventListener('storage', function (e) {
+      if (e.key !== KEY_HOME) return;
+      if (homeDragging()) { homeDragging().later = true; return; }
+      homeKept = readHomePrefs();
+      applyOrder(homePrefs().order);
+      applyHomeLayout();
+    });
+    initHomeDrag();
   }
   function revealTab(node) {
     var panel = node && node.closest ? node.closest('[data-tab-panel]') : null;
@@ -3558,6 +3806,7 @@
     window.addEventListener('load', fitConsole);
     if (c.querySelector('.console__rail')) c.querySelector('.console__rail').addEventListener('scroll', railEdges, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitConsole);
+    initHome();
     var asked = location.hash.slice(1);
     showTab(asked);
     if (!consoleTabs().some(function (t) { return t.getAttribute('data-tab') === asked; })) showHome();
@@ -3573,12 +3822,14 @@
       if (name === 'repos') { if (!$('cp-app').classList.contains('hidden')) openDialog('dlg-repos'); return; }
       if (consoleTabs().some(function (t) { return t.getAttribute('data-tab') === name; })) showTab(name);
     });
-    consoleTabs().forEach(function (t, i, all) {
+    // the buttons' order changes with a drag, so each press reads where the button stands now
+    consoleTabs().forEach(function (t) {
       t.addEventListener('click', function () {
-        if (consoleAtHome() && phoneLayout()) openFromHome(t.getAttribute('data-tab')); else showTab(t.getAttribute('data-tab'));
+        if (consoleAtHome() && homeLayout()) openFromHome(t.getAttribute('data-tab')); else showTab(t.getAttribute('data-tab'));
       });
       t.addEventListener('keydown', function (e) {
-        if (consoleAtHome() && phoneLayout()) { homeArrow(e, i, all); return; }
+        var all = consoleTabs(), i = all.indexOf(t);
+        if (consoleAtHome() && homeLayout()) { homeArrow(e, i, all); return; }
         var step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
         var next = e.key === 'Home' ? all[0] : e.key === 'End' ? all[all.length - 1] : step ? all[(i + step + all.length) % all.length] : null;
         if (!next) return;
@@ -4487,7 +4738,7 @@
     if (q && !$('cp-as-box').classList.contains('hidden')) q.focus();
   }
   function claudeToTokens() {
-    if (consoleAtHome() && phoneLayout()) openFromHome('tokens'); else showTab('tokens');
+    if (consoleAtHome() && homeLayout()) openFromHome('tokens'); else showTab('tokens');
     openTokenDialog('', true);
   }
   function pressClaude() {

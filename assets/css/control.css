@@ -1755,8 +1755,8 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 
   /* the home screen: the repository, then the tabs as a grid of icons with their names under them */
   .console--home .console__split[data-split="side"] { display: none; }
-  /* the stage takes no room on the home screen, but Claude's answer, which the stage holds and which
-     is fixed to the screen here, still opens over it when it comes */
+  /* the stage takes no room on the home screen (Claude's answer, which it once held, is in the
+     Claude dialog now) */
   .console--home .console__stage { min-height: 0; height: 0; padding: 0; border: 0; overflow: visible; }
   .console--home .console__stage > :not(.console__askdrawer) { display: none; }
   /* the repository and the buttons scroll as one, so a phone held sideways still reaches every
@@ -1782,11 +1782,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console--home .console__rail button:active .rail__icon { transform: scale(0.94); }
   .console--home .console__rail button:focus-visible { outline: none; }
   .console--home .console__rail button:focus-visible .rail__icon { outline: 2px solid var(--teal-bright); outline-offset: 3px; }
-  .console--home .console__rail button:nth-child(5n+1) { --icon: #2A9C8E; }
-  .console--home .console__rail button:nth-child(5n+2) { --icon: #3D7BD9; }
-  .console--home .console__rail button:nth-child(5n+3) { --icon: #C9772E; }
-  .console--home .console__rail button:nth-child(5n+4) { --icon: #7C5BC7; }
-  .console--home .console__rail button:nth-child(5n+5) { --icon: #2F9E5A; }
   .console--home .rail__name {
     flex: 0 0 auto; max-width: 100%; font-size: 0.74rem; line-height: 1.2; white-space: normal; overflow-wrap: anywhere;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -2143,3 +2138,91 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 #tab-wandb .wb__summary tbody th { font-weight: 400; color: var(--ink-soft); text-transform: none; letter-spacing: 0; background: transparent; font-size: 0.8rem; overflow-wrap: anywhere; }
 #tab-wandb .wb__summary td { font-family: var(--font-mono, ui-monospace, monospace); text-align: right; }
 @media (max-width: 900px), (max-height: 520px) { #tab-wandb .tkside { width: auto; max-width: none; } }
+
+/* ============================================================
+   The button home screen on every screen (the owner, 2026-10-21: "the mobile view with the buttons
+   should be the default for both pc/browser and mobile view"). On a computer, console--buttons
+   (symphony-panel.js, initHome; the default, Legacy under the tabs takes it off) shows the
+   repository and the tabs as a home screen of buttons filling the console, and a tab pressed fills
+   the console under the back bar, as on a phone; the side rail and its grip are the legacy view's.
+   A button keeps its colour wherever it is dragged (data-hue), and the buttons can be put in any
+   order by a drag or Alt and the arrow keys, on a computer and a phone alike.
+   ============================================================ */
+.console--home .console__rail button[data-hue="1"] { --icon: #2A9C8E; }
+.console--home .console__rail button[data-hue="2"] { --icon: #3D7BD9; }
+.console--home .console__rail button[data-hue="3"] { --icon: #C9772E; }
+.console--home .console__rail button[data-hue="4"] { --icon: #7C5BC7; }
+.console--home .console__rail button[data-hue="5"] { --icon: #2F9E5A; }
+/* the rail is where a dragged button is measured from, and a press held on a button picks it up
+   rather than selecting its name or opening the phone's menu */
+.console--home .console__rail { position: relative; }
+.console--home .console__rail button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: pan-y pinch-zoom; }
+.console--home .console__rail--arranging { touch-action: none; }
+.console--home .console__rail--arranging button { cursor: grabbing; }
+.console.console--home .console__rail button.rail--dragging { z-index: 5; transition: none; }
+.console.console--home .console__rail button.rail--dragging .rail__icon, .console.console--buttons.console--home .console__rail button.rail--dragging .rail__icon { transform: scale(1.1); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.console__order:has(> [hidden]) { display: none; }
+.console .console__homeset button[aria-pressed="true"] { color: var(--ink); border-color: var(--teal); background: rgba(60, 194, 177, 0.16); }
+/* the home screen's own settings say nothing where they change nothing: a phone always has the buttons */
+@media (max-width: 900px), (max-height: 520px) {
+  .console__homeset { display: none !important; }
+}
+@media (min-width: 901px) and (min-height: 521px) {
+  .console--buttons .console__body { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: minmax(0, 1fr); }
+  .console--buttons .console__body > .console__split[data-split="side"] { display: none; }
+
+  /* the home screen: the repository, the buttons, then who is signed in and the settings */
+  .console--buttons.console--home .console__stage { display: none; }
+  .console--buttons.console--home .console__side { min-height: 0; overflow: hidden; }
+  .console--buttons.console--home .console__id { padding-right: 64px; }
+  /* the buttons grow with the window's height, so a short window still shows every one unscrolled */
+  .console--buttons.console--home { --home-icon: clamp(52px, 8.5vh, 76px); }
+  .console.console--buttons.console--home .console__rail {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(max(108px, calc(var(--home-icon) + 44px)), 1fr)); align-content: start;
+    flex: 1 1 auto; min-height: 0; gap: clamp(10px, 2.4vh, 24px) 8px; padding: clamp(12px, 2.6vh, 24px) 16px 12px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+    -webkit-mask-image: none; mask-image: none;
+  }
+  .console.console--buttons.console--home .console__rail button,
+  .console.console--buttons.console--home .console__rail button:hover,
+  .console.console--buttons.console--home .console__rail button[aria-selected="true"] {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; padding: 0;
+    border: 0; background: transparent; box-shadow: none; color: var(--ink); text-align: center;
+  }
+  .console--buttons.console--home .rail__icon {
+    display: grid; place-items: center; width: var(--home-icon); height: var(--home-icon); border-radius: calc(var(--home-icon) * 0.24);
+    background: linear-gradient(160deg, var(--icon, #2A9C8E), color-mix(in srgb, var(--icon, #2A9C8E) 62%, #000));
+    color: #FFFFFF; font-size: calc(var(--home-icon) * 0.44); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: transform 0.12s ease-out;
+  }
+  .console--buttons.console--home .console__rail button:hover .rail__icon { transform: translateY(-2px); }
+  .console--buttons.console--home .console__rail button:active .rail__icon { transform: scale(0.94); }
+  .console--buttons.console--home .console__rail button:focus-visible { outline: none; }
+  .console--buttons.console--home .console__rail button:focus-visible .rail__icon { outline: 2px solid var(--teal-bright); outline-offset: 3px; }
+  .console--buttons.console--home .rail__name {
+    flex: 0 0 auto; max-width: 100%; font-size: 0.86rem; line-height: 1.25; white-space: normal; overflow-wrap: break-word;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .console--buttons.console--home .rail__count {
+    position: absolute; top: -6px; left: calc(50% + var(--home-icon) * 0.3); min-width: 22px; padding: 1px 6px; border-radius: 100px;
+    background: #E5484D; color: #FFFFFF; font-size: 0.74rem; font-weight: 600; line-height: 1.5; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+  .console--buttons.console--home .rail__count:empty, .console--buttons.console--home .rail__count[data-zero] { display: none; }
+  .console--buttons.console--home .console__side > .console__me { justify-content: flex-start; gap: 8px 14px; }
+
+  /* a tab: the side column gives way and the tab fills the console under the back bar */
+  .console--buttons:not(.console--home) .console__side { display: none; }
+  .console--buttons:not(.console--home) .console__phonebar {
+    display: flex; flex: 0 0 auto; align-items: center; gap: 10px; min-width: 0;
+    margin: 0 0 8px; padding: 0 52px 6px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .console.console--buttons button.console__back { flex: 0 0 auto; margin: 0; min-height: 34px; padding: 2px 14px 2px 8px; font-size: 0.95rem; font-weight: 600; color: var(--teal); border-color: transparent; }
+  .console.console--buttons button.console__back span { font-size: 1.5rem; line-height: 1; margin-right: 2px; vertical-align: -2px; }
+  .console--buttons .console__phonetitle { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* the tab's own name is the bar's, so its head does not say it twice */
+  .console--buttons:not(.console--home) .console__panel > .console__head > .console__h { display: none; }
+  .console--buttons:not(.console--home) .console__panel > .console__head:not(:has(> :not(.console__h))) { display: none; }
+}
+@media (min-width: 901px) and (min-height: 521px) and (prefers-reduced-motion: reduce) {
+  .console--buttons.console--home .rail__icon { transition: none; }
+  .console--buttons.console--home .console__rail button:hover .rail__icon { transform: none; }
+}
