@@ -1,0 +1,113 @@
+name: Checks
+
+# The required check "check" on every pull request and every push to the default branch:
+# bash scripts/check.sh, the site's own build checking the pages on disk (tools/build_site.py
+# --check-only), the tests, and on a pull request the review record of one marked ready
+# (CONTRIBUTING.md). The ruleset "Protect the default branch" requires it
+# (.github/workflows/required-check.yml makes it so), so it binds every contributor, a person or
+# a session, as the same check does in symphony-template.
+#
+# The build checks the legal pages word for word against their sources in the Beethoven and
+# Symphony repositories, three of them private. The job sources fetches those texts and each
+# extension's version, nothing else, with the SymphonyBoard App's token for contents read on the
+# four repositories; it checks out nothing and runs no file of this repository, so no pull
+# request's code runs beside the App's key. What it hands on is already published on this site
+# (its terms and privacy pages render the same texts), so the artifact, which anyone can download
+# from a public repository's run, holds nothing that is not public; each package.json is cut down
+# to its version before the upload. The job check names no secret. A pull request from a fork is
+# given no secret, so its sources job fails and with it the check; contributors work on branches
+# of this repository.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Mint a read-only token for the four source repositories
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          owner: OpenSpineConsortium
+          repositories: beethoven-extension,beethoven-vscode,symphony-extension,symphony-start
+          permission-contents: read
+
+      - name: Fetch the published texts and the versions
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          OUT: ${{ runner.temp }}/sources
+        run: |
+          set -euo pipefail
+          fetch() {  # repository, path: the file at the repository's default branch
+            mkdir -p "$OUT/$1/$(dirname "$2")"
+            gh api -H "Accept: application/vnd.github.raw" "repos/OpenSpineConsortium/$1/contents/$2" > "$OUT/$1/$2"
+          }
+          version_only() {  # repository, path of a package.json: keep its version alone
+            mkdir -p "$OUT/$1/$(dirname "$2")"
+            gh api -H "Accept: application/vnd.github.raw" "repos/OpenSpineConsortium/$1/contents/$2" \
+              | python3 -c 'import json, sys; print(json.dumps({"version": json.load(sys.stdin)["version"]}))' > "$OUT/$1/$2"
+          }
+          fetch beethoven-extension LICENSE.txt
+          fetch beethoven-extension PRIVACY.md
+          version_only beethoven-extension extension/package.json
+          for f in LICENSE.txt LICENSE-FULL.txt PRIVACY.md THIRD_PARTY_NOTICES.md; do fetch beethoven-vscode "extension/$f"; done
+          version_only beethoven-vscode extension/package.json
+          fetch symphony-extension PRIVACY.md
+          version_only symphony-extension package.json
+          fetch symphony-start PRIVACY.md
+          find "$OUT" -type f | sort
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sources
+          path: ${{ runner.temp }}/sources
+          retention-days: 1
+
+  check:
+    needs: sources
+    if: ${{ !cancelled() }}
+    # pinned so pandoc, which renders the Markdown texts the pages are checked against, stays 3.1.3
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: The sources were fetched
+        env:
+          SOURCES: ${{ needs.sources.result }}
+        run: |
+          echo "sources: $SOURCES"
+          [ "$SOURCES" = success ]
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sources
+          path: ${{ runner.temp }}/sources
+
+      - name: Install pandoc
+        run: sudo apt-get install -y --no-install-recommends pandoc > /dev/null && pandoc --version | head -1
+
+      - name: Run the checks
+        env:
+          BEETHOVEN_REPO: ${{ runner.temp }}/sources/beethoven-extension
+          BEETHOVEN_VSCODE_REPO: ${{ runner.temp }}/sources/beethoven-vscode
+          SYMPHONY_REPO: ${{ runner.temp }}/sources/symphony-extension
+          SYMPHONY_START_REPO: ${{ runner.temp }}/sources/symphony-start
+        run: bash scripts/check.sh

@@ -1,0 +1,72 @@
+# Make the check named "check" required on the default branch (tools/required_check.py), so every
+# contributor's pull request is held to it, a person's or a session's alike (the owner, 2026-10-22).
+# GITHUB_TOKEN cannot administer rulesets and a session's own writes to them are refused, so the job
+# mints the SymphonyBoard App's installation token with Administration for this repository alone.
+# It runs after each run of the checks on the default branch, so the first green one after this
+# file lands requires the check with no step by hand, and by hand. It runs the default branch's
+# code only: a run started on another branch does nothing, so a branch cannot run its own script
+# with the App's token. Where the App's variable and key do not reach this repository it says so
+# and ends green.
+name: Required check
+
+on:
+  workflow_run:
+    workflows: [Checks]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: required-check
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >-
+      github.ref_name == github.event.repository.default_branch &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.conclusion == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Does the App reach this repository?
+        id: app_set
+        env:
+          APP_ID: ${{ vars.SDLC_APP_ID }}
+          HAS_KEY: ${{ secrets.SDLC_APP_PRIVATE_KEY != '' }}
+        run: |
+          if [ -n "$APP_ID" ] && [ "$HAS_KEY" = true ]; then
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "set=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::the variable SDLC_APP_ID or the secret SDLC_APP_PRIVATE_KEY does not reach this repository, so the check is not made required"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.app_set.outputs.set == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Mint the App's token for this repository
+        if: steps.app_set.outputs.set == 'true'
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.SDLC_APP_ID }}
+          private-key: ${{ secrets.SDLC_APP_PRIVATE_KEY }}
+          permission-administration: write
+          permission-metadata: read
+
+      - name: Require the check
+        if: steps.app_set.outputs.set == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          CHECKS_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 tools/required_check.py | tee -a "$GITHUB_STEP_SUMMARY"

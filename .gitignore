@@ -10,3 +10,6 @@ Thumbs.db
 *Participation_Survey*.csv
 meded/*.csv
 *_raw.csv
+
+# Python caches the checks leave
+__pycache__/
