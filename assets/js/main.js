@@ -172,6 +172,24 @@
     img.onerror(); /* kick off the first attempt */
   }
 
+  /* A person's own pages, such as a CV kept current elsewhere. Only https addresses are
+     shown, since the manifest is edited by hand and a javascript: link would run here. */
+  function appendLinks(body, links) {
+    var safe = (links || []).filter(function (l) {
+      return l && l.label && /^https:\/\//.test(l.url || "");
+    });
+    if (!safe.length) return;
+    var row = el("p", "person__links");
+    safe.forEach(function (l) {
+      var a = el("a", null, l.label);
+      a.href = l.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      row.appendChild(a);
+    });
+    body.appendChild(row);
+  }
+
   function renderPeople(people, abstracts) {
     var grid = document.getElementById("peopleGrid");
     if (!grid) return;
@@ -203,6 +221,7 @@
       if (p.role) body.appendChild(el("p", "person__role", p.role));
       if (p.bio) body.appendChild(el("p", "person__bio", p.bio));
       if (p.affiliation) body.appendChild(el("p", "person__affil", p.affiliation));
+      appendLinks(body, p.links);
 
       /* contributions: resolve each id against the abstracts table */
       var contribs = (p.contributions || [])

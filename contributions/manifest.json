@@ -1,5 +1,5 @@
 {
-  "$schema_note": "OpenSpineConsortium contributions manifest. 'people[].contributions' and 'people[].headshot' are the fields you will edit most. Each contribution id resolves against the 'abstracts' table.",
+  "$schema_note": "OpenSpineConsortium contributions manifest. 'people[].contributions' and 'people[].headshot' are the fields you will edit most; 'people[].links' (optional) lists {label, url} pairs, https only, shown under the card and opened in a new tab. Each contribution id resolves against the 'abstracts' table.",
   "meta": {
     "generated": "2026-05-19",
     "primary_venue": "CNS 2026 Annual Meeting — Washington, DC, Oct 31 – Nov 4, 2026",
@@ -122,6 +122,16 @@
       "affiliation": "Wayne State University · Detroit Medical Center",
       "headshot": "Schwing,Greg",
       "lead": true,
+      "links": [
+        {
+          "label": "Living CV",
+          "url": "https://waynestateprod-my.sharepoint.com/:w:/g/personal/go2432_wayne_edu/IQAgca1MwxuIRabNmoRd4RIjAaH5BYzSlnWr3l-IQcGWphM?e=heSaIk"
+        },
+        {
+          "label": "Personal site",
+          "url": "https://gregory-schwing-md-phd.github.io/"
+        }
+      ],
       "bio": "General Surgery resident and computer scientist building anatomy-aware machine learning for the spine. Leads dataset curation, benchmark design, and the LSTV research program. NIH F30 fellow.",
       "contributions": [
         "66639",
