@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610241845">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610241845">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610242125">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610242125">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -106,10 +106,10 @@
     <h1 id="beethoven-privacy-statement">Beethoven privacy statement</h1>
 
     <p class="note"><strong>Save a copy.</strong> Press Ctrl+S (&#8984;S on a Mac) to keep this page as a file, or print it
-    to PDF. This is version 18; it is part of the
+    to PDF. This is version 19; it is part of the
     <a href="/beethoven/terms.html">Trial Edition License Agreement</a>.</p>
 
-    <p>Version 18, 2026-10-23. Part of the Beethoven Trial Edition License Agreement (LICENSE.txt) and of any Full Edition agreement that names it. You can save and print this text; it is also at <code>https://openspineconsortium.com/beethoven/privacy.html</code>.</p>
+    <p>Version 19, 2026-10-24. Part of the Beethoven Trial Edition License Agreement (LICENSE.txt) and of any Full Edition agreement that names it. You can save and print this text; it is also at <code>https://openspineconsortium.com/beethoven/privacy.html</code>.</p>
 <p>Who collects: Gregory Schwing, trading as OpenSpineConsortium (“Licensor”), the maintainer of Beethoven. Questions and requests: the notice address on the support page at <code>https://openspineconsortium.com/beethoven/support.html</code>. Beethoven is licensed to individuals; it is not provided by or on behalf of any school, and Licensor is not acting for one.</p>
 <p>Beethoven is a browser extension that starts, watches and stops a job in your own cluster account through your university’s Open OnDemand portal, in a browser session signed in to there, by you or by the extension with the account name and password you give it, and a set of scripts (the framework) that runs in your cluster account. The job runs Claude Code, which you signed in to yourself. This statement says what stays in your browser, what an earlier version of Beethoven may have left on your computer and in your cluster account, what goes to your cluster account, what your portal sees, what happens when your portal asks you to sign in, when you sign in to Claude and when the portal’s shell asks for your password, what Anthropic receives, what Licensor receives, and what is never collected. Beethoven 12.0.0 to 15.0.0 also reached your cluster over a secure shell (ssh) connection carried by a helper program on your computer, the Bridge, after a sign-in on a sheet of the extension’s own; this version has no Bridge and no ssh connection of its own and reaches your cluster only through your portal. It has a sign-in sheet again, for your portal only: it asks for your account name and cluster password when your portal asks for a sign-in, and saves the password, encrypted, only if you tick a box.</p>
 <h2 id="what-stays-in-your-browser">What stays in your browser</h2>
@@ -136,7 +136,7 @@
 <td>Settings (in the panel’s <em>More</em> menu); removing the site permission in your browser; uninstalling</td>
 </tr>
 <tr class="even">
-<td>Your preferences: the shell host and site profile name, the worker’s name and permission mode, whether your worker is kept running, whether claude.ai opens when a worker you started is ready (in this build both are on until you turn them off; Settings says so where each is switched), the address of a project of yours on claude.ai if you gave one in Settings (version 16: the page that opens when your worker is ready, if that is on, and the page <em>Open my project</em> opens, is then that project’s page in place of your session’s link; <em>Clear</em> in Settings forgets it), the e-mail address of the Claude account you said this browser is signed in to on claude.ai, if you picked one in Settings from the accounts your workers report (version 18; <em>Not set</em> forgets it), and your appearance choice</td>
+<td>Your preferences: the shell host and site profile name, the worker’s name and permission mode, whether your worker is kept running, whether claude.ai opens when a worker you started is ready (in this build both are on until you turn them off; Settings says so where each is switched), the address of a project of yours on claude.ai if you gave one in Settings (version 16: the page that opens when your worker is ready, if that is on, and the page <em>Open my project</em> opens, is then that project’s page in place of your session’s link; <em>Clear</em> in Settings forgets it), the e-mail address of the Claude account you said this browser is signed in to on claude.ai, if you picked one in Settings from the accounts your workers report (version 18) or typed it there with <em>Add account</em> (version 19; <em>Not set</em> forgets it), and your appearance choice</td>
 <td><code>storage.local</code></td>
 <td>convenience</td>
 <td>Settings</td>
@@ -317,6 +317,7 @@
 <p>Beethoven is for adults, or minors with a parent’s or guardian’s consent (LICENSE.txt section 21).</p>
 <h2 id="changes">Changes</h2>
 <p>A new version of this statement ships with the Beethoven version it applies to and is shown for acceptance when it changes materially.</p>
+<p>Version 19 (2026-10-24, Beethoven 24.1.0): Settings’ <em>Your Claude account in this browser</em> is shown before any worker reports an account and gains <em>Add account</em>, where you can type the e-mail address of the Claude account this browser is signed in to on claude.ai yourself. It is kept as the account picked in version 18 is, in <code>storage.local</code> in this browser, and <em>Not set</em> forgets it; it is never sent to Licensor or anyone else, and Beethoven still never reads claude.ai. Licensor treats this change as not material to the agreement, since it adds no recipient and keeps nothing version 18 did not already keep, so the agreement stays at version 15 and an acceptance of it stays in force. Version 18’s other terms are unchanged.</p>
 <p>Version 18 (2026-10-23, Beethoven 24.0.0): with more than one worker in your cluster account, the panel’s <em>Your workers</em> lists each one with its state, its claude.ai link and the e-mail address of the Claude account its own status file reports, read from your cluster account through your portal once a minute while a page of Beethoven’s is open and kept in <code>storage.session</code> until the browser closes; <em>Show</em> loads a worker’s link in the claude.ai tab Beethoven opened. Settings can keep which of those accounts this browser is signed in to on claude.ai, so a worker on another account is shown with the Chrome profile to open it in; Beethoven never reads claude.ai to learn it. Nothing of this reaches Licensor. Licensor treats this change as not material to the agreement, since it adds no recipient and reads nothing the worker’s status file did not already say, so the agreement stays at version 15 and an acceptance of it stays in force. Version 17’s other terms are unchanged.</p>
 <p>Version 17 (2026-10-18, Beethoven 22.0.0): <em>For your lab lead</em> in Settings gains <em>Connect GitHub Actions</em> and <em>Remove</em>, which type one line each in the portal’s shell to set up or take out the grid’s ssh gate for one GitHub repository from the lab lead’s own copy of hpcworker, as the section on your cluster account says. Nothing is stored and nothing reaches Licensor. Licensor treats this change as not material to the agreement, since nothing is typed unless a lab lead presses one of the two buttons, so the agreement stays at version 15 and an acceptance of it stays in force. Version 16’s other terms are unchanged.</p>
 <p>Version 16 (2026-10-16, Beethoven 21.0.0): Settings takes the address of a project of yours on claude.ai, kept in <code>storage.local</code> with your other preferences until you clear it. With one given, the page Beethoven opens when a worker you started is ready, if you kept that on, and the page <em>Open my project</em> opens, is that project’s page in place of your session’s link, since a project takes up your worker only when you ask for the work there; <em>New session</em> and <em>Copy link</em> keep your session’s link. Beethoven makes no request to claude.ai for it and never reads the page; it notes the project’s tab it opened, as it notes your claude.ai tab, so it can bring it forward. The card that offers Settings for the address is noted with the other one-time tips. Version 15’s other terms are unchanged.</p>
@@ -392,7 +393,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610241845"></script>
+<script src="/assets/js/main.js?v=202610242125"></script>
 <!-- /site:footer -->
 
 </body>
