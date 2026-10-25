@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css?v=202610242125">
 <link rel="stylesheet" href="/assets/css/site.css?v=202610242125">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610251100">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610251230">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610242125">
 <meta name="apple-mobile-web-app-title" content="Symphony">
@@ -320,16 +320,36 @@
         <section class="console__panel bs" id="tab-explore" data-tab-panel="explore" role="tabpanel" aria-labelledby="rail-explore" hidden>
           <div class="console__head">
             <h2 id="h-explore" class="console__h">Explore</h2>
-            <button type="button" class="console__add" id="bs-ideas">&#10022; Ask Claude for ideas</button>
-            <button type="button" class="chip" id="bs-node">+ Task</button>
-            <button type="button" class="chip" id="bs-connect" aria-pressed="false">Connect</button>
-            <details class="console__help"><summary>How it works</summary><div>
+            <div id="ex-mode" class="ds-seg ex__mode" role="group" aria-label="What Explore shows">
+              <button type="button" class="chip" data-mode="tasks" aria-pressed="true">Task dependencies</button>
+              <button type="button" class="chip" data-mode="book" aria-pressed="false">Textbook search graph</button>
+            </div>
+            <button type="button" class="console__add ex-tasks" id="bs-ideas">&#10022; Ask Claude for ideas</button>
+            <button type="button" class="chip ex-tasks" id="bs-node">+ Task</button>
+            <button type="button" class="chip ex-tasks" id="bs-connect" aria-pressed="false">Connect</button>
+            <details class="console__help ex-book" hidden><summary>How the graph works</summary><div>
+              <p>The SchwingNet textbook as its search sees it: each chapter is a circle, sized by its sections, the passages Ask the book searches. A solid line joins two chapters where one cites the other; a dashed line joins each chapter to the two whose words are most alike, and the words they share show when you point at it. A title shows when you point at its circle, press it or a search lights it. Press a chapter to list its sections, each a link to its line on GitHub, and the chapters it cites, is cited by and is most like.</p>
+              <p>Search ranks the sections for your words as the book&rsquo;s own search does (Okapi BM25, k1 1.5, b 0.75, the same stop words) and lights the chapters that hold the best eight, brightest first, with each passage&rsquo;s opening words beside the graph.</p>
+              <p>The book is confidential until the provisional is filed, so nothing of it is in this page: it is read from the private repository OpenSpineConsortium/SchwingNet, through GitHub&rsquo;s API as you, only when you open this view, and only if your account may read that repository. It is kept in this page&rsquo;s memory alone and forgotten on a reload or a change of account; nothing is stored or sent anywhere else.</p>
+            </div></details>
+            <details class="console__help ex-tasks"><summary>How it works</summary><div>
               <p>One epic at a time: its tasks as cards, with the issues outside it that block one of them, and a line from each task to the tasks it blocks, as GitHub holds them (sub-issues and &ldquo;blocked by&rdquo;). Ask Claude for ideas opens the Claude box with a question about the epic; the answer&rsquo;s ideas are drawn here dashed, a new task with Accept, Edit and Dismiss, a new link with Accept and Dismiss. + Task adds a task of your own, and Connect joins two cards: press the task that must be done first, then the task it blocks; a pair already joined on GitHub is added to the changes as a link to remove, and the same pair again takes a waiting change back. A task still Claude&rsquo;s idea is accepted before it is connected.</p>
               <p>What you accept waits under Changes to push, and nothing reaches GitHub until you press Push. The push writes, as you: each new task as an issue labelled <code>todo</code> and made a sub-issue of the epic, then each link as a native &ldquo;blocked by&rdquo;. A link that would close a loop is refused, since a task that waits on itself is never free. Undo the last push removes the links it made and closes the issues it opened, as not planned. Claude writes nothing: its ideas come from the assistant issue&rsquo;s answer, and only your presses act.</p>
             </div></details>
           </div>
-          <div id="bs-epics" class="bs__epics ds-seg" role="group" aria-label="Epic"></div>
-          <div class="bs__body">
+          <div id="bs-epics" class="bs__epics ds-seg ex-tasks" role="group" aria-label="Epic"></div>
+          <form id="rg-ask" class="rg__ask ex-book" role="search" hidden>
+            <label for="rg-q" class="admin__sr">Search the textbook</label>
+            <input id="rg-q" type="search" placeholder="Search the textbook, e.g. witness frames" autocomplete="off">
+            <button type="submit" class="console__add">Search</button>
+            <button type="button" class="chip" id="rg-clear">Clear</button>
+          </form>
+          <div class="rg__body ex-book" hidden>
+            <div id="rg-canvas" class="rg__canvas" aria-label="The textbook's chapters and how they connect"></div>
+            <aside id="rg-side" class="rg__side" aria-live="polite"></aside>
+          </div>
+          <p id="rg-status" class="bs__status ex-book" aria-live="polite" hidden></p>
+          <div class="bs__body ex-tasks">
             <div id="bs-canvas" class="bs__canvas" tabindex="0" aria-label="The epic's tasks and links"></div>
             <aside class="bs__tray" aria-labelledby="bs-tray-h">
               <h3 id="bs-tray-h" class="bs__trayh">Changes to push <span id="bs-count" class="bs__count">0</span></h3>
@@ -340,7 +360,7 @@
               </div>
             </aside>
           </div>
-          <p id="bs-status" class="bs__status" aria-live="polite">Nothing to plan yet: no repository is chosen.</p>
+          <p id="bs-status" class="bs__status ex-tasks" aria-live="polite">Nothing to plan yet: no repository is chosen.</p>
         </section>
 
         <!-- Pull requests -->
@@ -765,6 +785,6 @@
 </footer>
 <script src="/assets/js/main.js?v=202610242125"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610251100"></script>
+<script src="/assets/js/symphony-panel.js?v=202610251230"></script>
 </body>
 </html>
