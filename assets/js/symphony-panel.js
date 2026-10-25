@@ -14275,6 +14275,282 @@
     consoleOnOpen.explore = openExplore;
   }
 
+  /* ---------- Explore's second view: the textbook as its search sees it ---------- */
+  // The owner asked on 2026-10-25 to explore the RAG over SchwingNet's textbook beside the task
+  // dependencies. The book is confidential until the provisional is filed, so this page holds none
+  // of it: the chapters are read from the private repository through GitHub's API as the signed-in
+  // person, only when the view is opened, kept in the page's memory and forgotten on a change of
+  // account. The ranking mirrors SchwingNet's src/schwingnet/rag.py version 1 (section chunks, plain
+  // tokens, BM25 with k1 1.5 and b 0.75), so a search here finds what Ask the book finds.
+  var RG_REPO = 'OpenSpineConsortium/SchwingNet', RG_DIR = 'docs/textbook', RG_BRANCH = 'main';
+  var RG_K1 = 1.5, RG_B = 0.75, RG_TOP = 8, RG_SIMILAR = 2;
+  var RG_STOP = {};
+  ('a about all also an and any are as at be been but by can could did do does each for from had has have he her his how i if in into is it its may me might more most my no not of on or our she should so some such than that the their them then there these they this those to us was we were what when where which who whom why will with would you your')
+    .split(' ').forEach(function (w) { RG_STOP[w] = true; });
+  var rg = { mode: 'tasks', login: null, book: null, loading: null, chosen: '', hits: null };
+
+  function rgTokens(text) {
+    return (String(text).replace(/[A-Z]/g, function (c) { return c.toLowerCase(); }).match(/[a-z0-9]+/g) || [])
+      .filter(function (w) { return !RG_STOP[w]; });
+  }
+  // the words a reader sees: a link's label without its address, no image line or table rule, no marks
+  function rgPlain(md) {
+    return md.split('\n').filter(function (l) { return !/^\s*!\[/.test(l) && !/^\s*\|?\s*:?-{3,}/.test(l); }).join('\n')
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*`|]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  // a chapter file cut at its ## and ### headings, as the section chunker cuts it, each with its line
+  function rgChapter(file, md) {
+    var lines = md.split('\n'), title = file, sections = [], cur = null, cites = {};
+    lines.forEach(function (l, i) {
+      var h = /^(#{1,3})\s+(.*)$/.exec(l);
+      if (h && h[1].length === 1) { title = h[2].trim(); cur = { heading: 'Opening', line: i + 1, md: [] }; sections.push(cur); return; }
+      if (h) { cur = { heading: h[2].trim(), line: i + 1, md: [] }; sections.push(cur); return; }
+      if (!cur) { cur = { heading: 'Opening', line: i + 1, md: [] }; sections.push(cur); }
+      cur.md.push(l);
+      var m, re = /\]\((\d{2})-[^)#]*\.md/g;
+      while ((m = re.exec(l))) cites[m[1]] = true;
+    });
+    var number = file.slice(0, 2);
+    delete cites[number];
+    sections = sections.map(function (sec) { var text = rgPlain(sec.md.join('\n')); return { heading: sec.heading, line: sec.line, text: text, words: rgTokens(sec.heading + ' ' + text) }; })
+      .filter(function (sec) { return sec.words.length; });
+    return { number: number, file: file, title: title.replace(/^\d+\s+/, ''), sections: sections, cites: Object.keys(cites) };
+  }
+  function rgCount(words) { var c = {}; words.forEach(function (w) { c[w] = (c[w] || 0) + 1; }); return c; }
+  function rgIndex(chapters) {
+    var passages = [];
+    chapters.forEach(function (ch, ci) { ch.sections.forEach(function (sec) { passages.push({ ch: ci, sec: sec, tf: rgCount(sec.words), len: sec.words.length }); }); });
+    var held = {}, total = 0;
+    passages.forEach(function (p) { total += p.len; Object.keys(p.tf).forEach(function (w) { held[w] = (held[w] || 0) + 1; }); });
+    var n = passages.length, idf = {};
+    Object.keys(held).forEach(function (w) { idf[w] = Math.log(1 + (n - held[w] + 0.5) / (held[w] + 0.5)); });
+    return { passages: passages, idf: idf, avg: n ? total / n : 1 };
+  }
+  function rgSearch(book, query) {
+    var words = rgTokens(query), idx = book.index;
+    return idx.passages.map(function (p) {
+      var score = 0;
+      words.forEach(function (w) {
+        var tf = p.tf[w];
+        if (tf) score += idx.idf[w] * tf * (RG_K1 + 1) / (tf + RG_K1 * (1 - RG_B + RG_B * p.len / idx.avg));
+      });
+      return { p: p, score: score };
+    }).filter(function (h) { return h.score > 0; }).sort(function (a, b) { return b.score - a.score; }).slice(0, RG_TOP);
+  }
+  // each chapter as one tf-idf vector of its sections' words, scaled to length one, so two chapters'
+  // likeness is their dot product and the words that weigh most in it are the ones they share
+  function rgVectors(book) {
+    return book.chapters.map(function (ch, ci) {
+      var v = {}, norm = 0;
+      book.index.passages.forEach(function (p) { if (p.ch !== ci) return; Object.keys(p.tf).forEach(function (w) { v[w] = (v[w] || 0) + p.tf[w]; }); });
+      Object.keys(v).forEach(function (w) { v[w] = (1 + Math.log(v[w])) * book.index.idf[w]; norm += v[w] * v[w]; });
+      norm = Math.sqrt(norm) || 1;
+      Object.keys(v).forEach(function (w) { v[w] /= norm; });
+      return v;
+    });
+  }
+  function rgLikeness(a, b) {
+    var sum = 0, shared = [];
+    Object.keys(a).forEach(function (w) { if (b[w]) { sum += a[w] * b[w]; shared.push([w, a[w] * b[w]]); } });
+    shared.sort(function (x, y) { return y[1] - x[1]; });
+    return { score: sum, words: shared.slice(0, 5).map(function (x) { return x[0]; }) };
+  }
+  function rgEdges(book) {
+    var byNumber = {}, edges = [], seen = {};
+    book.chapters.forEach(function (ch, i) { byNumber[ch.number] = i; });
+    book.chapters.forEach(function (ch, i) {
+      // a pair that cites both ways is one line, the more readable for the book citing itself densely
+      ch.cites.forEach(function (n) {
+        var j = byNumber[n], key = j == null ? '' : Math.min(i, j) + '~' + Math.max(i, j);
+        if (j == null || seen[key]) return;
+        seen[key] = true;
+        edges.push({ a: i, b: j, kind: 'cite' });
+      });
+    });
+    var vec = rgVectors(book);
+    book.likeness = vec.map(function (v, i) {
+      return vec.map(function (u, j) { return j === i ? null : { j: j, l: rgLikeness(v, u) }; }).filter(Boolean)
+        .sort(function (x, y) { return y.l.score - x.l.score; }).slice(0, 4);
+    });
+    book.likeness.forEach(function (near, i) {
+      near.slice(0, RG_SIMILAR).forEach(function (x) {
+        var key = Math.min(i, x.j) + '-' + Math.max(i, x.j);
+        if (seen[key]) return;
+        seen[key] = true;
+        edges.push({ a: i, b: x.j, kind: 'like', words: x.l.words });
+      });
+    });
+    return edges;
+  }
+  // a force layout from fixed starting places on a circle, so the same book is drawn the same way
+  function rgLayout(n, edges, w, h) {
+    var pts = [], i, j, step;
+    for (i = 0; i < n; i++) pts.push({ x: w / 2 + Math.cos(2 * Math.PI * i / n) * w * 0.4, y: h / 2 + Math.sin(2 * Math.PI * i / n) * h * 0.4 });
+    var k = Math.sqrt(w * h / Math.max(n, 1)) * 0.9;
+    for (step = 0; step < 300; step++) {
+      var heat = k * (1 - step / 300) * 0.2 + 0.5, mv = pts.map(function () { return { x: 0, y: 0 }; });
+      for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
+        var dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = k * k / d;
+        mv[i].x += dx / d * f; mv[i].y += dy / d * f; mv[j].x -= dx / d * f; mv[j].y -= dy / d * f;
+      }
+      edges.forEach(function (e) {
+        var dx = pts[e.a].x - pts[e.b].x, dy = pts[e.a].y - pts[e.b].y, d = Math.sqrt(dx * dx + dy * dy) || 0.01, f = d * d / k * (e.kind === 'cite' ? 0.12 : 0.5);
+        mv[e.a].x -= dx / d * f; mv[e.a].y -= dy / d * f; mv[e.b].x += dx / d * f; mv[e.b].y += dy / d * f;
+      });
+      for (i = 0; i < n; i++) {
+        var m = Math.sqrt(mv[i].x * mv[i].x + mv[i].y * mv[i].y) || 1, s = Math.min(m, heat);
+        pts[i].x = Math.max(110, Math.min(w - 110, pts[i].x + mv[i].x / m * s));
+        pts[i].y = Math.max(30, Math.min(h - 30, pts[i].y + mv[i].y / m * s));
+      }
+    }
+    return pts;
+  }
+
+  function rgStatus(text, warn) {
+    var p = $('rg-status');
+    p.textContent = text;
+    p.classList.toggle('bs__warn', !!warn);
+  }
+  function rgLoad() {
+    if (rg.login !== shownLogin) { rg.book = null; rg.loading = null; rg.login = shownLogin; rg.hits = null; rg.chosen = ''; }
+    if (rg.book) return Promise.resolve(rg.book);
+    if (rg.loading) return rg.loading;
+    if (!shownLogin) return Promise.reject(new Error('Sign in with GitHub first: the textbook is read from a private repository as you.'));
+    rgStatus('Reading the textbook from ' + RG_REPO + ' as ' + shownLogin + '...');
+    var login = shownLogin;
+    rg.loading = gh('GET', '/repos/' + RG_REPO + '/contents/' + RG_DIR + '?ref=' + RG_BRANCH).then(function (r) {
+      var files = (Array.isArray(r.data) ? r.data : []).map(function (f) { return f.name; }).filter(function (n) { return /^\d{2}-.*\.md$/.test(n); }).sort();
+      if (!files.length) throw new Error('The repository holds no chapters under ' + RG_DIR + '.');
+      return Promise.all(files.map(function (f) {
+        return gh('GET', '/repos/' + RG_REPO + '/contents/' + RG_DIR + '/' + f + '?ref=' + RG_BRANCH, undefined, { 'Accept': 'application/vnd.github.raw+json' }, true)
+          .then(function (x) { return rgChapter(f, String(x.data || '')); });
+      }));
+    }).then(function (chapters) {
+      if (login !== shownLogin) throw new Error('The sign-in changed while the book was read; open the view again.');
+      var book = { chapters: chapters, index: rgIndex(chapters) };
+      book.edges = rgEdges(book);
+      rg.book = book;
+      return book;
+    }, function (e) {
+      rg.loading = null;
+      if (e.status === 404 || e.status === 403) throw new Error('Your GitHub account cannot read ' + RG_REPO + ', where the textbook is kept, so there is nothing to draw. The book is for the repository\'s members until the provisional is filed.');
+      throw e;
+    });
+    return rg.loading;
+  }
+  function rgSetMode(mode) {
+    rg.mode = mode;
+    var tab = $('tab-explore');
+    Array.prototype.forEach.call(tab.querySelectorAll('.ex-tasks'), function (x) { x.hidden = mode !== 'tasks'; });
+    Array.prototype.forEach.call(tab.querySelectorAll('.ex-book'), function (x) { x.hidden = mode !== 'book'; });
+    Array.prototype.forEach.call($('ex-mode').querySelectorAll('[data-mode]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-mode') === mode ? 'true' : 'false'); });
+    if (mode === 'book') rgOpen(); else openExplore();
+  }
+  function rgOpen() {
+    rgLoad().then(function (book) {
+      rgDraw(book);
+      rgStatus(plural(book.chapters.length, 'chapter') + ', ' + plural(book.index.passages.length, 'section') + ' the search ranks, read as ' + shownLogin + ' and held in this page alone.');
+    }).catch(function (e) { clear($('rg-canvas')); clear($('rg-side')); rgStatus(e.message, true); });
+  }
+  function rgSvg(tag, attrs) {
+    var x = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs || {}).forEach(function (k) { x.setAttribute(k, attrs[k]); });
+    return x;
+  }
+  function rgLit(book) {
+    var lit = book.chapters.map(function () { return 0; });
+    (rg.hits || []).forEach(function (h) { lit[h.p.ch] += h.score; });
+    var top = Math.max.apply(null, lit.concat([0])) || 1;
+    return lit.map(function (x) { return x / top; });
+  }
+  function rgDraw(book) {
+    var box = $('rg-canvas'), W = 1000, H = 680, n = book.chapters.length;
+    if (!book.pts) book.pts = rgLayout(n, book.edges, W, H);
+    clear(box);
+    var svg = rgSvg('svg', { viewBox: '0 0 ' + W + ' ' + H, 'class': 'rg__svg', role: 'img', 'aria-label': 'The textbook\'s chapters as a graph' });
+    var lit = rgLit(book), chosen = rg.chosen === '' ? -1 : +rg.chosen;
+    book.edges.forEach(function (e) {
+      var a = book.pts[e.a], b = book.pts[e.b];
+      var on = chosen === e.a || chosen === e.b;
+      var line = rgSvg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, 'class': 'rg__edge rg__edge--' + e.kind + (on ? ' rg__edge--on' : '') });
+      var t = rgSvg('title');
+      t.textContent = e.kind === 'cite' ? book.chapters[e.a].number + ' and ' + book.chapters[e.b].number + ': one cites the other' : book.chapters[e.a].number + ' and ' + book.chapters[e.b].number + ' share: ' + e.words.join(', ');
+      line.appendChild(t);
+      svg.appendChild(line);
+    });
+    book.chapters.forEach(function (ch, i) {
+      var p = book.pts[i], r = 9 + Math.sqrt(ch.sections.length) * 3;
+      var g = rgSvg('g', { 'class': 'rg__node' + (i === chosen ? ' rg__node--on' : '') + (rg.hits && lit[i] > 0 ? ' rg__node--hit' : '') + (rg.hits && !lit[i] ? ' rg__node--dim' : ''), tabindex: '0', role: 'button', transform: 'translate(' + p.x + ' ' + p.y + ')' });
+      g.setAttribute('aria-label', 'Chapter ' + ch.number + ', ' + ch.title);
+      g.appendChild(rgSvg('circle', { r: r, style: rg.hits && lit[i] > 0 ? '--hit:' + (0.25 + 0.75 * lit[i]).toFixed(2) : '' }));
+      var num = rgSvg('text', { 'class': 'rg__num', dy: '0.35em' });
+      num.textContent = ch.number;
+      var label = rgSvg('text', { 'class': 'rg__label', y: r + 13 });
+      label.textContent = ch.title.length > 34 ? ch.title.slice(0, 32) + '...' : ch.title;
+      var t = rgSvg('title');
+      t.textContent = ch.number + ' ' + ch.title;
+      add(g, t, rgSvg('circle', { 'class': 'rg__hitring', r: r + 4 }), num, label);
+      var pick = function () { rg.chosen = String(i); rgDraw(book); rgSide(book); };
+      g.addEventListener('click', pick);
+      g.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } });
+      svg.appendChild(g);
+    });
+    box.appendChild(svg);
+    rgSide(book);
+  }
+  function rgBlob(ch, line) { return 'https://github.com/' + RG_REPO + '/blob/' + RG_BRANCH + '/' + RG_DIR + '/' + ch.file + (line ? '#L' + line : ''); }
+  function rgChapterLink(book, i) {
+    var ch = book.chapters[i];
+    var b = btn(ch.number + ' ' + ch.title, true, function () { rg.chosen = String(i); rgDraw(book); });
+    b.className = 'rg__chap';
+    return b;
+  }
+  function rgSide(book) {
+    var side = $('rg-side');
+    clear(side);
+    if (rg.hits) {
+      add(side, el('h3', 'bs__trayh', rg.hits.length ? 'The best ' + plural(rg.hits.length, 'section') : 'No section holds those words'));
+      var ol = el('ol', 'rg__hits');
+      rg.hits.forEach(function (h) {
+        var ch = book.chapters[h.p.ch], words = h.p.sec.text.split(' ');
+        add(ol, add(el('li'), link(rgBlob(ch, h.p.sec.line), ch.number + ' / ' + h.p.sec.heading), el('span', 'rg__score', ' ' + h.score.toFixed(2)),
+          el('p', 'rg__snip', words.slice(0, 40).join(' ') + (words.length > 40 ? ' ...' : ''))));
+      });
+      add(side, ol);
+    }
+    if (rg.chosen === '') { if (!rg.hits) add(side, el('p', 'admin__none', 'Press a chapter to see its sections and what it connects to, or search the book above.')); return; }
+    var i = +rg.chosen, ch = book.chapters[i];
+    add(side, el('h3', 'bs__trayh', ch.number + ' ' + ch.title), add(el('p'), link(rgBlob(ch), 'Open the chapter on GitHub')));
+    var cites = book.edges.filter(function (e) { return e.kind === 'cite' && e.a === i; }).map(function (e) { return e.b; });
+    var cited = book.edges.filter(function (e) { return e.kind === 'cite' && e.b === i; }).map(function (e) { return e.a; });
+    var group = function (title, list) {
+      if (!list.length) return;
+      var ul = el('ul', 'rg__list');
+      list.forEach(function (x) { add(ul, add(el('li'), x)); });
+      add(side, el('p', 'rcard__sub', title), ul);
+    };
+    group('Cites', cites.map(function (j) { return rgChapterLink(book, j); }));
+    group('Cited by', cited.map(function (j) { return rgChapterLink(book, j); }));
+    group('Most alike', book.likeness[i].map(function (x) { return add(el('span'), rgChapterLink(book, x.j), el('span', 'rg__score', ' ' + x.l.words.slice(0, 3).join(', '))); }));
+    group('Sections', ch.sections.map(function (sec) { return link(rgBlob(ch, sec.line), sec.heading); }));
+  }
+  function rgAsk(ev) {
+    if (ev) ev.preventDefault();
+    var q = $('rg-q').value.trim();
+    rgLoad().then(function (book) {
+      rg.hits = q ? rgSearch(book, q) : null;
+      rgDraw(book);
+    }).catch(function (e) { rgStatus(e.message, true); });
+  }
+  function initBookView() {
+    Array.prototype.forEach.call($('ex-mode').querySelectorAll('[data-mode]'), function (b) {
+      b.addEventListener('click', function () { rgSetMode(b.getAttribute('data-mode')); });
+    });
+    $('rg-ask').addEventListener('submit', rgAsk);
+    $('rg-clear').addEventListener('click', function () { $('rg-q').value = ''; rg.hits = null; if (rg.book) rgDraw(rg.book); });
+    consoleOnOpen.explore = function () { if (rg.mode === 'book') rgOpen(); else openExplore(); };
+  }
+
   // the Agents tab puts one in each agent's row
   window.tokenAssignBox = tokenAssignBox;
 
@@ -14282,5 +14558,5 @@
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
 })();
