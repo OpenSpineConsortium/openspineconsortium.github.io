@@ -1024,7 +1024,110 @@
       select.appendChild(o);
     });
     select.disabled = !list.length;
-    if (select.id === 'cp-repo') showRepoName(list.indexOf(current) >= 0 ? current : list[0] || '');
+    if (select.id === 'cp-repo') { showRepoName(list.indexOf(current) >= 0 ? current : list[0] || ''); drawRepoTabs(current); }
+  }
+
+  /* ---------- the repositories as tabs, and all of them side by side ---------- */
+  // Every listed repository is a tab over the stage, so moving between them is one press, and the
+  // first tab, All, sets them side by side: for each, what waits, what is held, what is in review,
+  // its open pull requests and the workers running now, each card opening its repository. The
+  // overview reads each repository's open issues and its running workers runs, nothing more, and
+  // reads again each time All is opened, since it is a glance and not a page kept live.
+  var repoAll = { on: false, round: 0 };
+  function repoTabsBox() {
+    var box = $('cp-rtabs');
+    if (box) return box;
+    var stage = document.querySelector('.console__stage');
+    if (!stage) return null;
+    box = el('div', 'rtabs');
+    box.id = 'cp-rtabs';
+    box.setAttribute('aria-label', 'Repositories');
+    var all = el('div', 'rtabs__all');
+    all.id = 'cp-rall';
+    all.hidden = true;
+    var bar = stage.querySelector('.console__phonebar');
+    stage.insertBefore(all, bar ? bar.nextSibling : stage.firstChild);
+    stage.insertBefore(box, all);
+    return box;
+  }
+  function drawRepoTabs(current) {
+    var box = repoTabsBox();
+    if (!box) return;
+    clear(box);
+    var list = repos();
+    var tab = function (label, title, on, onClick) {
+      var b = el('button', 'rtabs__tab' + (on ? ' rtabs__tab--on' : ''), label);
+      b.type = 'button';
+      b.title = title;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.addEventListener('click', onClick);
+      return add(box, b);
+    };
+    if (list.length > 1) tab('All', 'Every listed repository side by side', repoAll.on, function () { showAllRepos(true); });
+    list.forEach(function (name) {
+      tab(name.slice(name.indexOf('/') + 1), name, !repoAll.on && name === current, function () {
+        showAllRepos(false);
+        if (name !== state.repo) loadRepo(name); else drawRepoTabs(name);
+      });
+    });
+    var plus = el('button', 'rtabs__tab rtabs__add', '+');
+    plus.type = 'button';
+    plus.title = 'Add a repository';
+    plus.setAttribute('data-open', 'dlg-repos');
+    add(box, plus);
+  }
+  function showAllRepos(on) {
+    repoAll.on = on;
+    var stage = document.querySelector('.console__stage');
+    if (stage) stage.classList.toggle('console__stage--all', on);
+    var all = $('cp-rall');
+    if (all) all.hidden = !on;
+    drawRepoTabs(state.repo);
+    if (on) drawAllRepos();
+  }
+  function drawAllRepos() {
+    var box = $('cp-rall');
+    if (!box) return;
+    var round = ++repoAll.round;
+    clear(box);
+    repos().forEach(function (name) {
+      var card = el('div', 'rcard');
+      var head = el('div', 'rcard__head');
+      var open = btn(name, true, function () { showAllRepos(false); if (name !== state.repo) loadRepo(name); });
+      open.className = 'rcard__name';
+      add(head, open, link('https://github.com/' + name, 'GitHub'));
+      var body = el('div', 'rcard__body', 'Reading...');
+      add(card, head, body);
+      add(box, card);
+      Promise.all([
+        gh('GET', '/repos/' + name + '/issues?state=open&per_page=100'),
+        gh('GET', '/repos/' + name + '/actions/workflows/workers.yml/runs?status=in_progress&per_page=10').catch(function () { return { data: {} }; })
+      ]).then(function (r) {
+        if (round !== repoAll.round) return;
+        var items = Array.isArray(r[0].data) ? r[0].data : [];
+        var g = sortIssues(items);
+        var pulls = items.filter(function (it) { return it.pull_request; }).length;
+        var running = (r[1].data && r[1].data.total_count) || 0;
+        clear(body);
+        var counts = el('dl', 'rcard__counts');
+        [['Queue', g.queue.length], ['Given', g.given.length], ['Claimed', g.claimed.length], ['In review', g.review.length],
+         ['Blocked', g.blocked.length + g.blockers.length], ['Pull requests', pulls], ['Workers running', running]].forEach(function (c) {
+          add(counts, add(el('div', 'rcard__count' + (c[1] ? '' : ' rcard__count--none')), el('dt', '', c[0]), el('dd', '', String(c[1]))));
+        });
+        add(body, counts);
+        var next = g.given.concat(g.queue).slice(0, 3);
+        if (next.length) {
+          var ul = el('ul', 'rcard__next');
+          next.forEach(function (it) { add(ul, add(el('li'), link(it.html_url, '#' + it.number), ' ' + it.title)); });
+          add(body, el('p', 'rcard__sub', 'Next up'), ul);
+        }
+        if (items.length === 100) add(body, el('p', 'rcard__sub', 'The first 100 open issues and pull requests are counted.'));
+      }).catch(function (e) {
+        if (round !== repoAll.round) return;
+        clear(body);
+        add(body, el('p', 'admin__none', 'Not read: ' + e.message));
+      });
+    });
   }
   // the side column's whole name, the owner on its own line, under the select laid over it
   function showRepoName(name) {
@@ -2209,6 +2312,7 @@
   }
 
   function loadRepo(name) {
+    if (repoAll.on) { repoAll.on = false; showAllRepos(false); }
     var s = state = emptyState(name);
     showRepoName(name);
     $('cp-on-github').href = 'https://github.com/' + name;
@@ -2742,6 +2846,7 @@
   var CONSOLE_TASK_TABLES = ['cp-queue', 'cp-given', 'cp-claimed', 'cp-review', 'cp-blocked', 'cp-epics'];
   function consoleTabs() { return Array.prototype.slice.call(document.querySelectorAll('.console__rail [data-tab]')); }
   function showTab(name) {
+    if (repoAll.on) showAllRepos(false);
     var tabs = consoleTabs();
     if (!tabs.length) return;
     if (!tabs.some(function (t) { return t.getAttribute('data-tab') === name; })) name = tabs[0].getAttribute('data-tab');
