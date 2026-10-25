@@ -1367,6 +1367,7 @@
     add(tr, el('td', '', workerOf(l) || ''));
     add(tr, add(el('td'), timeEl(it.updated_at)));
     add(tr, cardControls(tr, '#' + it.number, {
+      run: givable && l.indexOf('blocked') < 0 ? function () { launchTask(it); } : null,
       open: function () { issueStatus(it, givable); },
       gear: function () { issueSettings(it, givable, ''); },
       x: function (b) { closeIssue(it, b); }
@@ -1408,6 +1409,14 @@
   // The three sit in the card's last cell, which the console draws in the card's top right corner.
   function cardControls(tr, what, acts) {
     var td = el('td', 'card__ctl');
+    if (acts.run) {
+      var run = el('button', 'card__gear card__run', '▶');
+      run.type = 'button';
+      run.title = 'Run ' + what + ' now';
+      run.setAttribute('aria-label', 'Run ' + what + ' now');
+      run.addEventListener('click', function (ev) { ev.stopPropagation(); acts.run(); });
+      add(td, run);
+    }
     if (acts.gear) {
       var gear = el('button', 'card__gear', '⚙');
       gear.type = 'button';
@@ -1683,6 +1692,7 @@
     }).then(function (workers) {
       if (stale(s)) return;
       s.workers = workers.filter(function (w) { return w && w.name; });
+      s.workersRead = true;
       clear(body);
       if (!workers.length) { var tr = el('tr'); add(tr, el('td', 'admin__none', 'None registered: people\'s sessions work under their own GitHub logins and need no file.')).firstChild.colSpan = 9; body.appendChild(tr); }
       workers.forEach(function (w) {
@@ -1697,6 +1707,7 @@
         add(tr, el('td', '', w.max_turns != null ? String(w.max_turns) : ''));
         add(tr, el('td', '', w.rounds != null ? String(w.rounds) : ''));
         add(tr, cardControls(tr, w.name, {
+          run: w.runs === 'actions' ? function () { runWorkers(w.name); } : null,
           open: function () { workerStatus(w); },
           gear: function () { openDialog('dlg-worker'); workerDialog(w); },
           x: function (b) { removeWorker(w, b); }
@@ -1748,7 +1759,7 @@
         'Grid: ' + w.name + ', ' + st.replace(/_/g, ' ') + (w.node ? ' on ' + w.node : '') + (w.account ? ', account ' + w.account : '') +
         (quiet ? ', not heard from in ' + (quiet < 120 ? quiet + ' min' : Math.round(quiet / 60) + ' h') : ''));
     add(p, heldWords('grid-' + w.name));
-    if (w.link) add(p, ' ', link(w.link, 'Open the session'));
+    if (w.link) add(p, ' ', sessionLink(w));
     if (GRID_NAME.test(w.name)) {
       var out = btn('Output', true, function () { showTab('grid'); gridLog('', w.name); });
       out.id = 'cp-live-log-' + w.name;
@@ -2661,11 +2672,12 @@
     add(form, fact('Its issues:', held.length ? plural(held.length, 'open issue') : 'none open.'));
     if (held.length) add(form, list);
     var bar = el('p', 'tkdlg__bar');
+    if (w.runs === 'actions') add(bar, btn('▶ Run now', false, function () { closeDialog('dlg-item'); runWorkers(w.name); }));
     add(bar, btn('⚙ Settings', false, function () { closeDialog('dlg-item'); openDialog('dlg-worker'); workerDialog(w); }),
       link('https://github.com/' + state.repo + '/blob/' + ((state.meta && state.meta.default_branch) || 'main') + '/' + workerPath(w), 'Its file on GitHub'));
     add(form, bar);
   }
-  function dispatch(workflow, label) {
+  function dispatch(workflow, label, inputs) {
     var s = state;
     var branch = s.meta && s.meta.default_branch ? s.meta.default_branch : 'main';
     // the write goes out for the account the press was made as, since the read before it may name one
@@ -2673,12 +2685,51 @@
     var task = msgTask(label.charAt(0).toUpperCase() + label.slice(1) + ' on ' + s.repo);
     task.tell('Starting...');
     newestRunId(s.repo, workflow).then(function (after) {
-      return gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', { ref: branch }, undefined, false, account).then(function () {
+      return gh('POST', '/repos/' + s.repo + '/actions/workflows/' + workflow + '/dispatches', inputs ? { ref: branch, inputs: inputs } : { ref: branch }, undefined, false, account).then(function () {
         task.tell('Queued on ' + branch + '; the runs list shows it within a minute.');
         setTimeout(function () { if (!stale(s)) loadRuns(s); }, 4000);
         return followDispatched(s, workflow, after, task);
       });
     }).catch(function (e) { task.refuse(e.message + (e.status === 403 ? ' Starting a workflow needs Actions: read and write' + (signedInByApp() ? ', which the sign-in has once SymphonyBoard holds it; a fine-grained token with it starts one now.' : ' on the token.') : '')); });
+  }
+
+  // workers.yml runs only the registry's workers that say "runs": "actions"; with none, its run lists
+  // nobody and ends green having done nothing (SchwingNet's run #457, 2026-10-25), so the page reads
+  // the registry first and says what is missing instead of starting a run that cannot work
+  function actionsWorkers(s) { return (s.workers || []).filter(function (w) { return w.runs === 'actions'; }); }
+  function runWorkers(only) {
+    var s = state;
+    if (!s.repo) { say('Pick a repository first.', true); return; }
+    var read = s.workersRead ? Promise.resolve() : loadWorkers(s);
+    read.then(function () {
+      if (stale(s)) return;
+      var names = actionsWorkers(s).map(function (w) { return w.name; });
+      if (!names.length) {
+        say('No worker in ' + s.repo + ' runs in GitHub Actions, so the workers workflow would find none and end without doing anything. ' +
+          'Add one under Workers (+ Add worker, Where it runs: actions) and merge the pull request it opens; or start a worker on the grid from the Grid tab.', true);
+        showTab('workers');
+        return;
+      }
+      if (only && names.indexOf(only) < 0) { say(only + ' does not run in GitHub Actions; only ' + names.join(', ') + ' can be started here.', true); return; }
+      dispatch('workers.yml', only ? 'the worker ' + only : 'the workers (' + names.join(', ') + ')', only ? { worker: only, round: '1' } : undefined);
+    });
+  }
+  // a task is launched by giving it to a worker in Actions: the label wakes that worker at once, and a
+  // task given to a worker comes before the queue (docs/agents/PROTOCOL.md, Pick); a task already
+  // given wakes its worker by a run of its own
+  function launchTask(it) {
+    var s = state;
+    var read = s.workersRead ? Promise.resolve() : loadWorkers(s);
+    read.then(function () {
+      if (stale(s)) return;
+      var names = actionsWorkers(s).map(function (w) { return w.name; });
+      var given = workerOf(labelsOf(it)).split(', ').filter(function (n) { return names.indexOf(n) >= 0; });
+      if (!names.length) { runWorkers(''); return; }
+      if (given.length) { runWorkers(given[0]); return; }
+      if (names.length === 1) { giveTo(it, names[0]); return; }
+      issueSettings(it, true, '');
+      say('Pick which worker in Actions takes #' + it.number + ': ' + names.join(', ') + '.');
+    });
   }
 
   /* ---------- the console: its height, its tabs, its readouts ---------- */
@@ -3891,7 +3942,7 @@
     $('cp-task-ask').addEventListener('click', askTask);
     $('cp-w-add').addEventListener('click', addWorker);
     $('cp-a-import').addEventListener('click', importAgent);
-    $('cp-run-workers').addEventListener('click', function () { dispatch('workers.yml', 'the workers'); });
+    $('cp-run-workers').addEventListener('click', function () { runWorkers(''); });
     $('cp-run-board').addEventListener('click', function () { dispatch('board.yml', 'the board'); });
     $('cp-run-ci').addEventListener('click', function () { dispatch('ci.yml', 'the checks'); });
     $('cp-run-metrics').addEventListener('click', function () { dispatch('metrics.yml', 'the metrics'); });
@@ -8944,7 +8995,7 @@
         'Worker ' + (w.name || '') + ': ' + state.replace(/_/g, ' ') + (w.account ? ', on account ' + w.account : '') +
         (w.pinned ? ' (kept there)' : '') + (w.node ? ', ' + w.node : '') +
         (quiet ? ', not heard from in ' + (quiet < 120 ? quiet + ' min' : Math.round(quiet / 60) + ' h') : ''));
-    if (w.link && !ended) add(p, ' ', link(w.link, 'Open the session'));
+    if (w.link && !ended) add(p, ' ', sessionLink(w));
     if (w.name) add(p, el('span', 'tkdlg__faint', ' claims as grid-' + w.name));
     if (!ended && w.name && GRID_NAME.test(w.name)) {
       var stop = btn('Stop', true, function () { gridStop(w); });
@@ -8960,6 +9011,30 @@
       add(p, ' ', out);
     }
     return p;
+  }
+  // The link is the Remote Control environment of the Claude Code the worker runs on the grid
+  // (connection.json's environment_url), and claude.ai shows an environment only to a tab signed in
+  // to the account that registered it: a tab on another account opens on that account's own page. So
+  // the line names the account the worker is signed in as, the one kept to it, else the grid's
+  // current one, and offers the link to copy into a browser profile signed in to it.
+  function gridAccountOf(w) {
+    return gridAccounts().filter(function (a) {
+      return w.pinned ? a.slot === w.pinned : (w.account ? a.slot === w.account : !!a.current);
+    })[0] || null;
+  }
+  function sessionLink(w) {
+    var a = gridAccountOf(w);
+    var who = a ? gridAccountName(a) : 'the grid\'s current Claude account';
+    var span = el('span', '');
+    var open = link(w.link, 'Open the session');
+    open.title = 'Opens in claude.ai only for a browser signed in as ' + who + '; signed in as anyone else, claude.ai shows that account\'s own page';
+    var copy = btn('Copy link', true, function () {
+      var done = function () { say('The session\'s link is copied: paste it in a browser signed in to Claude as ' + who + '.'); };
+      try { navigator.clipboard.writeText(w.link).then(done, function () { say('The browser refused the clipboard; the link is ' + w.link); }); }
+      catch (e) { say('This browser gives the page no clipboard; the link is ' + w.link); }
+    });
+    add(span, open, el('span', 'tkdlg__faint', ' (signed in as ' + who + ': open it in a browser signed in to that account) '), copy);
+    return span;
   }
   // asks first, from either tab, and sends the name alone
   function gridStop(w, first) {

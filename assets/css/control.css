@@ -2226,3 +2226,7 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
   .console--buttons.console--home .rail__icon { transition: none; }
   .console--buttons.console--home .console__rail button:hover .rail__icon { transform: none; }
 }
+
+/* the run control on a card: the queue's and the workers' play mark, beside the gear */
+.console button.card__run { font-size: 0.85rem; }
+.console button.card__run:hover { color: var(--teal); background: rgba(60, 194, 177, 0.12); border-color: rgba(60, 194, 177, 0.5); }
