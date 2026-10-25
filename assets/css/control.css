@@ -2252,3 +2252,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 .console .rcard__sub { margin: 8px 0 2px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-faint); }
 .console .rcard__next { margin: 0; padding-left: 1.1em; font-size: 0.82rem; }
 .console .rcard__next li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the Grid bar's question: which Claude account this Chrome profile is on */
+.console select.gr__this { margin: 0; padding: 3px 8px; font-size: 0.84rem; max-width: 24em; }
