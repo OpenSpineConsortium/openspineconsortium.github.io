@@ -27,8 +27,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610242125">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610242125">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610251206">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610251206">
 </head>
 <body data-shell="page">
 <a class="skip-link" href="#main">Skip to content</a>
@@ -106,10 +106,10 @@
     <h1 id="beethoven-privacy-statement">Beethoven privacy statement</h1>
 
     <p class="note"><strong>Save a copy.</strong> Press Ctrl+S (&#8984;S on a Mac) to keep this page as a file, or print it
-    to PDF. This is version 19; it is part of the
+    to PDF. This is version 20; it is part of the
     <a href="/beethoven/terms.html">Trial Edition License Agreement</a>.</p>
 
-    <p>Version 19, 2026-10-24. Part of the Beethoven Trial Edition License Agreement (LICENSE.txt) and of any Full Edition agreement that names it. You can save and print this text; it is also at <code>https://openspineconsortium.com/beethoven/privacy.html</code>.</p>
+    <p>Version 20, 2026-10-25. Part of the Beethoven Trial Edition License Agreement (LICENSE.txt) and of any Full Edition agreement that names it. You can save and print this text; it is also at <code>https://openspineconsortium.com/beethoven/privacy.html</code>.</p>
 <p>Who collects: Gregory Schwing, trading as OpenSpineConsortium (“Licensor”), the maintainer of Beethoven. Questions and requests: the notice address on the support page at <code>https://openspineconsortium.com/beethoven/support.html</code>. Beethoven is licensed to individuals; it is not provided by or on behalf of any school, and Licensor is not acting for one.</p>
 <p>Beethoven is a browser extension that starts, watches and stops a job in your own cluster account through your university’s Open OnDemand portal, in a browser session signed in to there, by you or by the extension with the account name and password you give it, and a set of scripts (the framework) that runs in your cluster account. The job runs Claude Code, which you signed in to yourself. This statement says what stays in your browser, what an earlier version of Beethoven may have left on your computer and in your cluster account, what goes to your cluster account, what your portal sees, what happens when your portal asks you to sign in, when you sign in to Claude and when the portal’s shell asks for your password, what Anthropic receives, what Licensor receives, and what is never collected. Beethoven 12.0.0 to 15.0.0 also reached your cluster over a secure shell (ssh) connection carried by a helper program on your computer, the Bridge, after a sign-in on a sheet of the extension’s own; this version has no Bridge and no ssh connection of its own and reaches your cluster only through your portal. It has a sign-in sheet again, for your portal only: it asks for your account name and cluster password when your portal asks for a sign-in, and saves the password, encrypted, only if you tick a box.</p>
 <h2 id="what-stays-in-your-browser">What stays in your browser</h2>
@@ -208,48 +208,54 @@
 <td>uninstalling</td>
 </tr>
 <tr class="even">
+<td>From version 20, the workers the last read of your cluster account found online, each one’s name, its claude.ai link and the e-mail address of the Claude account its own status file reports, with when they were read; and the right-click entries made from them, one for each worker’s link</td>
+<td><code>storage.local</code>, and your browser’s own list of this extension’s right-click entries</td>
+<td>so <em>Open in Beethoven</em> works on your workers’ links, and names the account to open another worker’s link as, without the grid or the VPN and after the browser restarts</td>
+<td>replaced at each read, and removed when a read finds none online; <em>Disconnect</em>; changing to another portal; uninstalling</td>
+</tr>
+<tr class="odd">
 <td>How the extension reaches your portal (directly from its background, or through a tab it opens), and whether the portal’s shell opened without asking for a password, with the time this was last tested</td>
 <td><code>storage.local</code></td>
 <td>so it uses the way that works without testing again before every action</td>
 <td>uninstalling</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Small notes for the panel: how long your last five waits for a computer took, in minutes (“Last time: 6 min.”); whether the tour was seen, and to its end; when your worker was first seen online in this browser (<em>Try asking</em> shows for three days from then), whether the tour began playing below your first wait, and which one-time tips you have seen or dismissed (pinning the toolbar button, <em>Try asking</em>, the tour card, the <em>New session</em> tip, the card that offers Settings for your project’s address), with when</td>
 <td><code>storage.local</code></td>
 <td>so the panel can tell you what to expect and does not repeat itself</td>
 <td>uninstalling</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Connection state during this browser session: the worker’s name and its folder on the cluster, the job number, what the worker’s files last said (its state, its one-line message, the node, the account and plan Claude Code reports, whether your Remote Control answer is on record, the grid’s reason for the wait and its estimate, and when it was asked for, got a computer and came online), the session name and its claude.ai link, the last 4,000 characters of the worker’s own log (Claude Code’s registration output as the job printed it) and the last lines of its progress log; whether your portal answers and whether you are signed in to it, with the account name it showed and when this was checked; a press that waits until the grid can carry it; the tabs the extension opened itself (the grid sign-in tab, Anthropic’s sign-in tab, your claude.ai tab and, if you named a project in Settings, your project’s tab, the portal’s terminal tab for the one-time step, and, on a portal that does not share its sign-in, the portal tab it works through), so it can close them or bring them forward; that you pressed <em>Agree and continue</em> on the welcome page, for a few minutes, so the panel opening beside it can say what is happening; how far your computer’s clock is from the grid’s, so the panel’s clocks agree with the grid’s; with more than one worker (version 18), each worker’s name, state, claude.ai link and the Claude account its status file reports, for <em>Your workers</em>; and the last results of its checks</td>
 <td><code>storage.session</code>, cleared when the browser closes</td>
 <td>to talk to your portal during this session, to show you the link, and to show you under <em>Details</em> what your worker printed</td>
 <td>closing the browser</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Only while a saved grid sign-in is unlocked: what your passkey released to open it, and the passkey’s credential identifier</td>
 <td><code>storage.session</code>, in memory only, cleared when the browser closes or Beethoven updates or reloads</td>
 <td>so you unlock it once each time you open the browser, not at every sign-in</td>
 <td>closing the browser; <em>Forget</em>; <em>Disconnect</em>; changing to another portal</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>A password you typed on the grid sign-in sheet without ticking <em>Remember it on this computer</em>, with the account name, your portal’s address and when you typed it</td>
 <td><code>storage.session</code>, in memory only</td>
 <td>for the one sign-in you asked for: it is removed once that sign-in has been tried, whether or not it worked, and at the latest two minutes after you typed it</td>
 <td>it removes itself; <em>Forget</em>; <em>Disconnect</em>; changing to another portal; closing the browser</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>The numbers your browser gave the requests the extension last answered with a password (at most 20); an answer still waiting for its outcome: when it was given, whether it was the saved or a typed password, which saved copy (by when it was saved) or when it was typed, and whether one of your portal tabs asked for a sign-in, or had a request answered by your portal without a refusal, meanwhile (never which tab or request); and the outcome of its last tries: when one was turned down, or when the outcome of one could no longer be told, whether it was a saved or a typed password, when it was given and which saved copy, how many were turned down in a row, and your portal’s realm; nothing you typed</td>
 <td><code>storage.session</code>, cleared when the browser closes</td>
 <td>so the extension answers each request at most once and stops after a refusal, even when it restarts</td>
 <td>closing the browser; <em>Forget</em>; <em>Disconnect</em>; changing to another portal</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>A plain-words list of what the extension did in this browser session, for <em>Show log</em> (for example, that you signed in to the grid and as which account, that you were approved, and the plan you signed in to Claude with), at most 200 lines</td>
 <td><code>storage.session</code>, cleared when the browser closes</td>
 <td>so <em>Show log</em> can say what happened, beside your worker’s own progress log</td>
 <td>closing the browser; <em>Copy log</em> copies it only when you press it</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>The audit log: one line per request the extension made to your portal (time, endpoint, method, job number, byte count, outcome). The sign-in sitting is one line with how many bytes were read and typed; what you typed is never in it. A sign-in the extension makes for you gets no line of its own (the request it answered is the line), and your password is never in it</td>
 <td>the extension’s own storage on your device</td>
 <td>so you can see exactly what the extension did</td>
@@ -306,7 +312,7 @@
 <p><strong>Your access record.</strong> Licensor’s records hold the approval and withdrawal decisions about your account (an approval is for Beethoven, or for membership of Licensor’s lab only), with the name and e-mail you gave when you asked (and, for a request made before 2026-10-13, the Google account it asked for then), their dates, the installations your account has asked from, and the check record above. Licensor does not publish the list of approved accounts: the access service answers about one account at a time. The same approved list serves Licensor’s other product, an extension for VS Code, so one approval covers both.</p>
 <p><strong>A notice under the agreement</strong>, if you send one: what you write in it, kept with your access record.</p>
 <h2 id="what-is-never-collected">What is never collected</h2>
-<p>Stated in the negative because reviewers read for what is absent: the extension does not collect command text, file paths, prompt content, job output, portal cookies or tokens, a verification code, the code you paste to sign in to Claude, anything the portal’s terminal page shows, the key the one-time step makes, browsing activity (of your own portal tabs it learns only of their sign-in requests and of when their requests end, and keeps of them only the one mark <em>When your portal asks you to sign in</em> describes, while an answer of its own waits for its outcome), or anything from claude.ai or any Anthropic page. Your portal or cluster password reaches the extension only if you type it into its own sign-in sheet; it then goes only to your portal, never to Licensor, and is kept only as <em>When your portal asks you to sign in</em> says. A password or code you type into your browser’s own sign-in box, your portal’s own pages or the portal’s own terminal page the extension never sees. It reads no hardware address, serial number or other identifier from your device and derives none from it: the one identifier of the installation is the random number described above. It sends Licensor no error or crash reports, no usage data and no activation request; the approval check above is the only thing it sends about you. It has no site permission on claude.ai, claude.com or anthropic.com and never asks for one, requests no <code>activeTab</code>, <code>cookies</code>, <code>tabs</code>, <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>debugger</code>, <code>identity</code>, <code>clipboardRead</code> or <code>nativeMessaging</code> permission (so no program on your computer is started for it), requests <code>webRequest</code> and <code>webRequestAuthProvider</code> only to answer your portal’s request for a sign-in, and to learn whether its answer worked, as <em>When your portal asks you to sign in</em> says, is granted no website when it is installed (it asks for your portal’s one website when you press <em>Agree and continue</em>, <em>Use this portal</em> or <em>Change</em> under Settings), and runs no code fetched from anywhere.</p>
+<p>Stated in the negative because reviewers read for what is absent: the extension does not collect command text, file paths, prompt content, job output, portal cookies or tokens, a verification code, the code you paste to sign in to Claude, anything the portal’s terminal page shows, the key the one-time step makes, browsing activity (of your own portal tabs it learns only of their sign-in requests and of when their requests end, and keeps of them only the one mark <em>When your portal asks you to sign in</em> describes, while an answer of its own waits for its outcome), or anything from claude.ai or any Anthropic page. Your portal or cluster password reaches the extension only if you type it into its own sign-in sheet; it then goes only to your portal, never to Licensor, and is kept only as <em>When your portal asks you to sign in</em> says. A password or code you type into your browser’s own sign-in box, your portal’s own pages or the portal’s own terminal page the extension never sees. It reads no hardware address, serial number or other identifier from your device and derives none from it: the one identifier of the installation is the random number described above. It sends Licensor no error or crash reports, no usage data and no activation request; the approval check above is the only thing it sends about you. It has no site permission on claude.ai, claude.com or anthropic.com and never asks for one, requests no <code>activeTab</code>, <code>cookies</code>, <code>tabs</code>, <code>webRequestBlocking</code>, <code>declarativeNetRequest</code>, <code>debugger</code>, <code>identity</code>, <code>clipboardRead</code> or <code>nativeMessaging</code> permission (so no program on your computer is started for it), requests <code>webRequest</code> and <code>webRequestAuthProvider</code> only to answer your portal’s request for a sign-in, and to learn whether its answer worked, as <em>When your portal asks you to sign in</em> says, requests <code>contextMenus</code> only to add <em>Open in Beethoven</em> to the menu your browser shows when you right-click a link to one of your workers’ sessions (when you choose it, your browser tells the extension that link and the address of the page you right-clicked it on; the extension opens the link, as <em>Show</em> under <em>Your workers</em> does, and keeps nothing of the page), is granted no website when it is installed (it asks for your portal’s one website when you press <em>Agree and continue</em>, <em>Use this portal</em> or <em>Change</em> under Settings), and runs no code fetched from anywhere.</p>
 <h2 id="how-licensor-uses-and-keeps-it">How Licensor uses and keeps it</h2>
 <p>A CV attached to a request is deleted twelve months after Licensor decides on the request (twelve months after the request, if no decision is made), or at once if the request is refused or the approval withdrawn. The other access records, including the check record and the installation record, are kept for the life of your access and six years after, to prove the agreement and for accounting and disputes. Nothing is sold or used for advertising. The web host that serves the two daily files sees the requests any web server sees and nothing more. Processors acting for Licensor (hosting; the access service; the e-mail service that carries its notices) see only what they need to run the service. Your cluster password and verification code reach neither Licensor nor any processor of Licensor’s: a password you give the extension goes only to your portal, and a password or code you type into your browser’s own sign-in box or your institution’s own pages the extension never sees. Licensor’s use of data complies with the Chrome Web Store’s Limited Use requirements.</p>
 <h2 id="security-and-breaches">Security and breaches</h2>
@@ -317,6 +323,7 @@
 <p>Beethoven is for adults, or minors with a parent’s or guardian’s consent (LICENSE.txt section 21).</p>
 <h2 id="changes">Changes</h2>
 <p>A new version of this statement ships with the Beethoven version it applies to and is shown for acceptance when it changes materially.</p>
+<p>Version 20 (2026-10-25, Beethoven 25.0.0): Beethoven adds <em>Open in Beethoven</em> to the menu your browser shows when you right-click a link to one of your workers’ sessions on claude.ai, wherever the link is shown, and asks your browser for the <code>contextMenus</code> permission to do it, which comes with no warning. On the link of a worker on this browser’s Claude account (Settings’ <em>Your Claude account in this browser</em>), or of any worker while none is named there, it opens the link in the claude.ai tab Beethoven keeps; on the link of a worker on another account, a greyed line names that account, to pick under your browser’s own <em>Open link as</em>, since no extension can open a tab in another Chrome profile. So that both work without the grid or the VPN and after the browser restarts, the workers the last read found online, each one’s name, claude.ai link and account, are kept in <code>storage.local</code> beside your worker’s last known state, and your browser keeps the entries made from them; both are replaced at each read and removed by <em>Disconnect</em> or another portal. Nothing of this reaches Licensor, and Beethoven still never reads claude.ai. Licensor treats this change as not material to the agreement, since it adds no recipient and keeps across restarts, in this browser only, what version 18 kept until the browser closed, so the agreement stays at version 15 and an acceptance of it stays in force. Version 19’s other terms are unchanged.</p>
 <p>Version 19 (2026-10-24, Beethoven 24.1.0): Settings’ <em>Your Claude account in this browser</em> is shown before any worker reports an account and gains <em>Add account</em>, where you can type the e-mail address of the Claude account this browser is signed in to on claude.ai yourself. It is kept as the account picked in version 18 is, in <code>storage.local</code> in this browser, and <em>Not set</em> forgets it; it is never sent to Licensor or anyone else, and Beethoven still never reads claude.ai. Licensor treats this change as not material to the agreement, since it adds no recipient and keeps nothing version 18 did not already keep, so the agreement stays at version 15 and an acceptance of it stays in force. Version 18’s other terms are unchanged.</p>
 <p>Version 18 (2026-10-23, Beethoven 24.0.0): with more than one worker in your cluster account, the panel’s <em>Your workers</em> lists each one with its state, its claude.ai link and the e-mail address of the Claude account its own status file reports, read from your cluster account through your portal once a minute while a page of Beethoven’s is open and kept in <code>storage.session</code> until the browser closes; <em>Show</em> loads a worker’s link in the claude.ai tab Beethoven opened. Settings can keep which of those accounts this browser is signed in to on claude.ai, so a worker on another account is shown with the Chrome profile to open it in; Beethoven never reads claude.ai to learn it. Nothing of this reaches Licensor. Licensor treats this change as not material to the agreement, since it adds no recipient and reads nothing the worker’s status file did not already say, so the agreement stays at version 15 and an acceptance of it stays in force. Version 17’s other terms are unchanged.</p>
 <p>Version 17 (2026-10-18, Beethoven 22.0.0): <em>For your lab lead</em> in Settings gains <em>Connect GitHub Actions</em> and <em>Remove</em>, which type one line each in the portal’s shell to set up or take out the grid’s ssh gate for one GitHub repository from the lab lead’s own copy of hpcworker, as the section on your cluster account says. Nothing is stored and nothing reaches Licensor. Licensor treats this change as not material to the agreement, since nothing is typed unless a lab lead presses one of the two buttons, so the agreement stays at version 15 and an acceptance of it stays in force. Version 16’s other terms are unchanged.</p>
@@ -393,7 +400,7 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610242125"></script>
+<script src="/assets/js/main.js?v=202610251206"></script>
 <!-- /site:footer -->
 
 </body>
