@@ -9071,7 +9071,31 @@
     autoB.title = 'On: your worker moves to the signed-in account with the most room when its account reaches 90% of a window';
     autoB.addEventListener('click', function () { gridPress(auto ? 'auto-off' : 'auto-on', '', auto ? 'Turning auto mode off' : 'Turning auto mode on'); });
     [refresh, usage, autoB].forEach(function (b) { b.disabled = !!gr.busy; add(bar, b); });
+    var accounts = gridAccounts();
+    if (accounts.length) {
+      var pick = el('select', 'gr__this');
+      pick.id = 'gr-this';
+      pick.title = 'The Claude account this Chrome profile is signed in to on claude.ai: a worker on it opens here, one on another account in the profile signed in to that one';
+      add(pick, el('option', '', 'This browser: not said')).firstChild.value = '';
+      accounts.forEach(function (a) {
+        var o = el('option', '', 'This browser: ' + gridAccountName(a));
+        o.value = String(a.slot);
+        if (o.value === thisAccount()) o.selected = true;
+        pick.appendChild(o);
+      });
+      pick.addEventListener('change', function () { keepThisAccount(pick.value); drawGrid(); drawLive(); });
+      add(bar, pick);
+    }
     if (gr.busy) add(bar, el('span', 'gr__busy', gr.busy.label + '...'));
+  }
+  // Which of the grid's Claude accounts this Chrome profile is signed in to on claude.ai, as the
+  // person says on the Grid tab: the page reads nothing from claude.ai, as Beethoven's Settings asks
+  // the same question for the same reason. It is kept in localStorage, which is the profile's own, so
+  // each profile remembers its own answer.
+  var KEY_THIS_ACCOUNT = 'symphony_panel_claude_slot';
+  function thisAccount() { try { return localStorage.getItem(KEY_THIS_ACCOUNT) || ''; } catch (e) { return ''; } }
+  function keepThisAccount(slot) {
+    try { if (slot) localStorage.setItem(KEY_THIS_ACCOUNT, slot); else localStorage.removeItem(KEY_THIS_ACCOUNT); } catch (e) { /* asked again on the next visit */ }
   }
   var GRID_NAME = /^[A-Za-z0-9_-]{1,24}$/;
   // every worker of the last day, the main one and each kept to an account of its own (framework 22)
@@ -9127,18 +9151,36 @@
       return w.pinned ? a.slot === w.pinned : (w.account ? a.slot === w.account : !!a.current);
     })[0] || null;
   }
+  // No page and no extension can open a tab in another Chrome profile, and a window belongs to one
+  // profile, so a worker on another account is opened by Chrome's own Open link as, on the link's
+  // right-click menu, which opens it in that profile's window or a new one. Where the person has said
+  // which account this profile is on, a worker on it opens with a plain press, and a press on one
+  // elsewhere says where to open it instead of opening claude.ai on the wrong account.
   function sessionLink(w) {
     var a = gridAccountOf(w);
     var who = a ? gridAccountName(a) : 'the grid\'s current Claude account';
+    var mine = thisAccount();
+    var here = !!(a && mine && String(a.slot) === mine);
     var span = el('span', '');
     var open = link(w.link, 'Open the session');
-    open.title = 'Opens in claude.ai only for a browser signed in as ' + who + '; signed in as anyone else, claude.ai shows that account\'s own page';
+    open.title = here ? 'Opens here: this browser is signed in to claude.ai as ' + who
+      : 'Right-click, Open link as, and the Chrome profile signed in to claude.ai as ' + who + '; signed in as any other account, claude.ai shows that account\'s own page';
+    if (a && mine && !here) {
+      var ours = gridAccounts().filter(function (x) { return String(x.slot) === mine; })[0];
+      open.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        say('This browser is signed in to Claude as ' + (ours ? gridAccountName(ours) : 'another account') + ', and the session is on ' + who +
+          '. Right-click Open the session, choose Open link as, then the Chrome profile signed in to ' + who + ': it opens in that profile\'s window, or a new one. ' +
+          'Chrome lists Open link as once it has a second profile; make one per Claude account with the profile button at its top right.');
+      });
+    }
     var copy = btn('Copy link', true, function () {
       var done = function () { say('The session\'s link is copied: paste it in a browser signed in to Claude as ' + who + '.'); };
       try { navigator.clipboard.writeText(w.link).then(done, function () { say('The browser refused the clipboard; the link is ' + w.link); }); }
       catch (e) { say('This browser gives the page no clipboard; the link is ' + w.link); }
     });
-    add(span, open, el('span', 'tkdlg__faint', ' (signed in as ' + who + ': open it in a browser signed in to that account) '), copy);
+    add(span, open, el('span', 'tkdlg__faint', here ? ' (on ' + who + ', this browser\'s account) '
+      : ' (on ' + who + ': right-click, Open link as, the Chrome profile signed in to it) '), copy);
     return span;
   }
   // asks first, from either tab, and sends the name alone
