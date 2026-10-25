@@ -2252,3 +2252,37 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 .console .rcard__sub { margin: 8px 0 2px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-faint); }
 .console .rcard__next { margin: 0; padding-left: 1.1em; font-size: 0.82rem; }
 .console .rcard__next li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Explore's switch between the task dependencies and the textbook's search graph */
+#tab-explore .ex__mode { display: flex; gap: 4px; }
+#tab-explore .ex__mode .chip[aria-pressed="true"] { border-color: var(--teal); background: rgba(60, 194, 177, 0.12); color: var(--ink); }
+#tab-explore [hidden] { display: none !important; }
+#tab-explore .rg__ask { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 0 10px; }
+#tab-explore .rg__ask input { flex: 1 1 16em; min-width: 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
+#tab-explore .rg__body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); gap: 12px; }
+#tab-explore .rg__canvas { min-height: 0; overflow: auto; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius, 12px); background: var(--paper); }
+#tab-explore .rg__svg { display: block; width: 100%; height: 100%; min-height: 320px; }
+#tab-explore .rg__edge { stroke: #8A9E97; stroke-width: 1.2; opacity: 0.45; }
+#tab-explore .rg__edge--like { stroke-dasharray: 5 5; stroke: #C792EA; opacity: 0.4; }
+#tab-explore .rg__edge--on { opacity: 1; stroke-width: 2.4; }
+#tab-explore .rg__node { cursor: pointer; outline: none; }
+#tab-explore .rg__node circle { fill: var(--paper-card, #1C2523); stroke: var(--teal); stroke-width: 1.5; }
+#tab-explore .rg__node .rg__hitring { fill: none; stroke: transparent; }
+#tab-explore .rg__node:hover circle, #tab-explore .rg__node:focus-visible circle { stroke-width: 3; }
+#tab-explore .rg__node--on .rg__hitring { stroke: var(--teal-bright, #5FE0CE); stroke-width: 2; }
+#tab-explore .rg__node--hit circle:first-of-type { fill: rgba(227, 179, 65, var(--hit, 0.6)); stroke: #E3B341; }
+#tab-explore .rg__node--dim { opacity: 0.35; }
+#tab-explore .rg__num { text-anchor: middle; font: 600 11px var(--font-mono, monospace); fill: var(--ink); pointer-events: none; }
+#tab-explore .rg__label { text-anchor: middle; font: 11px var(--font-body, sans-serif); fill: var(--ink-soft); pointer-events: none; }
+#tab-explore .rg__side { min-height: 0; overflow: auto; font-size: 0.85rem; }
+#tab-explore .rg__side a { color: var(--teal); }
+#tab-explore .rg__list, #tab-explore .rg__hits { margin: 0 0 8px; padding-left: 1.2em; }
+#tab-explore .rg__hits li { margin-bottom: 8px; }
+#tab-explore .rg__snip { margin: 2px 0 0; color: var(--ink-soft); font-size: 0.8rem; line-height: 1.35; }
+#tab-explore .rg__score { color: var(--ink-faint); font-size: 0.76rem; }
+.console #tab-explore button.rg__chap { margin: 0; padding: 0; border: 0; background: none; color: var(--teal); text-align: left; font-size: 0.85rem; cursor: pointer; }
+@media (max-width: 900px) { #tab-explore .rg__body { grid-template-columns: 1fr; } }
+/* a chapter's title shows where it is pointed at, chosen or found, so 35 titles never pile up */
+#tab-explore .rg__label { display: none; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; }
+#tab-explore .rg__node:hover .rg__label, #tab-explore .rg__node:focus-visible .rg__label, #tab-explore .rg__node--on .rg__label, #tab-explore .rg__node--hit .rg__label { display: inline; }
+#tab-explore .rg__edge--cite { opacity: 0.22; }
