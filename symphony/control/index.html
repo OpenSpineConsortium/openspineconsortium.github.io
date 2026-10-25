@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/style.css?v=202610242125">
 <link rel="stylesheet" href="/assets/css/site.css?v=202610242125">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610251235">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610251300">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610242125">
 <meta name="apple-mobile-web-app-title" content="Symphony">
@@ -122,7 +122,7 @@
      at. A new section is one more rail button (data-tab="name") and one more
      <section class="console__panel" id="tab-name" data-tab-panel="name" hidden>. Every element with
      data-split is a grip the person drags to size a part (the side column, the task lists, a token's
-     panel), and A- and A+ under the tabs set the text size; both are kept in
+     panel, the sign-in panel under the tabs), and A- and A+ under the tabs set the text size; both are kept in
      this browser (initLayout). The tabs open as a home screen of buttons on every screen, which a
      drag or Alt and the arrow keys put in another order, and Legacy under the tabs gives a computer
      the side rail back; the choice and the order are kept in this browser too (initHome). -->
@@ -183,7 +183,8 @@
           <button type="button" role="tab" data-hue="2" data-tab="about" id="rail-about" aria-controls="tab-about"><span class="rail__icon" aria-hidden="true">?</span><span class="rail__name">About</span></button>
         </div>
         <!-- who is signed in, the text size, the home screen's settings, Refresh and Forget the token:
-             under the tabs -->
+             under the tabs, with a grip on its top edge that sets its height -->
+        <div class="console__split console__split--me" data-split="me" role="separator" aria-orientation="horizontal" aria-label="Drag to size the sign-in panel; double-click to reset" tabindex="0"></div>
         <div class="console__me">
           <small id="cp-who"></small>
           <p class="console__mebuttons console__zoom console__homeset" role="group" aria-label="Home screen"><button id="cp-layout-buttons" type="button" class="quiet" aria-pressed="true" title="The tabs as a home screen of buttons, on every screen">Buttons</button><button id="cp-layout-legacy" type="button" class="quiet" aria-pressed="false" title="The tabs as a list in the side column, beside the open tab (a computer only)">Legacy</button></p>
@@ -267,7 +268,7 @@
               <button type="button" class="chip" data-taskview="all" aria-pressed="false">All</button>
             </p>
             <details class="console__help"><summary>How tasks work</summary><div>
-              <p>The open issues by the protocol&rsquo;s labels. An issue labelled <code>todo</code> and held by nobody is free for any session or worker to claim; one a worker&rsquo;s label names waits for that worker; a claim is a branch <code>claude/N</code>. + Add task queues one for the workers, or hands it to <code>@claude</code> at once. Press a card for where it stands, its gear to give it to a worker or ask Claude on it, its &times; to close it. Open <a id="cp-task-form-link" href="https://github.com" target="_blank" rel="noopener">the Task form on GitHub</a> for the same with GitHub&rsquo;s own page.</p>
+              <p>The open issues by the protocol&rsquo;s labels. An issue labelled <code>todo</code> and held by nobody is free for any session or worker to claim; one a worker&rsquo;s label names waits for that worker; a claim is a branch <code>claude/N</code>. + Add task queues one for the workers, or hands it to <code>@claude</code> at once. Press a card for where it stands, its gear to give it to a worker or ask Claude on it, its &times; to close it. The Queue, Given and Blocked lists show their tasks in the order the protocol takes them: <code>p1</code> first, then <code>p2</code>, then <code>p3</code>, then the rest, the oldest first among equals. A card&rsquo;s &#9650; and &#9660; raise or lower it one step through those labels, made in the repository the first time one is needed; the workers follow them once the repository runs a release of the protocol that carries them, and until then still take the oldest first. Open <a id="cp-task-form-link" href="https://github.com" target="_blank" rel="noopener">the Task form on GitHub</a> for the same with GitHub&rsquo;s own page.</p>
             </div></details>
           </div>
           <p id="cp-as-filter" class="admin__lead"></p>
@@ -785,6 +786,6 @@
 </footer>
 <script src="/assets/js/main.js?v=202610242125"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610251235"></script>
+<script src="/assets/js/symphony-panel.js?v=202610251300"></script>
 </body>
 </html>

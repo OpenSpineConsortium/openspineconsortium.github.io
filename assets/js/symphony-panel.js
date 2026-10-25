@@ -1421,6 +1421,24 @@
     var names = labels.filter(function (l) { return /^(worker|account|agent):/.test(l); }).map(function (l) { return l.replace(/^[a-z]+:/, ''); });
     return names.join(', ');
   }
+  // The protocol's priority labels (symphony-protocol, Pick): within each place a worker takes from,
+  // an issue labelled p1 is taken first, then p2, then p3, then one with none of them, the lower
+  // number first among equals; the highest of several counts, and GitHub reads P1 as p1. The
+  // Queue, Given and Blocked lists show their issues in that order, so the first card is the one a
+  // worker takes first, and the arrows on a card move it one label up or down.
+  var PRIORITIES = ['p1', 'p2', 'p3'];
+  var PRIORITY_COLORS = { p1: 'b60205', p2: 'd93f0b', p3: 'fbca04' };
+  function isPriority(name) { return PRIORITIES.indexOf(String(name).toLowerCase()) >= 0; }
+  function priorityOf(labels) {
+    var ranks = labels.filter(isPriority).map(function (l) { return PRIORITIES.indexOf(String(l).toLowerCase()); });
+    return ranks.length ? Math.min.apply(null, ranks) : PRIORITIES.length;
+  }
+  function priorityName(rank) { return rank < PRIORITIES.length ? PRIORITIES[rank] : 'none'; }
+  function inPickOrder(list) {
+    return list.slice().sort(function (a, b) {
+      return (priorityOf(labelsOf(a)) - priorityOf(labelsOf(b))) || (a.number - b.number);
+    });
+  }
   function sortIssues(issues) {
     var g = { blockers: [], epics: [], claimed: [], review: [], blocked: [], given: [], queue: [], other: [] };
     issues.forEach(function (it) {
@@ -1441,6 +1459,8 @@
       else if (l.indexOf('todo') >= 0) g.queue.push(it);
       else g.other.push(it);
     });
+    // the places Pick takes from, in its order; the rest keep the order GitHub lists them in
+    ['blockers', 'blocked', 'given', 'queue'].forEach(function (k) { g[k] = inPickOrder(g[k]); });
     return g;
   }
 
@@ -1454,7 +1474,7 @@
     var td = el('td');
     labels.forEach(function (name, i) {
       if (i) add(td, el('span', 'chip__sep', ', '));
-      add(td, el('span', 'lchip' + (/^worker:|^account:|^agent:/.test(name) ? ' lchip--worker' : '') + (/^(blocker|blocked)$/.test(name) ? ' lchip--warn' : ''), name));
+      add(td, el('span', 'lchip' + (/^worker:|^account:|^agent:/.test(name) ? ' lchip--worker' : '') + (/^(blocker|blocked)$/.test(name) ? ' lchip--warn' : '') + (isPriority(name) ? ' lchip--prio' : ''), name));
     });
     return td;
   }
@@ -1469,8 +1489,10 @@
     add(tr, labelChips(l));
     add(tr, el('td', '', workerOf(l) || ''));
     add(tr, add(el('td'), timeEl(it.updated_at)));
+    var rank = priorityOf(l);
     add(tr, cardControls(tr, '#' + it.number, {
       run: givable && l.indexOf('blocked') < 0 ? function () { launchTask(it); } : null,
+      priority: givable ? { now: priorityName(rank), up: rank > 0 ? priorityName(rank - 1) : '', down: rank < PRIORITIES.length ? priorityName(rank + 1) : '', step: function (by) { stepPriority(it, by); } } : null,
       open: function () { issueStatus(it, givable); },
       gear: function () { issueSettings(it, givable, ''); },
       x: function (b) { closeIssue(it, b); }
@@ -1486,6 +1508,41 @@
   }
   function workerNames() {
     return state.workers.map(function (w) { return w.name; }).filter(Boolean);
+  }
+  // one step up the priority labels (by -1: none to p3, p3 to p2, p2 to p1) or down them (by +1, to
+  // none at the last). The new label is made where the repository has none yet and put on first,
+  // then the old one taken off, so a failure between the two leaves the higher of them on, which
+  // the protocol counts: the new one going up, the old one going down, never neither.
+  function stepPriority(it, by) {
+    var s = state;
+    var account = shownLogin;
+    var labels = labelsOf(it), rank = priorityOf(labels), next = rank + by;
+    if (next < 0 || next > PRIORITIES.length) return;
+    var label = next < PRIORITIES.length ? PRIORITIES[next] : '';
+    var old = labels.filter(function (l) { return isPriority(l) && String(l).toLowerCase() !== label; });
+    say('#' + it.number + ': priority ' + priorityName(rank) + ' to ' + priorityName(next) + '...');
+    var put = !label ? Promise.resolve() : gh('GET', '/repos/' + s.repo + '/labels/' + encodeURIComponent(label)).catch(function (e) {
+      if (e.status !== 404) throw e;
+      return gh('POST', '/repos/' + s.repo + '/labels', { name: label, color: PRIORITY_COLORS[label], description: 'Taken first in its place: p1, then p2, then p3, then none (the protocol, Pick)' }, undefined, false, account);
+    }).then(function () {
+      return gh('POST', '/repos/' + s.repo + '/issues/' + it.number + '/labels', { labels: [label] }, undefined, false, account);
+    });
+    put.then(function () {
+      return old.reduce(function (p, name) {
+        return p.then(function () {
+          return gh('DELETE', '/repos/' + s.repo + '/issues/' + it.number + '/labels/' + encodeURIComponent(name), undefined, undefined, false, account).catch(function (e) {
+            if (e.status !== 404) throw e;
+          });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      if (stale(s)) return;
+      say('#' + it.number + ' is now ' + (label || 'without a priority') + ': the lists show it in the order the workers take it.');
+      return loadIssues(s);
+    }).catch(function (e) {
+      say('#' + it.number + '\'s priority did not change all the way: ' + e.message, true);
+      if (!stale(s)) loadIssues(s);
+    });
   }
   function giveTo(issue, name) {
     if (!WORKER_NAME.test(name)) { say('A worker\'s name is lower-case letters, digits and inner dashes, up to 39.', true); return; }
@@ -1519,6 +1576,23 @@
       run.setAttribute('aria-label', 'Run ' + what + ' now');
       run.addEventListener('click', function (ev) { ev.stopPropagation(); acts.run(); });
       add(td, run);
+    }
+    if (acts.priority) {
+      // the two arrows share one corner slot, the higher above the lower
+      var prio = el('span', 'card__prio');
+      prio.setAttribute('role', 'group');
+      prio.setAttribute('aria-label', 'Priority of ' + what + ': ' + acts.priority.now);
+      [['up', '▲', 'Raise', -1], ['down', '▼', 'Lower', 1]].forEach(function (a) {
+        var to = acts.priority[a[0]];
+        var b = el('button', 'card__gear card__step', a[1]);
+        b.type = 'button';
+        b.title = to ? a[2] + ' ' + what + ' to ' + to + ' (now ' + acts.priority.now + ')' : what + ' is at ' + acts.priority.now + ' already';
+        b.setAttribute('aria-label', b.title);
+        b.disabled = !to;
+        b.addEventListener('click', function (ev) { ev.stopPropagation(); acts.priority.step(a[3]); });
+        add(prio, b);
+      });
+      add(td, prio);
     }
     if (acts.gear) {
       var gear = el('button', 'card__gear', '⚙');
@@ -3770,7 +3844,10 @@
     side: { prop: '--side-w', min: 150, max: 520, axis: 'x', sign: 1, measure: function () { return $('console').querySelector('.console__side').offsetWidth; } },
     col: { prop: '--col-w', min: 170, max: 720, axis: 'x', sign: 1, measure: function (grip) { return grip.closest('h3').offsetWidth; } },
     tkside: { prop: '--tkside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('tk-side').offsetWidth; } },
-    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } }
+    nbside: { prop: '--nbside-w', min: 220, max: 760, axis: 'x', sign: -1, measure: function () { return $('nb-side').offsetWidth; } },
+    // the sign-in panel under the tabs, by the grip on its top edge: dragging up makes it taller
+    // (the owner, 2026-10-25: "i should be able to adjust the height of this subpanel")
+    me: { prop: '--me-h', min: 40, max: 640, axis: 'y', sign: -1, measure: function () { var me = $('console').querySelector('.console__side > .console__me'); return me ? me.offsetHeight : 0; } }
   };
   // how much the text size scales a part: its size on screen over its size in its own pixels (the
   // phone's rules leave the deck unscaled whatever text size the desktop saved)
@@ -3807,6 +3884,8 @@
       else c.style.removeProperty(LAYOUT_PARTS[k].prop);
     });
     c.style.setProperty('--console-zoom', String(zoomOf()));
+    // a height of its own makes the sign-in panel scroll inside itself where its buttons need more
+    c.classList.toggle('console--me-sized', layout.me != null);
     if ($('cp-zoom-reset')) $('cp-zoom-reset').textContent = Math.round(zoomOf() * 100) + '%';
     sayGrips();
   }
