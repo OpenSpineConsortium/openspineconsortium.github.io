@@ -500,6 +500,21 @@ class Door(unittest.TestCase):
         self.assertTrue(page.url.endswith("/symphony/door/?repo=" + REPO), page.url)
         self.assertEqual(self.errors, [])
 
+    def test_a_door_label_and_the_last_repository_open_the_textbook_in_one_press(self):
+        # the site's Read the Textbook button is /symphony/door/?door=Textbook, naming no
+        # repository: the label opens that starting point, and the repository is the one this
+        # browser last opened in the reader, written back into the address
+        page = self.open(query="?repo=" + REPO + "&door=Guide", wait=False)
+        page.wait_for_selector("#door-content .doc h1:has-text('Guide')", timeout=15000)
+        page.goto(self.base + "/symphony/door/?door=guide")
+        page.wait_for_selector("#door-content .doc h1:has-text('Guide')", timeout=15000)
+        self.assertIn("?repo=" + REPO, page.url)
+        self.assertIn("door=guide", page.url)
+        # a label the repository lacks opens the top folder, as no label does
+        page.goto(self.base + "/symphony/door/?repo=" + REPO + "&door=Nothing")
+        page.wait_for_selector("#door-content .doc h1:has-text('Reader test')", timeout=15000)
+        self.assertEqual(self.errors, [])
+
     def test_a_deep_link_survives_the_first_sign_in(self):
         self.start(None)
         page = self.page

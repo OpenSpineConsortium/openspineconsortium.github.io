@@ -10,8 +10,8 @@ csp: frame-src data: blob:
 <!-- The reader: the sign-in box the cost page has (assets/js/symphony-panel.js, initDoor), then a
      view of one repository read live through GitHub's API with the reader's own token
      (assets/js/door.js). The repository comes from the address, ?repo=OWNER/NAME, and a choice
-     made on the page from the control panel's list is written into the address before it opens;
-     this page names none. The csp line gives the page frame-src data: blob:, which holds a sealed
+     made on the page from the control panel's list, or the repository this browser last opened
+     here, is written into the address before it opens; this page names none. The csp line gives the page frame-src data: blob:, which holds a sealed
      frame's own navigations (door.js, PAGE_CSP). Every id of the sign-in box below is bound by the
      shared sign-in code, so none of them may be left out. -->
 <section class="section admin control door-page" aria-labelledby="door-title">
