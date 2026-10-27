@@ -972,8 +972,19 @@
   // as a folder is often written), or one of the words board and changes. #main, the site's skip
   // link, is the page's own; any other word names a path, whatever the page's elements are called.
   function pageOwn(h) { return h === 'main'; }
+  // With no hash, ?door=LABEL opens the starting point of that label, as the site's Read the
+  // Textbook button asks (?door=Textbook), naming no repository; a label the repository's doors
+  // lack opens the top folder, as no hash does.
+  function doorAsked() {
+    var asked = (new URLSearchParams(location.search).get('door') || '').trim().toLowerCase();
+    if (!asked) return null;
+    for (var i = 0; i < doors.length; i++) if (doors[i].label.toLowerCase() === asked) return doors[i];
+    return null;
+  }
   function targetOfHash() {
     var h = location.hash.slice(1);
+    var d = !h ? doorAsked() : null;
+    if (d) return {kind: 'path', ref: d.ref, path: d.path};
     if (!h || pageOwn(h)) return {kind: 'path', ref: MAIN, path: ''};
     if (h === 'board') return {kind: 'path', ref: 'board', path: 'STATE.md'};
     if (h === 'changes') return {kind: 'changes'};

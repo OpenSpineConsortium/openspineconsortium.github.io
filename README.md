@@ -312,7 +312,9 @@ Beethoven has two editions, and both live under `/beethoven/`:
   bar, and Track seals the drive's refresh token as the secret `SYMPHONY_DRIVE_REFRESH`, writes
   `.github/symphony/drive.json` and starts the first sync; Google Drive waits for a way that
   needs no key. **`/symphony/door/`**, the reader, opens one repository the signed-in person can
-  read, named in the address as `?repo=OWNER/NAME`, live through GitHub's API with their own
+  read, named in the address as `?repo=OWNER/NAME` (with none, the one this browser last opened
+  there; `?door=LABEL` opens a starting point of the repository's door.json, as the home page's
+  Read the Textbook button does), live through GitHub's API with their own
   token: its folders, its Markdown rendered, its pictures, its text files and its HTML pages sealed
   in a sandboxed frame (`assets/js/door.js`, `assets/css/door.css`). It is `hidden` and `noindex`
   like `/beethoven/admin.html` below, since its address is sent with the repository in it, and

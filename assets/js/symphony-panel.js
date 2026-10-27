@@ -62,6 +62,7 @@
   var KEY_TOKEN = 'symphony_panel_token';
   var KEY_OAUTH = 'symphony_panel_oauth';
   var KEY_STATE = 'symphony_panel_oauth_state';
+  var KEY_DOOR_LAST = 'symphony_door_last';   // the repository this browser last opened in the reader
   var KEY_REPOS = 'symphony_panel_repos';
   var KEY_REPO = 'symphony_panel_repo';
   var KEY_PLAN = 'symphony_panel_plan';
@@ -7424,6 +7425,13 @@
     // before it opens (openRepo), so what is open is always what the address says
     function startDoor() {
       var asked = (new URLSearchParams(location.search).get('repo') || '').trim();
+      // with none in the address, the repository this browser last opened here, kept in this
+      // browser alone (KEY_DOOR_LAST), so the site's Read the Textbook button names no repository
+      // and still opens the reader's own the second time; it is written into the address as any
+      // chosen one is, so what is open is still what the address says
+      var last = '';
+      try { last = asked ? '' : (localStorage.getItem(KEY_DOOR_LAST) || ''); } catch (e) { last = ''; }
+      if (!asked && REPOSITORY.test(last)) { showChoice(last); openRepo(last, true); return; }
       // the commonest pastes of a repository's address are taken as the repository they name
       var fixed = asked.replace(/^https?:\/\/github\.com\//i, '').replace(/\/+$/, '').replace(/\.git$/i, '');
       var repo = REPOSITORY.test(fixed) ? fixed : '';
@@ -7479,6 +7487,7 @@
         say('The reader\'s own script, /assets/js/door.js, did not load, so the repository cannot be shown. Reload the page; if this stays, the site is missing that file.', true);
         return;
       }
+      try { localStorage.setItem(KEY_DOOR_LAST, repo); } catch (e) { /* asked again on the next visit */ }
       window.SymphonyDoor.start(doorApi(repo));
     }
     finishOauth().then(function () {
