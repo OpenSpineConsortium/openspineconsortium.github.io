@@ -380,18 +380,21 @@
     if (way) way.open = true;
   }
   // GitHub's return lands on the bare page, which is the App's callback URL, so the page's own query
-  // from before the sign-in (?repo=OWNER/NAME) travels with the sign-in's secret and is put back
+  // from before the sign-in (?repo=OWNER/NAME) travels with the sign-in's secret and is put back,
+  // and its hash with it, since a callback URL holds no fragment and a reader's deep link
+  // (#docs~guide.md) would otherwise land on the top folder
   var SIGNIN_PARAMS = ['code', 'state', 'error', 'error_description', 'error_uri'];
   function withoutSigninParams(search) {
     var q = new URLSearchParams(search);
     SIGNIN_PARAMS.forEach(function (k) { q.delete(k); });
     return q.toString();
   }
-  function restoreQuery(back) {
-    if (typeof back !== 'string' || back.length > 2048 || location.search) return;
-    var rest = withoutSigninParams(back);
-    if (!rest) return;
-    try { history.replaceState(null, '', location.pathname + '?' + rest + location.hash); } catch (e) { /* the address stays */ }
+  function restoreQuery(back, hash) {
+    // the slash of ?repo=OWNER/NAME is written back as the slash a person writes, not as %2F
+    var rest = typeof back === 'string' && back.length <= 2048 && !location.search ? withoutSigninParams(back).replace(/%2F/gi, '/') : '';
+    var mark = typeof hash === 'string' && hash.length > 1 && hash.length <= 2048 && hash.charAt(0) === '#' && !location.hash ? hash : '';
+    if (!rest && !mark) return;
+    try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : location.search) + (mark || location.hash)); } catch (e) { /* the address stays */ }
   }
   // PKCE: a secret for this one sign-in stays in this tab, GitHub gets its hash, and only the holder
   // of the secret can turn the code GitHub sends back into a token. The "keep me signed in" tick
@@ -404,7 +407,7 @@
       var challenge = base64url(new Uint8Array(hash));
       var keep = $('cp-keep') ? $('cp-keep').checked : false;
       try {
-        sessionStorage.setItem(KEY_STATE, JSON.stringify({ state: state, verifier: verifier, keep: keep, back: location.search }));
+        sessionStorage.setItem(KEY_STATE, JSON.stringify({ state: state, verifier: verifier, keep: keep, back: location.search, hash: location.hash }));
       } catch (e) { say('This browser refuses session storage, which the sign-in needs to come back; use a token instead.', true); offerToken(); return; }
       location.href = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(CLIENT_ID)
         + '&redirect_uri=' + encodeURIComponent(pageAddress()) + '&state=' + encodeURIComponent(state)
@@ -613,13 +616,17 @@
     // the code and GitHub's words leave the address before anything else, so neither stays in the history
     var rest = withoutSigninParams(location.search);
     try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } catch (e2) { /* the address stays */ }
-    if (kept) restoreQuery(kept.back);
+    if (kept) restoreQuery(kept.back, kept.hash);
     if (!signinAvailable()) return Promise.resolve(false);
     if (!kept || !state || kept.state !== state || !kept.verifier) {
       // said only for a sign-in this tab started and that came back with another state; a return
       // with nothing pending is Back after a sign-in, or a crafted link, and is cleaned from the
       // address and otherwise ignored, GitHub's words with it
       if (kept && !error) { say('The sign-in did not come back the way it left (its state differs); press Sign in with GitHub to start it again.', true); offerToken(); }
+      // a sign-in that comes back to another tab or browser than the one that pressed it (a phone's
+      // in-app browser, a link opened from mail) finds no record here; said where nobody is signed in,
+      // so Back after a sign-in, which finds a token, stays quiet
+      else if (!kept && code && state && !error && !readKey(KEY_TOKEN) && !oauthRecord()) say('GitHub sent a sign-in back to this page, but this tab did not start it: the sign-in must come back to the tab that pressed Sign in with GitHub. Press it here to start again.', true);
       return Promise.resolve(false);
     }
     if (error) { say('GitHub did not sign you in (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return Promise.resolve(false); }
@@ -7361,10 +7368,11 @@
      The reader (/symphony/door/)
      ============================================================ */
   // The reader signs in as the cost page does and hands assets/js/door.js a small client built on
-  // gh(): JSON reads, a file's raw bytes, the repository chosen and a way to say a word on the page.
+  // call(): JSON reads, a file's raw bytes, the repository chosen and a way to say a word on the page.
   // door.js never holds the token, and every call it makes goes out through the same checks as the
-  // panel's own. The client is held to the chosen repository and the code search whatever door.js
-  // asks, so a path it built wrongly is refused here unsent rather than read elsewhere as the person.
+  // panel's own. The client is held to the chosen repository's paths and the code search path
+  // whatever door.js asks, so a path it built wrongly is refused here unsent rather than read
+  // elsewhere as the person; what a code search finds is what the person's own account may read.
   var DOOR_ACCEPT = 'application/vnd.github.text-match+json';
   function doorPathAllowed(repo, path) {
     var at = String(path).indexOf('?'), bare = at < 0 ? path : path.slice(0, at), base = '/repos/' + repo;
@@ -7375,16 +7383,24 @@
     return rest === '' || rest.split('/').every(function (part) { return part !== '' && part !== '.' && part !== '..'; });
   }
   function doorApi(repo) {
-    function refused() { return Promise.reject(new Error('The reader asked for an address outside ' + repo + ', so nothing was sent.')); }
+    function refused() {
+      var err = new Error('The reader asked for an address outside ' + repo + ', so nothing was sent.');
+      err.refused = true;
+      return Promise.reject(err);
+    }
+    // every read asks GitHub again rather than taking the browser's copy of up to a minute ago
+    // (Cache-Control: private, max-age=60), so a reload after a merge shows the merge; GitHub answers
+    // 304 from the ETag the browser holds, which its rate limit does not count
+    function live(path, headers, raw) { return call('GET', path, undefined, headers, raw, shownLogin, false, true); }
     return {
       repo: repo,
       get: function (path, accept) {
         if (!doorPathAllowed(repo, path)) return refused();
-        return gh('GET', path, undefined, accept === DOOR_ACCEPT ? { 'Accept': DOOR_ACCEPT } : undefined).then(function (r) { return { data: r.data, headers: r.headers }; });
+        return live(path, accept === DOOR_ACCEPT ? { 'Accept': DOOR_ACCEPT } : undefined, false).then(function (r) { return { data: r.data, headers: r.headers }; });
       },
       raw: function (path) {
         if (!doorPathAllowed(repo, path)) return refused();
-        return gh('GET', path, undefined, RAW, 'bytes').then(function (r) { return r.data; });
+        return live(path, RAW, 'bytes').then(function (r) { return r.data; });
       },
       say: function (words, warn) { say(words, warn, true); }
     };
@@ -7403,17 +7419,46 @@
       showChoice(typed);
       openRepo(typed, true);
     });
-    // the repository in the address (?repo=OWNER/NAME) first, else the control panel's choice and list
+    // the repository comes from the address (?repo=OWNER/NAME) and nowhere else: with none the page
+    // opens nothing and asks, and a repository chosen on the page is written into the address
+    // before it opens (openRepo), so what is open is always what the address says
     function startDoor() {
-      var repo = chosenRepo();
+      var asked = (new URLSearchParams(location.search).get('repo') || '').trim();
+      // the commonest pastes of a repository's address are taken as the repository they name
+      var fixed = asked.replace(/^https?:\/\/github\.com\//i, '').replace(/\/+$/, '').replace(/\.git$/i, '');
+      var repo = REPOSITORY.test(fixed) ? fixed : '';
       showChoice(repo);
-      if (!repo) { say('Name a repository to read: type it as OWNER/NAME beside Open, or open this page as /symphony/door/?repo=OWNER/NAME.'); return; }
+      if (!repo) {
+        var words = asked
+          ? 'The address names the repository as "' + asked.slice(0, 100) + '", which is not OWNER/NAME as GitHub writes it. Choose one above, or type it beside Open.'
+          : 'Choose a repository above, or type it as OWNER/NAME beside Open; the address then names it as ?repo=OWNER/NAME, so the link can be sent on.';
+        if ($('door-note-text')) $('door-note-text').textContent = words;
+        say(words, Boolean(asked), true);
+        return;
+      }
+      if (repo !== asked) {
+        // the address is written as the repository it was taken as, its hash kept
+        var q = new URLSearchParams(location.search);
+        q.delete('repo');
+        var rest = q.toString();
+        try { history.replaceState(null, '', location.pathname + '?repo=' + repo + (rest ? '&' + rest : '') + location.hash); } catch (e) { /* the address stays */ }
+      }
       openRepo(repo, false);
     }
-    // the panel's list in the select, with the repository in view at its head where the list lacks it
+    // the panel's list in the select, with the repository in view at its head where the list lacks
+    // it, or, with none in view, a first line that chooses nothing, so choosing the first listed
+    // is a change like any other
     function showChoice(repo) {
       fillRepoSelect(select, repo);
-      if (!repo || repos().indexOf(repo) >= 0) return;
+      if (!repo) {
+        if (!repos().length) return;
+        var none = el('option', '', 'Choose a repository');
+        none.value = '';
+        none.selected = true;
+        select.insertBefore(none, select.firstChild);
+        return;
+      }
+      if (repos().indexOf(repo) >= 0) return;
       if (!repos().length) clear(select);
       var o = el('option', '', repo);
       o.value = repo;

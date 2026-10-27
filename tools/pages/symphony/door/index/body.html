@@ -5,23 +5,26 @@ css: /assets/css/control.css, /assets/css/door.css
 js: /assets/js/door.js, /assets/js/symphony-panel.js
 canonical: https://openspineconsortium.com/symphony/door/
 robots: noindex
+csp: frame-src data: blob:
 ---
 <!-- The reader: the sign-in box the cost page has (assets/js/symphony-panel.js, initDoor), then a
      view of one repository read live through GitHub's API with the reader's own token
-     (assets/js/door.js). The repository comes from the address, ?repo=OWNER/NAME, or from the
-     control panel's list; this page names none. Every id of the sign-in box below is bound by the
+     (assets/js/door.js). The repository comes from the address, ?repo=OWNER/NAME, and a choice
+     made on the page from the control panel's list is written into the address before it opens;
+     this page names none. The csp line gives the page frame-src data: blob:, which holds a sealed
+     frame's own navigations (door.js, PAGE_CSP). Every id of the sign-in box below is bound by the
      shared sign-in code, so none of them may be left out. -->
 <section class="section admin control door-page" aria-labelledby="door-title">
   <header class="page-head">
     <span class="eyebrow">Symphony</span>
     <h1 id="door-title">Read a repository</h1>
-    <p>Sign in with GitHub to read a repository your account can read: its folders, its documents rendered, its pictures, and its HTML pages shown sealed, with no way to send anything out. The page asks GitHub&rsquo;s API from this browser as you, so it shows exactly what your own account may see, and it keeps nothing but the sign-in, in this browser. Name the repository in the address as <code>?repo=OWNER/NAME</code>, or pick one listed on <a href="/symphony/control/">the control panel</a>.</p>
+    <p>Sign in with GitHub to read a repository your account can read: its folders, its documents rendered, its pictures, and its HTML pages shown sealed in a frame that cannot reach your sign-in or this site and can send next to nothing out. The page asks GitHub&rsquo;s API from this browser as you, so it shows exactly what your own account may see, and it keeps nothing but the sign-in, in this browser. Name the repository in the address as <code>?repo=OWNER/NAME</code>, or choose one below from those listed on <a href="/symphony/control/">the control panel</a>, which writes it into the address.</p>
   </header>
 
   <div class="admin__box" id="msg" role="status" aria-live="polite"></div>
 
   <div class="admin__box control__gate" id="cp-gate">
-    <h3>Sign in</h3>
+    <h2>Sign in</h2>
     <p class="admin__lead"><span id="cp-signin-how" data-in-app="In this app, Sign in with GitHub shows a code: type it on GitHub&rsquo;s page, which opens outside the app, allow SymphonyBoard, then come back here signed in.">Sign in with GitHub to read a repository your account can read. One press, as on the control panel: GitHub sends you straight back here signed in.</span></p>
     <div><button id="cp-signin" type="button" class="control__signin">Sign in with GitHub</button></div>
     <p id="cp-signin-off" class="admin__lead admin__warn hidden">Sign in with GitHub switches on once its sign-in service is running; until then, use a token below.</p>
@@ -57,7 +60,7 @@ robots: noindex
         <div id="door-view">
           <div id="door-busy" hidden></div>
           <p id="door-where"></p>
-          <div id="door-note" role="status"><p id="door-note-text">Sign in to open a repository.</p><p id="door-note-more" hidden></p><div id="door-note-do"></div></div>
+          <div id="door-note" role="status"><p id="door-note-text">No repository open yet.</p><p id="door-note-more" hidden></p><div id="door-note-do"></div></div>
           <div id="door-content"></div>
         </div>
       </div>

@@ -10,6 +10,9 @@
 
 /* ---------- the repository line above it ---------- */
 .door-page .page-head p { max-width: 80ch; }
+/* the sign-in box's heading is an h2, the next level under the page's h1; it keeps the size and
+   room the box's heading has on the cost page rather than site.css's section heading */
+.door-page #cp-gate > h2 { font-family: inherit; font-weight: 700; font-size: 1.17em; margin: 22px 0 1em; }
 .door-pick { display: flex; flex-wrap: wrap; gap: 0 14px; align-items: flex-end; margin: 4px 0 6px; }
 .door-pick > div { flex: 1 1 220px; min-width: 0; }
 .door-pick > .door-pick__go { flex: 0 0 auto; }
@@ -77,7 +80,7 @@
 
 #door-view { flex: 1; min-width: 0; min-height: 0; overflow: auto; position: relative; padding: 16px 18px; }
 #door-view.framed { padding: 0; overflow: hidden; }
-#door-view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+#door-view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--paper-card); }
 #door-busy { position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 3; background: var(--teal); opacity: 0.75; }
 #door-busy[hidden] { display: none; }
 #door-where { color: var(--ink-soft); font: 12.5px/1.4 var(--door-mono); margin: 0 0 12px; overflow-wrap: anywhere; }

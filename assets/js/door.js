@@ -7,7 +7,8 @@
    hands start() a small client (api.get for JSON, api.raw for a file's bytes, api.repo for the
    repository, api.say for a word on the page), so every read goes to GitHub's REST API with the
    person's own token and comes back with only what their own account may read. Nothing is kept:
-   a file is read again at the next open of the page.
+   a file is read again at the next open of the page, and the client asks GitHub again each time
+   rather than taking the browser's copy of up to a minute ago.
 
    Every path that comes from outside this script (the address's hash, a link inside a document,
    the repository's .github/symphony/door.json, every message a sealed page sends) is split into
@@ -16,8 +17,9 @@
    so no address built here leaves the repository's contents. A sealed page runs in a frame with
    sandbox="allow-scripts" alone (no origin, no popups, no forms, no navigation of this page),
    under a Content-Security-Policy that lets it load scripts and styles from the public CDNs
-   exported pages are written for and send nothing anywhere; the files it refers to are read here
-   and put inline, and its fetches of files beside it are answered by message.
+   exported pages are written for and gives it no other way out (SEALED_CSP says what still
+   leaves, and sealedPrelude takes WebRTC away, which no policy closes); the files it refers to are read here and put inline, and its fetches of files beside
+   it are answered by message.
 
    At load it defines window.SymphonyDoor and does nothing else, so the page shows nothing of a
    repository until the person is signed in and the panel calls start().
@@ -33,7 +35,12 @@
   var SEALED = 'allow-scripts';   // scripts and nothing else: no origin, no popup, no form, no top navigation
   // The policy every sealed document carries as the first child of its head. The CDN hosts are the
   // ones claude.ai lets an artifact load from, the hosts the exported pages were written for; the
-  // page may run their scripts, but connect-src, img-src and media-src give it no way out.
+  // page may run their scripts, and connect-src, img-src, media-src, the sandbox and the frame-src
+  // of this page stop every other way out a policy can govern (WebRTC is none: sealedPrelude). What still leaves the browser is a request to one of
+  // the listed hosts, whose address the page writes and so could fill with what it read; no
+  // listed host hands that address to anyone but its operator. A DNS lookup is outside any
+  // policy, so the sealed document also carries x-dns-prefetch-control off, which no later meta
+  // turns back on, and its link hints that would ask for one are taken out (sealedDoc).
   var SEALED_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob: data: https://cdnjs.cloudflare.com " +
     "https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://code.jquery.com; " +
     "style-src 'unsafe-inline' data: https://fonts.googleapis.com; font-src data: https://fonts.gstatic.com; " +
@@ -41,8 +48,10 @@
     "form-action 'none'; base-uri 'none'";
   // A sandboxed frame may still navigate itself, and a page that read the repository could carry
   // what it read out in the address it navigates to. A frame's navigations are held to the
-  // frame-src of the page that holds it, so this page takes that one directive for itself before
-  // its first sealed frame; nothing else on the page uses a frame.
+  // frame-src of the page that holds it. The built page carries this directive in its own head
+  // (the csp line of tools/pages/symphony/door/index/body.html), where every browser reads it; the
+  // copy bind() adds by script stands behind it should the page ever be served without it.
+  // Nothing else on the page uses a frame.
   var PAGE_CSP = 'frame-src data: blob:';
   var DOOR_FILE = '.github/symphony/door.json';
   var MOST_DOORS = 24;
@@ -180,7 +189,9 @@
   function ssoAddress(v) { var m = /url=(https:\/\/github\.com\/[^\s;,]+)/.exec(v || ''); return m ? m[1] : ''; }
 
   // A read through the page's own client. A rate limit is waited out once when GitHub's wait is a
-  // minute or less; every other failure becomes a code the reader puts into words.
+  // minute or less, and a passing failure (GitHub's 5xx, or no answer at all) is tried once more
+  // after a moment; every other failure becomes a code the reader puts into words, with GitHub's
+  // own reason where it gave one (a search's 422 says why in its errors).
   function request(kind, url, accept, tries) {
     var g = gen;
     var asked;
@@ -201,8 +212,18 @@
         if (ms !== null || status === 429) throw {code: 'rate_limited', until: ms === null ? null : Date.now() + ms};
         throw {code: 'forbidden', message: (e && e.message) || ''};
       }
-      throw {code: (e && e.code) || 'failed', status: status, message: (e && e.message) || String(e || '')};
+      if (!tries && !(e && e.refused) && (!status || status >= 500)) {
+        return wait(1500).then(function () {
+          if (g !== gen) throw {code: 'stale'};
+          return request(kind, url, accept, 1);
+        });
+      }
+      throw {code: (e && e.code) || 'failed', status: status, message: ((e && e.message) || String(e || '')) + reasonOf(e)};
     });
+  }
+  function reasonOf(e) {
+    var first = e && e.data && Array.isArray(e.data.errors) ? e.data.errors[0] : null;
+    return first && typeof first.message === 'string' ? ' ' + first.message.slice(0, 300) : '';
   }
   function bytesFrom(x) {
     if (x instanceof Uint8Array) return x;
@@ -313,7 +334,8 @@
   }
   function fragment(href) { var at = String(href).indexOf('#'); return at < 0 ? '' : String(href).slice(at + 1); }
   function slug(s) {
-    return String(s).toLowerCase().replace(/<[^>]*>/g, '').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-');
+    // as GitHub writes a heading's anchor: one hyphen for each space, so a link written for GitHub finds it here
+    return String(s).toLowerCase().replace(/<[^>]*>/g, '').replace(/[^\w\- ]+/g, '').trim().replace(/ /g, '-');
   }
 
   // Markdown, as repositories write it: headings, paragraphs, lists, fenced code, quotes, rules and
@@ -546,6 +568,12 @@
       late.forEach(function (js) { doc.body.appendChild(js); });
       mediaOf(doc, path).forEach(function (m) { var f = have(m.path); if (f) m.el.setAttribute(m.attr, dataUrl(f)); });
       doc.querySelectorAll('[srcset]').forEach(function (e) { e.removeAttribute('srcset'); });
+      // a link hint asks for a DNS lookup or a connection no policy governs; a stylesheet link is
+      // inline by now, and a page's own word on DNS prefetching gives way to the one put first below
+      doc.querySelectorAll('link').forEach(function (l) {
+        if (/(?:^|\s)(?:dns-prefetch|preconnect|prefetch|preload|modulepreload|prerender)(?:\s|$)/i.test(l.getAttribute('rel') || '')) l.remove();
+      });
+      doc.querySelectorAll('meta[http-equiv]').forEach(function (m) { if (/^\s*x-dns-prefetch-control\s*$/i.test(m.getAttribute('http-equiv'))) m.remove(); });
       // a refresh would navigate the frame, which the page's frame-src stops; it is taken out too
       doc.querySelectorAll('meta[http-equiv]').forEach(function (m) { if (/^\s*refresh\s*$/i.test(m.getAttribute('http-equiv'))) m.remove(); });
       // every frame of the page is sealed as the page is, whatever sandbox it asked for
@@ -565,6 +593,10 @@
       var s = doc.createElement('script');
       s.textContent = '(' + sealedPrelude.toString() + ')(' + JSON.stringify(hash) + ');';
       head.insertBefore(s, head.firstChild);
+      var lookups = doc.createElement('meta');
+      lookups.setAttribute('http-equiv', 'x-dns-prefetch-control');
+      lookups.setAttribute('content', 'off');
+      head.insertBefore(lookups, head.firstChild);
       var policy = doc.createElement('meta');
       policy.setAttribute('http-equiv', 'Content-Security-Policy');
       policy.setAttribute('content', SEALED_CSP);
@@ -576,7 +608,33 @@
   // The first script of a sealed page, run inside its frame: a link to a file of the repository is
   // asked for by message, and a fetch of a file beside the page is answered by message with the
   // file's bytes, since a frame with no origin can fetch nothing itself.
+  // WebRTC is the one way out no policy closes in Chromium (a TURN server's username is the
+  // page's to write, and no CSP directive governs it), so the prelude takes its constructors away
+  // before the page's own scripts run, here and in each child frame it can reach. It narrows the
+  // channel rather than closing it: a page that writes a child frame of its own (srcdoc or blob:)
+  // runs scripts there that the prelude never reaches. What such a page could send is what it was
+  // given to show, which only someone who may write the repository can put there, and never the
+  // reader's token, which an origin-less frame cannot read.
   function sealedPrelude(hash) {
+    var RTC = ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel', 'RTCIceGatherer', 'RTCIceTransport', 'RTCSctpTransport'];
+    function cut(w) {
+      if (!w) return;
+      RTC.forEach(function (k) {
+        try { Object.defineProperty(w, k, {value: undefined, writable: false, configurable: false}); } catch (e) { try { w[k] = undefined; } catch (e2) { /* nothing */ } }
+      });
+    }
+    cut(window);
+    try {
+      var frameWin = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
+      Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {configurable: false, get: function () { var w = frameWin.get.call(this); cut(w); return w; }});
+      var ownDoc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentDocument');
+      Object.defineProperty(HTMLIFrameElement.prototype, 'contentDocument', {configurable: false, get: function () { cut(frameWin.get.call(this)); return ownDoc.get.call(this); }});
+    } catch (e) { /* the frame's own scripts meet the constructors gone from this window alone */ }
+    try {
+      new MutationObserver(function (list) {
+        list.forEach(function (m) { m.addedNodes.forEach(function (node) { if (node.tagName === 'IFRAME') { try { cut(node.contentWindow); } catch (e) { /* nothing */ } } }); });
+      }).observe(document, {childList: true, subtree: true});
+    } catch (e) { /* nothing */ }
     var pending = {}, n = 0, own = window.fetch;
     function away(h) { return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(h); }
     window.fetch = function (input, init) {
@@ -795,11 +853,14 @@
     note.hidden = true;
   }
 
-  function showFile(ref, path, en) {
-    var e = ext(path);
+  // Each view is drawn by the open that asked for it and by no other: a read that comes back after
+  // the reader has opened something else is dropped, so the view, the address and Back agree.
+  function showFile(ref, path, en, hash) {
+    var e = ext(path), mine = opening;
     if (en.size !== null && en.size > LIMIT) { showTooLarge(ref, en); return Promise.resolve(); }
-    if (e === 'html' || e === 'htm') return showSealed(ref, path, shownHash());
+    if (e === 'html' || e === 'htm') return showSealed(ref, path, hash);
     if (IMAGE.test(path)) return read(ref, path).then(function (f) {
+      if (opening !== mine) return;
       clear();
       crumbs(ref, path);
       content.appendChild(el('img', {'class': 'picture', src: pictureUrl(f), alt: name(path)}));
@@ -814,12 +875,16 @@
       return Promise.resolve();
     }
     return read(ref, path).then(function (f) {
+      if (opening !== mine) return;
       clear();
       crumbs(ref, path);
       var t = textOf(f);
       if (e === 'md') {
-        content.appendChild(docOf(ref, path, t));
-        if (shownHash()) setTimeout(function () { reveal(shownHash()); }, 0);
+        // a document is cut where a text file is, since markdown() renders on the page's own thread
+        var long = t.length > MOST_TEXT;
+        content.appendChild(docOf(ref, path, long ? t.slice(0, MOST_TEXT) : t));
+        if (long) content.appendChild(el('p', {'class': 'muted', text: 'Cut after ' + MOST_TEXT.toLocaleString() + ' characters; the whole document is on GitHub.'}));
+        if (hash) setTimeout(function () { reveal(hash); }, 0);
       } else {
         var cut = t.length > MOST_TEXT;
         content.appendChild(el('pre', {}, [el('code', {text: cut ? t.slice(0, MOST_TEXT) : t})]));
@@ -828,10 +893,10 @@
       note.hidden = true;
     });
   }
-  function shownHash() { return (shown && shown.hash) || ''; }
-
   function showSealed(ref, path, hash) {
+    var mine = opening;
     return sealedDoc(ref, path, hash, 0).then(function (html) {
+      if (opening !== mine) return;
       clear();
       crumbs(ref, path);
       view.className = 'framed';
@@ -850,7 +915,9 @@
   }
 
   function showChanges() {
+    var mine = opening;
     return request('get', commitsUrl(30)).then(function (r) {
+      if (opening !== mine) return;
       var commits = r.data;
       if (!Array.isArray(commits)) throw {code: 'unreadable', message: 'GitHub answered with no list of commits'};
       clear();
@@ -871,9 +938,16 @@
     });
   }
 
+  // The search is held to this repository: a qualifier typed into the box that names another place
+  // is refused, since GitHub would search both, and the words are cut to what fits in GitHub's 256
+  // characters beside the repository's own qualifier.
   function showSearch(q) {
-    var url = '/search/code?q=' + encodeURIComponent('repo:' + FULL + ' ' + q) + '&per_page=30';
+    if (/(?:^|\s)-?(?:repo|user|org):/i.test(q)) return Promise.reject({code: 'bad_search', message: q});
+    var scope = 'repo:' + FULL + ' ', mine = opening;
+    q = q.slice(0, Math.max(0, 256 - scope.length));
+    var url = '/search/code?q=' + encodeURIComponent(scope + q) + '&per_page=30';
     return request('get', url, TEXT_MATCH).then(function (r) {
+      if (opening !== mine) return;
       var items = r.data && Array.isArray(r.data.items) ? r.data.items : [];
       clear();
       where.textContent = 'Search: ' + q;
@@ -894,14 +968,16 @@
 
   // The address
 
-  // The deep link: a path with its slashes written as ~ (or as slashes), or one of the words board
-  // and changes. A hash that names an element of the page (the site's skip link) is the page's own.
+  // The deep link: a path with its slashes written as ~ (or as slashes, one at either end let go,
+  // as a folder is often written), or one of the words board and changes. #main, the site's skip
+  // link, is the page's own; any other word names a path, whatever the page's elements are called.
+  function pageOwn(h) { return h === 'main'; }
   function targetOfHash() {
     var h = location.hash.slice(1);
-    if (!h || document.getElementById(h)) return {kind: 'path', ref: MAIN, path: ''};
+    if (!h || pageOwn(h)) return {kind: 'path', ref: MAIN, path: ''};
     if (h === 'board') return {kind: 'path', ref: 'board', path: 'STATE.md'};
     if (h === 'changes') return {kind: 'changes'};
-    var p = cleanFrom(h, /[\/~]/);
+    var p = cleanFrom(h.replace(/^[\/~]|[\/~]$/g, ''), /[\/~]/);
     return p === null ? {kind: 'refused', raw: h} : {kind: 'path', ref: MAIN, path: p};
   }
   function hashOf(target) {
@@ -943,8 +1019,7 @@
           if (ext(target.path) === 'md') { reveal(shown.hash); return 'same'; }
         }
         if (en.type === 'dir') return folder(target.ref, target.path).then(function (es) { return opening === me ? showFolder(target.ref, target.path, es) : null; });
-        shown = target;   // the hash a file opens at is read from the target in view
-        return showFile(target.ref, target.path, en).catch(function (e) { shown = was; throw e; });
+        return showFile(target.ref, target.path, en, target.hash || '');
       });
     }
     shows.then(function (r) {
@@ -956,7 +1031,10 @@
       side.classList.remove('open');
       $('door-files').setAttribute('aria-expanded', 'false');
     }).catch(function (e) {
-      if (opening === me && g === gen) failed(e, target);
+      if (opening !== me || g !== gen) return;
+      failed(e, target);
+      // the address goes back to what is still in view, so a copied address opens what it shows
+      if (shown && code(e) !== 'too_large') writeHash(shown);
     }).then(function () { if (opening === me) busy.hidden = true; });
   }
 
@@ -967,10 +1045,11 @@
     var close = ['Close', function () { note.hidden = Boolean(shown); }];
     var again = ['Try again', function () { open(target, false); }];
     var what = target.kind === 'path' ? (target.ref || MAIN) + ': ' + (target.path || '(top folder)') : '';
-    if (c === 'not_found') say('Your GitHub account cannot read this repository, or the path is not there.', esc(what), [close]);
+    if (c === 'not_found') say('That is not in the repository, or your account no longer reads it.', esc(what), [close]);
     else if (c === 'bad_path') say('That address names no path this reader opens.', 'A part of it is empty, . or .., or holds a slash or backslash once decoded: ' + esc(String(e.message || '').slice(0, 300)), [close]);
     else if (c === 'too_large') { showTooLarge(e.ref || MAIN, e.entry); }
     else if (c === 'is_folder') say('That is a folder, not a file.', esc(what), [close]);
+    else if (c === 'bad_search') say('The search looks in this repository only, so it takes words and no repo:, user: or org:.', esc(String(e.message || '').slice(0, 300)), [close]);
     else common(e, again, close);
   }
   // the failures a start and an open share
@@ -1072,13 +1151,14 @@
     });
     window.addEventListener('message', onMessage);
     window.addEventListener('hashchange', function () {
-      var h = location.hash.slice(1);
-      if (api && MAIN && !(h && document.getElementById(h))) open(targetOfHash());
+      if (api && MAIN && !pageOwn(location.hash.slice(1))) open(targetOfHash());
     });
-    var policy = document.createElement('meta');
-    policy.setAttribute('http-equiv', 'Content-Security-Policy');
-    policy.setAttribute('content', PAGE_CSP);
-    document.head.appendChild(policy);
+    if (!document.querySelector('meta[http-equiv="Content-Security-Policy"][content="' + PAGE_CSP + '"]')) {
+      var policy = document.createElement('meta');
+      policy.setAttribute('http-equiv', 'Content-Security-Policy');
+      policy.setAttribute('content', PAGE_CSP);
+      document.head.appendChild(policy);
+    }
   }
 
   // Opens the repository the client names, from its top or from the address's hash; a second

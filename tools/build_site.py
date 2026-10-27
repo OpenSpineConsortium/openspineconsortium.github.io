@@ -807,7 +807,7 @@ def check_words(name, source_text, rendered_html, problems):
 # ============================================================
 # BODY FILES
 # ============================================================
-FRONT_KEYS = {"title", "description", "css", "js", "canonical", "body_class", "strip", "breadcrumb", "robots", "app"}
+FRONT_KEYS = {"title", "description", "css", "js", "canonical", "body_class", "strip", "breadcrumb", "robots", "app", "csp"}
 
 # The control panel's Home Screen app: the manifest a phone's browser installs the page from, as an
 # app with its own icon that opens full screen, and the head lines that point at it and at Apple's
@@ -1318,9 +1318,13 @@ def render_page(n, texts):
     body = expand(body, texts, str(src.relative_to(ROOT)), path)
     css = "".join(f'\n<link rel="stylesheet" href="{c.strip()}">' for c in meta.get("css", "").split(",") if c.strip())
     robots = meta.get("robots", "").strip()
+    # a page's own Content-Security-Policy, written in its head where the browser reads it as it
+    # parses the page (the reader's frame-src, which holds a sealed frame's navigations)
+    policy = meta.get("csp", "").strip()
     head = fill(template("head.html"), {
         "title": esc(meta["title"]), "description": esc(meta["description"]),
         "robots": f'\n<meta name="robots" content="{esc(robots)}">' if robots else "",
+        "policy": f'\n<meta http-equiv="Content-Security-Policy" content="{esc(policy)}">' if policy else "",
         "canonical": esc(meta.get("canonical") or ORIGIN + path), "icon": ICON, "fonts": esc(FONTS),
         "extra_css": css}, "head.html")
     if meta.get("app", "").lower() == "yes":

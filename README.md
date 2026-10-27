@@ -311,8 +311,13 @@ Beethoven has two editions, and both live under `/beethoven/`:
   template form makes the repository and "Find the repository I just made" chooses it in the
   bar, and Track seals the drive's refresh token as the secret `SYMPHONY_DRIVE_REFRESH`, writes
   `.github/symphony/drive.json` and starts the first sync; Google Drive waits for a way that
-  needs no key. Both pages share the script and `assets/css/control.css`, which ride on the
-  admin page's `.admin` styles.
+  needs no key. **`/symphony/door/`**, the reader, opens one repository the signed-in person can
+  read, named in the address as `?repo=OWNER/NAME`, live through GitHub's API with their own
+  token: its folders, its Markdown rendered, its pictures, its text files and its HTML pages sealed
+  in a sandboxed frame (`assets/js/door.js`, `assets/css/door.css`). It is `hidden` and `noindex`
+  like `/beethoven/admin.html` below, since its address is sent with the repository in it, and
+  `tests/test_door_browser.py` drives it in Chromium where Playwright is installed. The three pages
+  share the script and `assets/css/control.css`, which ride on the admin page's `.admin` styles.
 - **`/beethoven/admin.html`**, the maintainer's approval page, is generated like any page
   but `hidden`: no navigation leads to it, it carries `noindex` and it is not in the
   sitemap. It reads the access service's address from `beethoven/services.json`
