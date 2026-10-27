@@ -1,8 +1,9 @@
 /* ============================================================
-   symphony-panel.js: the Symphony control panel (/symphony/control/) and
-   the cost page (/symphony/cost.html). One script serves both, so the
-   sign-in and the GitHub client are shared: a token given on one page
-   serves the other.
+   symphony-panel.js: the Symphony control panel (/symphony/control/),
+   the cost page (/symphony/cost.html) and the reader (/symphony/door/,
+   with assets/js/door.js). One script serves them all, so the sign-in
+   and the GitHub client are shared: a token given on one page serves
+   the others.
 
    How it works. The page calls GitHub's REST API from this browser as the
    signed-in person, with a token that stays in this browser (localStorage
@@ -379,18 +380,21 @@
     if (way) way.open = true;
   }
   // GitHub's return lands on the bare page, which is the App's callback URL, so the page's own query
-  // from before the sign-in (?repo=OWNER/NAME) travels with the sign-in's secret and is put back
+  // from before the sign-in (?repo=OWNER/NAME) travels with the sign-in's secret and is put back,
+  // and its hash with it, since a callback URL holds no fragment and a reader's deep link
+  // (#docs~guide.md) would otherwise land on the top folder
   var SIGNIN_PARAMS = ['code', 'state', 'error', 'error_description', 'error_uri'];
   function withoutSigninParams(search) {
     var q = new URLSearchParams(search);
     SIGNIN_PARAMS.forEach(function (k) { q.delete(k); });
     return q.toString();
   }
-  function restoreQuery(back) {
-    if (typeof back !== 'string' || back.length > 2048 || location.search) return;
-    var rest = withoutSigninParams(back);
-    if (!rest) return;
-    try { history.replaceState(null, '', location.pathname + '?' + rest + location.hash); } catch (e) { /* the address stays */ }
+  function restoreQuery(back, hash) {
+    // the slash of ?repo=OWNER/NAME is written back as the slash a person writes, not as %2F
+    var rest = typeof back === 'string' && back.length <= 2048 && !location.search ? withoutSigninParams(back).replace(/%2F/gi, '/') : '';
+    var mark = typeof hash === 'string' && hash.length > 1 && hash.length <= 2048 && hash.charAt(0) === '#' && !location.hash ? hash : '';
+    if (!rest && !mark) return;
+    try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : location.search) + (mark || location.hash)); } catch (e) { /* the address stays */ }
   }
   // PKCE: a secret for this one sign-in stays in this tab, GitHub gets its hash, and only the holder
   // of the secret can turn the code GitHub sends back into a token. The "keep me signed in" tick
@@ -403,7 +407,7 @@
       var challenge = base64url(new Uint8Array(hash));
       var keep = $('cp-keep') ? $('cp-keep').checked : false;
       try {
-        sessionStorage.setItem(KEY_STATE, JSON.stringify({ state: state, verifier: verifier, keep: keep, back: location.search }));
+        sessionStorage.setItem(KEY_STATE, JSON.stringify({ state: state, verifier: verifier, keep: keep, back: location.search, hash: location.hash }));
       } catch (e) { say('This browser refuses session storage, which the sign-in needs to come back; use a token instead.', true); offerToken(); return; }
       location.href = 'https://github.com/login/oauth/authorize?client_id=' + encodeURIComponent(CLIENT_ID)
         + '&redirect_uri=' + encodeURIComponent(pageAddress()) + '&state=' + encodeURIComponent(state)
@@ -612,13 +616,17 @@
     // the code and GitHub's words leave the address before anything else, so neither stays in the history
     var rest = withoutSigninParams(location.search);
     try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } catch (e2) { /* the address stays */ }
-    if (kept) restoreQuery(kept.back);
+    if (kept) restoreQuery(kept.back, kept.hash);
     if (!signinAvailable()) return Promise.resolve(false);
     if (!kept || !state || kept.state !== state || !kept.verifier) {
       // said only for a sign-in this tab started and that came back with another state; a return
       // with nothing pending is Back after a sign-in, or a crafted link, and is cleaned from the
       // address and otherwise ignored, GitHub's words with it
       if (kept && !error) { say('The sign-in did not come back the way it left (its state differs); press Sign in with GitHub to start it again.', true); offerToken(); }
+      // a sign-in that comes back to another tab or browser than the one that pressed it (a phone's
+      // in-app browser, a link opened from mail) finds no record here; said where nobody is signed in,
+      // so Back after a sign-in, which finds a token, stays quiet
+      else if (!kept && code && state && !error && !readKey(KEY_TOKEN) && !oauthRecord()) say('GitHub sent a sign-in back to this page, but this tab did not start it: the sign-in must come back to the tab that pressed Sign in with GitHub. Press it here to start again.', true);
       return Promise.resolve(false);
     }
     if (error) { say('GitHub did not sign you in (' + error.slice(0, 64) + (description ? ': ' + description.slice(0, 200) : '') + '). Press Sign in with GitHub to try again, or use a token.', true); offerToken(); return Promise.resolve(false); }
@@ -838,10 +846,13 @@
       return token;
     });
   }
-  function failure(status, data, path, byApp) {
+  // GitHub's headers ride with the failure, so a caller can read the wait a rate limit names
+  // (retry-after, x-ratelimit-reset) or an organization's single sign-on (x-github-sso)
+  function failure(status, data, path, byApp, headers) {
     var err = new Error(explain(status, data, path, byApp));
     err.status = status;
     err.data = data;
+    err.headers = headers || null;
     return err;
   }
   // a call for the account the page names now, unless a chain of calls of one action names the
@@ -881,6 +892,8 @@
       if (seen !== null) rateLatest = seen;
       // a 304, the answer to a read made conditional on an ETag (the assistant's), has no body either
       if (r.status === 204 || r.status === 205 || r.status === 304) return { status: r.status, data: null, headers: r.headers, sent: sent };
+      // a file's bytes as GitHub holds them (the reader's pictures and pages), which text would mangle
+      if (raw === 'bytes' && r.ok) return r.arrayBuffer().then(function (b) { return { status: r.status, data: b, headers: r.headers, sent: sent }; });
       return r.text().then(function (t) {
         if (raw && r.ok) return { status: r.status, data: t, headers: r.headers, sent: sent };
         var data = null;
@@ -889,9 +902,9 @@
         // meanwhile, where there is one; a write, only for the account it was asked for
         if (r.status === 401) return refused(sent, byApp).then(function (retry) {
           if (retry && !again) return call(method, path, body, headers, raw, account, true, fresh);
-          throw failure(r.status, data, path, byApp);
+          throw failure(r.status, data, path, byApp, r.headers);
         });
-        if (!r.ok) throw failure(r.status, data, path, byApp);
+        if (!r.ok) throw failure(r.status, data, path, byApp, r.headers);
         return { status: r.status, data: data, headers: r.headers, sent: sent };
       });
     }).catch(function (e) {
@@ -7347,6 +7360,130 @@
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
       enter(startCost);
+    });
+  }
+
+
+  /* ============================================================
+     The reader (/symphony/door/)
+     ============================================================ */
+  // The reader signs in as the cost page does and hands assets/js/door.js a small client built on
+  // call(): JSON reads, a file's raw bytes, the repository chosen and a way to say a word on the page.
+  // door.js never holds the token, and every call it makes goes out through the same checks as the
+  // panel's own. The client is held to the chosen repository's paths and the code search path
+  // whatever door.js asks, so a path it built wrongly is refused here unsent rather than read
+  // elsewhere as the person; what a code search finds is what the person's own account may read.
+  var DOOR_ACCEPT = 'application/vnd.github.text-match+json';
+  function doorPathAllowed(repo, path) {
+    var at = String(path).indexOf('?'), bare = at < 0 ? path : path.slice(0, at), base = '/repos/' + repo;
+    if (/%2e|%2f|%5c|\\/i.test(bare)) return false;
+    if (bare === base || bare === base + '/commits' || bare === '/search/code') return true;
+    if (bare.indexOf(base + '/contents/') !== 0) return false;
+    var rest = bare.slice((base + '/contents/').length);
+    return rest === '' || rest.split('/').every(function (part) { return part !== '' && part !== '.' && part !== '..'; });
+  }
+  function doorApi(repo) {
+    function refused() {
+      var err = new Error('The reader asked for an address outside ' + repo + ', so nothing was sent.');
+      err.refused = true;
+      return Promise.reject(err);
+    }
+    // every read asks GitHub again rather than taking the browser's copy of up to a minute ago
+    // (Cache-Control: private, max-age=60), so a reload after a merge shows the merge; GitHub answers
+    // 304 from the ETag the browser holds, which its rate limit does not count
+    function live(path, headers, raw) { return call('GET', path, undefined, headers, raw, shownLogin, false, true); }
+    return {
+      repo: repo,
+      get: function (path, accept) {
+        if (!doorPathAllowed(repo, path)) return refused();
+        return live(path, accept === DOOR_ACCEPT ? { 'Accept': DOOR_ACCEPT } : undefined, false).then(function (r) { return { data: r.data, headers: r.headers }; });
+      },
+      raw: function (path) {
+        if (!doorPathAllowed(repo, path)) return refused();
+        return live(path, RAW, 'bytes').then(function (r) { return r.data; });
+      },
+      say: function (words, warn) { say(words, warn, true); }
+    };
+  }
+  function initDoor() {
+    var select = $('door-repo');
+    wireGate(function () { enter(startDoor); });
+    watchOtherTabs();
+    $('cp-signout').addEventListener('click', signOut);
+    select.addEventListener('change', function () { if (REPOSITORY.test(select.value)) openRepo(select.value, true); });
+    $('door-pick').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var typed = ($('door-name').value || '').trim();
+      if (!REPOSITORY.test(typed)) { say('Name the repository as OWNER/NAME, as GitHub writes it.', true); return; }
+      $('door-name').value = '';
+      showChoice(typed);
+      openRepo(typed, true);
+    });
+    // the repository comes from the address (?repo=OWNER/NAME) and nowhere else: with none the page
+    // opens nothing and asks, and a repository chosen on the page is written into the address
+    // before it opens (openRepo), so what is open is always what the address says
+    function startDoor() {
+      var asked = (new URLSearchParams(location.search).get('repo') || '').trim();
+      // the commonest pastes of a repository's address are taken as the repository they name
+      var fixed = asked.replace(/^https?:\/\/github\.com\//i, '').replace(/\/+$/, '').replace(/\.git$/i, '');
+      var repo = REPOSITORY.test(fixed) ? fixed : '';
+      showChoice(repo);
+      if (!repo) {
+        var words = asked
+          ? 'The address names the repository as "' + asked.slice(0, 100) + '", which is not OWNER/NAME as GitHub writes it. Choose one above, or type it beside Open.'
+          : 'Choose a repository above, or type it as OWNER/NAME beside Open; the address then names it as ?repo=OWNER/NAME, so the link can be sent on.';
+        if ($('door-note-text')) $('door-note-text').textContent = words;
+        say(words, Boolean(asked), true);
+        return;
+      }
+      if (repo !== asked) {
+        // the address is written as the repository it was taken as, its hash kept
+        var q = new URLSearchParams(location.search);
+        q.delete('repo');
+        var rest = q.toString();
+        try { history.replaceState(null, '', location.pathname + '?repo=' + repo + (rest ? '&' + rest : '') + location.hash); } catch (e) { /* the address stays */ }
+      }
+      openRepo(repo, false);
+    }
+    // the panel's list in the select, with the repository in view at its head where the list lacks
+    // it, or, with none in view, a first line that chooses nothing, so choosing the first listed
+    // is a change like any other
+    function showChoice(repo) {
+      fillRepoSelect(select, repo);
+      if (!repo) {
+        if (!repos().length) return;
+        var none = el('option', '', 'Choose a repository');
+        none.value = '';
+        none.selected = true;
+        select.insertBefore(none, select.firstChild);
+        return;
+      }
+      if (repos().indexOf(repo) >= 0) return;
+      if (!repos().length) clear(select);
+      var o = el('option', '', repo);
+      o.value = repo;
+      o.selected = true;
+      select.insertBefore(o, select.firstChild);
+      select.disabled = false;
+    }
+    // a repository chosen on the page goes into the address, so the address can be sent on; the
+    // hash named a path of the one before, so it goes
+    function openRepo(repo, chosen) {
+      if (chosen) {
+        var q = new URLSearchParams(location.search);
+        q.delete('repo');
+        var rest = q.toString();
+        try { history.replaceState(null, '', location.pathname + '?repo=' + repo + (rest ? '&' + rest : '')); } catch (e) { /* the address stays */ }
+      }
+      if (!window.SymphonyDoor || typeof window.SymphonyDoor.start !== 'function') {
+        say('The reader\'s own script, /assets/js/door.js, did not load, so the repository cannot be shown. Reload the page; if this stays, the site is missing that file.', true);
+        return;
+      }
+      window.SymphonyDoor.start(doorApi(repo));
+    }
+    finishOauth().then(function () {
+      if (!loadToken()) { showGate(); return; }
+      enter(startDoor);
     });
   }
 
@@ -14633,9 +14770,11 @@
   // the Agents tab puts one in each agent's row
   window.tokenAssignBox = tokenAssignBox;
 
-  // the cost page carries a signed-in box of its own, so its marker is read first
+  // the cost page and the reader carry a signed-in box of their own (cp-app), so their markers are
+  // read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
+  else if ($('door-app')) initDoor();
   else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
 })();

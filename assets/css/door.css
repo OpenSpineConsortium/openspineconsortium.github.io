@@ -1,0 +1,150 @@
+/* ============================================================
+   door.css: the reader (/symphony/door/, assets/js/door.js).
+   The sign-in box above it is control.css's; here only the reader:
+   one bar across its top, the folder pane at the left and the file in
+   view at the right, each scrolling inside itself, and on a phone the
+   pane sliding over the view. Every rule is held under #door-app, so
+   the admin page's styles in site.css (its round buttons, full-width
+   inputs and tables) reach none of it and none of it reaches the page.
+   ============================================================ */
+
+/* ---------- the repository line above it ---------- */
+.door-page .page-head p { max-width: 80ch; }
+/* the sign-in box's heading is an h2, the next level under the page's h1; it keeps the size and
+   room the box's heading has on the cost page rather than site.css's section heading */
+.door-page #cp-gate > h2 { font-family: inherit; font-weight: 700; font-size: 1.17em; margin: 22px 0 1em; }
+.door-pick { display: flex; flex-wrap: wrap; gap: 0 14px; align-items: flex-end; margin: 4px 0 6px; }
+.door-pick > div { flex: 1 1 220px; min-width: 0; }
+.door-pick > .door-pick__go { flex: 0 0 auto; }
+.door-pick button { margin-bottom: 4px; }
+
+/* ---------- the reader ---------- */
+#door-app {
+  --door-mono: var(--font-mono, ui-monospace, Menlo, Consolas, monospace);
+  display: flex;
+  flex-direction: column;
+  height: min(82vh, 1000px);
+  min-height: 440px;
+  margin: 14px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--paper-card);
+  color: var(--ink);
+  font: 15px/1.55 var(--font-body);
+}
+#door-app button {
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--teal);
+  background: transparent;
+  border: 1px solid var(--teal);
+  border-radius: 6px;
+  padding: 3px 10px;
+  margin: 0;
+  cursor: pointer;
+}
+#door-app button:hover { color: var(--paper-card); background: var(--teal); border-color: var(--teal); }
+#door-app button:disabled { opacity: 0.45; cursor: default; }
+#door-app button:disabled:hover { color: var(--teal); background: transparent; }
+#door-app button:focus-visible, #door-app input:focus-visible, #door-app a:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+#door-app button.plain { border: 0; padding: 0; color: var(--teal); background: transparent; text-align: left; font-size: inherit; border-radius: 2px; }
+#door-app button.plain:hover { color: var(--teal-deep); text-decoration: underline; background: transparent; }
+#door-app input {
+  width: 12em;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  box-shadow: none;
+}
+#door-app input:focus { border-color: var(--teal); }
+#door-app a { color: var(--teal); }
+
+.door__bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 14px; background: var(--paper-deep); border-bottom: 1px solid var(--line); }
+#door-head { color: var(--ink-soft); font: 12px/1.4 var(--door-mono); flex: 1 1 12em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#door-files { display: none; }
+.door__find { display: flex; gap: 6px; margin: 0; min-width: 0; }
+
+.door__body { flex: 1; min-height: 0; display: flex; position: relative; }
+#door-side { flex: none; width: 16em; min-width: 0; overflow: auto; border-right: 1px solid var(--line); background: var(--paper); padding: 10px 10px 10px 14px; }
+#door-side h2 { margin: 8px 0 4px; font: 600 11.5px/1.4 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+#door-side ul { list-style: none; margin: 0 0 10px; padding: 0; }
+#door-side li { padding: 2px 0; display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+#door-side li .kind { flex: none; width: 1.1em; color: var(--ink-faint); font-size: 12px; }
+#door-side li button, #door-side li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+#door-view { flex: 1; min-width: 0; min-height: 0; overflow: auto; position: relative; padding: 16px 18px; }
+#door-view.framed { padding: 0; overflow: hidden; }
+#door-view iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--paper-card); }
+#door-busy { position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 3; background: var(--teal); opacity: 0.75; }
+#door-busy[hidden] { display: none; }
+#door-where { color: var(--ink-soft); font: 12.5px/1.4 var(--door-mono); margin: 0 0 12px; overflow-wrap: anywhere; }
+#door-where button { font: inherit; }
+/* the note sits above a sealed frame, which fills the view behind it */
+#door-note { max-width: 40em; position: relative; z-index: 2; }
+#door-note[hidden] { display: none; }
+#door-view.framed #door-note { margin: 16px; padding: 12px 14px; background: var(--paper-card); border: 1px solid var(--line); border-radius: 8px; }
+#door-note p { margin: 0 0 10px; }
+#door-note p[hidden] { display: none; }
+#door-note-text { font-size: 1rem; font-weight: 600; text-wrap: balance; }
+#door-note-more { color: var(--ink-soft); overflow-wrap: anywhere; }
+#door-note-do { display: flex; flex-wrap: wrap; gap: 8px; }
+
+#door-app code, #door-app kbd { font: 12.5px/1.4 var(--door-mono); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+#door-app pre { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font: 12.5px/1.45 var(--door-mono); max-width: 100%; }
+#door-app pre code { border: 0; padding: 0; background: transparent; font: inherit; overflow-wrap: normal; }
+
+/* ---------- a rendered document ---------- */
+#door-app .doc { max-width: 46em; }
+#door-app .doc h1, #door-app .doc h2, #door-app .doc h3, #door-app .doc h4 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; line-height: 1.25; margin: 1.4em 0 0.5em; }
+#door-app .doc h1 { font-size: 1.7rem; margin-top: 0.2em; }
+#door-app .doc h2 { font-size: 1.35rem; }
+#door-app .doc h3 { font-size: 1.12rem; }
+#door-app .doc h4 { font-size: 1rem; }
+#door-app .doc p, #door-app .doc li { overflow-wrap: anywhere; }
+#door-app .doc img { max-width: 100%; height: auto; display: block; margin: 10px 0; }
+#door-app .doc blockquote { margin: 12px 0; padding: 2px 14px; border-left: 3px solid var(--line); color: var(--ink-soft); }
+#door-app .doc hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+#door-app .doc .table { overflow-x: auto; margin: 12px 0; }
+#door-app .doc table { border-collapse: collapse; font-size: 13px; width: auto; }
+#door-app .doc th, #door-app .doc td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; overflow-wrap: normal; }
+#door-app .doc th { background: var(--paper); font-weight: 600; }
+#door-app .doc .gone { color: var(--ink-faint); text-decoration: line-through; }
+
+/* ---------- folders, commits, search results ---------- */
+#door-app ul.entries { list-style: none; padding: 0; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 6px; max-width: 46em; }
+#door-app ul.entries li { margin: 0; padding: 5px 12px; border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+#door-app ul.entries li:first-child { border-top: 0; }
+#door-app ul.entries li button { overflow-wrap: anywhere; min-width: 0; }
+#door-app ul.entries .kind { color: var(--ink-faint); flex: none; width: 1.1em; font-size: 12px; }
+#door-app ul.entries .size { color: var(--ink-faint); margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#door-app ul.commits { list-style: none; padding: 0; margin: 0; max-width: 52em; }
+#door-app ul.commits li { padding: 8px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; }
+#door-app ul.commits li:first-child { border-top: 0; }
+#door-app ul.commits li > span { overflow-wrap: anywhere; }
+#door-app ul.commits .sha { font: 12px/1.5 var(--door-mono); }
+#door-app ul.commits .when { grid-column: 2; color: var(--ink-faint); font-size: 12px; }
+#door-app ul.hits { list-style: none; padding: 0; margin: 0; max-width: 52em; }
+#door-app ul.hits li { padding: 8px 0; border-top: 1px solid var(--line); min-width: 0; }
+#door-app ul.hits li:first-child { border-top: 0; }
+#door-app ul.hits li > button { overflow-wrap: anywhere; }
+#door-app ul.hits pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+#door-app .picture { max-width: 100%; height: auto; display: block; }
+#door-app .muted { color: var(--ink-soft); }
+
+/* ---------- a phone: the pane slides over the view ---------- */
+@media (max-width: 720px) {
+  #door-app { height: min(78vh, 900px); min-height: 380px; }
+  #door-files { display: inline-block; }
+  #door-side { position: absolute; top: 0; bottom: 0; left: 0; width: min(80vw, 20em); z-index: 4; transform: translateX(-100%); transition: transform 0.15s; box-shadow: 0 0 0 1px var(--line); visibility: hidden; }
+  #door-side.open { transform: none; visibility: visible; }
+  #door-head { flex-basis: 100%; order: 9; }
+  #door-app input { width: 8em; }
+  #door-view { padding: 14px 12px; }
+}
+@media (max-width: 720px) and (prefers-reduced-motion: reduce) { #door-side { transition: none; } }
