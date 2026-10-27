@@ -1,8 +1,9 @@
 /* ============================================================
-   symphony-panel.js: the Symphony control panel (/symphony/control/) and
-   the cost page (/symphony/cost.html). One script serves both, so the
-   sign-in and the GitHub client are shared: a token given on one page
-   serves the other.
+   symphony-panel.js: the Symphony control panel (/symphony/control/),
+   the cost page (/symphony/cost.html) and the reader (/symphony/door/,
+   with assets/js/door.js). One script serves them all, so the sign-in
+   and the GitHub client are shared: a token given on one page serves
+   the others.
 
    How it works. The page calls GitHub's REST API from this browser as the
    signed-in person, with a token that stays in this browser (localStorage
@@ -838,10 +839,13 @@
       return token;
     });
   }
-  function failure(status, data, path, byApp) {
+  // GitHub's headers ride with the failure, so a caller can read the wait a rate limit names
+  // (retry-after, x-ratelimit-reset) or an organization's single sign-on (x-github-sso)
+  function failure(status, data, path, byApp, headers) {
     var err = new Error(explain(status, data, path, byApp));
     err.status = status;
     err.data = data;
+    err.headers = headers || null;
     return err;
   }
   // a call for the account the page names now, unless a chain of calls of one action names the
@@ -881,6 +885,8 @@
       if (seen !== null) rateLatest = seen;
       // a 304, the answer to a read made conditional on an ETag (the assistant's), has no body either
       if (r.status === 204 || r.status === 205 || r.status === 304) return { status: r.status, data: null, headers: r.headers, sent: sent };
+      // a file's bytes as GitHub holds them (the reader's pictures and pages), which text would mangle
+      if (raw === 'bytes' && r.ok) return r.arrayBuffer().then(function (b) { return { status: r.status, data: b, headers: r.headers, sent: sent }; });
       return r.text().then(function (t) {
         if (raw && r.ok) return { status: r.status, data: t, headers: r.headers, sent: sent };
         var data = null;
@@ -889,9 +895,9 @@
         // meanwhile, where there is one; a write, only for the account it was asked for
         if (r.status === 401) return refused(sent, byApp).then(function (retry) {
           if (retry && !again) return call(method, path, body, headers, raw, account, true, fresh);
-          throw failure(r.status, data, path, byApp);
+          throw failure(r.status, data, path, byApp, r.headers);
         });
-        if (!r.ok) throw failure(r.status, data, path, byApp);
+        if (!r.ok) throw failure(r.status, data, path, byApp, r.headers);
         return { status: r.status, data: data, headers: r.headers, sent: sent };
       });
     }).catch(function (e) {
@@ -7347,6 +7353,92 @@
     finishOauth().then(function () {
       if (!loadToken()) { showGate(); return; }
       enter(startCost);
+    });
+  }
+
+
+  /* ============================================================
+     The reader (/symphony/door/)
+     ============================================================ */
+  // The reader signs in as the cost page does and hands assets/js/door.js a small client built on
+  // gh(): JSON reads, a file's raw bytes, the repository chosen and a way to say a word on the page.
+  // door.js never holds the token, and every call it makes goes out through the same checks as the
+  // panel's own. The client is held to the chosen repository and the code search whatever door.js
+  // asks, so a path it built wrongly is refused here unsent rather than read elsewhere as the person.
+  var DOOR_ACCEPT = 'application/vnd.github.text-match+json';
+  function doorPathAllowed(repo, path) {
+    var at = String(path).indexOf('?'), bare = at < 0 ? path : path.slice(0, at), base = '/repos/' + repo;
+    if (/%2e|%2f|%5c|\\/i.test(bare)) return false;
+    if (bare === base || bare === base + '/commits' || bare === '/search/code') return true;
+    if (bare.indexOf(base + '/contents/') !== 0) return false;
+    var rest = bare.slice((base + '/contents/').length);
+    return rest === '' || rest.split('/').every(function (part) { return part !== '' && part !== '.' && part !== '..'; });
+  }
+  function doorApi(repo) {
+    function refused() { return Promise.reject(new Error('The reader asked for an address outside ' + repo + ', so nothing was sent.')); }
+    return {
+      repo: repo,
+      get: function (path, accept) {
+        if (!doorPathAllowed(repo, path)) return refused();
+        return gh('GET', path, undefined, accept === DOOR_ACCEPT ? { 'Accept': DOOR_ACCEPT } : undefined).then(function (r) { return { data: r.data, headers: r.headers }; });
+      },
+      raw: function (path) {
+        if (!doorPathAllowed(repo, path)) return refused();
+        return gh('GET', path, undefined, RAW, 'bytes').then(function (r) { return r.data; });
+      },
+      say: function (words, warn) { say(words, warn, true); }
+    };
+  }
+  function initDoor() {
+    var select = $('door-repo');
+    wireGate(function () { enter(startDoor); });
+    watchOtherTabs();
+    $('cp-signout').addEventListener('click', signOut);
+    select.addEventListener('change', function () { if (REPOSITORY.test(select.value)) openRepo(select.value, true); });
+    $('door-pick').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var typed = ($('door-name').value || '').trim();
+      if (!REPOSITORY.test(typed)) { say('Name the repository as OWNER/NAME, as GitHub writes it.', true); return; }
+      $('door-name').value = '';
+      showChoice(typed);
+      openRepo(typed, true);
+    });
+    // the repository in the address (?repo=OWNER/NAME) first, else the control panel's choice and list
+    function startDoor() {
+      var repo = chosenRepo();
+      showChoice(repo);
+      if (!repo) { say('Name a repository to read: type it as OWNER/NAME beside Open, or open this page as /symphony/door/?repo=OWNER/NAME.'); return; }
+      openRepo(repo, false);
+    }
+    // the panel's list in the select, with the repository in view at its head where the list lacks it
+    function showChoice(repo) {
+      fillRepoSelect(select, repo);
+      if (!repo || repos().indexOf(repo) >= 0) return;
+      if (!repos().length) clear(select);
+      var o = el('option', '', repo);
+      o.value = repo;
+      o.selected = true;
+      select.insertBefore(o, select.firstChild);
+      select.disabled = false;
+    }
+    // a repository chosen on the page goes into the address, so the address can be sent on; the
+    // hash named a path of the one before, so it goes
+    function openRepo(repo, chosen) {
+      if (chosen) {
+        var q = new URLSearchParams(location.search);
+        q.delete('repo');
+        var rest = q.toString();
+        try { history.replaceState(null, '', location.pathname + '?repo=' + repo + (rest ? '&' + rest : '')); } catch (e) { /* the address stays */ }
+      }
+      if (!window.SymphonyDoor || typeof window.SymphonyDoor.start !== 'function') {
+        say('The reader\'s own script, /assets/js/door.js, did not load, so the repository cannot be shown. Reload the page; if this stays, the site is missing that file.', true);
+        return;
+      }
+      window.SymphonyDoor.start(doorApi(repo));
+    }
+    finishOauth().then(function () {
+      if (!loadToken()) { showGate(); return; }
+      enter(startDoor);
     });
   }
 
@@ -14633,9 +14725,11 @@
   // the Agents tab puts one in each agent's row
   window.tokenAssignBox = tokenAssignBox;
 
-  // the cost page carries a signed-in box of its own, so its marker is read first
+  // the cost page and the reader carry a signed-in box of their own (cp-app), so their markers are
+  // read first
   // tokens.html was a page of its own until the console took it in as a tab: it sends a visitor there
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
+  else if ($('door-app')) initDoor();
   else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
 })();

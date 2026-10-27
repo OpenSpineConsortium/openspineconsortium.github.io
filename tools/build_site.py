@@ -358,6 +358,10 @@ SITE = [
         # the Claude slots the workers run on, read from the repository's branch pool, beside the panel
         node("Tokens", "/symphony/control/tokens.html", crumb="Claude tokens"),
         node("What it costs", "/symphony/cost.html", crumb="What Symphony costs, against the alternatives"),
+        # a reader for one repository the signed-in person can read, live through GitHub's API with
+        # their own token (assets/js/door.js); its address is sent with ?repo=OWNER/NAME, so it stays
+        # out of the menus and the sitemap, and the Symphony page and the Docs tab link it
+        node("Read a repository", "/symphony/door/", hidden=True),
         # what Symphony is for, told for a newcomer, and its general powers set beside the tools people
         # already use in each kind of work it competes in
         node("Use cases", "/symphony/use-cases.html", crumb="What Symphony is for"),
