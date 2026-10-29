@@ -67,6 +67,7 @@ app: yes
           <button type="button" role="tab" data-hue="2" data-tab="board" id="rail-board" aria-controls="tab-board"><span class="rail__icon" aria-hidden="true">&#9638;</span><span class="rail__name">Board</span></button>
           <button type="button" role="tab" data-hue="3" data-tab="tasks" id="rail-tasks" aria-controls="tab-tasks"><span class="rail__icon" aria-hidden="true">&#9776;</span><span class="rail__name">Tasks</span><span class="rail__count" data-count="tasks"></span></button>
           <button type="button" role="tab" data-hue="4" data-tab="dependencies" id="rail-dependencies" aria-controls="tab-dependencies"><span class="rail__icon" aria-hidden="true">&#8658;</span><span class="rail__name">Dependencies</span></button>
+          <button type="button" role="tab" data-hue="5" data-tab="organization" id="rail-organization" aria-controls="tab-organization"><span class="rail__icon" aria-hidden="true">&#10070;</span><span class="rail__name">Organization</span></button>
           <button type="button" role="tab" data-hue="5" data-tab="explore" id="rail-explore" aria-controls="tab-explore"><span class="rail__icon" aria-hidden="true">&#9672;</span><span class="rail__name">Explore</span></button>
           <button type="button" role="tab" data-hue="1" data-tab="pulls" id="rail-pulls" aria-controls="tab-pulls"><span class="rail__icon" aria-hidden="true">&#8644;</span><span class="rail__name">Pull requests</span><span class="rail__count" data-count="cp-pulls"></span></button>
           <button type="button" role="tab" data-hue="2" data-tab="runs" id="rail-runs" aria-controls="tab-runs"><span class="rail__icon" aria-hidden="true">&#9654;</span><span class="rail__name">Runs</span></button>
@@ -211,6 +212,33 @@ app: yes
             <span class="graph__keyset"><span class="graph__arrow"><svg viewBox="0 0 26 10" aria-hidden="true" focusable="false"><line x1="1" y1="5" x2="19" y2="5"/><path d="M18 1 L25 5 L18 9 Z"/></svg>blocks</span><span class="graph__arrow graph__arrow--done"><svg viewBox="0 0 26 10" aria-hidden="true" focusable="false"><line x1="1" y1="5" x2="19" y2="5"/><path d="M18 1 L25 5 L18 9 Z"/></svg>blocked, now closed</span><span class="graph__arrow graph__arrow--goal"><svg viewBox="0 0 26 10" aria-hidden="true" focusable="false"><line x1="1" y1="5" x2="19" y2="5"/><path d="M18 1 L25 5 L18 9 Z"/></svg>goal to its epic</span></span>
           </div>
           <div class="console__scroll"><div id="cp-graph" class="control__graph"></div></div>
+        </section>
+
+        <!-- Organization: every repository of the owner and how they depend on each other and touch,
+             the interfaces (a vendored library, a reusable workflow, a GitHub App, a runner, data
+             handed on) from the map the open repository keeps, .github/symphony/organization.json,
+             beside what GitHub lists live and the task links that cross repositories (the owner,
+             2026-10-29; SchwingNet docs/research/organization-map.md) -->
+        <section class="console__panel" id="tab-organization" data-tab-panel="organization" role="tabpanel" aria-labelledby="rail-organization" hidden>
+          <div class="console__head">
+            <h2 id="h-organization" class="console__h">Organization</h2>
+            <p id="og-state" class="admin__lead">Nothing to show yet: no repository is chosen.</p>
+            <button type="button" id="og-refresh" class="quiet">Refresh</button>
+            <details class="console__help"><summary>What this shows and reads</summary><div>
+              <p>Every repository of the owner of the open repository, as GitHub lists them for you, and how they depend on each other and interact: the interfaces, a vendored library, a reusable workflow, a GitHub App, a runner, data handed on, and the systems outside GitHub they reach. GitHub records none of those where this page could read them, so the open repository keeps them as a map, <code>.github/symphony/organization.json</code>: nodes, the repositories (each with a group, a visibility and a role) and the systems, and edges (from, to, kind, what passes, evidence) read as &ldquo;from depends on to&rdquo;. The chart draws the map by group, the table lists every edge, and a card for each repository says what it depends on and what depends on it; the chips cut the chart, the table and the cards to one group or one kind of interface. A repository GitHub lists that the map does not know is listed with no edges, the sign the map wants a line; one the map names that GitHub does not list for you is drawn and said to be out of your reach. In the chart a public repository has a green edge, an internal one a blue edge and a lit fill, a private one a thick pale edge, and a system outside GitHub a grey dashed one round a rounded shape.</p>
+              <p>The task links that cross repositories are read live, seen from the open repository: the sub-issues and blockers in other repositories that the Dependencies tab&rsquo;s draw met, kept from its reads, and the blockers of the open repository&rsquo;s other blocked issues, at most forty reads a press, none once GitHub says the token has fewer than a hundred calls left this hour; Read more reads the next forty. What blocks another repository&rsquo;s issues is read from that repository, by opening it here (Open in the panel, on its card).</p>
+              <p>The chart is drawn in this browser by the copy of Mermaid the site carries, loaded only when there is a map to draw, and works as the Dependencies tab&rsquo;s charts do: it opens whole, zooms with a pinch, the buttons, + and &minus; or a double tap, drags once zoomed in, and a press on a node names the repository and brings its card into view. The page writes nothing.</p>
+            </div></details>
+          </div>
+          <p id="og-said" class="admin__lead"></p>
+          <div id="og-chips" class="og__chips" role="group" aria-label="Show one group of repositories or one kind of interface" hidden></div>
+          <div class="console__scroll">
+            <div id="og-tools" class="graph__tools graph__tools--board" hidden></div>
+            <div id="og-chart" class="control__chart og__chart" role="group" aria-label="The organization's map" hidden></div>
+            <div id="og-cross" class="og__block" aria-live="polite"></div>
+            <div id="og-edges" class="og__block"></div>
+            <div id="og-repos" class="og__block"></div>
+          </div>
         </section>
 
         <!-- Explore: a planning canvas over the epics' tasks and their native links, where Claude

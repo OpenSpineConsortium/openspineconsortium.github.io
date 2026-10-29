@@ -2308,3 +2308,40 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 #tab-explore .rg__label { display: none; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; }
 #tab-explore .rg__node:hover .rg__label, #tab-explore .rg__node:focus-visible .rg__label, #tab-explore .rg__node--on .rg__label, #tab-explore .rg__node--hit .rg__label { display: inline; }
 #tab-explore .rg__edge--cite { opacity: 0.22; }
+
+/* Organization: the map's chart, its chips, the tables and one card per repository (the owner's ask of
+   2026-10-29, SchwingNet docs/research/organization-map.md). A node is shaded by what it is, as the
+   Dependencies charts' nodes are by state, and no two differ by hue alone: a public repository keeps
+   the plain green edge, an internal one a blue edge with a lit fill, a private one a thick pale edge,
+   and a system outside GitHub a grey dashed edge round its rounded shape; symphony-panel.js
+   (graphRestyle) takes Mermaid's own light colours off the nodes, as it does for the other charts */
+#tab-organization .og__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; }
+#tab-organization .og__sep { margin-left: 10px; font-size: 0.8rem; color: var(--ink-faint); }
+#tab-organization .og__chart { min-height: 240px; }
+#tab-organization .og__block { margin: 12px 0 0; }
+#tab-organization .og__h { margin: 10px 0 4px; font-size: 0.95rem; }
+#tab-organization .og__table { width: 100%; font-size: 0.82rem; }
+#tab-organization .og__table th, #tab-organization .og__table td { padding: 4px 8px; text-align: left; vertical-align: top; }
+#tab-organization .og__kind { white-space: nowrap; color: var(--teal); }
+#tab-organization .og__by { color: var(--ink-faint); font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.76rem; overflow-wrap: anywhere; }
+#tab-organization .og__system { color: var(--ink-soft); font-style: italic; }
+#tab-organization .og__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+#tab-organization .og__card { margin: 0; padding: 8px 10px; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius-sm, 8px); background: var(--ds-raised, var(--paper-card)); min-width: 0; }
+#tab-organization .og__card--on { outline: 2px solid var(--teal-bright); outline-offset: -2px; }
+#tab-organization .og__name { margin: 0 0 4px; font-size: 0.9rem; overflow-wrap: anywhere; }
+#tab-organization .og__facts, #tab-organization .og__role, #tab-organization .og__edges { margin: 0 0 4px; font-size: 0.78rem; color: var(--ink-soft); }
+#tab-organization .og__role { color: var(--ink); }
+#tab-organization .og__gap { color: var(--ink-faint); font-style: italic; }
+#og-chart.control__chart .node > :is(rect, path).label-container, #og-chart.control__chart .node > path.basic { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1px !important; transition: filter 0.15s; }
+#og-chart.control__chart .node :is(span, p) { color: #E4ECE8 !important; }
+#og-chart.control__chart .node.public > :is(rect, path) { stroke: var(--st-todo) !important; stroke-width: 1.5px !important; }
+#og-chart.control__chart .node.internal > :is(rect, path) { fill: var(--st-review-tint) !important; stroke: var(--st-review) !important; stroke-width: 1.5px !important; }
+#og-chart.control__chart .node.private > :is(rect, path) { stroke: var(--st-open) !important; stroke-width: 3px !important; }
+#og-chart.control__chart .node.system > :is(rect, path) { fill: var(--st-closed-tint) !important; stroke: var(--st-closed) !important; stroke-dasharray: 4 3; stroke-width: 1.5px !important; }
+#og-chart.control__chart .node:hover > :is(rect, path) { filter: brightness(1.3); }
+#og-chart.control__chart .edgePaths path { stroke: #8A9E97 !important; }
+#og-chart.control__chart marker path { fill: #8A9E97 !important; stroke: #8A9E97 !important; }
+#og-chart.control__chart .edgeLabel :is(span, p) { color: #C2CCC8 !important; }
+#og-chart.control__chart .edgeLabel .labelBkg, #og-chart.control__chart .edgeLabel rect { fill: #0F1916 !important; opacity: 0.9; }
+#og-chart.control__chart .cluster > rect { fill: rgba(255, 255, 255, 0.025) !important; stroke: #3A4A44 !important; rx: 10px; }
+#og-chart.control__chart .cluster-label :is(span, p) { color: #C2CCC8 !important; }

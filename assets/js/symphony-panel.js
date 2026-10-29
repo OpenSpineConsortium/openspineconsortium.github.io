@@ -1818,6 +1818,8 @@
       s.meta = r.data;
       // the Share tab's role picker hangs on whether an organization owns the repository
       if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
+      // the Organization tab reads the owner and the default branch from the record
+      if (consoleTab === 'organization' && consoleOnOpen.organization) consoleOnOpen.organization();
       return r.data;
     });
   }
@@ -2421,6 +2423,7 @@
     if (consoleTab === 'wandb' && consoleOnOpen.wandb) consoleOnOpen.wandb();
     if (consoleTab === 'workers' && consoleOnOpen.workers) consoleOnOpen.workers();
     if (consoleTab === 'leaders' && consoleOnOpen.leaders) consoleOnOpen.leaders();
+    if (consoleTab === 'organization' && consoleOnOpen.organization) consoleOnOpen.organization();
     foldersFor = null;
     if (consoleTab === 'folders' && consoleOnOpen.folders) consoleOnOpen.folders();
     if (consoleTab === 'share' && consoleOnOpen.share) consoleOnOpen.share();
@@ -5124,6 +5127,13 @@
     var url = it.repository_url;
     return typeof url !== 'string' || endsWith(url.toLowerCase(), ('/repos/' + repo).toLowerCase());
   }
+  // an issue in another repository the reads met, a sub-issue of a planned issue here or a blocker
+  // of an issue here, kept for the Organization tab, which lists the task links that cross
+  // repositories; its repository is read from the address GitHub gives it
+  function graphCrossItem(kind, of, it) {
+    var m = typeof it.repository_url === 'string' ? /\/repos\/([^\/]+\/[^\/]+)$/.exec(it.repository_url) : null;
+    return { kind: kind, of: of, repo: m ? m[1] : '', number: Number(it.number), title: String(it.title || ''), closed: it.state === 'closed', html_url: String(it.html_url || '') };
+  }
   // text folded to ASCII as the board folds it: accented letters to their plain ones, the rest dropped
   function graphFold(text) { return String(text).normalize('NFKD').replace(/[^\x00-\x7f]/g, ''); }
   // a node's text, byte for byte the board's (symphony-protocol's node_label, on its branch
@@ -5788,6 +5798,7 @@
       // the sub-issues in another repository, which GitHub's summary on the epic counts and no chart
       // draws, are counted, so the card's pills can still add up to its bar
       draw.elsewhere[number] = list.filter(function (c) { return isPlain(c) && !('pull_request' in c); }).length - children.length;
+      list.forEach(function (c) { if (isPlain(c) && !('pull_request' in c) && !inRepository(c, draw.repo)) draw.cross.push(graphCrossItem('sub', number, c)); });
       children.forEach(function (c) { graphRemember(draw, c); });
       if (!isEpic) return;
       return children.reduce(function (p, child) { return p.then(function () { return graphReadBlockers(draw, child); }); }, Promise.resolve());
@@ -5800,6 +5811,7 @@
     draw.reading = 'the issues blocking #' + number;
     return graphList(draw, '/repos/' + draw.repo + '/issues/' + number + '/dependencies/blocked_by?per_page=100').then(function (list) {
       var blockers = list.filter(function (b) { return isPlain(b) && inRepository(b, draw.repo); });
+      list.forEach(function (b) { if (isPlain(b) && !inRepository(b, draw.repo)) draw.cross.push(graphCrossItem('blocker', number, b)); });
       draw.blockedBy[number] = blockers.map(function (b) { return Number(b.number); }).sort(function (a, b) { return a - b; });
       blockers.forEach(function (b) { graphRemember(draw, b); });
     });
@@ -5819,7 +5831,7 @@
     // a draw started afresh says nothing yet, so an earlier draw's failure leaves the summary
     s.failed = s.failed.filter(function (f) { return f.indexOf('the dependencies (') !== 0; });
     if (s.ready) summary();
-    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, elsewhere: {}, blockedBy: {}, others: {}, listed: {} };
+    var draw = { s: s, n: s.graphDraw = (s.graphDraw || 0) + 1, repo: repo, claimed: {}, reads: 0, left: left, reading: '', subIssues: {}, elsewhere: {}, blockedBy: {}, others: {}, listed: {}, cross: [] };
     var open = s.issues.filter(function (it) { return !it.pull_request; });
     open.forEach(function (it) { draw.listed[Number(it.number)] = graphIssue(it); });
     var planned = open.filter(function (it) { return graphPlanned(draw.listed[Number(it.number)]) && !owesNoRead(it); })
@@ -5828,6 +5840,7 @@
       graphReset('Nothing to draw yet: no open issue labelled epic or goal has sub-issues. ' + GRAPH_START + graphCut(draw));
       s.graphLast = draw;
       exploreAfterDraw();
+      orgAfterDraw();
       return Promise.resolve();
     }
     graphReset('Reading the sub-issues of ' + plural(planned.length, 'epic or goal', 'epics and goals') + '...', false, true);
@@ -5843,6 +5856,7 @@
       s.graphLast = draw;
       s.graphFailed = '';
       exploreAfterDraw();
+      orgAfterDraw();
     }).catch(function (e) {
       if (!graphLive(draw)) return;
       graphHeld();
@@ -5855,6 +5869,7 @@
       failed(s, 'the dependencies', e);
       s.graphFailed = e.message || 'the reads stopped';
       exploreAfterDraw();
+      orgAfterDraw();
       if (s.ready) summary();
     });
   }
@@ -6237,7 +6252,7 @@
   function graphDraw(m, chart) {
     return graphRenderFaces(m, chart.text, !!chart.turns).then(function (texts) {
       var svgs = graphSvgs(texts, function (svg) {
-        return (chart.heading || 'The board\'s chart') + ': a chart of ' + plural(svg.querySelectorAll('g.node').length, 'issue') + '; press a node to see it with its neighbours' + (chart.list ? ', or List for the same in words' : '');
+        return (chart.heading || 'The board\'s chart') + ': a chart of ' + plural(svg.querySelectorAll('g.node').length, chart.noun || 'issue') + (chart.noun ? '; press a node to see what it is' : '; press a node to see it with its neighbours') + (chart.list ? ', or List for the same in words' : '');
       }, false);
       clear(chart.host);
       if (!svgs.length) return;
@@ -7170,6 +7185,461 @@
     if (!tab.hidden) graphBring = true;
   }
   var graphBring = false;
+
+  /* ============================================================
+     The Organization tab
+     ============================================================ */
+  // The owner's ask of 2026-10-29: every repository of the organization and how they depend on each
+  // other and interact, the interfaces and not only the tasks. GitHub records none of the interfaces
+  // where the page could read them as the viewer (a vendored library, a reusable workflow's callers,
+  // an App's installations, data handed on), so the open repository keeps them as a map,
+  // .github/symphony/organization.json (SchwingNet, docs/research/organization-map.md): its nodes
+  // are repositories, each with a group, a visibility and a role, and systems outside GitHub; its
+  // edges read "from depends on to", each with a kind, what passes and the evidence. The tab draws
+  // the map beside what it reads live: the owner's repositories as GitHub lists them for the
+  // viewer, and the task links that cross repositories, seen from the open repository: the
+  // sub-issues and blockers in other repositories the Dependencies draw met, kept from its reads,
+  // and the blockers of the open repository's other blocked issues, a batch of reads a press, each
+  // read counted against the same reserve the draw keeps. A repository GitHub lists that the map
+  // does not know is listed with no edges, which is the sign the map wants a line; one the map
+  // names that GitHub does not list for the viewer is drawn and said to be out of reach. No search
+  // API: its own hourly count would be read as the token's.
+  var ORG_MAP_PATH = '.github/symphony/organization.json';
+  // the most blocked-by reads one press makes, each one issue of the open repository; the rest wait
+  // for Read more, so a repository with many blocked tasks never spends the hour's calls unasked
+  var ORG_READS_MAX = 40;
+  var ORG_NO_REPOSITORY = 'Nothing to show yet: no repository is chosen.';
+  // the classes a node is drawn with, by what it is; the stylesheet shades them (control.css), as it
+  // shades the Dependencies charts' states, and takes these light colours off the drawn nodes
+  var ORG_CLASSES = [
+    'classDef public fill:#ffffff,stroke:#0e8a16,color:#000000',
+    'classDef internal fill:#e3f0ff,stroke:#1d76db,color:#000000',
+    'classDef private fill:#fff8d6,stroke:#fbca04,color:#000000',
+    'classDef system fill:#eeeeee,stroke:#999999,color:#666666'
+  ];
+  var orgLoads = 0;
+  var og = orgEmpty('');
+  function orgEmpty(repo) {
+    return { repo: repo, n: 0, done: false, started: false, map: null, mapWhy: '', repos: null, reposWhy: '', cross: [], read: {}, reading: false, readWhy: '', filter: { group: '', kind: '' }, drawn: '' };
+  }
+  function orgRepoName(s) { return s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo; }
+  function orgOwner(s) { return s.meta && isPlain(s.meta.owner) ? String(s.meta.owner.login || '') : String(s.repo || '').split('/')[0]; }
+  function orgWords(text, warn) {
+    var p = $('og-state');
+    if (!p) return;
+    p.textContent = text;
+    p.className = warn ? 'admin__lead admin__warn' : 'admin__lead';
+  }
+  function orgLive(s, n) { return !stale(s) && og.n === n && og.repo === orgRepoName(s); }
+  function orgText(v) { return typeof v === 'string' ? v.trim() : (typeof v === 'number' && isFinite(v) ? String(v) : ''); }
+  // the latest Dependencies draw of this repository, whose reads met the issues elsewhere
+  function orgDraw(s) { return s.graphLast && s.graphLast.s === s ? s.graphLast : null; }
+  function orgClear() {
+    ['og-cross', 'og-edges', 'og-repos'].forEach(function (id) { var b = $(id); if (b) clear(b); });
+    var chips = $('og-chips'), chart = $('og-chart'), tools = $('og-tools'), said = $('og-said');
+    if (chips) { clear(chips); chips.hidden = true; }
+    if (chart) { clear(chart); chart.hidden = true; chart.style.height = ''; }
+    if (tools) tools.hidden = true;
+    if (said) said.textContent = '';
+  }
+  // the owner's repositories and the map, read side by side, then the task links once the issues
+  // are in; called when the tab is opened on a repository it has not read, by Refresh, and by
+  // loadRepo once the repository's record is in
+  function loadOrganization() {
+    var s = state;
+    if (!s.meta) {
+      og = orgEmpty('');
+      orgClear();
+      orgWords(s.repo ? 'Reading ' + s.repo + '...' : ORG_NO_REPOSITORY);
+      return Promise.resolve();
+    }
+    var repo = orgRepoName(s), owner = orgOwner(s), kind = isPlain(s.meta.owner) ? s.meta.owner.type : '';
+    og = orgEmpty(repo);
+    var n = og.n = ++orgLoads;
+    orgClear();
+    orgWords('Reading the repositories of ' + owner + ' and the map of ' + repo + '...');
+    var listPath = (kind === 'Organization' ? '/orgs/' : '/users/') + encodeURIComponent(owner) + '/repos?per_page=100&type=all&sort=pushed';
+    var repos = ghList(listPath, 2).then(function (list) {
+      if (!orgLive(s, n)) return;
+      og.repos = list.filter(function (x) { return isPlain(x) && typeof x.full_name === 'string'; });
+      og.repos.more = !!list.more;
+    }, function (e) { if (orgLive(s, n)) { og.repos = []; og.reposWhy = e.message; } });
+    var map = file(repo, ORG_MAP_PATH, s.meta.default_branch).then(function (text) {
+      if (!orgLive(s, n)) return;
+      var data = null;
+      try { data = JSON.parse(text); } catch (e) { og.mapWhy = 'the map is not JSON (' + e.message + ')'; return; }
+      var why = orgMapProblem(data);
+      if (why) og.mapWhy = why; else og.map = orgMapRead(data);
+    }, function (e) { if (orgLive(s, n)) og.mapWhy = e.status === 404 ? 'none' : e.message; });
+    return Promise.all([repos, map]).then(function () {
+      if (!orgLive(s, n)) return;
+      og.done = true;
+      orgRender(s);
+      // the task links wait for the issues and the draw, which say which blockers are read already
+      if (orgDraw(s) || s.graphFailed) { og.started = true; return orgReadMore(s, n); }
+    });
+  }
+  // what makes a file no map at all; a map with a node or an edge amiss is still drawn, each part
+  // of it written as the text it is and never as markup
+  function orgMapProblem(data) {
+    if (!isPlain(data)) return 'the map is not a JSON object';
+    if (!Array.isArray(data.nodes) || !Array.isArray(data.edges)) return 'the map has no nodes and edges lists';
+    return '';
+  }
+  function orgMapRead(data) {
+    var nodes = data.nodes.filter(function (x) { return isPlain(x) && typeof x.name === 'string' && x.name.trim(); })
+      .map(function (x) { return { name: x.name.trim(), group: orgText(x.group) || 'other', visibility: orgText(x.visibility), role: orgText(x.role), system: x.kind === 'system' }; });
+    var byName = {};
+    nodes = nodes.filter(function (x) { if (byName[x.name]) return false; byName[x.name] = x; return true; });
+    var edges = data.edges.filter(function (e) {
+      return isPlain(e) && typeof e.from === 'string' && typeof e.to === 'string' && byName[e.from.trim()] && byName[e.to.trim()] && e.from.trim() !== e.to.trim();
+    }).map(function (e) { return { from: e.from.trim(), to: e.to.trim(), kind: orgText(e.kind) || 'depends on', what: orgText(e.what), by: orgText(e.by) }; });
+    return { written: orgText(data.written), kinds: isPlain(data.kinds) ? data.kinds : {}, nodes: nodes, byName: byName, edges: edges, dropped: data.edges.length - edges.length };
+  }
+  // the task links that cross repositories: what the draw met, then what this tab read itself
+  function orgCross(s) {
+    var draw = orgDraw(s), seen = {}, out = [];
+    function keep(c) {
+      if (!c.repo) return;
+      var k = c.kind + ' ' + c.of + ' ' + c.repo.toLowerCase() + '#' + c.number;
+      if (!seen[k]) { seen[k] = true; out.push(c); }
+    }
+    (draw ? draw.cross : []).forEach(keep);
+    og.cross.forEach(keep);
+    return out;
+  }
+  // the open issues GitHub's summary says something blocks, whose blockers neither the draw nor
+  // this tab has read: the draw read an epic's tasks, this tab reads the rest by number
+  function orgWaiting(s) {
+    var draw = orgDraw(s), read = draw ? draw.blockedBy : {};
+    return s.issues.filter(function (it) { return !it.pull_request; }).map(graphIssue)
+      .filter(function (it) { return it.blockedByTotal > 0 && !Object.prototype.hasOwnProperty.call(read, it.number) && !og.read[it.number]; })
+      .sort(function (a, b) { return a.number - b.number; });
+  }
+  function orgReadMore(s, n) {
+    var repo = og.repo, batch = orgWaiting(s).slice(0, ORG_READS_MAX);
+    og.readWhy = '';
+    if (!batch.length) { og.reading = false; orgRender(s); return Promise.resolve(); }
+    og.reading = true;
+    orgRender(s);
+    function one(i) {
+      if (i >= batch.length || !orgLive(s, n)) return Promise.resolve();
+      if (rateLatest !== null && rateLatest < GRAPH_RESERVE) {
+        og.readWhy = 'GitHub says this token has ' + rateLatest + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console';
+        return Promise.resolve();
+      }
+      var it = batch[i];
+      return gh('GET', '/repos/' + repo + '/issues/' + it.number + '/dependencies/blocked_by?per_page=100').then(function (r) {
+        if (!orgLive(s, n)) return;
+        og.read[it.number] = true;
+        (Array.isArray(r.data) ? r.data : []).forEach(function (b) { if (isPlain(b) && !inRepository(b, repo)) og.cross.push(graphCrossItem('blocker', it.number, b)); });
+        return one(i + 1);
+      }, function (e) {
+        if (!orgLive(s, n)) return;
+        if (e.status === 404 || e.status === 410) { og.read[it.number] = true; return one(i + 1); }
+        og.readWhy = 'reading the issues blocking #' + it.number + ' failed (' + e.message + ')';
+      });
+    }
+    return one(0).then(function () {
+      if (!orgLive(s, n)) return;
+      og.reading = false;
+      orgRender(s);
+    });
+  }
+  // the draw of the open repository ended: the links it met are drawn, and the first batch of the
+  // tab's own reads goes out where none has
+  function orgAfterDraw() {
+    var s = state;
+    if (consoleTab !== 'organization' || !og.done || og.repo !== orgRepoName(s)) return;
+    if (!og.started) { og.started = true; orgReadMore(s, og.n); } else orgRender(s);
+  }
+
+  /* ---------- what the tab shows ---------- */
+  function orgRender(s) {
+    if (!og.done || !$('og-state')) return;
+    orgSummary(s);
+    orgChips(s, og.map);
+    if (og.map && og.map.nodes.length) orgDrawChart(s, og.map);
+    else { clear($('og-chart')); $('og-chart').hidden = true; $('og-tools').hidden = true; }
+    orgCrossTable(s);
+    orgEdgesTable(s, og.map);
+    orgCards(s, og.map);
+  }
+  function orgVisibility(r) { return r.visibility === 'public' || r.visibility === 'internal' || r.visibility === 'private' ? r.visibility : (r.private ? 'private' : 'public'); }
+  function orgSummary(s) {
+    var parts = [], map = og.map, repos = og.repos || [], owner = orgOwner(s), warn = false;
+    if (og.reposWhy) { parts.push('The repositories of ' + owner + ' could not be listed (' + og.reposWhy + ').'); warn = true; }
+    else {
+      var pub = repos.filter(function (x) { return orgVisibility(x) === 'public'; }).length, arch = repos.filter(function (x) { return x.archived; }).length;
+      parts.push((repos.more ? 'At least ' : '') + plural(repos.length, 'repository', 'repositories') + ' listed for ' + owner + ' as you: ' + pub + ' public, ' + (repos.length - pub) + ' private or internal' + (arch ? ', ' + arch + ' archived' : '') + '.');
+    }
+    if (map) {
+      var sys = map.nodes.filter(function (x) { return x.system; }).length;
+      parts.push('The map of ' + og.repo + (map.written ? ', written ' + map.written + ',' : '') + ' names ' + plural(map.nodes.length - sys, 'repository', 'repositories') + (sys ? ' and ' + plural(sys, 'system') + ' outside GitHub' : '') + ' with ' + plural(map.edges.length, 'interface') + (map.dropped ? ' (' + plural(map.dropped, 'edge') + ' left out, not between two of its nodes)' : '') + '.');
+    } else if (og.mapWhy === 'none') parts.push('No map: ' + og.repo + ' has no ' + ORG_MAP_PATH + ' on ' + s.meta.default_branch + ', so only what GitHub lists is shown; add one as SchwingNet keeps it (its docs/research/organization-map.md).');
+    else if (og.mapWhy) { parts.push('The map could not be read: ' + og.mapWhy + '.'); warn = true; }
+    var cross = orgCross(s), others = {};
+    cross.forEach(function (c) { others[c.repo.toLowerCase()] = true; });
+    parts.push(cross.length ? plural(cross.length, 'task link') + ' cross from ' + og.repo + ' into ' + plural(Object.keys(others).length, 'other repository', 'other repositories') + '.' : 'No task link crossing repositories has been read from ' + og.repo + ' yet.');
+    var waiting = orgWaiting(s).length;
+    if (og.reading) parts.push('Reading the blockers of ' + plural(Math.min(waiting, ORG_READS_MAX), 'blocked issue') + '...');
+    else if (og.readWhy) { parts.push('Stopped: ' + og.readWhy + '.'); warn = true; }
+    else if (waiting) parts.push(plural(waiting, 'blocked issue') + ' not read yet; Read more reads the next ' + Math.min(waiting, ORG_READS_MAX) + '.');
+    orgWords(parts.join(' '), warn);
+  }
+  // the chips that cut the chart, the table and the cards to one group of repositories or one kind
+  // of interface; a second press on the one chosen shows all again
+  function orgChips(s, map) {
+    var box = $('og-chips');
+    clear(box);
+    if (!map) { box.hidden = true; return; }
+    box.hidden = false;
+    function chip(label, count, on, title, press) {
+      var b = el('button', 'chip' + (on ? ' chip--go' : ''), label);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (title) b.title = title;
+      if (count != null) add(b, el('span', '', String(count)));
+      b.addEventListener('click', press);
+      return b;
+    }
+    add(box, chip('All', null, !og.filter.group && !og.filter.kind, 'Every group and every kind', function () { og.filter = { group: '', kind: '' }; orgRender(s); }));
+    var byGroup = {}, groups = [], byKind = {};
+    map.nodes.forEach(function (x) { if (!byGroup[x.group]) { byGroup[x.group] = 0; groups.push(x.group); } byGroup[x.group]++; });
+    map.edges.forEach(function (e) { byKind[e.kind] = (byKind[e.kind] || 0) + 1; });
+    groups.forEach(function (g) {
+      add(box, chip(g, byGroup[g], og.filter.group === g, 'The repositories of this group and what they touch', function () { og.filter = { group: og.filter.group === g ? '' : g, kind: '' }; orgRender(s); }));
+    });
+    add(box, el('span', 'og__sep', 'by interface:'));
+    Object.keys(byKind).sort().forEach(function (k) {
+      add(box, chip(k, byKind[k], og.filter.kind === k, typeof map.kinds[k] === 'string' ? map.kinds[k] : '', function () { og.filter = { group: '', kind: og.filter.kind === k ? '' : k }; orgRender(s); }));
+    });
+  }
+  // the edges the chips leave: of one kind, or touching one group
+  function orgEdges(map, filter) {
+    return map.edges.filter(function (e) {
+      return (!filter.kind || e.kind === filter.kind) && (!filter.group || map.byName[e.from].group === filter.group || map.byName[e.to].group === filter.group);
+    });
+  }
+  // a word of the map written into the chart as the board writes a title: folded to ASCII,
+  // one-spaced, the characters that could end or edit the chart as entities (graphLabel)
+  function orgLabel(text) {
+    var t = graphFold(text).split(GRAPH_SPACE).filter(Boolean).join(' ');
+    [['#', '#35;'], ['%', '#37;'], ['$', '#36;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']].forEach(function (pair) { t = t.split(pair[0]).join(pair[1]); });
+    return t;
+  }
+  function orgClass(x) { return x.system ? 'system' : (x.visibility === 'public' || x.visibility === 'internal' ? x.visibility : 'private'); }
+  // the map as one flowchart: a subgraph per group, each node named by its place in the map's list,
+  // so a press on it is read as the stage reads a node (stageNodeAt), a system drawn as a stadium,
+  // the edges labelled by their kind, the four classes; the chips cut it to one group, with what
+  // touches it, or to one kind, with the nodes its edges join
+  function orgChartText(map, filter) {
+    var lines = ['flowchart TD'], index = {}, groups = {}, order = [], keep = {};
+    map.nodes.forEach(function (x, i) { index[x.name] = i + 1; });
+    var edges = orgEdges(map, filter);
+    if (!filter.kind && !filter.group) map.nodes.forEach(function (x) { keep[x.name] = true; });
+    else {
+      edges.forEach(function (e) { keep[e.from] = true; keep[e.to] = true; });
+      if (filter.group) map.nodes.forEach(function (x) { if (x.group === filter.group) keep[x.name] = true; });
+    }
+    map.nodes.forEach(function (x) {
+      if (!keep[x.name]) return;
+      if (!groups[x.group]) { groups[x.group] = []; order.push(x.group); }
+      groups[x.group].push(x);
+    });
+    order.forEach(function (g, gi) {
+      lines.push('  subgraph g' + (gi + 1) + '["' + orgLabel(g + ' (' + groups[g].length + ')') + '"]');
+      groups[g].forEach(function (x) {
+        var label = '"' + orgLabel(x.name) + '"';
+        lines.push('    i' + index[x.name] + (x.system ? '([' + label + '])' : '[' + label + ']') + ':::' + orgClass(x));
+      });
+      lines.push('  end');
+    });
+    edges.forEach(function (e) { lines.push('  i' + index[e.from] + ' -->|' + orgLabel(e.kind) + '| i' + index[e.to]); });
+    ORG_CLASSES.forEach(function (c) { lines.push('  ' + c); });
+    return lines.join('\n');
+  }
+  // one stage for the map's chart, made once, since a stage's listeners are wired to its box; the
+  // chart is drawn into it again whenever its text changes, and a press on a node names the
+  // repository and brings its card into view
+  var orgView = null;
+  function orgStage() {
+    if (orgView) return orgView;
+    orgView = { host: $('og-chart'), text: '', edges: [], focus: null, section: $('tab-organization'), heading: 'The organization', noun: 'node', turns: true };
+    add($('og-tools'), graphZoomTools(orgView));
+    graphStage(orgView, {
+      zooms: function () { return true; },
+      wheel: function () { return false; },
+      go: function () { return false; },
+      tap: function (k) { if (k != null) orgPressed(k); }
+    });
+    return orgView;
+  }
+  function orgDrawChart(s, map) {
+    var text = orgChartText(map, og.filter), view = orgStage(), chart = $('og-chart'), tools = $('og-tools'), n = og.n;
+    chart.hidden = false;
+    tools.hidden = false;
+    // the same text is not drawn twice: drawn already, being drawn while the words are rendered
+    // again, or failed and said so until the chips or a Refresh change it
+    if (og.drawn === text) return;
+    og.drawn = text;
+    view.text = text;
+    clear(chart);
+    add(chart, el('p', 'admin__lead', 'Drawing the map...'));
+    loadMermaid().then(function (m) {
+      if (!orgLive(s, n) || og.drawn !== text) return;
+      return graphDraw(m, view).then(function () { if (orgLive(s, n) && og.drawn === text) boardChartHeight(view); });
+    }).catch(function (e) {
+      if (!orgLive(s, n) || og.drawn !== text) return;
+      clear(chart);
+      add(chart, el('p', 'admin__lead admin__warn', 'The map could not be drawn (' + e.message + '); its interfaces are in the table below.'));
+    });
+  }
+  function orgDegree(map, name) {
+    var out = 0, inn = 0;
+    map.edges.forEach(function (e) { if (e.from === name) out++; if (e.to === name) inn++; });
+    return 'depends on ' + out + ', depended on by ' + inn;
+  }
+  function orgPressed(k) {
+    var map = og.map, x = map ? map.nodes[k - 1] : null;
+    if (!x) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#og-repos .og__card--on'), function (c) { c.classList.remove('og__card--on'); });
+    var card = $('og-card-' + k);
+    if (card) { card.classList.add('og__card--on'); card.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); }
+    var said = x.name + (x.system ? ', outside GitHub' : ', ' + (x.visibility || 'a repository') + (card ? '' : ', not listed by GitHub for you')) + (x.role ? ': ' + x.role : '') + ' (' + orgDegree(map, x.name) + ').';
+    $('og-said').textContent = said;
+    say(said, false, true);
+  }
+  // a repository GitHub lists under the map's name, by its short name or its full one
+  function orgListed(s, name) {
+    var repos = og.repos || [], full = (name.indexOf('/') >= 0 ? name : orgOwner(s) + '/' + name).toLowerCase();
+    for (var i = 0; i < repos.length; i++) if (repos[i].full_name.toLowerCase() === full) return repos[i];
+    return null;
+  }
+  // a node's name as a link to its repository where GitHub lists it, else as words
+  function orgName(s, map, name) {
+    var x = map.byName[name], listed = x && !x.system ? orgListed(s, name) : null;
+    if (x && x.system) return el('span', 'og__system', name);
+    return listed ? link(listed.html_url || 'https://github.com/' + listed.full_name, name) : el('span', '', name);
+  }
+  function orgTable(headings) {
+    var t = el('table', 'ds-table og__table'), head = el('tr');
+    headings.forEach(function (h) { add(head, el('th', '', h)); });
+    add(t, add(el('thead'), head));
+    return t;
+  }
+  function orgEdgesTable(s, map) {
+    var box = $('og-edges');
+    clear(box);
+    if (!map) return;
+    var f = og.filter, rows = orgEdges(map, f);
+    add(box, el('h3', 'og__h', 'Interfaces' + (f.kind ? ' of the kind ' + f.kind : (f.group ? ' touching ' + f.group : '')) + ' (' + rows.length + ')'));
+    if (!rows.length) { none(box, 'None in the map.'); return; }
+    var t = orgTable(['From', 'Interface', 'To', 'What passes', 'Evidence']), body = el('tbody');
+    rows.forEach(function (e) {
+      var tr = el('tr');
+      add(tr, add(el('td'), orgName(s, map, e.from)), el('td', 'og__kind', e.kind), add(el('td'), orgName(s, map, e.to)), el('td', '', e.what), el('td', 'og__by', e.by));
+      body.appendChild(tr);
+    });
+    add(box, add(t, body));
+  }
+  function orgIssueHere(s, n) {
+    var draw = orgDraw(s);
+    if (draw && draw.listed[n]) return draw.listed[n];
+    for (var i = 0; i < s.issues.length; i++) if (Number(s.issues[i].number) === n) return graphIssue(s.issues[i]);
+    return null;
+  }
+  function orgCrossTable(s) {
+    var box = $('og-cross');
+    clear(box);
+    var cross = orgCross(s), waiting = orgWaiting(s).length;
+    add(box, el('h3', 'og__h', 'Task links that cross repositories (' + cross.length + ')'));
+    var p = el('p', 'admin__lead');
+    add(p, 'Seen from ' + og.repo + ': the sub-issues and blockers elsewhere that the Dependencies draw met, and the blockers of its other blocked issues read here' + (waiting ? '; ' + plural(waiting, 'blocked issue') + ' not read yet.' : '.'));
+    if (waiting && !og.reading) {
+      var more = btn('Read ' + Math.min(waiting, ORG_READS_MAX) + ' more', true, function () { orgReadMore(s, og.n); });
+      more.id = 'og-more';
+      add(p, ' ', more);
+    }
+    add(box, p);
+    if (!cross.length) return;
+    var t = orgTable(['Here', 'Link', 'There']), body = el('tbody');
+    cross.sort(function (a, b) { return a.repo < b.repo ? -1 : (a.repo > b.repo ? 1 : (a.of - b.of || a.number - b.number)); }).forEach(function (c) {
+      var here = orgIssueHere(s, c.of), tr = el('tr');
+      add(tr, add(el('td'), link(here && here.html_url ? here.html_url : 'https://github.com/' + og.repo + '/issues/' + c.of, '#' + c.of), here ? ' ' + here.title : ''));
+      add(tr, el('td', 'og__kind', c.kind === 'sub' ? 'has the sub-issue' : 'is blocked by'));
+      add(tr, add(el('td'), link(c.html_url || 'https://github.com/' + c.repo + '/issues/' + c.number, c.repo + '#' + c.number), ' ' + c.title + (c.closed ? ' (closed)' : '')));
+      body.appendChild(tr);
+    });
+    add(box, add(t, body));
+  }
+  // one card per repository: the map's, in the map's order, each with what GitHub lists of it, then
+  // the repositories GitHub lists that the map does not know
+  function orgCards(s, map) {
+    var box = $('og-repos');
+    clear(box);
+    var owner = orgOwner(s), mapped = {}, cards = [];
+    if (map) map.nodes.forEach(function (x, i) {
+      if (x.system) return;
+      var listed = orgListed(s, x.name);
+      if (listed) mapped[listed.full_name.toLowerCase()] = true;
+      cards.push({ k: i + 1, full: listed ? listed.full_name : (x.name.indexOf('/') >= 0 ? x.name : owner + '/' + x.name), node: x, listed: listed });
+    });
+    (og.repos || []).forEach(function (r) { if (!mapped[r.full_name.toLowerCase()]) cards.push({ k: 0, full: r.full_name, node: null, listed: r }); });
+    if (og.filter.group) cards = cards.filter(function (c) { return c.node && c.node.group === og.filter.group; });
+    else if (og.filter.kind) {
+      // the cards agree with the chart and the table: the nodes an edge of that kind joins
+      var touched = {};
+      orgEdges(map, og.filter).forEach(function (e) { touched[e.from] = true; touched[e.to] = true; });
+      cards = cards.filter(function (c) { return c.node && touched[c.node.name]; });
+    }
+    add(box, el('h3', 'og__h', 'Repositories' + (og.filter.group ? ' of ' + og.filter.group : (og.filter.kind ? ' joined by ' + og.filter.kind : '')) + ' (' + cards.length + ')'));
+    var grid = el('div', 'og__cards');
+    cards.forEach(function (c) { grid.appendChild(orgCard(s, map, c)); });
+    add(box, grid);
+  }
+  function orgCard(s, map, c) {
+    var card = el('article', 'og__card'), r = c.listed, x = c.node;
+    if (c.k) card.id = 'og-card-' + c.k;
+    var h = el('h4', 'og__name');
+    add(h, r ? link(r.html_url || 'https://github.com/' + c.full, c.full) : el('span', '', c.full));
+    add(card, h);
+    var facts = [];
+    if (r) facts.push(orgVisibility(r)); else if (x && x.visibility) facts.push(x.visibility + ' by the map');
+    if (r && r.fork) facts.push('a fork');
+    if (r && r.archived) facts.push('archived');
+    if (x) facts.push(x.group);
+    if (r) facts.push(plural(wholeCount(r.open_issues_count), 'open issue or pull request', 'open issues and pull requests'));
+    if (r && r.pushed_at) facts.push('pushed ' + ago(r.pushed_at));
+    add(card, el('p', 'og__facts', facts.join(', ')));
+    if (x && x.role) add(card, el('p', 'og__role', x.role));
+    if (map && x) {
+      var out = map.edges.filter(function (e) { return e.from === x.name; }), inn = map.edges.filter(function (e) { return e.to === x.name; });
+      if (out.length) add(card, orgEdgeLine('Depends on: ', out, function (e) { return e.to + ' (' + e.kind + ')'; }));
+      if (inn.length) add(card, orgEdgeLine('Depended on by: ', inn, function (e) { return e.from + ' (' + e.kind + ')'; }));
+      if (!out.length && !inn.length) add(card, el('p', 'og__edges', 'No interface in the map.'));
+    } else if (map) add(card, el('p', 'og__edges og__gap', 'Not in the map: listed by GitHub only.'));
+    if (!r) add(card, el('p', 'og__edges og__gap', 'Not listed by GitHub for you: out of your reach, or renamed.'));
+    var links = orgCross(s).filter(function (l) { return l.repo.toLowerCase() === c.full.toLowerCase(); });
+    if (links.length) add(card, el('p', 'og__edges', plural(links.length, 'task link') + ' from ' + og.repo + ': ' + plural(links.filter(function (l) { return l.kind === 'blocker'; }).length, 'blocker') + ' and ' + plural(links.filter(function (l) { return l.kind === 'sub'; }).length, 'sub-issue') + '.'));
+    if (r && r.full_name.toLowerCase() !== og.repo.toLowerCase()) add(card, btn('Open in the panel', true, function () { loadRepo(r.full_name); }));
+    return card;
+  }
+  function orgEdgeLine(lead, edges, word) {
+    var p = el('p', 'og__edges');
+    add(p, el('strong', '', lead), edges.map(word).join(', ') + '.');
+    return p;
+  }
+  function initOrganizationTab() {
+    consoleOnOpen.organization = function () {
+      var s = state;
+      if (!og.done || og.repo !== orgRepoName(s)) loadOrganization();
+      else if (!og.started && (orgDraw(s) || s.graphFailed)) { og.started = true; orgReadMore(s, og.n); }
+      else orgRender(s);
+    };
+    var refresh = $('og-refresh');
+    if (refresh) refresh.addEventListener('click', function () { loadOrganization(); });
+  }
 
   /* ============================================================
      The cost page
@@ -14785,5 +15255,5 @@
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
   else if ($('door-app')) initDoor();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('og-chart')) initOrganizationTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
 })();
