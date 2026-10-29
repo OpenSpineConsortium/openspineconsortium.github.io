@@ -2318,6 +2318,8 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 #tab-organization .og__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; }
 #tab-organization .og__sep { margin-left: 10px; font-size: 0.8rem; color: var(--ink-faint); }
 #tab-organization .og__chart { min-height: 240px; }
+/* hidden on a repository with no map: the chart's own display rule and the tools' would otherwise keep an empty box */
+#og-chips[hidden], #og-tools[hidden], #og-chart[hidden] { display: none; }
 #tab-organization .og__block { margin: 12px 0 0; }
 #tab-organization .og__h { margin: 10px 0 4px; font-size: 0.95rem; }
 #tab-organization .og__table { width: 100%; font-size: 0.82rem; }

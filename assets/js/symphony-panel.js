@@ -2449,6 +2449,8 @@
       graphReset('Not drawn: the repository could not be read.', true);
       // the Notebooks tab waits on the repository's meta, which never came: it says so in place of Reading
       if (!s.meta && consoleTab === 'notebooks' && consoleOnOpen.notebooks) consoleOnOpen.notebooks();
+      // so does the Organization tab, whose listing waits on the owner and the default branch
+      orgRepoFailed(s, e);
       summary();
     });
   }
@@ -7208,6 +7210,8 @@
   // the most blocked-by reads one press makes, each one issue of the open repository; the rest wait
   // for Read more, so a repository with many blocked tasks never spends the hour's calls unasked
   var ORG_READS_MAX = 40;
+  // the pages of one issue's blockers read, a hundred an page; past them the list is said to be cut
+  var ORG_PAGES_MAX = 3;
   var ORG_NO_REPOSITORY = 'Nothing to show yet: no repository is chosen.';
   // the classes a node is drawn with, by what it is; the stylesheet shades them (control.css), as it
   // shades the Dependencies charts' states, and takes these light colours off the drawn nodes
@@ -7218,9 +7222,12 @@
     'classDef system fill:#eeeeee,stroke:#999999,color:#666666'
   ];
   var orgLoads = 0;
-  var og = orgEmpty('');
-  function orgEmpty(repo) {
-    return { repo: repo, n: 0, done: false, started: false, map: null, mapWhy: '', repos: null, reposWhy: '', cross: [], read: {}, reading: false, readWhy: '', filter: { group: '', kind: '' }, drawn: '' };
+  var og = orgEmpty('', null);
+  // the tab's state is keyed on the console's state object, never on the repository's name, since
+  // loadRepo makes a fresh state under the same name whose record is not in yet; pending says a
+  // load is in flight, which a tab left and opened again reuses
+  function orgEmpty(repo, s) {
+    return { s: s, repo: repo, n: 0, done: false, pending: false, started: false, map: null, mapWhy: '', repos: null, reposWhy: '', cross: [], read: Object.create(null), cut: [], reading: false, readWhy: '', filter: { group: '', kind: '' }, drawn: '', chips: null, crossKey: '' };
   }
   function orgRepoName(s) { return s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo; }
   function orgOwner(s) { return s.meta && isPlain(s.meta.owner) ? String(s.meta.owner.login || '') : String(s.repo || '').split('/')[0]; }
@@ -7230,7 +7237,10 @@
     p.textContent = text;
     p.className = warn ? 'admin__lead admin__warn' : 'admin__lead';
   }
-  function orgLive(s, n) { return !stale(s) && og.n === n && og.repo === orgRepoName(s); }
+  function orgLive(s, n) { return !stale(s) && og.n === n && og.s === s; }
+  // the words a read under the rate limit's reserve stops with (the Dependencies draw's rule)
+  function orgReserveWhy() { return 'GitHub says this token has ' + rateLatest + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console'; }
+  function orgUnderReserve() { return rateLatest !== null && rateLatest < GRAPH_RESERVE; }
   function orgText(v) { return typeof v === 'string' ? v.trim() : (typeof v === 'number' && isFinite(v) ? String(v) : ''); }
   // the latest Dependencies draw of this repository, whose reads met the issues elsewhere
   function orgDraw(s) { return s.graphLast && s.graphLast.s === s ? s.graphLast : null; }
@@ -7248,18 +7258,37 @@
   function loadOrganization() {
     var s = state;
     if (!s.meta) {
-      og = orgEmpty('');
+      og = orgEmpty('', s);
       orgClear();
-      orgWords(s.repo ? 'Reading ' + s.repo + '...' : ORG_NO_REPOSITORY);
+      orgWords(s.orgFailed ? orgFailedWords(s, s.orgFailed) : (s.repo ? 'Reading ' + s.repo + '...' : ORG_NO_REPOSITORY), !!s.orgFailed);
       return Promise.resolve();
     }
     var repo = orgRepoName(s), owner = orgOwner(s), kind = isPlain(s.meta.owner) ? s.meta.owner.type : '';
-    og = orgEmpty(repo);
+    og = orgEmpty(repo, s);
     var n = og.n = ++orgLoads;
     orgClear();
+    // the listing and the map keep the reserve the blocker reads keep; Refresh asks again
+    if (orgUnderReserve()) {
+      og.done = true;
+      og.repos = [];
+      og.repos.more = false;
+      og.reposWhy = og.mapWhy = orgReserveWhy();
+      orgRender(s);
+      return Promise.resolve();
+    }
+    og.pending = true;
     orgWords('Reading the repositories of ' + owner + ' and the map of ' + repo + '...');
-    var listPath = (kind === 'Organization' ? '/orgs/' : '/users/') + encodeURIComponent(owner) + '/repos?per_page=100&type=all&sort=pushed';
-    var repos = ghList(listPath, 2).then(function (list) {
+    // an organization's repositories are listed under it; a person's own are listed under the
+    // viewer, since /users/{owner}/repos gives public repositories alone, whoever asks, and only
+    // /user/repos lists the private ones of the person signed in
+    var who = kind === 'Organization' ? Promise.resolve('') : (shownToken === token ? Promise.resolve(shownLogin) : whoAmI().catch(function () { return ''; }));
+    var repos = who.then(function (login) {
+      if (!orgLive(s, n)) return [];
+      var mine = typeof login === 'string' && login && login.toLowerCase() === owner.toLowerCase();
+      var listPath = kind === 'Organization' ? '/orgs/' + encodeURIComponent(owner) + '/repos?per_page=100&type=all&sort=pushed'
+        : (mine ? '/user/repos?affiliation=owner&per_page=100&sort=pushed' : '/users/' + encodeURIComponent(owner) + '/repos?type=owner&per_page=100&sort=pushed');
+      return ghList(listPath, 5);
+    }).then(function (list) {
       if (!orgLive(s, n)) return;
       og.repos = list.filter(function (x) { return isPlain(x) && typeof x.full_name === 'string'; });
       og.repos.more = !!list.more;
@@ -7274,11 +7303,23 @@
     return Promise.all([repos, map]).then(function () {
       if (!orgLive(s, n)) return;
       og.done = true;
-      orgRender(s);
-      // the task links wait for the issues and the draw, which say which blockers are read already
-      if (orgDraw(s) || s.graphFailed) { og.started = true; return orgReadMore(s, n); }
+      og.pending = false;
+      // a fault of the rendering is this tab's own, said in its words and never thrown up the chain
+      try {
+        orgRender(s);
+        // the task links wait for the issues and the draw, which say which blockers are read already
+        if (orgDraw(s) || s.graphFailed) { og.started = true; return orgReadMore(s, n); }
+      } catch (e) { orgWords('The organization could not be shown: ' + e.message, true); }
     });
   }
+  // the record of the repository never came (loadRepo's catch): the state remembers why, so the
+  // tab says so in place of Reading now and whenever it is opened on that state
+  function orgRepoFailed(s, e) {
+    if (s.meta) return;
+    s.orgFailed = e && e.message ? e.message : 'the repository could not be read';
+    if (consoleTab === 'organization') consoleOnOpen.organization();
+  }
+  function orgFailedWords(s, why) { return 'Nothing to show: the record of ' + s.repo + ' could not be read (' + why + '). The console\'s Refresh reads it again.'; }
   // what makes a file no map at all; a map with a node or an edge amiss is still drawn, each part
   // of it written as the text it is and never as markup
   function orgMapProblem(data) {
@@ -7289,16 +7330,18 @@
   function orgMapRead(data) {
     var nodes = data.nodes.filter(function (x) { return isPlain(x) && typeof x.name === 'string' && x.name.trim(); })
       .map(function (x) { return { name: x.name.trim(), group: orgText(x.group) || 'other', visibility: orgText(x.visibility), role: orgText(x.role), system: x.kind === 'system' }; });
-    var byName = {};
+    var byName = Object.create(null);
     nodes = nodes.filter(function (x) { if (byName[x.name]) return false; byName[x.name] = x; return true; });
     var edges = data.edges.filter(function (e) {
       return isPlain(e) && typeof e.from === 'string' && typeof e.to === 'string' && byName[e.from.trim()] && byName[e.to.trim()] && e.from.trim() !== e.to.trim();
     }).map(function (e) { return { from: e.from.trim(), to: e.to.trim(), kind: orgText(e.kind) || 'depends on', what: orgText(e.what), by: orgText(e.by) }; });
-    return { written: orgText(data.written), kinds: isPlain(data.kinds) ? data.kinds : {}, nodes: nodes, byName: byName, edges: edges, dropped: data.edges.length - edges.length };
+    var kinds = Object.create(null);
+    if (isPlain(data.kinds)) Object.keys(data.kinds).forEach(function (k) { if (typeof data.kinds[k] === 'string') kinds[k] = data.kinds[k]; });
+    return { written: orgText(data.written), kinds: kinds, nodes: nodes, byName: byName, edges: edges, dropped: data.edges.length - edges.length };
   }
   // the task links that cross repositories: what the draw met, then what this tab read itself
   function orgCross(s) {
-    var draw = orgDraw(s), seen = {}, out = [];
+    var draw = orgDraw(s), seen = Object.create(null), out = [];
     function keep(c) {
       if (!c.repo) return;
       var k = c.kind + ' ' + c.of + ' ' + c.repo.toLowerCase() + '#' + c.number;
@@ -7317,6 +7360,7 @@
       .sort(function (a, b) { return a.number - b.number; });
   }
   function orgReadMore(s, n) {
+    if (og.reading) return Promise.resolve();
     var repo = og.repo, batch = orgWaiting(s).slice(0, ORG_READS_MAX);
     og.readWhy = '';
     if (!batch.length) { og.reading = false; orgRender(s); return Promise.resolve(); }
@@ -7324,15 +7368,18 @@
     orgRender(s);
     function one(i) {
       if (i >= batch.length || !orgLive(s, n)) return Promise.resolve();
-      if (rateLatest !== null && rateLatest < GRAPH_RESERVE) {
-        og.readWhy = 'GitHub says this token has ' + rateLatest + ' calls left this hour, and the page keeps the last ' + GRAPH_RESERVE + ' for the rest of the console';
+      if (orgUnderReserve()) {
+        og.readWhy = orgReserveWhy();
         return Promise.resolve();
       }
       var it = batch[i];
-      return gh('GET', '/repos/' + repo + '/issues/' + it.number + '/dependencies/blocked_by?per_page=100').then(function (r) {
+      // the pages are followed as the draw follows them (graphList), a few at most, and a list cut
+      // there is said so
+      return ghList('/repos/' + repo + '/issues/' + it.number + '/dependencies/blocked_by?per_page=100', ORG_PAGES_MAX).then(function (list) {
         if (!orgLive(s, n)) return;
         og.read[it.number] = true;
-        (Array.isArray(r.data) ? r.data : []).forEach(function (b) { if (isPlain(b) && !inRepository(b, repo)) og.cross.push(graphCrossItem('blocker', it.number, b)); });
+        if (list.more) og.cut.push(it.number);
+        list.forEach(function (b) { if (isPlain(b) && !inRepository(b, repo)) og.cross.push(graphCrossItem('blocker', it.number, b)); });
         return one(i + 1);
       }, function (e) {
         if (!orgLive(s, n)) return;
@@ -7350,8 +7397,10 @@
   // tab's own reads goes out where none has
   function orgAfterDraw() {
     var s = state;
-    if (consoleTab !== 'organization' || !og.done || og.repo !== orgRepoName(s)) return;
-    if (!og.started) { og.started = true; orgReadMore(s, og.n); } else orgRender(s);
+    if (consoleTab !== 'organization' || !og.done || og.s !== s) return;
+    try {
+      if (!og.started) { og.started = true; orgReadMore(s, og.n); } else orgRender(s);
+    } catch (e) { orgWords('The organization could not be shown: ' + e.message, true); }
   }
 
   /* ---------- what the tab shows ---------- */
@@ -7376,44 +7425,55 @@
     if (map) {
       var sys = map.nodes.filter(function (x) { return x.system; }).length;
       parts.push('The map of ' + og.repo + (map.written ? ', written ' + map.written + ',' : '') + ' names ' + plural(map.nodes.length - sys, 'repository', 'repositories') + (sys ? ' and ' + plural(sys, 'system') + ' outside GitHub' : '') + ' with ' + plural(map.edges.length, 'interface') + (map.dropped ? ' (' + plural(map.dropped, 'edge') + ' left out, not between two of its nodes)' : '') + '.');
-    } else if (og.mapWhy === 'none') parts.push('No map: ' + og.repo + ' has no ' + ORG_MAP_PATH + ' on ' + s.meta.default_branch + ', so only what GitHub lists is shown; add one as SchwingNet keeps it (its docs/research/organization-map.md).');
+    } else if (og.mapWhy === 'none') parts.push('No map: ' + og.repo + ' has no ' + ORG_MAP_PATH + ' on ' + ((s.meta && s.meta.default_branch) || 'its default branch') + ', so only what GitHub lists is shown; add one as SchwingNet keeps it (its docs/research/organization-map.md).');
     else if (og.mapWhy) { parts.push('The map could not be read: ' + og.mapWhy + '.'); warn = true; }
-    var cross = orgCross(s), others = {};
+    var cross = orgCross(s), others = Object.create(null);
     cross.forEach(function (c) { others[c.repo.toLowerCase()] = true; });
     parts.push(cross.length ? plural(cross.length, 'task link') + ' cross from ' + og.repo + ' into ' + plural(Object.keys(others).length, 'other repository', 'other repositories') + '.' : 'No task link crossing repositories has been read from ' + og.repo + ' yet.');
     var waiting = orgWaiting(s).length;
     if (og.reading) parts.push('Reading the blockers of ' + plural(Math.min(waiting, ORG_READS_MAX), 'blocked issue') + '...');
     else if (og.readWhy) { parts.push('Stopped: ' + og.readWhy + '.'); warn = true; }
     else if (waiting) parts.push(plural(waiting, 'blocked issue') + ' not read yet; Read more reads the next ' + Math.min(waiting, ORG_READS_MAX) + '.');
+    if (og.cut.length) parts.push('Only the first ' + (ORG_PAGES_MAX * 100) + ' blockers of ' + og.cut.map(function (k) { return '#' + k; }).join(', ') + ' were read.');
     orgWords(parts.join(' '), warn);
   }
   // the chips that cut the chart, the table and the cards to one group of repositories or one kind
   // of interface; a second press on the one chosen shows all again
   function orgChips(s, map) {
     var box = $('og-chips');
-    clear(box);
-    if (!map) { box.hidden = true; return; }
+    if (!map) { clear(box); og.chips = null; box.hidden = true; return; }
     box.hidden = false;
+    // made once for a map, then only pressed or unpressed in place: a press that rebuilt them
+    // would drop the keyboard from the chip pressed to the page
+    if (og.chips && og.chips.map === map) { og.chips.list.forEach(function (c) { orgChipOn(c.b, c.on()); }); return; }
+    clear(box);
+    var list = [];
     function chip(label, count, on, title, press) {
-      var b = el('button', 'chip' + (on ? ' chip--go' : ''), label);
+      var b = el('button', 'chip', label);
       b.type = 'button';
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
       if (title) b.title = title;
       if (count != null) add(b, el('span', '', String(count)));
-      b.addEventListener('click', press);
+      b.addEventListener('click', function () { press(); orgRender(s); });
+      orgChipOn(b, on());
+      list.push({ b: b, on: on });
       return b;
     }
-    add(box, chip('All', null, !og.filter.group && !og.filter.kind, 'Every group and every kind', function () { og.filter = { group: '', kind: '' }; orgRender(s); }));
-    var byGroup = {}, groups = [], byKind = {};
+    add(box, chip('All', null, function () { return !og.filter.group && !og.filter.kind; }, 'Every group and every kind', function () { og.filter = { group: '', kind: '' }; }));
+    var byGroup = Object.create(null), groups = [], byKind = Object.create(null);
     map.nodes.forEach(function (x) { if (!byGroup[x.group]) { byGroup[x.group] = 0; groups.push(x.group); } byGroup[x.group]++; });
     map.edges.forEach(function (e) { byKind[e.kind] = (byKind[e.kind] || 0) + 1; });
     groups.forEach(function (g) {
-      add(box, chip(g, byGroup[g], og.filter.group === g, 'The repositories of this group and what they touch', function () { og.filter = { group: og.filter.group === g ? '' : g, kind: '' }; orgRender(s); }));
+      add(box, chip(g, byGroup[g], function () { return og.filter.group === g; }, 'The repositories of this group and what they touch', function () { og.filter = { group: og.filter.group === g ? '' : g, kind: '' }; }));
     });
     add(box, el('span', 'og__sep', 'by interface:'));
     Object.keys(byKind).sort().forEach(function (k) {
-      add(box, chip(k, byKind[k], og.filter.kind === k, typeof map.kinds[k] === 'string' ? map.kinds[k] : '', function () { og.filter = { group: '', kind: og.filter.kind === k ? '' : k }; orgRender(s); }));
+      add(box, chip(k, byKind[k], function () { return og.filter.kind === k; }, map.kinds[k] || '', function () { og.filter = { group: '', kind: og.filter.kind === k ? '' : k }; }));
     });
+    og.chips = { map: map, list: list };
+  }
+  function orgChipOn(b, on) {
+    b.classList.toggle('chip--go', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
   // the edges the chips leave: of one kind, or touching one group
   function orgEdges(map, filter) {
@@ -7423,10 +7483,15 @@
   }
   // a word of the map written into the chart as the board writes a title: folded to ASCII,
   // one-spaced, the characters that could end or edit the chart as entities (graphLabel)
-  function orgLabel(text) {
+  // an edge's label stands between pipes with no quotes, where a bracket, a brace, a parenthesis
+  // or an @ ends it (mermaid.parse refuses the chart), so on an edge those are entities too; a word
+  // that folds to nothing is written as a placeholder, since an empty label fails the chart as well
+  function orgLabel(text, edge) {
     var t = graphFold(text).split(GRAPH_SPACE).filter(Boolean).join(' ');
-    [['#', '#35;'], ['%', '#37;'], ['$', '#36;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']].forEach(function (pair) { t = t.split(pair[0]).join(pair[1]); });
-    return t;
+    var pairs = [['#', '#35;'], ['%', '#37;'], ['$', '#36;'], ['"', '#quot;'], ['|', '#124;'], ['<', '#lt;'], ['>', '#gt;']];
+    if (edge) pairs = pairs.concat([['(', '#40;'], [')', '#41;'], ['[', '#91;'], [']', '#93;'], ['{', '#123;'], ['}', '#125;'], ['@', '#64;']]);
+    pairs.forEach(function (pair) { t = t.split(pair[0]).join(pair[1]); });
+    return t || 'unnamed';
   }
   function orgClass(x) { return x.system ? 'system' : (x.visibility === 'public' || x.visibility === 'internal' ? x.visibility : 'private'); }
   // the map as one flowchart: a subgraph per group, each node named by its place in the map's list,
@@ -7434,7 +7499,7 @@
   // the edges labelled by their kind, the four classes; the chips cut it to one group, with what
   // touches it, or to one kind, with the nodes its edges join
   function orgChartText(map, filter) {
-    var lines = ['flowchart TD'], index = {}, groups = {}, order = [], keep = {};
+    var lines = ['flowchart TD'], index = Object.create(null), groups = Object.create(null), order = [], keep = Object.create(null);
     map.nodes.forEach(function (x, i) { index[x.name] = i + 1; });
     var edges = orgEdges(map, filter);
     if (!filter.kind && !filter.group) map.nodes.forEach(function (x) { keep[x.name] = true; });
@@ -7455,7 +7520,7 @@
       });
       lines.push('  end');
     });
-    edges.forEach(function (e) { lines.push('  i' + index[e.from] + ' -->|' + orgLabel(e.kind) + '| i' + index[e.to]); });
+    edges.forEach(function (e) { lines.push('  i' + index[e.from] + ' -->|' + orgLabel(e.kind, true) + '| i' + index[e.to]); });
     ORG_CLASSES.forEach(function (c) { lines.push('  ' + c); });
     return lines.join('\n');
   }
@@ -7467,12 +7532,17 @@
     if (orgView) return orgView;
     orgView = { host: $('og-chart'), text: '', edges: [], focus: null, section: $('tab-organization'), heading: 'The organization', noun: 'node', turns: true };
     add($('og-tools'), graphZoomTools(orgView));
+    orgView.host.style.touchAction = 'pan-y';
     graphStage(orgView, {
       zooms: function () { return true; },
       wheel: function () { return false; },
       go: function () { return false; },
       tap: function (k) { if (k != null) orgPressed(k); }
     });
+    // a finger's move up and down over the whole chart scrolls the tab, as it does over the Board
+    // tab's charts (boardView); zoomed in, the chart holds the finger
+    var moved = orgView.stage.hooks.moved;
+    orgView.stage.hooks.moved = function (st) { moved(st); orgView.host.style.touchAction = st.whole && orgView.focus == null ? 'pan-y' : 'none'; };
     return orgView;
   }
   function orgDrawChart(s, map) {
@@ -7506,7 +7576,8 @@
     Array.prototype.forEach.call(document.querySelectorAll('#og-repos .og__card--on'), function (c) { c.classList.remove('og__card--on'); });
     var card = $('og-card-' + k);
     if (card) { card.classList.add('og__card--on'); card.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); }
-    var said = x.name + (x.system ? ', outside GitHub' : ', ' + (x.visibility || 'a repository') + (card ? '' : ', not listed by GitHub for you')) + (x.role ? ': ' + x.role : '') + ' (' + orgDegree(map, x.name) + ').';
+    var listed = x.system ? null : orgListed(state, x.name);
+    var said = x.name + (x.system ? ', outside GitHub' : ', ' + (x.visibility || 'a repository') + (listed || og.reposWhy ? '' : ', not listed by GitHub for you')) + (x.role ? ': ' + x.role : '') + ' (' + orgDegree(map, x.name) + ').';
     $('og-said').textContent = said;
     say(said, false, true);
   }
@@ -7547,17 +7618,22 @@
     var draw = orgDraw(s);
     if (draw && draw.listed[n]) return draw.listed[n];
     for (var i = 0; i < s.issues.length; i++) if (Number(s.issues[i].number) === n) return graphIssue(s.issues[i]);
+    if (draw && draw.others[n]) return draw.others[n];
     return null;
   }
   function orgCrossTable(s) {
     var box = $('og-cross');
-    clear(box);
     var cross = orgCross(s), waiting = orgWaiting(s).length;
+    // the box is aria-live: written again only when its words change, never on a chip's press
+    var key = [og.repo, waiting, og.reading, og.readWhy].concat(cross.map(function (c) { return c.kind + ' ' + c.of + ' ' + c.repo + '#' + c.number + ' ' + c.closed; })).join('\n');
+    if (og.crossKey === key && box.firstChild) return;
+    og.crossKey = key;
+    clear(box);
     add(box, el('h3', 'og__h', 'Task links that cross repositories (' + cross.length + ')'));
     var p = el('p', 'admin__lead');
     add(p, 'Seen from ' + og.repo + ': the sub-issues and blockers elsewhere that the Dependencies draw met, and the blockers of its other blocked issues read here' + (waiting ? '; ' + plural(waiting, 'blocked issue') + ' not read yet.' : '.'));
     if (waiting && !og.reading) {
-      var more = btn('Read ' + Math.min(waiting, ORG_READS_MAX) + ' more', true, function () { orgReadMore(s, og.n); });
+      var more = btn('Read ' + Math.min(waiting, ORG_READS_MAX) + ' more', true, function () { og.started = true; orgReadMore(s, og.n); });
       more.id = 'og-more';
       add(p, ' ', more);
     }
@@ -7578,7 +7654,7 @@
   function orgCards(s, map) {
     var box = $('og-repos');
     clear(box);
-    var owner = orgOwner(s), mapped = {}, cards = [];
+    var owner = orgOwner(s), mapped = Object.create(null), cards = [];
     if (map) map.nodes.forEach(function (x, i) {
       if (x.system) return;
       var listed = orgListed(s, x.name);
@@ -7589,7 +7665,7 @@
     if (og.filter.group) cards = cards.filter(function (c) { return c.node && c.node.group === og.filter.group; });
     else if (og.filter.kind) {
       // the cards agree with the chart and the table: the nodes an edge of that kind joins
-      var touched = {};
+      var touched = Object.create(null);
       orgEdges(map, og.filter).forEach(function (e) { touched[e.from] = true; touched[e.to] = true; });
       cards = cards.filter(function (c) { return c.node && touched[c.node.name]; });
     }
@@ -7619,7 +7695,7 @@
       if (inn.length) add(card, orgEdgeLine('Depended on by: ', inn, function (e) { return e.from + ' (' + e.kind + ')'; }));
       if (!out.length && !inn.length) add(card, el('p', 'og__edges', 'No interface in the map.'));
     } else if (map) add(card, el('p', 'og__edges og__gap', 'Not in the map: listed by GitHub only.'));
-    if (!r) add(card, el('p', 'og__edges og__gap', 'Not listed by GitHub for you: out of your reach, or renamed.'));
+    if (!r) add(card, el('p', 'og__edges og__gap', og.reposWhy ? 'Not checked against GitHub: its repositories could not be listed.' : (og.repos && og.repos.more ? 'Not among the ' + og.repos.length + ' repositories GitHub listed for you: beyond them, out of your reach, or renamed.' : 'Not listed by GitHub for you: out of your reach, or renamed.')));
     var links = orgCross(s).filter(function (l) { return l.repo.toLowerCase() === c.full.toLowerCase(); });
     if (links.length) add(card, el('p', 'og__edges', plural(links.length, 'task link') + ' from ' + og.repo + ': ' + plural(links.filter(function (l) { return l.kind === 'blocker'; }).length, 'blocker') + ' and ' + plural(links.filter(function (l) { return l.kind === 'sub'; }).length, 'sub-issue') + '.'));
     if (r && r.full_name.toLowerCase() !== og.repo.toLowerCase()) add(card, btn('Open in the panel', true, function () { loadRepo(r.full_name); }));
@@ -7633,7 +7709,9 @@
   function initOrganizationTab() {
     consoleOnOpen.organization = function () {
       var s = state;
-      if (!og.done || og.repo !== orgRepoName(s)) loadOrganization();
+      // another state, or this one with its record just in: read; a load in flight is reused
+      if (og.s !== s || (!og.done && !og.pending)) loadOrganization();
+      else if (!og.done) return;
       else if (!og.started && (orgDraw(s) || s.graphFailed)) { og.started = true; orgReadMore(s, og.n); }
       else orgRender(s);
     };
