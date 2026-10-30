@@ -2333,3 +2333,6 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 #tab-organization .og__by { color: var(--ink-faint); font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.76rem; overflow-wrap: anywhere; }
 #og-chart.control__chart .cluster > rect { fill: rgba(255, 255, 255, 0.025) !important; stroke: #3A4A44 !important; rx: 10px; }
 #og-chart.control__chart .cluster-label :is(span, p) { color: #C2CCC8 !important; }
+/* a prediction of Claude's: a ghost, dashed in the teal of an idea, until Launch makes it real */
+#og-chart.control__chart .node.idea > rect.label-container { fill: rgba(60, 194, 177, 0.07) !important; stroke: #3CC2B1 !important; stroke-width: 1.5px !important; stroke-dasharray: 6 4; }
+#og-chart.control__chart .node.idea :is(span, p) { color: #9FE3D8 !important; font-style: italic; }

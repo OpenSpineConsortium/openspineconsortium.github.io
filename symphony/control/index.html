@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610300352">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610300352">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610300352">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610300421">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610300421">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610300421">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610300352">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610300421">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -326,10 +326,12 @@
             <label class="og__show"><span>Show</span> <select id="og-show" aria-label="Show every repository, or one repository, goal or epic" hidden></select></label>
             <button type="button" id="og-refresh" class="quiet">Refresh</button>
             <button type="button" id="og-more" class="quiet" hidden>Read more</button>
+            <button type="button" id="og-predict" class="quiet" title="Asks the repository's Claude what tasks and dependencies the graph lacks, and draws its answer on the chart as ghosts">Predict with Claude</button>
             <details class="console__help"><summary>What this shows and reads</summary><div>
               <p>Every repository of the owner of the open repository, as GitHub lists them for you, and the task dependencies across all of them: the Dependencies tab&rsquo;s chart drawn over the whole organization. The tab reads each repository&rsquo;s open issues, the sub-issues of every open issue labelled epic or goal, and the issues blocking each epic&rsquo;s tasks, wherever they live, and draws one chart: a box per repository, in it a box per epic holding its tasks, the goals above their epics by a thick arrow, an epic&rsquo;s task in another repository hung from it by an arrow, and every blocked-by relation an arrow from the blocker to the blocked, dotted once the blocker is closed. A node&rsquo;s shade is its state, as in the Dependencies tab: todo, claimed, in review, blocked or closed. The Show list cuts the chart to one repository, with what its issues are joined to, or to one goal or epic. The tables folded under the chart list the goals and epics with their progress, the links that cross repositories, and every repository with what was read of it.</p>
               <p>The reads are counted: at most a hundred and twenty a press, the open repository first and then the rest in the order GitHub lists them, a repository read whole before the next; none once GitHub says the token has fewer than a hundred calls left this hour; Read more, beside Refresh, reads on. An archived repository, or one with nothing open, is listed and not read. The claims the open pull requests show are not read here, so a claim with no label is drawn by its labels alone. The page writes nothing.</p>
               <p>The chart is drawn in this browser by the copy of Mermaid the site carries, loaded only when there is something to draw, and fills the tab: it opens whole, the mouse&rsquo;s wheel, a pinch, the buttons, + and &minus; or a double tap zoom it about the pointer, the mouse or a finger drags it at any zoom, and a press on a node names the issue, its state and what blocks it, with its link.</p>
+              <p>Predict with Claude sends the chart, node by node and link by link, to the open repository&rsquo;s assistant, the Claude workflow on the repository&rsquo;s own token, which reads and writes nothing, and asks what is missing: new tasks under existing epics and new dependencies, each named by its repository. Its answer is drawn on the chart as ghosts, a proposed task dashed in its epic&rsquo;s box and a proposed dependency a dashed arrow, and listed under the chart with its reasons; a press on a ghost says it. Nothing reaches GitHub until Launch, which writes as you: the task as an issue in the epic&rsquo;s repository, titled Task: and labelled todo, placed under the epic by GitHub&rsquo;s own sub-issue link, with its blocked-by links; and, where this repository registers a worker in Actions and you choose one, its label worker:NAME. The label todo wakes the repository&rsquo;s workers workflow and the worker&rsquo;s label wakes that worker at once, and what wakes is Claude Code run in GitHub Actions on the repository&rsquo;s own CLAUDE.md, claim protocol and required check: the same standards a session works to. Undo closes what the last launch opened and takes its links off.</p>
             </div></details>
           </div>
           <p id="og-said" class="admin__lead"></p>
@@ -338,7 +340,8 @@
               <div id="og-tools" class="graph__tools graph__tools--board og__tools" hidden></div>
               <div id="og-chart" class="control__chart og__chart" role="group" aria-label="The organization's task dependencies" hidden></div>
             </div>
-            <details class="og__tables" id="og-tables"><summary>Tables: goals and epics, links across repositories, repositories read</summary><div class="og__tablesbody">
+            <details class="og__tables" id="og-tables"><summary>Tables: predictions, goals and epics, links across repositories, repositories read</summary><div class="og__tablesbody">
+              <div id="og-ideas" class="og__block"></div>
               <div id="og-plans" class="og__block"></div>
               <div id="og-cross" class="og__block"></div>
               <div id="og-repos" class="og__block"></div>
@@ -795,8 +798,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610300352"></script>
+<script src="/assets/js/main.js?v=202610300421"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610300352"></script>
+<script src="/assets/js/symphony-panel.js?v=202610300421"></script>
 </body>
 </html>

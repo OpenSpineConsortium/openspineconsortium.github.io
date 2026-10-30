@@ -4641,13 +4641,16 @@
       else if ((m = /^merge\s+#([0-9]{1,9})$/i.exec(line))) said = assistantMergeOffer(Number(m[1]));
       else if ((m = /^task:?\s+(.{1,200})$/i.exec(line))) said = assistantTaskOffer(m[1].trim());
       else if ((m = /^ask(?:\s+#([0-9]{1,9}))?\s*:?\s+(.{1,2000})$/i.exec(line))) said = assistantAskOffer(m[1] || '', m[2].trim());
+      else if (ORG_LINK.test(line) || ORG_NODE.test(line)) said = orgOffer(line);
       else if (BS_LINK.test(line) || BS_NODE.test(line)) said = bsOffer(line);
       else said = 'Not acted on, shown as written: ' + line;
       if (i) add(box, ' ');
       add(box, said);
     });
-    // the ideas are drawn on Explore as the answer comes, where the tab is open
+    // the ideas are drawn on Explore as the answer comes, where the tab is open, and the
+    // predictions on the Organization tab's chart
     if (consoleTab === 'explore') exploreAfterDraw();
+    orgAfterAnswer();
   }
   // a link the person presses, since a page may not open a tab by itself from a read; GitHub takes
   // an issue's address to the pull request where the number is one
@@ -7220,7 +7223,8 @@
   function orgEmpty(repo, s) {
     return { s: s, repo: repo, n: 0, done: false, pending: false, reading: false, readWhy: '', owner: '', repos: null, reposWhy: '',
       queue: [], reads: 0, read: Object.create(null), issues: Object.create(null), subIssues: Object.create(null), blockedBy: Object.create(null), cut: [],
-      filter: { repo: '', chart: '' }, drawn: '', chips: null, keys: [], index: Object.create(null) };
+      filter: { repo: '', chart: '' }, drawn: '', chips: null, keys: [], index: Object.create(null),
+      dismissed: Object.create(null), launched: Object.create(null), launching: false, undo: null, worker: '' };
   }
   function orgRepoName(s) { return s.meta && typeof s.meta.full_name === 'string' && s.meta.full_name ? s.meta.full_name : s.repo; }
   function orgOwner(s) { return s.meta && isPlain(s.meta.owner) ? String(s.meta.owner.login || '') : String(s.repo || '').split('/')[0]; }
@@ -7469,10 +7473,25 @@
       if (box.members.length) { boxes.push(box); edges.push({ from: epic.key, to: 'e:' + epic.key, arrow: ' --> ', of: epic.key, box: true }); }
     });
     var keys = Object.keys(nodes).sort(function (a, b) { return orgOrder(nodes[a], nodes[b]); });
+    // Claude's predictions, after the real nodes: a proposed task a ghost in its epic's box, a
+    // proposed dependency a dashed arrow; each is a node or an edge like any other to the chart,
+    // the filter and a press, and nothing of it is on GitHub until Launch
+    var ideas = orgIdeas();
+    ideas.forEach(function (x) {
+      if (x.kind !== 'task' || !nodes[x.epic]) return;
+      nodes[x.key] = x;
+      keys.push(x.key);
+      var box = boxes.filter(function (b) { return b.key === x.epic; })[0];
+      if (!box) { box = { key: x.epic, repo: x.repo, members: [] }; boxes.push(box); edges.push({ from: x.epic, to: 'e:' + x.epic, arrow: ' --> ', of: x.epic, box: true }); }
+      box.members.push(x.key);
+    });
+    ideas.forEach(function (x) {
+      if (x.kind === 'link' && nodes[x.blocker] && nodes[x.blocked]) edges.push({ from: x.blocker, to: x.blocked, arrow: ' -.-> ', of: nodes[x.blocked].epic || x.blocked, blocker: true, idea: true });
+    });
     og.keys = keys;
     og.index = Object.create(null);
     keys.forEach(function (k, i) { og.index[k] = i + 1; });
-    return { nodes: nodes, keys: keys, edges: edges, boxes: boxes, goals: goals, epics: epics };
+    return { nodes: nodes, keys: keys, edges: edges, boxes: boxes, goals: goals, epics: epics, ideas: ideas };
   }
   // the keys a chip leaves: a repository's nodes and what an edge joins them to, or one planned
   // issue's nodes (a goal with its epics, an epic with its tasks and their blockers)
@@ -7482,6 +7501,7 @@
     if (filter.chart) {
       keep[filter.chart] = true;
       (og.subIssues[filter.chart] || []).forEach(function (k) { if (pic.nodes[k]) keep[k] = true; });
+      pic.boxes.forEach(function (box) { if (box.key === filter.chart) box.members.forEach(function (k) { keep[k] = true; }); });
       pic.edges.forEach(function (e) { if (e.of === filter.chart && !e.box) { keep[e.from] = true; keep[e.to] = true; } });
       return keep;
     }
@@ -7504,8 +7524,13 @@
     return 'Epic #' + epic.number + (title ? ': ' + orgLabel(title) : '') + (epic.progress && epic.progress[1] > 0 ? ' (' + epic.progress[0] + '/' + epic.progress[1] + ')' : '');
   }
   function orgNodeLine(it) {
+    if (it.idea) return 'i' + og.index[it.key] + '["Proposed: ' + orgLabel(orgCut(it.title)) + '"]:::idea';
     var c = graphClass(it, {});
     return 'i' + og.index[it.key] + '["' + graphLabel(it) + '"]' + (c ? ':::' + c : '');
+  }
+  function orgCut(title) {
+    var t = graphFold(title).split(GRAPH_SPACE).filter(Boolean).join(' ');
+    return t.length > GRAPH_LABEL_WIDTH ? t.slice(0, GRAPH_LABEL_WIDTH - 3).replace(GRAPH_SPACE_END, '') + '...' : t;
   }
   // the chart's text: a box per repository with its nodes, in it a box per epic with the tasks of
   // its own repository, then the edges, then the five classes
@@ -7540,8 +7565,11 @@
     once.sort();
     once.forEach(function (line) { lines.push('  ' + line); });
     GRAPH_CLASSES.forEach(function (c) { lines.push('  ' + c); });
+    if (pic.ideas && pic.ideas.length) lines.push('  ' + ORG_IDEA_CLASS);
     return lines.join('\n');
   }
+  // the class of a proposed node; its look is the stylesheet's (control.css), as the others' are
+  var ORG_IDEA_CLASS = 'classDef idea fill:#ffffff,stroke:#2aa198,color:#000000,stroke-dasharray:6 4';
   function orgRender(s) {
     if (!og.done || !$('og-state')) return;
     var pic = orgPicture();
@@ -7549,6 +7577,7 @@
     orgChips(s, pic);
     if (pic.keys.length) orgDrawChart(s, pic);
     else { clear($('og-chart')); $('og-chart').hidden = true; $('og-tools').hidden = true; }
+    orgIdeasTable(s, pic);
     orgPlansTable(s, pic);
     orgCrossTable(s, pic);
     orgReposTable(s, pic);
@@ -7651,7 +7680,9 @@
   }
   // a pressed node: the issue, its state, what blocks it and what it holds, with its link
   function orgPressed(k) {
-    var it = og.keys[k - 1] ? orgIssue(og.keys[k - 1]) : null, said = $('og-said');
+    var key = og.keys[k - 1], said = $('og-said');
+    if (key && key.indexOf('p:') === 0) { orgIdeaPressed(key); return; }
+    var it = key ? orgIssue(key) : null;
     if (!it || !said) return;
     var state = GRAPH_STATES[graphClass(it, {})], words = it.repo + '#' + it.number + ' ' + it.title + ', ' + state;
     var blockers = (og.blockedBy[it.key] || []).map(function (b) { var x = orgIssue(b); return b.replace(/^[^#]*#/, x ? x.repo + '#' : '#') + (x && x.closed ? ' (closed)' : ''); });
@@ -7661,6 +7692,286 @@
     clear(said);
     add(said, words + '. ', link(it.html_url || 'https://github.com/' + it.repo + '/issues/' + it.number, 'Open on GitHub'));
     say(words + '.', false, true);
+  }
+
+  /* ---------- Claude's predictions on the Organization tab ---------- */
+  // The owner, 2026-10-30: "Make Claude predict graph edges and nodes where it thinks they should
+  // be if you click a button and then make it so he can launch the job following the same
+  // standards as a Claude code session". Predict puts the chart, node by node and link by link,
+  // in a question to the open repository's assistant (the Claude workflow on the repository's own
+  // token, read-only, as the floating Claude button asks it) and asks for what is missing, as the
+  // Explore tab asks for one epic, in the same two line forms with every issue named by its
+  // repository: `link owner/name#A blocks owner/name#B why ...` and `node TITLE under owner/name#E
+  // [blocks owner/name#X] [after owner/name#Y] why ...`. The answer's lines are drawn on the chart
+  // as ghosts, a proposed task dashed in its epic's box and a proposed dependency a dashed arrow,
+  // and listed under it; nothing is on GitHub until Launch, which writes as the person: the issue,
+  // titled Task: and labelled todo, in the epic's repository, under its epic by GitHub's own
+  // sub-issue link, its blocked-by links, and, where a worker in Actions is chosen, the label
+  // worker:NAME. The label todo wakes the repository's workers workflow and a worker label wakes
+  // that worker at once, and what wakes is Claude Code run in GitHub Actions on the repository's
+  // CLAUDE.md, the claim protocol and the required check: the same standards a session works to,
+  // with nothing of them in this page. Undo closes what a launch opened and takes its links off.
+  var ORG_REF = '([A-Za-z0-9_.-]{1,39}/[A-Za-z0-9_.-]{1,100})#([1-9][0-9]{0,8})';
+  var ORG_LINK = new RegExp('^link\\s+' + ORG_REF + '\\s+blocks\\s+' + ORG_REF + '(?:\\s+why\\s+(.{1,300}))?$', 'i');
+  var ORG_NODE = new RegExp('^node:?\\s+(.{1,200}?)\\s+under\\s+' + ORG_REF + '((?:\\s+(?:blocks|after)\\s+' + ORG_REF + ')*)(?:\\s+why\\s+(.{1,300}))?$', 'i');
+  var ORG_NODE_LINKS = new RegExp('(blocks|after)\\s+' + ORG_REF, 'gi');
+  // at most this many lines of the chart go into the question, the rest said to be left out, so
+  // the question stays well under GitHub's comment size and the run's reading
+  var ORG_QUESTION_LINES = 400;
+  // the assistant's answer belongs to the open repository, whose assistant it is; the Organization
+  // tab reads it while it shows that repository's organization
+  function orgAnswer() {
+    var a = assistant;
+    return a.answer && !a.failed && a.repo && og.repo && a.repo.toLowerCase() === og.repo.toLowerCase() ? a.answer : null;
+  }
+  // the predictions drawn now: the answer's qualified lines, less those dismissed, launched, or
+  // already on GitHub (a task of the title under its epic, a link the reads brought), and less a
+  // task under an epic the tab has not read, which it could not place
+  function orgIdeas() {
+    var ans = orgAnswer();
+    if (!ans) return [];
+    var out = [], seq = 0;
+    assistantBlock(ans.body).forEach(function (line) {
+      if (og.dismissed[line] || og.launched[line]) return;
+      var m;
+      if ((m = ORG_LINK.exec(line))) {
+        var from = orgKey(m[1], Number(m[2])), to = orgKey(m[3], Number(m[4]));
+        if (from === to || !og.issues[from] || !og.issues[to] || (og.blockedBy[to] || []).indexOf(from) >= 0) return;
+        out.push({ kind: 'link', line: line, blocker: from, blocked: to, why: (m[5] || '').trim() });
+      } else if ((m = ORG_NODE.exec(line))) {
+        var epic = og.issues[orgKey(m[2], Number(m[3]))];
+        if (!epic || !graphPlanned(epic)) return;
+        var title = m[1].trim().replace(/^Task:\s*/i, '');
+        var have = (og.subIssues[epic.key] || []).some(function (k) { return og.issues[k] && og.issues[k].title.replace(/^Task:\s*/i, '').trim().toLowerCase() === title.toLowerCase(); });
+        if (have) return;
+        // the repeated blocks and after group holds two captures of its own, so why is the seventh
+        var key = 'p:' + (++seq), task = { kind: 'task', idea: true, line: line, key: key, repo: epic.repo, epic: epic.key, number: 0, title: title, labels: [], closed: false, why: (m[7] || '').trim(), links: [] };
+        var r;
+        ORG_NODE_LINKS.lastIndex = 0;
+        while ((r = ORG_NODE_LINKS.exec(m[4] || ''))) {
+          var other = orgKey(r[2], Number(r[3]));
+          if (!og.issues[other]) continue;
+          task.links.push(r[1].toLowerCase() === 'blocks' ? { blocker: key, blocked: other } : { blocker: other, blocked: key });
+        }
+        out.push(task);
+        task.links.forEach(function (l) { out.push({ kind: 'link', line: line, with: key, blocker: l.blocker, blocked: l.blocked, why: '' }); });
+      }
+    });
+    return out;
+  }
+  // the answer came, or changed: the chart is drawn again with the predictions where the tab shows
+  function orgAfterAnswer() {
+    if (!og.done || !og.s || stale(og.s)) return;
+    try {
+      orgRender(og.s);
+      // the tables under the chart open, since the predictions are listed there with Launch
+      if (orgIdeas().length && $('og-tables')) $('og-tables').open = true;
+    } catch (e) { orgWords('The predictions could not be drawn: ' + e.message, true); }
+  }
+  // what the assistant's line says, beside its answer, as Explore says its own
+  function orgOffer(line) {
+    var span = el('span');
+    add(span, 'A prediction for the organization, drawn on the Organization tab: ' + line + ' ', btn('Show it on the Organization tab', true, function () {
+      closeDialog('dlg-claude');
+      showTab('organization');
+    }));
+    return span;
+  }
+  // the question Predict asks: the chart as drawn, then the two forms the answer is read in
+  function orgQuestion(pic) {
+    var lines = [], left = 0;
+    function put(line) { if (lines.length < ORG_QUESTION_LINES) lines.push(line); else left++; }
+    pic.keys.forEach(function (k) {
+      var it = pic.nodes[k];
+      if (it.idea) return;
+      var kind = it.labels.indexOf('goal') >= 0 ? 'goal' : (it.labels.indexOf('epic') >= 0 ? 'epic' : 'task');
+      put(it.repo + '#' + it.number + ' ' + it.title.replace(/\s+/g, ' ') + ' [' + kind + (it.closed ? ', closed' : (kind === 'task' ? ', ' + GRAPH_STATES[graphClass(it, {})] : '')) + ']');
+    });
+    pic.epics.concat(pic.goals).forEach(function (e) { (og.subIssues[e.key] || []).forEach(function (k) { if (pic.nodes[k]) put(e.repo + '#' + e.number + ' has the sub-issue ' + pic.nodes[k].repo + '#' + pic.nodes[k].number); }); });
+    Object.keys(og.blockedBy).forEach(function (k) { og.blockedBy[k].forEach(function (b) { if (pic.nodes[k] && pic.nodes[b]) put(pic.nodes[b].repo + '#' + pic.nodes[b].number + ' blocks ' + pic.nodes[k].repo + '#' + pic.nodes[k].number); }); });
+    return 'Predict what is missing from the task graph of the organization ' + og.owner + ': the tasks that should exist and the dependencies that should hold between tasks, across all of its repositories. '
+      + 'Read the issues named and the code they touch. Answer with a symphony block holding only lines of these two forms, every issue named with its repository as owner/name#N, at most twelve lines, and say why for each: '
+      + '"node TITLE under owner/name#E blocks owner/name#X after owner/name#Y why ..." for a new task under an existing epic E (blocks and after optional, each may repeat), and '
+      + '"link owner/name#A blocks owner/name#B why ..." for a dependency between existing issues. '
+      + 'Here is the graph as the page draws it, ' + plural(lines.length, 'line') + (left ? ' (' + left + ' more left out)' : '') + ':\n\n' + lines.join('\n');
+  }
+  // Predict: the question into the Claude dialog and asked, as the dialog's Ask would ask it
+  var orgPredictPress = 0;
+  function orgPredict() {
+    var s = state;
+    if (!og.done || og.s !== s) { say('Wait for the organization to be read first.', true); return; }
+    var pic = orgPicture();
+    if (!pic.keys.filter(function (k) { return !pic.nodes[k].idea; }).length) { say('Nothing to predict from yet: no open epic or goal with sub-issues in what was read.', true); return; }
+    if (!$('cp-as-q')) return;
+    $('cp-as-q').value = orgQuestion(pic);
+    var press = ++orgPredictPress, began = Date.now();
+    pressClaude();
+    // the dialog opens once the token is read (pressClaude); then Ask is pressed for the person,
+    // whose one press was Predict; a dialog that does not open leaves the question in the box
+    (function settle() {
+      if (press !== orgPredictPress) return;
+      var d = $('dlg-claude');
+      if (d && d.open) { if (!assistant.watching && !assistant.posting) assistantAsk(); return; }
+      if (Date.now() - began < CLAUDE_WAIT_MS + 2000) setTimeout(settle, 150);
+    })();
+  }
+  function orgIdeaWords(x) {
+    var n = function (k) { var it = og.issues[k]; return it ? it.repo + '#' + it.number : (og.keys.indexOf(k) >= 0 ? 'the proposed task' : k); };
+    if (x.kind === 'task') { var e = og.issues[x.epic]; return 'New task "' + x.title + '" under ' + e.repo + '#' + e.number + (x.links.length ? ', ' + x.links.map(function (l) { return l.blocker === x.key ? 'blocking ' + n(l.blocked) : 'after ' + n(l.blocker); }).join(', ') : ''); }
+    return 'New dependency: ' + n(x.blocker) + ' blocks ' + n(x.blocked);
+  }
+  // a ghost pressed: the prediction, its why, and Launch and Dismiss
+  function orgIdeaPressed(key) {
+    var said = $('og-said'), x = orgIdeas().filter(function (y) { return y.key === key; })[0];
+    if (!said || !x) return;
+    clear(said);
+    add(said, 'Predicted by Claude: ' + orgIdeaWords(x) + (x.why ? '. Why: ' + x.why : '') + '. ', orgLaunchButton([x]), ' ', orgDismissButton(x));
+    say('Predicted by Claude: ' + orgIdeaWords(x) + '.', false, true);
+  }
+  function orgDismissButton(x) {
+    return btn('Dismiss', true, function () { og.dismissed[x.line] = true; clear($('og-said')); orgRender(state); });
+  }
+  function orgLaunchButton(list, label) {
+    var b = btn(label || 'Launch', false, function () { orgLaunch(list); });
+    b.title = 'Opens the task on GitHub as you, under its epic, labelled todo, with its links; a worker in Actions wakes on the label and claims it under the protocol';
+    return b;
+  }
+  // the predictions listed, each with Launch and Dismiss, and all of them at once; the worker list
+  // offers the open repository's workers in Actions for a task opened there
+  function orgIdeasTable(s, pic) {
+    var box = $('og-ideas');
+    if (!box) return;
+    clear(box);
+    var ideas = (pic.ideas || []).filter(function (x) { return !x.with; });
+    var ans = orgAnswer();
+    if (!ideas.length && !ans && !og.undo) return;
+    add(box, el('h3', 'og__h', 'Predicted by Claude (' + ideas.length + ')'));
+    if (!ideas.length) none(box, og.launching ? 'Launching...' : 'No prediction left to draw' + (ans ? ': the answer named nothing the chart lacks, or everything it named is launched or dismissed.' : '.'));
+    else {
+      var t = orgTable(['Kind', 'Prediction', 'Why', '']), body = el('tbody');
+      ideas.forEach(function (x) {
+        var tr = el('tr');
+        add(tr, el('td', 'og__kind', x.kind === 'task' ? 'task' : 'dependency'), el('td', '', orgIdeaWords(x)), el('td', 'og__by', x.why || ''), add(el('td'), orgLaunchButton([x]), ' ', orgDismissButton(x)));
+        body.appendChild(tr);
+      });
+      add(box, add(t, body));
+      var p = el('p', 'admin__lead');
+      var workers = actionsWorkers(s).map(function (w) { return w.name; });
+      if (workers.length) {
+        var pick = el('select');
+        pick.id = 'og-worker';
+        pick.setAttribute('aria-label', 'The worker a launched task in ' + s.repo + ' is given to');
+        [['', 'the queue (todo)']].concat(workers.map(function (w) { return [w, 'worker:' + w]; })).forEach(function (o) { var opt = el('option', '', o[1]); opt.value = o[0]; add(pick, opt); });
+        pick.value = workers.indexOf(og.worker) >= 0 ? og.worker : '';
+        pick.addEventListener('change', function () { og.worker = pick.value; });
+        add(p, 'A task launched in ' + s.repo + ' goes to ', pick, '. ');
+      }
+      add(p, orgLaunchButton(ideas, 'Launch all ' + ideas.length), ' ', btn('Dismiss all', true, function () { ideas.forEach(function (x) { og.dismissed[x.line] = true; }); orgRender(s); }));
+      add(box, p);
+    }
+    if (og.undo && og.undo.length) add(box, add(el('p', 'admin__lead'), btn('Undo the last launch', true, orgUndoLaunch), ' closes what it opened and takes its links off.'));
+  }
+  // the issue id GitHub links by, read once where the record does not carry it
+  function orgIdOf(key, made) {
+    if (made[key]) return Promise.resolve(made[key]);
+    var it = og.issues[key];
+    if (it && it.raw && typeof it.raw.id === 'number') return Promise.resolve(it.raw.id);
+    return gh('GET', '/repos/' + it.repo + '/issues/' + it.number).then(function (r) { return r.data.id; });
+  }
+  // Launch: the tasks first, each opened in its epic's repository and placed under the epic, then
+  // every link, as the person; a launched prediction leaves the ghosts and joins the real nodes,
+  // without a read of GitHub, and a launch that stops leaves the rest listed for another press
+  function orgLaunch(list) {
+    var s = state, account = shownLogin, n = og.n;
+    if (og.launching || !list.length) return;
+    if (!account) { say('The page has not learned from GitHub who is signed in; press Refresh.', true); return; }
+    og.launching = true;
+    var made = Object.create(null), numbers = Object.create(null), undo = [], done = 0, all = orgIdeas();
+    var tasks = list.filter(function (x) { return x.kind === 'task'; });
+    var links = list.filter(function (x) { return x.kind === 'link'; }).concat(tasks.reduce(function (acc, t) { return acc.concat(all.filter(function (l) { return l.with === t.key; })); }, []));
+    var worker = og.worker;
+    function live() { return og.n === n && !stale(s) && account === shownLogin; }
+    function key(k) { return numbers[k] || k; }
+    function openTask(x) {
+      var epic = og.issues[x.epic], labels = ['todo'];
+      if (worker && epic.repo.toLowerCase() === s.repo.toLowerCase()) labels.push('worker:' + worker);
+      orgWords('Launching "' + x.title + '" in ' + epic.repo + '...');
+      return gh('POST', '/repos/' + epic.repo + '/issues', {
+        title: 'Task: ' + x.title,
+        body: formBody([['Goal', x.why || x.title], ['Planned', 'On the control panel\'s Organization tab, from a prediction of Claude\'s the person launched, under ' + epic.repo + '#' + epic.number + '.']]),
+        labels: labels
+      }, undefined, false, account).then(function (r) {
+        var it = r.data || {};
+        var rec = orgRecord(it, epic.repo, true);
+        og.issues[rec.key] = rec;
+        made[rec.key] = it.id;
+        numbers[x.key] = rec.key;
+        og.launched[x.line] = rec.key;
+        undo.push({ kind: 'close', repo: epic.repo, number: rec.number });
+        return gh('POST', '/repos/' + epic.repo + '/issues/' + epic.number + '/sub_issues', { sub_issue_id: it.id }, undefined, false, account).then(function () {
+          undo.unshift({ kind: 'unsub', repo: epic.repo, number: epic.number, id: it.id });
+          og.subIssues[epic.key] = (og.subIssues[epic.key] || []).concat([rec.key]);
+          if (epic.progress) epic.progress = [epic.progress[0], epic.progress[1] + 1]; else epic.progress = [0, 1];
+        });
+      });
+    }
+    function linkOne(l) {
+      var from = key(l.blocker), to = key(l.blocked), a = og.issues[from], b = og.issues[to];
+      if (!a || !b) return Promise.reject(new Error('a task the link names was not opened'));
+      orgWords('Linking ' + a.repo + '#' + a.number + ' and ' + b.repo + '#' + b.number + '...');
+      return orgIdOf(from, made).then(function (id) {
+        return gh('POST', '/repos/' + b.repo + '/issues/' + b.number + '/dependencies/blocked_by', { issue_id: id }, undefined, false, account).then(function () {
+          undo.unshift({ kind: 'unlink', repo: b.repo, number: b.number, id: id });
+        }, function (e) { if (!(e && e.status === 422 && /already/i.test(JSON.stringify(e.data || '')))) throw e; }).then(function () {
+          og.blockedBy[to] = (og.blockedBy[to] || []).concat([from]);
+          if (!l.with) og.launched[l.line] = to;
+        });
+      });
+    }
+    tasks.concat(links).reduce(function (pr, x) {
+      return pr.then(function () {
+        if (!live()) throw new Error('the page moved to another repository or sign-in');
+        return (x.kind === 'task' ? openTask(x) : linkOne(x)).then(function () { done++; });
+      });
+    }, Promise.resolve()).then(function () {
+      orgLaunched(s, n, account, undo, 'Launched ' + plural(done, 'change') + ' on GitHub as ' + account + (tasks.length ? ': each task is labelled todo' + (worker ? ' and worker:' + worker : '') + ', which wakes the repository\'s workers in Actions to claim it under the protocol' : '') + '.', false);
+    }, function (e) {
+      orgLaunched(s, n, account, undo, 'Launched ' + plural(done, 'change') + ', then stopped: ' + e.message + ' What is left is still listed.', true);
+    });
+  }
+  function orgLaunched(s, n, account, undo, words, warn) {
+    og.launching = false;
+    if (undo.length) og.undo = (og.undo && og.undo.account === account ? undo.concat(og.undo) : undo);
+    if (og.undo) og.undo.account = account;
+    say(words, warn);
+    if (og.n === n && !stale(s)) { orgRender(s); orgWords(words, warn); }
+  }
+  // Undo: the newest write first, as the person who launched
+  function orgUndoLaunch() {
+    var s = state, n = og.n, undo = og.undo, account = shownLogin;
+    if (!undo || !undo.length || og.launching || undo.account !== account) return;
+    og.launching = true;
+    var left = undo.slice();
+    function next() {
+      if (!left.length) return Promise.resolve();
+      var u = left[0], r = '/repos/' + u.repo + '/issues/' + u.number;
+      var call = u.kind === 'close' ? gh('PATCH', r, { state: 'closed', state_reason: 'not_planned' }, undefined, false, account)
+        : u.kind === 'unsub' ? gh('DELETE', r + '/sub_issue', { sub_issue_id: u.id }, undefined, false, account)
+        : gh('DELETE', r + '/dependencies/blocked_by/' + u.id, undefined, undefined, false, account);
+      return call.then(function () { left.shift(); return next(); });
+    }
+    next().then(function () {
+      og.undo = null;
+      og.launching = false;
+      say('The last launch is undone; the tab reads the organization again.');
+      if (og.n === n && !stale(s)) loadOrganization();
+    }, function (e) {
+      left.account = account;
+      og.undo = left;
+      og.launching = false;
+      say('Undo stopped: ' + e.message + ' Press Undo again for the rest.', true);
+      if (og.n === n && !stale(s)) orgRender(s);
+    });
   }
   function orgTable(headings) {
     var t = el('table', 'ds-table og__table'), head = el('tr');
@@ -7733,8 +8044,9 @@
     var refresh = $('og-refresh'), show = $('og-show');
     if (refresh) refresh.addEventListener('click', function () { loadOrganization(); });
     if (show) show.addEventListener('change', function () { orgShowChosen(state); });
-    var more = $('og-more');
+    var more = $('og-more'), predict = $('og-predict');
     if (more) more.addEventListener('click', function () { orgReadMore(state, og.n); });
+    if (predict) predict.addEventListener('click', orgPredict);
   }
 
   /* ============================================================
