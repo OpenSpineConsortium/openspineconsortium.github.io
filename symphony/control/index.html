@@ -28,11 +28,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/style.css?v=202610292354">
-<link rel="stylesheet" href="/assets/css/site.css?v=202610292354">
-<link rel="stylesheet" href="/assets/css/control.css?v=202610292354">
+<link rel="stylesheet" href="/assets/css/style.css?v=202610300218">
+<link rel="stylesheet" href="/assets/css/site.css?v=202610300218">
+<link rel="stylesheet" href="/assets/css/control.css?v=202610300218">
 <link rel="manifest" href="/symphony/control/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610292354">
+<link rel="apple-touch-icon" href="/assets/img/symphony-app-180.png?v=202610300218">
 <meta name="apple-mobile-web-app-title" content="Symphony">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -315,29 +315,27 @@
           <div class="console__scroll"><div id="cp-graph" class="control__graph"></div></div>
         </section>
 
-        <!-- Organization: every repository of the owner and how they depend on each other and touch,
-             the interfaces (a vendored library, a reusable workflow, a GitHub App, a runner, data
-             handed on) from the map the open repository keeps, .github/symphony/organization.json,
-             beside what GitHub lists live and the task links that cross repositories (the owner,
-             2026-10-29; SchwingNet docs/research/organization-map.md) -->
+        <!-- Organization: the Dependencies tab's chart over every repository of the owner of the
+             open repository, from GitHub's own sub-issue and blocked-by links, read live as the
+             viewer (the owner, 2026-10-29 and 2026-10-30: an organizational dependency tab) -->
         <section class="console__panel" id="tab-organization" data-tab-panel="organization" role="tabpanel" aria-labelledby="rail-organization" hidden>
           <div class="console__head">
             <h2 id="h-organization" class="console__h">Organization</h2>
-            <p id="og-state" class="admin__lead">Nothing to show yet: no repository is chosen.</p>
+            <p id="og-state" class="admin__lead">Nothing to draw yet: no repository is chosen.</p>
             <button type="button" id="og-refresh" class="quiet">Refresh</button>
             <details class="console__help"><summary>What this shows and reads</summary><div>
-              <p>Every repository of the owner of the open repository, as GitHub lists them for you, and how they depend on each other and interact: the interfaces, a vendored library, a reusable workflow, a GitHub App, a runner, data handed on, and the systems outside GitHub they reach. GitHub records none of those where this page could read them, so the open repository keeps them as a map, <code>.github/symphony/organization.json</code>: nodes, the repositories (each with a group, a visibility and a role) and the systems, and edges (from, to, kind, what passes, evidence) read as &ldquo;from depends on to&rdquo;. The chart draws the map by group, the table lists every edge, and a card for each repository says what it depends on and what depends on it; the chips cut the chart, the table and the cards to one group or one kind of interface. A repository GitHub lists that the map does not know is listed with no edges, the sign the map wants a line; one the map names that GitHub does not list for you is drawn and said to be out of your reach. In the chart a public repository has a green edge, an internal one a blue edge and a lit fill, a private one a thick pale edge, and a system outside GitHub a grey dashed one round a rounded shape.</p>
-              <p>The task links that cross repositories are read live, seen from the open repository: the sub-issues and blockers in other repositories that the Dependencies tab&rsquo;s draw met, kept from its reads, and the blockers of the open repository&rsquo;s other blocked issues, at most forty reads a press, each following its pages up to three hundred blockers, none once GitHub says the token has fewer than a hundred calls left this hour, when the listing and the map wait too until Refresh; Read more reads the next forty. What blocks another repository&rsquo;s issues is read from that repository, by opening it here (Open in the panel, on its card).</p>
-              <p>The chart is drawn in this browser by the copy of Mermaid the site carries, loaded only when there is a map to draw, and works as the Dependencies tab&rsquo;s charts do: it opens whole, zooms with a pinch, the buttons, + and &minus; or a double tap, drags once zoomed in, and a press on a node names the repository and brings its card into view. The page writes nothing.</p>
+              <p>Every repository of the owner of the open repository, as GitHub lists them for you, and the task dependencies across all of them: the Dependencies tab&rsquo;s chart drawn over the whole organization. The tab reads each repository&rsquo;s open issues, the sub-issues of every open issue labelled epic or goal, and the issues blocking each epic&rsquo;s tasks, wherever they live, and draws one chart: a box per repository, in it a box per epic holding its tasks, the goals above their epics by a thick arrow, an epic&rsquo;s task in another repository hung from it by an arrow, and every blocked-by relation an arrow from the blocker to the blocked, dotted once the blocker is closed. A node&rsquo;s shade is its state, as in the Dependencies tab: todo, claimed, in review, blocked or closed. The chips cut the chart to one repository, with what its issues are joined to, or to one goal or epic. The tables under it list the goals and epics with their progress, the links that cross repositories, and every repository with what was read of it.</p>
+              <p>The reads are counted: at most a hundred and twenty a press, the open repository first and then the rest in the order GitHub lists them, a repository read whole before the next; none once GitHub says the token has fewer than a hundred calls left this hour; Read more reads on. An archived repository, or one with nothing open, is listed and not read. The claims the open pull requests show are not read here, so a claim with no label is drawn by its labels alone. The page writes nothing.</p>
+              <p>The chart is drawn in this browser by the copy of Mermaid the site carries, loaded only when there is something to draw, and works as the Dependencies tab&rsquo;s charts do: it opens whole, zooms with a pinch, the buttons, + and &minus; or a double tap, drags once zoomed in, and a press on a node names the issue, its state and what blocks it, with its link.</p>
             </div></details>
           </div>
           <p id="og-said" class="admin__lead"></p>
-          <div id="og-chips" class="og__chips" role="group" aria-label="Show one group of repositories or one kind of interface" hidden></div>
+          <div id="og-chips" class="og__chips" role="group" aria-label="Show one repository, or one goal or epic" hidden></div>
           <div class="console__scroll">
             <div id="og-tools" class="graph__tools graph__tools--board" hidden></div>
-            <div id="og-chart" class="control__chart og__chart" role="group" aria-label="The organization's map" hidden></div>
-            <div id="og-cross" class="og__block" aria-live="polite"></div>
-            <div id="og-edges" class="og__block"></div>
+            <div id="og-chart" class="control__chart og__chart" role="group" aria-label="The organization's task dependencies" hidden></div>
+            <div id="og-plans" class="og__block"></div>
+            <div id="og-cross" class="og__block"></div>
             <div id="og-repos" class="og__block"></div>
           </div>
         </section>
@@ -791,8 +789,8 @@
     <p class="footer__note">Datasets redistributed under the terms of their original source licenses.</p>
   </div>
 </footer>
-<script src="/assets/js/main.js?v=202610292354"></script>
+<script src="/assets/js/main.js?v=202610300218"></script>
 <!-- /site:footer -->
-<script src="/assets/js/symphony-panel.js?v=202610292354"></script>
+<script src="/assets/js/symphony-panel.js?v=202610300218"></script>
 </body>
 </html>
