@@ -146,21 +146,21 @@
    colours as rules under each chart's id, so these name the two boxes that hold charts by theirs to
    come after them; symphony-panel.js (graphRestyle) takes the same colours off the nodes' own
    elements */
-:is(#cp-graph, #cp-board) .control__chart .node > rect.label-container { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1px !important; transition: filter 0.15s; }
-:is(#cp-graph, #cp-board) .control__chart .node:is(.todo, .claimed, .review, .blocked, .closed) > rect.label-container { stroke-width: 1.5px !important; }
-:is(#cp-graph, #cp-board) .control__chart .node :is(span, p) { color: #E4ECE8 !important; }
-:is(#cp-graph, #cp-board) .control__chart .node.todo > rect.label-container { fill: var(--st-todo-tint) !important; stroke: var(--st-todo) !important; }
-:is(#cp-graph, #cp-board) .control__chart .node.claimed > rect.label-container { fill: var(--st-claimed-tint) !important; stroke: var(--st-claimed) !important; stroke-width: 2.5px !important; stroke-dasharray: 0.5 5; stroke-linecap: round; }
-:is(#cp-graph, #cp-board) .control__chart .node.review > rect.label-container { fill: var(--st-review-tint) !important; stroke: var(--st-review) !important; }
-:is(#cp-graph, #cp-board) .control__chart .node.blocked > rect.label-container { fill: var(--st-blocked-tint) !important; stroke: var(--st-blocked) !important; stroke-width: 3px !important; }
-:is(#cp-graph, #cp-board) .control__chart .node.closed > rect.label-container { fill: var(--st-closed-tint) !important; stroke: var(--st-closed) !important; stroke-dasharray: 4 3; }
-:is(#cp-graph, #cp-board) .control__chart .node.closed :is(span, p) { color: #8A9893 !important; text-decoration: line-through; }
-:is(#cp-graph, #cp-board) .control__chart .node:hover > rect.label-container { stroke-width: 2.5px !important; filter: brightness(1.3); }
-:is(#cp-graph, #cp-board) .control__chart .node:is(.claimed, .blocked):hover > rect.label-container { stroke-width: 3.5px !important; }
-:is(#cp-graph, #cp-board) .control__chart .edgePaths path { stroke: #8A9E97 !important; }
-:is(#cp-graph, #cp-board) .control__chart marker path { fill: #8A9E97 !important; stroke: #8A9E97 !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node > rect.label-container { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1px !important; transition: filter 0.15s; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node:is(.todo, .claimed, .review, .blocked, .closed) > rect.label-container { stroke-width: 1.5px !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node :is(span, p) { color: #E4ECE8 !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.todo > rect.label-container { fill: var(--st-todo-tint) !important; stroke: var(--st-todo) !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.claimed > rect.label-container { fill: var(--st-claimed-tint) !important; stroke: var(--st-claimed) !important; stroke-width: 2.5px !important; stroke-dasharray: 0.5 5; stroke-linecap: round; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.review > rect.label-container { fill: var(--st-review-tint) !important; stroke: var(--st-review) !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.blocked > rect.label-container { fill: var(--st-blocked-tint) !important; stroke: var(--st-blocked) !important; stroke-width: 3px !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.closed > rect.label-container { fill: var(--st-closed-tint) !important; stroke: var(--st-closed) !important; stroke-dasharray: 4 3; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.closed :is(span, p) { color: #8A9893 !important; text-decoration: line-through; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node:hover > rect.label-container { stroke-width: 2.5px !important; filter: brightness(1.3); }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node:is(.claimed, .blocked):hover > rect.label-container { stroke-width: 3.5px !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .edgePaths path { stroke: #8A9E97 !important; }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) marker path { fill: #8A9E97 !important; stroke: #8A9E97 !important; }
 /* the node in focus glows in the deck's teal round its state's own edge, which it keeps */
-:is(#cp-graph, #cp-board) .control__chart .node.graph__focal > rect.label-container { filter: drop-shadow(0 0 2px #5FD6C6) drop-shadow(0 0 9px rgba(60, 194, 177, 0.7)); }
+:is(#cp-graph .control__chart, #cp-board .control__chart, #og-chart.control__chart) .node.graph__focal > rect.label-container { filter: drop-shadow(0 0 2px #5FD6C6) drop-shadow(0 0 9px rgba(60, 194, 177, 0.7)); }
 /* the tab's line of what was drawn is the quieter one, a warning keeping its own colour; it shares
    the head's row with the tab's name, the Key button and the help where the row has room for it */
 .console #cp-graph-state, .console #cp-graph-said { margin: 0; max-width: none; }
@@ -2326,24 +2326,5 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 #tab-organization .og__table th, #tab-organization .og__table td { padding: 4px 8px; text-align: left; vertical-align: top; }
 #tab-organization .og__kind { white-space: nowrap; color: var(--teal); }
 #tab-organization .og__by { color: var(--ink-faint); font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.76rem; overflow-wrap: anywhere; }
-#tab-organization .og__system { color: var(--ink-soft); font-style: italic; }
-#tab-organization .og__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
-#tab-organization .og__card { margin: 0; padding: 8px 10px; border: var(--ds-border, 1px solid var(--line)); border-radius: var(--ds-radius-sm, 8px); background: var(--ds-raised, var(--paper-card)); min-width: 0; }
-#tab-organization .og__card--on { outline: 2px solid var(--teal-bright); outline-offset: -2px; }
-#tab-organization .og__name { margin: 0 0 4px; font-size: 0.9rem; overflow-wrap: anywhere; }
-#tab-organization .og__facts, #tab-organization .og__role, #tab-organization .og__edges { margin: 0 0 4px; font-size: 0.78rem; color: var(--ink-soft); }
-#tab-organization .og__role { color: var(--ink); }
-#tab-organization .og__gap { color: var(--ink-faint); font-style: italic; }
-#og-chart.control__chart .node > :is(rect, path).label-container, #og-chart.control__chart .node > path.basic { fill: var(--st-open-tint) !important; stroke: var(--st-open) !important; stroke-width: 1px !important; transition: filter 0.15s; }
-#og-chart.control__chart .node :is(span, p) { color: #E4ECE8 !important; }
-#og-chart.control__chart .node.public > :is(rect, path) { stroke: var(--st-todo) !important; stroke-width: 1.5px !important; }
-#og-chart.control__chart .node.internal > :is(rect, path) { fill: var(--st-review-tint) !important; stroke: var(--st-review) !important; stroke-width: 1.5px !important; }
-#og-chart.control__chart .node.private > :is(rect, path) { stroke: var(--st-open) !important; stroke-width: 3px !important; }
-#og-chart.control__chart .node.system > :is(rect, path) { fill: var(--st-closed-tint) !important; stroke: var(--st-closed) !important; stroke-dasharray: 4 3; stroke-width: 1.5px !important; }
-#og-chart.control__chart .node:hover > :is(rect, path) { filter: brightness(1.3); }
-#og-chart.control__chart .edgePaths path { stroke: #8A9E97 !important; }
-#og-chart.control__chart marker path { fill: #8A9E97 !important; stroke: #8A9E97 !important; }
-#og-chart.control__chart .edgeLabel :is(span, p) { color: #C2CCC8 !important; }
-#og-chart.control__chart .edgeLabel .labelBkg, #og-chart.control__chart .edgeLabel rect { fill: #0F1916 !important; opacity: 0.9; }
 #og-chart.control__chart .cluster > rect { fill: rgba(255, 255, 255, 0.025) !important; stroke: #3A4A44 !important; rx: 10px; }
 #og-chart.control__chart .cluster-label :is(span, p) { color: #C2CCC8 !important; }
