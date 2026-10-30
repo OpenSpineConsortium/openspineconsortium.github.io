@@ -6509,12 +6509,16 @@
     if (ids.length > 1) return;
     var p = st.pointers[e.pointerId];
     st.drag = { id: e.pointerId, type: e.pointerType, x0: p.x, y0: p.y, sx: st.x, sy: st.y, dx: 0, dy: 0, t: Date.now(), moved: false, node: stageNodeAt(e.target),
-      control: !!(e.target.closest && e.target.closest('button, a')), pan: !st.whole };
+      control: !!(e.target.closest && e.target.closest('button, a')), pan: !st.whole || stagePans(st) };
     // the stage holds the pointer from the press, so a drag that leaves it at once, over the tools
     // floating at its corner, is still its own; a press on a button or a link inside it (a row's
     // Centre its row in the list) is held only once it moves, so a press that stays is that button's
     if (!st.drag.control) stageCapture(st, e.pointerId);
   }
+  // a stage whose drag pans at the whole view too, as a map does (hooks.pans; the Organization tab,
+  // whose one chart has no next chart to swipe to): the picture is moved as far as the box's edges
+  // and stays where it was left, so a step out of the whole view is no longer the whole view
+  function stagePans(st) { return !!(st.hooks.pans && st.hooks.pans()); }
   function stageCapture(st, id) {
     try { st.host.setPointerCapture(id); } catch (x) { /* a pointer already gone */ }
   }
@@ -6540,7 +6544,7 @@
     // alone between charts and either way between neighbours
     st.x = d.sx + d.dx;
     st.y = d.sy + (d.pan || st.hooks.near ? d.dy : 0);
-    if (d.pan) stageClamp(st, false);
+    if (d.pan) { if (st.whole && stagePans(st)) st.whole = false; stageClamp(st, false); }
     stageApply(st, false);
   }
   function stageUp(st, e, cancelled) {
@@ -6650,7 +6654,7 @@
     area.addEventListener('pointercancel', function (e) { if (outside(e)) stageUp(st, e, true); });
   }
   // the trackpad's pinch comes as a wheel event with ctrlKey, the mouse's wheel as a plain one; where
-  // the stage takes the plain wheel too (the Dependencies tab, where nothing scrolls) both zoom about
+  // the stage takes the plain wheel too (the Dependencies and Organization tabs, where nothing scrolls) both zoom about
   // the pointer, and the page never scrolls instead; a turn outward from a focus drawn whole goes
   // back to the whole chart once it has gone far enough to be meant. A wheel that counts in lines
   // or pages, as Firefox's mouse does, is counted in pixels first
@@ -6685,7 +6689,7 @@
     else if (e.key === 'Escape' && st.hooks.out && st.hooks.out()) { /* back to the whole chart */ }
     else if (arrows[e.key]) {
       var a = arrows[e.key];
-      if (!st.whole) { st.x -= a[0] * 60; st.y -= a[1] * 60; st.whole = false; stageClamp(st, false); stageApply(st, true); }
+      if (!st.whole || stagePans(st)) { st.x -= a[0] * 60; st.y -= a[1] * 60; st.whole = false; stageClamp(st, false); stageApply(st, true); }
       else if (!st.hooks.go || !st.hooks.go(a[0], a[1])) return;
     } else return;
     e.preventDefault();
@@ -7232,8 +7236,9 @@
   function orgUnderReserve() { return rateLatest !== null && rateLatest < GRAPH_RESERVE; }
   function orgClear() {
     ['og-plans', 'og-cross', 'og-repos'].forEach(function (id) { var b = $(id); if (b) clear(b); });
-    var chips = $('og-chips'), chart = $('og-chart'), tools = $('og-tools'), said = $('og-said');
-    if (chips) { clear(chips); chips.hidden = true; }
+    var show = $('og-show'), chart = $('og-chart'), tools = $('og-tools'), said = $('og-said');
+    if (show) { clear(show); show.hidden = true; og.chips = null; }
+    if ($('og-more')) $('og-more').hidden = true;
     if (chart) { clear(chart); chart.hidden = true; chart.style.height = ''; }
     if (tools) tools.hidden = true;
     if (said) clear(said);
@@ -7563,63 +7568,65 @@
     else if (og.readWhy) { parts.push('Stopped: ' + og.readWhy + '.' + (toRead ? ' ' + plural(toRead, 'repository', 'repositories') + ' not read yet.' : '')); warn = true; }
     else if (!pic.keys.length) parts.push('Nothing to draw: no open epic or goal with sub-issues in what was read. ' + GRAPH_START);
     orgWords(parts.join(' '), warn);
+    // Read more stands in the head beside Refresh, since the tables under the chart are folded
+    var more = $('og-more');
+    if (more) more.hidden = !(og.queue.length && !og.reading);
   }
-  // the chips that cut the chart to one repository or one goal or epic; a second press on the one
-  // chosen shows all again; made once for a picture's set of keys and flipped in place after
+  // the Show list that cuts the chart to one repository or one goal or epic, in the tab's head
+  // beside Refresh, so no row of names stands over the chart (the owner, 2026-10-30: "hide all the
+  // repo names at the top of the window"); made once for a picture's set of keys and set after
   function orgChips(s, pic) {
-    var box = $('og-chips');
+    var box = $('og-show');
     if (!pic.keys.length) { clear(box); og.chips = null; box.hidden = true; return; }
     box.hidden = false;
     var stamp = pic.keys.join('\n') + '\n' + pic.goals.length + '/' + pic.epics.length;
-    if (og.chips && og.chips.stamp === stamp) { og.chips.list.forEach(function (c) { orgChipOn(c.b, c.on()); }); return; }
+    var value = og.filter.repo ? 'r:' + og.filter.repo : (og.filter.chart ? 'c:' + og.filter.chart : '');
+    if (og.chips && og.chips.stamp === stamp) { box.value = value; return; }
     clear(box);
-    var list = [];
-    function chip(label, count, on, title, press) {
-      var b = el('button', 'chip', label);
-      b.type = 'button';
-      if (title) b.title = title;
-      if (count != null) add(b, el('span', '', String(count)));
-      b.addEventListener('click', function () { press(); orgRender(s); });
-      orgChipOn(b, on());
-      list.push({ b: b, on: on });
-      return b;
+    function option(value, label, title) {
+      var o = el('option', '', label);
+      o.value = value;
+      if (title) o.title = title;
+      return add(box, o);
     }
-    add(box, chip('All', null, function () { return !og.filter.repo && !og.filter.chart; }, 'Every repository', function () { og.filter = { repo: '', chart: '' }; }));
+    option('', 'Every repository');
     var byRepo = Object.create(null), repos = [];
     pic.keys.forEach(function (k) { var r = pic.nodes[k].repo; if (!byRepo[r]) { byRepo[r] = 0; repos.push(r); } byRepo[r]++; });
-    repos.forEach(function (r) {
-      add(box, chip(r, byRepo[r], function () { return og.filter.repo === r; }, 'This repository\'s issues and what they are joined to', function () { og.filter = { repo: og.filter.repo === r ? '' : r, chart: '' }; }));
-    });
-    add(box, el('span', 'og__sep', 'by goal or epic:'));
+    repos.forEach(function (r) { option('r:' + r, r + ' (' + byRepo[r] + ')', 'This repository\'s issues and what they are joined to'); });
     pic.goals.concat(pic.epics).forEach(function (it) {
       var short = graphFold(it.title).split(GRAPH_SPACE).filter(Boolean).join(' ');
       if (short.length > 24) short = short.slice(0, 21).replace(GRAPH_SPACE_END, '') + '...';
-      add(box, chip((it.labels.indexOf('goal') >= 0 ? 'Goal ' : 'Epic ') + it.repo.split('/')[1] + '#' + it.number, null, function () { return og.filter.chart === it.key; }, short, function () { og.filter = { repo: '', chart: og.filter.chart === it.key ? '' : it.key }; }));
+      option('c:' + it.key, (it.labels.indexOf('goal') >= 0 ? 'Goal ' : 'Epic ') + it.repo.split('/')[1] + '#' + it.number + ': ' + short, graphFold(it.title));
     });
-    og.chips = { stamp: stamp, list: list };
+    box.value = value;
+    og.chips = { stamp: stamp };
   }
-  function orgChipOn(b, on) {
-    b.classList.toggle('chip--go', on);
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  // the list's choice: a repository, a goal or an epic, or everything
+  function orgShowChosen(s) {
+    var v = $('og-show').value;
+    og.filter = v.indexOf('r:') === 0 ? { repo: v.slice(2), chart: '' } : (v.indexOf('c:') === 0 ? { repo: '', chart: v.slice(2) } : { repo: '', chart: '' });
+    orgRender(s);
   }
   // one stage for the chart, made once, since a stage's listeners are wired to its box; the chart
-  // is drawn into it again whenever its text changes, and a press on a node names the issue
+  // is drawn into it again whenever its text changes, and a press on a node names the issue. The
+  // chart is locked into the screen (the owner, 2026-10-30: "locked into the screen ... natural
+  // like graphviz for interacting with it"): its box takes the whole of the tab under the head and
+  // never scrolls (control.css), the mouse's wheel and the trackpad zoom it about the pointer, and
+  // the mouse or a finger drags it at any zoom, from the whole view too, the tools floating at its
+  // corner as on a short Dependencies tab; nothing of the page moves under a gesture on it
   var orgView = null;
   function orgStage() {
     if (orgView) return orgView;
     orgView = { host: $('og-chart'), text: '', edges: [], focus: null, section: $('tab-organization'), heading: 'The organization', noun: 'node', turns: true };
     add($('og-tools'), graphZoomTools(orgView));
-    orgView.host.style.touchAction = 'pan-y';
     graphStage(orgView, {
       zooms: function () { return true; },
-      wheel: function () { return false; },
+      wheel: function () { return true; },
+      pans: function () { return true; },
       go: function () { return false; },
+      corner: function () { return graphCorner(orgView, orgView.host); },
       tap: function (k) { if (k != null) orgPressed(k); }
     });
-    // a finger's move up and down over the whole chart scrolls the tab, as it does over the Board
-    // tab's charts (boardView); zoomed in, the chart holds the finger
-    var moved = orgView.stage.hooks.moved;
-    orgView.stage.hooks.moved = function (st) { moved(st); orgView.host.style.touchAction = st.whole && orgView.focus == null ? 'pan-y' : 'none'; };
     return orgView;
   }
   function orgDrawChart(s, pic) {
@@ -7635,7 +7642,7 @@
     add(chart, el('p', 'admin__lead', 'Drawing the chart...'));
     loadMermaid().then(function (m) {
       if (!orgLive(s, n) || og.drawn !== text) return;
-      return graphDraw(m, view).then(function () { if (orgLive(s, n) && og.drawn === text) boardChartHeight(view); });
+      return graphDraw(m, view);
     }).catch(function (e) {
       if (!orgLive(s, n) || og.drawn !== text) return;
       clear(chart);
@@ -7715,13 +7722,6 @@
       body.appendChild(tr);
     });
     add(box, add(t, body));
-    if (og.queue.length && !og.reading) {
-      var p = el('p', 'admin__lead');
-      var more = btn('Read more', true, function () { orgReadMore(state, og.n); });
-      more.id = 'og-more';
-      add(p, plural(og.queue.filter(function (u) { return u.kind === 'repo'; }).length, 'repository', 'repositories') + ' not read yet. ', more);
-      add(box, p);
-    }
   }
   function initOrganizationTab() {
     consoleOnOpen.organization = function () {
@@ -7730,8 +7730,11 @@
       if (og.s !== s || (!og.done && !og.pending)) loadOrganization();
       else if (og.done) orgRender(s);
     };
-    var refresh = $('og-refresh');
+    var refresh = $('og-refresh'), show = $('og-show');
     if (refresh) refresh.addEventListener('click', function () { loadOrganization(); });
+    if (show) show.addEventListener('change', function () { orgShowChosen(state); });
+    var more = $('og-more');
+    if (more) more.addEventListener('click', function () { orgReadMore(state, og.n); });
   }
 
   /* ============================================================

@@ -2309,17 +2309,22 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 #tab-explore .rg__node:hover .rg__label, #tab-explore .rg__node:focus-visible .rg__label, #tab-explore .rg__node--on .rg__label, #tab-explore .rg__node--hit .rg__label { display: inline; }
 #tab-explore .rg__edge--cite { opacity: 0.22; }
 
-/* Organization: the map's chart, its chips, the tables and one card per repository (the owner's ask of
-   2026-10-29, SchwingNet docs/research/organization-map.md). A node is shaded by what it is, as the
-   Dependencies charts' nodes are by state, and no two differ by hue alone: a public repository keeps
-   the plain green edge, an internal one a blue edge with a lit fill, a private one a thick pale edge,
-   and a system outside GitHub a grey dashed edge round its rounded shape; symphony-panel.js
-   (graphRestyle) takes Mermaid's own light colours off the nodes, as it does for the other charts */
-#tab-organization .og__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; }
-#tab-organization .og__sep { margin-left: 10px; font-size: 0.8rem; color: var(--ink-faint); }
-#tab-organization .og__chart { min-height: 240px; }
-/* hidden on a repository with no map: the chart's own display rule and the tools' would otherwise keep an empty box */
-#og-chips[hidden], #og-tools[hidden], #og-chart[hidden] { display: none; }
+/* the Organization tab: one chart locked into the screen (the owner, 2026-10-30), its box the whole
+   of the tab under the head, never scrolling, the zoom tools floating at its corner as on a short
+   Dependencies tab, the Show list in the head in place of a row of names, and the tables folded
+   under the chart, scrolling on their own when opened */
+#tab-organization > .console__scroll { overflow: hidden; display: flex; flex-direction: column; }
+#tab-organization .og__stage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#tab-organization .og__chart { flex: 1 1 auto; min-height: 0; margin: 0; }
+#tab-organization .og__tools { position: absolute; z-index: 3; top: 7px; left: 7px; margin: 0; padding: 3px; border-radius: 99px; background: rgba(15, 25, 22, 0.88); }
+#tab-organization .og__show { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ink-faint); }
+#tab-organization .og__show:has(> select[hidden]) { display: none; }
+#tab-organization .og__show select { max-width: min(40vw, 320px); }
+#og-said:empty { display: none; }
+#og-tools[hidden], #og-chart[hidden] { display: none; }
+#tab-organization .og__tables { flex: 0 0 auto; margin: 8px 0 0; font-size: 0.86rem; }
+#tab-organization .og__tables > summary { cursor: pointer; color: var(--ink-faint); }
+#tab-organization .og__tablesbody { max-height: 38vh; overflow: auto; overscroll-behavior: contain; }
 #tab-organization .og__block { margin: 12px 0 0; }
 #tab-organization .og__h { margin: 10px 0 4px; font-size: 0.95rem; }
 #tab-organization .og__table { width: 100%; font-size: 0.82rem; }
