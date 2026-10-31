@@ -2431,9 +2431,12 @@
     if (consoleTab === 'explore' && consoleOnOpen.explore) consoleOnOpen.explore();
     nbForget();
     if (consoleTab === 'notebooks') drawNotebooks();
+    plForget();
+    if (consoleTab === 'pipelines') drawPipelines();
     return loadMeta(s).then(function () {
       if (stale(s)) return;
       if (consoleTab === 'notebooks' && consoleOnOpen.notebooks) consoleOnOpen.notebooks();
+      if (consoleTab === 'pipelines' && consoleOnOpen.pipelines) consoleOnOpen.pipelines();
       return Promise.all([loadBoard(s), loadWorkers(s), loadAgents(s), loadRuns(s), loadPulls(s)]);
     }).then(function () {
       letGo();
@@ -2449,6 +2452,8 @@
       graphReset('Not drawn: the repository could not be read.', true);
       // the Notebooks tab waits on the repository's meta, which never came: it says so in place of Reading
       if (!s.meta && consoleTab === 'notebooks' && consoleOnOpen.notebooks) consoleOnOpen.notebooks();
+      // and so does the Pipelines tab, whose cards are read only from a repository the person may push to
+      if (!s.meta && consoleTab === 'pipelines' && consoleOnOpen.pipelines) consoleOnOpen.pipelines();
       // so does the Organization tab, whose listing waits on the owner and the default branch
       orgRepoFailed(s, e);
       summary();
@@ -10917,6 +10922,360 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden && consoleTab === 'wandb' && wbKept() && !wb.busy) loadWandb(); });
   }
 
+  /* ---------- Pipelines: the pages of the repository's pipeline runs, Metaflow's cards ---------- */
+  // The owner, 2026-10-31: each pipeline run's pages in the panel, as a tab, embedded. Metaflow
+  // leaves a card, an HTML page with its own scripts, for each task of a step that draws one, and
+  // the runs often go where this browser cannot reach, so whatever runs them copies the cards to
+  // the repository's branch cards: for each kind of pipeline an index, <kind>.json, each card as
+  // its data alone, <kind>/<run>/<step>-<task>-<card>.json holding {"card", "runtime"}, and
+  // Metaflow's card page once, template.html, with PL_MARK where a card's data goes. The tab reads
+  // them as the person, applies a live card's runtime data to its components by id as the card's
+  // own update does, puts the data in the page and shows it in a frame sealed as the reader seals
+  // one: sandbox="allow-scripts" alone, and a policy first in its head that lets it reach nothing.
+  // The page's scripts come from the branch, so a card is drawn only from a repository the person
+  // may push to, whose branch nobody else can fill. Nothing is kept in the browser.
+  var PL_BRANCH = 'cards';
+  var PL_TEMPLATE = 'template.html';
+  var PL_MARK = '__MF_PAYLOAD__';
+  var PL_KINDS = 12;
+  var PL_KIND = /^[a-z0-9_]{1,40}$/;
+  var PL_PART = /^(?!\.\.?$)[A-Za-z0-9_.-]{1,160}$/;
+  var PL_WORD = /^[a-z0-9][a-z0-9_-]{0,80}$/;
+  var PL_POLL_MS = 3000;
+  var PL_PRESS_MS = 6 * 60 * 1000;
+  var PL_SEALED = 'allow-scripts';
+  // what the card may load: its own inline scripts and styles, which Metaflow's page is, and the
+  // pictures and fonts its data carries inline; no request leaves the frame
+  var PL_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; style-src 'unsafe-inline' data:; font-src data:; " +
+    "img-src data: blob:; media-src data: blob:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'";
+  var pl = { era: 0, repo: '', note: '', empty: '', kinds: null, order: [], kind: '', shown: '', page: null, pageNote: '', templateSha: '', template: null, busy: null, wide: false };
+
+  function plForget() {
+    pl.era++;
+    pl.repo = ''; pl.note = ''; pl.empty = ''; pl.kinds = null; pl.order = []; pl.page = null; pl.pageNote = ''; pl.templateSha = '';
+  }
+  function plNote(text) { pl.note = text || ''; var n = $('pl-note'); if (!n) return; n.hidden = !pl.note; richText(n, pl.note); }
+  function plMayPush() { return !!(state && state.meta && isPlain(state.meta.permissions) && state.meta.permissions.push); }
+  function plPath(path) { return path.split('/').map(encodeURIComponent).join('/'); }
+  // a file of the branch as it stands now, past the minute the browser may keep GitHub's answer
+  function plRead(repo, path) {
+    return gh('GET', '/repos/' + repo + '/contents/' + plPath(path) + '?ref=' + encodeURIComponent(PL_BRANCH) + '&at=' + Date.now(), undefined, RAW, true)
+      .then(function (r) { return typeof r.data === 'string' ? r.data : ''; });
+  }
+  function plList(repo) {
+    return gh('GET', '/repos/' + repo + '/contents?ref=' + encodeURIComponent(PL_BRANCH) + '&at=' + Date.now())
+      .then(function (r) { return Array.isArray(r.data) ? r.data : []; }, function (e) { if (e.status === 404) return null; throw e; });
+  }
+  // the card page, read once for each version of it the branch holds: a blob never changes
+  function plTemplate(repo) {
+    var sha = pl.templateSha;
+    if (!sha) return Promise.reject(new Error('the branch ' + PL_BRANCH + ' holds no ' + PL_TEMPLATE));
+    if (pl.template && pl.template.repo === repo && pl.template.sha === sha) return Promise.resolve(pl.template.text);
+    return gh('GET', '/repos/' + repo + '/git/blobs/' + sha, undefined, RAW, true).then(function (r) {
+      var text = typeof r.data === 'string' ? r.data : '';
+      pl.template = { repo: repo, sha: sha, text: text };
+      return text;
+    });
+  }
+
+  // an index as the tab trusts it: its runs and their cards, each card's file under its own kind and
+  // run, so an index never names another file of the branch
+  function plIndex(kind, text) {
+    var d;
+    try { d = JSON.parse(text); } catch (e) { return null; }
+    if (!isPlain(d) || d.kind !== kind || !Array.isArray(d.runs)) return null;
+    var runs = d.runs.filter(function (r) { return isPlain(r) && typeof r.run === 'string' && PL_PART.test(r.run) && Array.isArray(r.cards); }).map(function (r) {
+      var cards = r.cards.map(function (c) { return plCard(kind, r.run, c); }).filter(Boolean).sort(plOrder);
+      return { run: r.run, updated: typeof r.updated === 'string' ? r.updated : '', cards: cards };
+    });
+    return { kind: kind, flow: typeof d.flow === 'string' && PL_PART.test(d.flow) ? d.flow : kind, refresh: typeof d.refresh === 'string' && PL_WORD.test(d.refresh) ? d.refresh : '', runs: runs };
+  }
+  function plCard(kind, run, c) {
+    if (!isPlain(c) || [c.step, c.task, c.name].some(function (x) { return typeof x !== 'string' || !PL_PART.test(x); })) return null;
+    var card = { run: run, step: c.step, task: c.task, name: c.name, live: c.live === true, file: '', withheld: '' };
+    if (typeof c.withheld === 'string' && c.withheld) { card.withheld = c.withheld.slice(0, 200); return card; }
+    var parts = typeof c.file === 'string' ? c.file.split('/') : [];
+    if (parts.length !== 3 || parts[0] !== kind || parts[1] !== run || !PL_PART.test(parts[2]) || !/\.json$/.test(parts[2])) return null;
+    card.file = c.file;
+    return card;
+  }
+  // a run's cards in the order a flow runs its steps where their names say it, start first and end
+  // last, the rest by name, and a step's tasks by number
+  function plOrder(a, b) {
+    function rank(step) { return step === 'start' ? 0 : step === 'end' ? 2 : 1; }
+    return rank(a.step) - rank(b.step) || a.step.localeCompare(b.step) || (parseInt(a.task, 10) || 0) - (parseInt(b.task, 10) || 0) || a.name.localeCompare(b.name);
+  }
+  // the card a tab opens on: the newest run's live card, else its last, the end's where it has one
+  function plNewest(index) {
+    var run = index && index.runs.filter(function (r) { return r.cards.some(function (c) { return c.file; }); })[0];
+    if (!run) return null;
+    var shown = run.cards.filter(function (c) { return c.file; });
+    return shown.filter(function (c) { return c.live; }).slice(-1)[0] || shown[shown.length - 1];
+  }
+  function plFind(index, file) {
+    var found = null;
+    (index ? index.runs : []).forEach(function (r) { r.cards.forEach(function (c) { if (c.file && c.file === file) found = c; }); });
+    return found;
+  }
+
+  // the card's data with its runtime data applied, as Metaflow's own update applies it: each updated
+  // component replaces the one of its id, a chart's data and spec only, searched through the pages
+  // and sections
+  function plMerged(card, runtime) {
+    var data = JSON.parse(JSON.stringify(card));
+    var updates = isPlain(runtime) && isPlain(runtime.data) ? runtime.data : null;
+    if (updates && Array.isArray(data.components)) Object.keys(updates).forEach(function (k) {
+      var u = updates[k];
+      if (isPlain(u) && typeof u.id === 'string') plApply(data.components, u);
+    });
+    return data;
+  }
+  function plApply(list, u) {
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (!isPlain(c) || c.id !== u.id) continue;
+      if (c.type === 'vegaChart') {
+        if (c.data && u.data !== undefined) c.data = JSON.parse(JSON.stringify(u.data));
+        if (u.spec !== undefined && JSON.stringify(u.spec) !== JSON.stringify(c.spec)) c.spec = JSON.parse(JSON.stringify(u.spec));
+      } else {
+        Object.keys(u).forEach(function (k) { if (k !== '__proto__') c[k] = u[k]; });
+      }
+      return;
+    }
+    list.forEach(function (c) {
+      if (isPlain(c) && (c.type === 'section' || c.type === 'page') && Array.isArray(c.contents) && c.contents.length) plApply(c.contents, u);
+    });
+  }
+  // the page a frame shows: the card page with the data where it is marked, as base64 of JSON written
+  // in ASCII (the page decodes it with atob), and the sealing policy first in its head, before
+  // anything of the page can run
+  function plPage(template, data) {
+    var at = template.indexOf(PL_MARK);
+    if (at < 0 || template.indexOf(PL_MARK, at + PL_MARK.length) >= 0) throw new Error(PL_TEMPLATE + ' does not mark one place for a card\'s data');
+    var json = JSON.stringify(data).replace(/[\u007f-￿]/g, function (ch) { return '\\u' + ('000' + ch.charCodeAt(0).toString(16)).slice(-4); });
+    var page = template.slice(0, at) + btoa(json) + template.slice(at + PL_MARK.length);
+    var head = /<head(\s[^>]*)?>/i.exec(page);
+    if (!head || /<(script|meta|base|link|style)\b/i.test(page.slice(0, head.index))) throw new Error(PL_TEMPLATE + ' does not open with its head');
+    var cut = head.index + head[0].length;
+    return page.slice(0, cut) + '<meta http-equiv="Content-Security-Policy" content="' + PL_CSP + '">' +
+      '<meta http-equiv="x-dns-prefetch-control" content="off">' + page.slice(cut);
+  }
+
+  function openPipelines() {
+    var repo = state && state.repo ? state.repo : '';
+    // the repository's meta is still being read: loadRepo opens the tab again once it is in, since
+    // whether the person may push to the repository decides what is read
+    if (!state.meta && repo && token && !state.ready) { if (pl.repo !== repo) { plForget(); pl.repo = repo; drawPipelines(); } return; }
+    if (pl.repo === repo && (pl.kinds || pl.note)) { drawPipelines(); return; }
+    loadPipelines(repo, false);
+  }
+  // again keeps the kind and the card shown, read anew, where the branch still holds them
+  function loadPipelines(repo, again) {
+    var keepKind = again && pl.repo === repo ? pl.kind : '', keepShown = again && pl.repo === repo ? pl.shown : '';
+    plForget();
+    var era = pl.era;
+    pl.repo = repo;
+    pl.kind = keepKind; pl.shown = keepShown;
+    if (!repo) pl.note = 'No repository is chosen: choose one in the bar.';
+    else if (!token) pl.note = 'Sign in to read the pipelines of ' + repo + '.';
+    else if (!state.meta) pl.note = repo + ' could not be read, so whether you may push to it is not known and its cards are not read. Press Read again to try again.';
+    else if (!plMayPush()) pl.note = 'You may not push to ' + repo + '. A card runs the scripts its branch holds, so this tab shows cards only from a repository whose branch ' + PL_BRANCH + ' only its writers can fill.';
+    drawPipelines();
+    if (pl.note) return Promise.resolve();
+    return plList(repo).then(function (files) {
+      if (era !== pl.era) return;
+      if (!files) { pl.kinds = {}; pl.empty = repo + ' has no branch ' + PL_BRANCH + ' yet: a pipeline\'s cards appear here once whatever runs it copies them there.'; drawPipelines(); return; }
+      var tpl = files.filter(function (f) { return isPlain(f) && f.type === 'file' && f.name === PL_TEMPLATE; })[0];
+      pl.templateSha = tpl && typeof tpl.sha === 'string' && /^[0-9a-f]{40}$/.test(tpl.sha) ? tpl.sha : '';
+      var kinds = files.filter(function (f) { return isPlain(f) && f.type === 'file' && typeof f.name === 'string' && /\.json$/.test(f.name) && PL_KIND.test(f.name.slice(0, -5)); })
+        .map(function (f) { return f.name.slice(0, -5); }).sort().slice(0, PL_KINDS);
+      return Promise.all(kinds.map(function (k) {
+        return plRead(repo, k + '.json').then(function (text) { return plIndex(k, text); }, function () { return null; });
+      })).then(function (indexes) {
+        if (era !== pl.era) return;
+        pl.kinds = {};
+        indexes.forEach(function (x) { if (x) { pl.kinds[x.kind] = x; pl.order.push(x.kind); } });
+        if (!pl.order.length) pl.empty = 'The branch ' + PL_BRANCH + ' of ' + repo + ' holds no index of cards yet.';
+        if (!pl.kinds[pl.kind]) { pl.kind = pl.order[0] || ''; pl.shown = ''; }
+        var index = pl.kinds[pl.kind];
+        var card = (pl.shown && plFind(index, pl.shown)) || plNewest(index);
+        drawPipelines();
+        if (card) plShow(card);
+      });
+    }).catch(function (e) { if (era !== pl.era) return; pl.kinds = {}; plNote(repo + '\'s cards could not be read: ' + e.message); drawPipelines(); });
+  }
+  function plShow(card) {
+    var repo = pl.repo, era = pl.era;
+    pl.shown = card.file;
+    pl.page = null; pl.pageNote = '';
+    drawPipelines();
+    Promise.all([plTemplate(repo), plRead(repo, card.file)]).then(function (got) {
+      if (era !== pl.era || pl.shown !== card.file) return;
+      var saved;
+      try { saved = JSON.parse(got[1]); } catch (e) { saved = null; }
+      if (!isPlain(saved) || !isPlain(saved.card)) throw new Error(card.file + ' is not a card\'s data');
+      pl.page = { file: card.file, card: card, html: plPage(got[0], plMerged(saved.card, saved.runtime)) };
+      drawPipelines();
+    }).catch(function (e) {
+      if (era !== pl.era || pl.shown !== card.file) return;
+      pl.pageNote = 'The card could not be shown: ' + e.message;
+      drawPipelines();
+    });
+  }
+
+  // Update from the grid: the index's word sent to the grid's gate through the workflow Grid
+  // accounts, as the Grid tab's buttons send theirs, then the gate's answer read from the branch grid
+  // until it is this press's, and the cards read again
+  function plUpdate() {
+    var index = pl.kinds && pl.kinds[pl.kind];
+    if (!index || !index.refresh || pl.busy) return;
+    var home = gridRepo(), repo = pl.repo, request = requestName();
+    var busy = pl.busy = { request: request, since: Date.now(), word: index.refresh };
+    plNote('');
+    drawPipelines();
+    gh('GET', '/repos/' + home).then(function (r) {
+      return gh('POST', '/repos/' + home + '/actions/workflows/' + GRID_WORKFLOW + '/dispatches', { ref: r.data.default_branch || 'main', inputs: { action: 'job', slot: '', request: request, job: busy.word } });
+    }).then(function () { plFollow(home, repo, busy); }, function (e) {
+      if (pl.busy !== busy) return;
+      pl.busy = null;
+      plNote(e.status === 404 ? home + ' has no workflow Grid accounts (.github/workflows/' + GRID_WORKFLOW + '), which sends the grid\'s gate its words.' : e.message + (e.status === 403 ? ' Sending the gate a word needs an admin of ' + home + '.' : ''));
+      drawPipelines();
+    });
+  }
+  function plFollow(home, repo, busy) {
+    if (pl.busy !== busy) return;
+    if (Date.now() - busy.since > PL_PRESS_MS) {
+      pl.busy = null;
+      plNote('No answer from the grid in six minutes. The run is under Runs (workflow Grid accounts) of ' + home + ', where its log says why.');
+      drawPipelines();
+      return;
+    }
+    gridFile(home, 'logs/job-' + busy.word + '.json').then(function (rec) {
+      if (pl.busy !== busy) return;
+      if (!rec || rec.request !== busy.request) { setTimeout(function () { plFollow(home, repo, busy); }, PL_POLL_MS); return; }
+      pl.busy = null;
+      var lines = (Array.isArray(rec.lines) ? rec.lines : []).filter(function (l) { return typeof l === 'string' && l.indexOf('HPCW-') !== 0; });
+      if (rec.rc) plNote('The grid did not copy the cards: ' + (lines.slice(-3).join(' ').trim() || 'its gate answered ' + rec.rc) + '.');
+      else say((lines.filter(function (l) { return /card\(s\) of /.test(l) || /nothing was pushed/.test(l); })[0] || 'The grid copied the newest cards.').trim());
+      if (pl.repo === repo) loadPipelines(repo, true);
+    }).catch(function () { if (pl.busy === busy) setTimeout(function () { plFollow(home, repo, busy); }, PL_POLL_MS * 2); });
+  }
+
+  function drawPipelines() {
+    plHead();
+    var runs = $('pl-runs'), view = $('pl-view');
+    if (!runs || !view) return;
+    var n = $('pl-note');
+    if (n) { n.hidden = !pl.note; richText(n, pl.note); }
+    var box = runs.closest('.pl');
+    if (box) box.classList.toggle('pl--wide', pl.wide && !!pl.page);
+    clear(runs);
+    var index = pl.kinds && pl.kinds[pl.kind];
+    if (pl.note) { plDrawView(null); return; }
+    if (!pl.kinds) { none(runs, pl.repo ? 'Reading the cards of ' + pl.repo + '...' : 'Choose a repository in the bar.'); plDrawView(null); return; }
+    if (!index) { none(runs, pl.empty || 'No cards yet.'); plDrawView(null); return; }
+    index.runs.forEach(function (r) {
+      var group = add(el('section', 'pl__run'), add(el('h3', 'pl__runh'), el('span', 'pl__runid', index.flow + ' run ' + r.run),
+        r.updated ? add(el('span', 'pl__when'), 'copied ', timeEl(r.updated)) : null));
+      var list = el('ul', 'pl__cards');
+      if (!r.cards.length) add(list, el('li', 'pl__none', 'No card.'));
+      r.cards.forEach(function (c) { add(list, add(el('li'), plCardButton(c))); });
+      add(runs, add(group, list));
+    });
+    if (!index.runs.length) none(runs, 'No run of ' + index.flow + ' has a card yet.');
+    plDrawView(index);
+  }
+  function plCardButton(c) {
+    var on = !!c.file && pl.shown === c.file;
+    var b = el('button', 'pl__card' + (on ? ' pl__card--on' : ''));
+    b.type = 'button';
+    add(b, el('span', 'gr__dot ' + (c.withheld ? 'gr__dot--warn' : c.live ? 'gr__dot--go' : 'gr__dot--wait')), el('span', 'pl__step', c.step), el('span', 'pl__task', c.withheld ? 'held back' : 'task ' + c.task));
+    if (c.withheld) {
+      b.disabled = true;
+      b.title = 'Held back: ' + c.withheld;
+      return b;
+    }
+    b.title = c.live ? 'Still drawing when the cards were copied' : 'Finished when the cards were copied';
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.addEventListener('click', function () { if (pl.shown !== c.file || !pl.page) plShow(c); });
+    return b;
+  }
+  function plHead() {
+    var seg = $('pl-kinds'), reread = $('pl-reread'), update = $('pl-update');
+    var index = pl.kinds && pl.kinds[pl.kind];
+    if (reread) reread.hidden = !(pl.repo && token);
+    if (update) {
+      update.hidden = !(index && index.refresh);
+      update.disabled = !!pl.busy;
+      update.textContent = pl.busy ? 'Asking the grid...' : 'Update from the grid';
+      if (index && index.refresh) update.title = 'Asks the grid to copy the newest cards of ' + index.flow + ' to the branch ' + PL_BRANCH + ' (the job ' + index.refresh + ')';
+    }
+    if (!seg) return;
+    clear(seg);
+    if (pl.order.length < 2) { seg.hidden = true; return; }
+    seg.hidden = false;
+    var sel = el('select');
+    sel.id = 'pl-kind';
+    sel.setAttribute('aria-label', 'Kind of pipeline');
+    pl.order.forEach(function (k) {
+      var o = el('option', '', pl.kinds[k].flow + ' (' + k + ')');
+      o.value = k;
+      if (k === pl.kind) o.selected = true;
+      add(sel, o);
+    });
+    sel.addEventListener('change', function () {
+      pl.kind = sel.value; pl.shown = ''; pl.page = null; pl.pageNote = '';
+      var card = plNewest(pl.kinds[pl.kind]);
+      drawPipelines();
+      if (card) plShow(card);
+    });
+    add(seg, sel);
+  }
+  // the card shown: a bar that says which it is, over the frame, which stays as it is while the
+  // same card is shown, so a redraw of the list never reloads it
+  function plDrawView(index) {
+    var view = $('pl-view');
+    if (!view) return;
+    var stage = view.querySelector('.pl__stage'), frame = stage && stage.querySelector('iframe');
+    var bar = view.querySelector('.pl__bar');
+    if (!bar) { bar = el('div', 'pl__bar'); add(view, bar); }
+    if (!stage) { stage = el('div', 'pl__stage'); add(view, stage); }
+    clear(bar);
+    var card = pl.shown && index ? plFind(index, pl.shown) : null;
+    if (!card) {
+      if (frame) stage.removeChild(frame);
+      stage.hidden = true;
+      if (index && !pl.note) add(bar, el('p', 'admin__none', 'Choose a card.'));
+      return;
+    }
+    add(bar, add(el('span', 'pl__what'), el('strong', '', card.step + ', task ' + card.task), ' of ' + index.flow + ' run ' + card.run),
+      el('span', 'pl__badge' + (card.live ? ' pl__badge--live' : ''), card.live ? 'live when copied' : 'finished'));
+    var wide = btn(pl.wide ? 'Show the runs' : 'Hide the runs', true, function () { pl.wide = !pl.wide; drawPipelines(); });
+    wide.id = 'pl-wide';
+    add(bar, wide);
+    stage.hidden = false;
+    if (pl.pageNote) { if (frame) stage.removeChild(frame); clear(stage); add(stage, el('p', 'admin__warn pl__wait', pl.pageNote)); return; }
+    if (!pl.page || pl.page.file !== card.file) { if (frame) stage.removeChild(frame); clear(stage); add(stage, el('p', 'admin__none pl__wait', 'Reading the card...')); return; }
+    if (frame && frame.getAttribute('data-file') === pl.page.file && frame.getAttribute('data-era') === String(pl.era)) return;
+    clear(stage);
+    var f = el('iframe', 'pl__frame');
+    // sealed before it has anything to run: no origin, no popup, no form, no navigation of this page
+    f.setAttribute('sandbox', PL_SEALED);
+    f.setAttribute('referrerpolicy', 'no-referrer');
+    f.setAttribute('data-file', pl.page.file);
+    f.setAttribute('data-era', String(pl.era));
+    f.title = 'Card: ' + card.step + ', task ' + card.task + ' of ' + index.flow + ' run ' + card.run;
+    f.srcdoc = pl.page.html;
+    add(stage, f);
+  }
+  function initPipelinesTab() {
+    consoleOnOpen.pipelines = openPipelines;
+    var r = $('pl-reread');
+    if (r) r.addEventListener('click', function () { loadPipelines(state && state.repo ? state.repo : '', true); });
+    var u = $('pl-update');
+    if (u) u.addEventListener('click', plUpdate);
+  }
+
   /* ---------- the leaderboard: the issues each token worked, by the label token:<id> ---------- */
   // A worker's run labels the issue it worked token:<id> (symphony-template's workers.yml), and the
   // token's settings name its owner, so GitHub's issue search over the organization, or the personal
@@ -15663,5 +16022,5 @@
   if ($('tokens-moved')) location.replace('/symphony/control/' + location.search + '#tokens');
   else if ($('cost-app')) initCost();
   else if ($('door-app')) initDoor();
-  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('og-chart')) initOrganizationTab(); if ($('wb-runs')) initWandbTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
+  else if ($('cp-app')) { initConsole(); initPanel(); if ($('tk-tiles')) initTokensTab(); if ($('gr-tiles')) initGridTab(); if ($('og-chart')) initOrganizationTab(); if ($('wb-runs')) initWandbTab(); if ($('pl-runs')) initPipelinesTab(); if ($('cp-live')) initLive(); if ($('sh-who')) initShareTab(); if ($('fd-connect')) initFoldersTab(); if ($('nb-tiles')) initNotebooksTab(); if ($('bs-canvas')) initExploreTab(); if ($('rg-canvas')) initBookView(); }
 })();
