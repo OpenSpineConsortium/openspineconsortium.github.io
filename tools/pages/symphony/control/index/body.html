@@ -76,6 +76,7 @@ app: yes
           <button type="button" role="tab" data-hue="5" data-tab="tokens" id="rail-tokens" aria-controls="tab-tokens"><span class="rail__icon" aria-hidden="true">&#9919;</span><span class="rail__name">Tokens</span></button>
           <button type="button" role="tab" data-hue="1" data-tab="grid" id="rail-grid" aria-controls="tab-grid"><span class="rail__icon" aria-hidden="true">&#9635;</span><span class="rail__name">Grid</span></button>
           <button type="button" role="tab" data-hue="2" data-tab="wandb" id="rail-wandb" aria-controls="tab-wandb"><span class="rail__icon" aria-hidden="true">&#8767;</span><span class="rail__name">W&amp;B</span></button>
+          <button type="button" role="tab" data-hue="3" data-tab="pipelines" id="rail-pipelines" aria-controls="tab-pipelines"><span class="rail__icon" aria-hidden="true">&#9707;</span><span class="rail__name">Pipelines</span></button>
           <button type="button" role="tab" data-hue="3" data-tab="leaders" id="rail-leaders" aria-controls="tab-leaders"><span class="rail__icon" aria-hidden="true">&#9733;</span><span class="rail__name">Leaderboard</span></button>
           <button type="button" role="tab" data-hue="4" data-tab="share" id="rail-share" aria-controls="tab-share"><span class="rail__icon" aria-hidden="true">&#9993;</span><span class="rail__name">Share</span></button>
           <button type="button" role="tab" data-hue="5" data-tab="folders" id="rail-folders" aria-controls="tab-folders"><span class="rail__icon" aria-hidden="true">&#8645;</span><span class="rail__name">Folders</span></button>
@@ -378,6 +379,26 @@ app: yes
           <div class="console__scroll tkwrap wb">
             <div id="wb-runs" class="toks" aria-label="W&amp;B runs"></div>
             <aside id="wb-side" class="tkside wb__side" aria-label="The run" hidden></aside>
+          </div>
+        </section>
+
+        <!-- Pipelines: the pages of the repository's pipeline runs, Metaflow's cards, read from its branch
+             cards and each shown in a sealed frame -->
+        <section class="console__panel" id="tab-pipelines" data-tab-panel="pipelines" role="tabpanel" aria-labelledby="rail-pipelines" hidden>
+          <div class="console__head pl__head">
+            <h2 id="h-pipelines" class="console__h">Pipelines</h2>
+            <div id="pl-kinds" class="ds-seg pl__kinds" hidden></div>
+            <button type="button" class="chip" id="pl-reread" hidden>Read again</button>
+            <button type="button" class="chip" id="pl-update" hidden>Update from the grid</button>
+            <details class="console__help"><summary>How this works</summary><div>
+              <p>The pages of the repository&rsquo;s pipeline runs: each Metaflow run leaves a card for each task of a step that draws one, and this tab shows the cards of each kind of pipeline&rsquo;s newest runs, a live card with what its task had drawn when the cards were last copied. The runs often go where this browser cannot reach, a computing cluster behind a VPN, so the cards come from the repository&rsquo;s branch <code>cards</code>, read here as you: for each kind of pipeline an index, <code>&lt;kind&gt;.json</code>, each card as its data alone under <code>&lt;kind&gt;/&lt;run&gt;/</code>, and Metaflow&rsquo;s card page once, as <code>template.html</code>. Whatever runs the pipelines writes the branch; a card whose data could name a person is held back there and listed here with the reason.</p>
+              <p>A card is Metaflow&rsquo;s own page with its scripts, so it is shown in a frame sealed from this page: it runs with no origin of its own, cannot reach this page, its storage or your sign-in, cannot send anything anywhere, open a window or submit a form. Since its scripts come from the branch, the tab shows cards only from a repository you may push to, whose branch nobody else can fill. Update from the grid sends the word the index names to the grid&rsquo;s gate, through the workflow Grid accounts, as the Grid tab&rsquo;s buttons do, which only an admin of its repository may start; the gate copies the newest cards to the branch, and the tab reads it again once the answer is in. Nothing is kept in this browser.</p>
+            </div></details>
+          </div>
+          <p id="pl-note" class="admin__warn" hidden></p>
+          <div class="pl">
+            <nav id="pl-runs" class="pl__runs" aria-label="Runs and their cards"></nav>
+            <div id="pl-view" class="pl__view" aria-live="polite"></div>
           </div>
         </section>
 

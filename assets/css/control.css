@@ -2336,3 +2336,42 @@ body.page-console .subnav__in, body.page-console .crumbs, body.page-console .foo
 /* a prediction of Claude's: a ghost, dashed in the teal of an idea, until Launch makes it real */
 #og-chart.control__chart .node.idea > rect.label-container { fill: rgba(60, 194, 177, 0.07) !important; stroke: #3CC2B1 !important; stroke-width: 1.5px !important; stroke-dasharray: 6 4; }
 #og-chart.control__chart .node.idea :is(span, p) { color: #9FE3D8 !important; font-style: italic; }
+
+/* the Pipelines tab: a pipeline's runs and their cards in a column at the left, the card shown at
+   the right in a frame that fills the rest of the tab; the card is Metaflow's own page, drawn on its
+   own white, so the frame keeps that white whatever the panel's theme, and Hide the runs gives the
+   card the whole width */
+#tab-pipelines .pl__head .ds-seg select { min-height: 30px; max-width: 22em; padding: 2px 10px; border-radius: var(--ds-pill, 999px); }
+#tab-pipelines .pl { flex: 1 1 auto; min-height: 0; display: flex; gap: 14px; }
+#tab-pipelines .pl__runs { flex: 0 0 248px; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; }
+#tab-pipelines .pl--wide .pl__runs { display: none; }
+#tab-pipelines .pl__run { margin: 0; }
+#tab-pipelines .pl__runh { display: flex; flex-direction: column; gap: 1px; margin: 0 0 6px; font-size: 0.86rem; font-weight: 600; }
+#tab-pipelines .pl__runid { overflow-wrap: anywhere; }
+#tab-pipelines .pl__when { font-size: 0.74rem; font-weight: 400; color: var(--ink-faint); }
+#tab-pipelines .pl__cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#tab-pipelines .pl__none { font-size: 0.8rem; color: var(--ink-faint); }
+#tab-pipelines button.pl__card { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; min-height: 32px; padding: 4px 10px; border: 1px solid var(--line); border-radius: var(--ds-radius-sm, 8px); background: var(--ds-raised, var(--paper-card)); color: var(--ink); font-size: 0.8rem; font-weight: 400; text-align: left; cursor: pointer; }
+#tab-pipelines button.pl__card:hover:not(:disabled) { border-color: var(--teal); }
+#tab-pipelines button.pl__card--on { border-color: var(--teal); box-shadow: inset 3px 0 0 var(--teal); }
+#tab-pipelines button.pl__card:disabled { cursor: not-allowed; opacity: 0.7; }
+#tab-pipelines .pl__step { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono, ui-monospace, monospace); }
+#tab-pipelines .pl__task { flex: none; font-size: 0.74rem; color: var(--ink-faint); }
+#tab-pipelines .pl__view { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+#tab-pipelines .pl__bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 30px; font-size: 0.86rem; }
+#tab-pipelines .pl__bar .admin__none { margin: 0; }
+#tab-pipelines .pl__what { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+#tab-pipelines .pl__badge { flex: none; padding: 1px 9px; border: 1px solid var(--line); border-radius: var(--ds-pill, 999px); font-size: 0.72rem; color: var(--ink-faint); }
+#tab-pipelines .pl__badge--live { border-color: var(--go); color: var(--go); }
+#tab-pipelines .pl__bar button { min-height: 28px; margin: 0; padding: 2px 12px; font-size: 0.8rem; }
+#tab-pipelines .pl__stage { flex: 1 1 auto; min-height: 420px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+#tab-pipelines .pl__stage[hidden] { display: none; }
+#tab-pipelines .pl__frame { flex: 1 1 auto; display: block; width: 100%; height: 100%; min-height: 0; border: 0; background: #fff; }
+#tab-pipelines .pl__wait { margin: 16px; color: #555; }
+#pl-note[hidden], #pl-kinds[hidden] { display: none; }
+/* on a phone the runs stand over the card, a short list, and the card keeps most of the screen */
+@media (max-width: 900px), (max-height: 520px) {
+  #tab-pipelines .pl { flex-direction: column; }
+  #tab-pipelines .pl__runs { flex: 0 0 auto; max-height: 34vh; }
+  #tab-pipelines .pl__stage { min-height: 70vh; }
+}
